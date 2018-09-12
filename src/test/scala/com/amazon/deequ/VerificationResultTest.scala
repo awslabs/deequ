@@ -108,11 +108,12 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
           ("group-1", "Error", "Success", "CompletenessConstraint(Completeness(att1,None))",
             "Success", ""),
           ("group-2-E", "Error", "Error", "SizeConstraint(Size(None))", "Failure",
-            "Value: 4 does not meet the constraint requirement!"),
+            "Value: 4 does not meet the constraint requirement! Should be greater than 5!"),
           ("group-2-E", "Error", "Error", "CompletenessConstraint(Completeness(att1,None))",
             "Success", ""),
           ("group-2-W", "Warning", "Warning", "DistinctnessConstraint(Distinctness(List(item)))",
-            "Failure", "Value: 1.0 does not meet the constraint requirement!")
+            "Failure", "Value: 1.0 does not meet the constraint requirement! " +
+            "Should be smaller than 0.8!")
         )
           .toDF("check", "check_level", "check_status", "constraint",
             "constraint_status", "constraint_message")
@@ -135,7 +136,8 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
               |"constraint":"SizeConstraint(Size(None))", "constraint_status":"Failure",
-              |"constraint_message":"Value: 4 does not meet the constraint requirement!"},
+              |"constraint_message":"Value: 4 does not meet the constraint requirement!
+              | Should be greater than 5!"},
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
               |"constraint":"CompletenessConstraint(Completeness(att1,None))",
@@ -144,7 +146,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
               |{"check":"group-2-W","check_level":"Warning","check_status":"Warning",
               |"constraint":"DistinctnessConstraint(Distinctness(List(item)))","constraint_status":
               |"Failure","constraint_message":"Value: 1.0 does not meet the constraint
-              | requirement!"}]"""
+              | requirement! Should be smaller than 0.8!"}]"""
               .stripMargin.replaceAll("\n", "")
 
           assertSameResultsJson(checkResultsAsJson, expectedJson)
@@ -181,11 +183,11 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
       .isComplete("att1")
 
     val checkToErrorOut = Check(CheckLevel.Error, "group-2-E")
-      .hasSize(_ > 5)
-      .hasCompleteness("att1", _ == 1.0)
+      .hasSize(_ > 5, Some("Should be greater than 5!"))
+      .hasCompleteness("att1", _ == 1.0, Some("Should equal 1!"))
 
     val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
-      .hasDistinctness(Seq("item"), _ < 0.8)
+      .hasDistinctness(Seq("item"), _ < 0.8, Some("Should be smaller than 0.8!"))
 
     checkToSucceed :: checkToErrorOut :: checkToWarn :: Nil
   }
