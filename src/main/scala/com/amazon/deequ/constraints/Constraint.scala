@@ -79,13 +79,18 @@ object Constraint {
     * Runs Size analysis on the given column and executes the assertion
     *
     * @param assertion Function that receives a long input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
-  def sizeConstraint(assertion: Long => Boolean, where: Option[String] = None): Constraint = {
+  def sizeConstraint(
+      assertion: Long => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val size = Size(where)
 
     val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](size,
-      assertion, Some(_.toLong))
+      assertion, Some(_.toLong), hint)
 
     new NamedConstraint(constraint, s"SizeConstraint($size)")
   }
@@ -98,18 +103,20 @@ object Constraint {
     *                   E.g "_.ratios("a") <= 0.7)"
     * @param binningUdf Optional binning function to bin the values
     * @param maxBins    Optional maximum bin count to limit the number of metrics created
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
   def histogramConstraint(
       column: String,
       assertion: Distribution => Boolean,
       binningUdf: Option[UserDefinedFunction] = None,
-      maxBins: Integer = Histogram.MaximumAllowedDetailBins)
+      maxBins: Integer = Histogram.MaximumAllowedDetailBins,
+      hint: Option[String] = None)
     : Constraint = {
 
     val histogram = Histogram(column, binningUdf, maxBins)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Distribution](
-      histogram, assertion)
+      histogram, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"HistogramConstraint($histogram)")
   }
@@ -122,19 +129,20 @@ object Constraint {
     * @param assertion  Function that receives a long input parameter and returns a boolean
     * @param binningUdf Optional binning function to bin the values
     * @param maxBins    Optional maximum bin count to limit the number of metrics created
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
   def histogramBinConstraint(
       column: String,
       assertion: Long => Boolean,
       binningUdf: Option[UserDefinedFunction] = None,
-      maxBins: Integer = Histogram.MaximumAllowedDetailBins)
+      maxBins: Integer = Histogram.MaximumAllowedDetailBins,
+      hint: Option[String] = None)
     : Constraint = {
 
     val histogram = Histogram(column, binningUdf, maxBins)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Long](
-      histogram, assertion,
-      Some(_.numberOfBins))
+      histogram, assertion, Some(_.numberOfBins), hint)
 
     new NamedConstraint(constraint, s"HistogramBinConstraint($histogram)")
   }
@@ -145,16 +153,19 @@ object Constraint {
     * @param column    Column to run the assertion on
     * @param assertion Function that receives a double input parameter (since the metric is
     *                  double metric) and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
   def completenessConstraint(
       column: String,
-      assertion: Double => Boolean, where: Option[String] = None)
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
     : Constraint = {
 
     val completeness = Completeness(column, where)
 
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
-      completeness, assertion)
+      completeness, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"CompletenessConstraint($completeness)")
   }
@@ -165,13 +176,16 @@ object Constraint {
     * @param analyzer           Analyzer for the metric to do Anomaly Detection on
     * @param anomalyAssertion   Function that receives a double input parameter
     *                           (since the metric is double metric) and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
   def anomalyConstraint[S <: State[S]](
       analyzer: Analyzer[S, Metric[Double]],
-      anomalyAssertion: Double => Boolean)
+      anomalyAssertion: Double => Boolean,
+      hint: Option[String] = None)
     : Constraint = {
 
-    val constraint = AnalysisBasedConstraint[S, Double, Double](analyzer, anomalyAssertion)
+    val constraint = AnalysisBasedConstraint[S, Double, Double](analyzer, anomalyAssertion,
+      hint = hint)
 
     new NamedConstraint(constraint, s"AnomalyConstraint($analyzer)")
   }
@@ -182,13 +196,18 @@ object Constraint {
     * @param columns   Columns to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
-  def uniquenessConstraint(columns: Seq[String], assertion: Double => Boolean): Constraint = {
+  def uniquenessConstraint(
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val uniqueness = Uniqueness(columns)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
-      uniqueness, assertion)
+      uniqueness, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"UniquenessConstraint($uniqueness)")
   }
@@ -199,13 +218,18 @@ object Constraint {
     * @param columns   Columns to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
-  def distinctnessConstraint(columns: Seq[String], assertion: Double => Boolean): Constraint = {
+  def distinctnessConstraint(
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val distinctness = Distinctness(columns)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
-      distinctness, assertion)
+      distinctness, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"DistinctnessConstraint($distinctness)")
   }
@@ -216,12 +240,17 @@ object Constraint {
     * @param columns   Columns to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
-  def uniqueValueRatioConstraint(columns: Seq[String], assertion: Double => Boolean): Constraint = {
+  def uniqueValueRatioConstraint(
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val uniqueValueRatio = UniqueValueRatio(columns)
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
-      uniqueValueRatio, assertion)
+      uniqueValueRatio, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"UniqueValueRatioConstraint($uniqueValueRatio")
   }
@@ -232,34 +261,46 @@ object Constraint {
     * @param name A name that summarizes the check being made. This name is being used to name the
     *             metrics for the analysis being done.
     * @param column Data frame column which is a combination of expression and the column name
+    * @param hint A hint to provide additional context why a constraint could have failed
     */
   def complianceConstraint(
       name: String,
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None)
+      where: Option[String] = None,
+      hint: Option[String] = None)
     : Constraint = {
 
     val compliance = Compliance(name, column, where)
 
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
-      compliance, assertion)
+      compliance, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"ComplianceConstraint($compliance)")
   }
 
+  /**
+    * Runs given regex compliance analysis on the given column(s) and executes the assertion
+    *
+    * @param name    A name that summarizes the check being made. This name is being used
+    *                to name the metrics for the analysis being done.
+    * @param pattern The regex pattern to check compliance for
+    * @param column  Data frame column which is a combination of expression and the column name
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
   def patternMatchConstraint(
       column: String,
       pattern: Regex,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      name: Option[String] = None)
+      name: Option[String] = None,
+      hint: Option[String] = None)
     : Constraint = {
 
     val patternMatch = PatternMatch(column, pattern, where)
 
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
-      patternMatch, assertion)
+      patternMatch, assertion, hint = hint)
 
     val constraintName = name match {
       case Some(aName) => aName
@@ -275,13 +316,18 @@ object Constraint {
     * @param column    Column to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
-  def entropyConstraint(column: String, assertion: Double => Boolean): Constraint = {
+  def entropyConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val entropy = Entropy(column)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
-      entropy, assertion)
+      entropy, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"EntropyConstraint($entropy)")
   }
@@ -293,17 +339,19 @@ object Constraint {
     * @param columnB   The other column that mutual information will be calculated upon
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def mutualInformationConstraint(
       columnA: String,
       columnB: String,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : Constraint = {
 
     val mutualInformation = MutualInformation(Seq(columnA, columnB))
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
-      mutualInformation, assertion)
+      mutualInformation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"MutualInformationConstraint($mutualInformation)")
   }
@@ -315,17 +363,19 @@ object Constraint {
     * @param quantile Which quantile to assert on
     * @param assertion Function that receives a double input parameter (the computed quantile)
     *                  and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def approxQuantileConstraint(
       column: String,
       quantile: Double,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : Constraint = {
 
     val approxQuantile = ApproxQuantile(column, quantile)
 
     val constraint = AnalysisBasedConstraint[ApproxQuantileState, Double, Double](
-      approxQuantile, assertion)
+      approxQuantile, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"ApproxQuantileConstraint($approxQuantile)")
   }
@@ -335,15 +385,20 @@ object Constraint {
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    *
     */
   def minConstraint(
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None): Constraint = {
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val minimum = Minimum(column, where)
 
-    val constraint = AnalysisBasedConstraint[MinState, Double, Double](minimum, assertion)
+    val constraint = AnalysisBasedConstraint[MinState, Double, Double](minimum, assertion,
+      hint = hint)
 
     new NamedConstraint(constraint, s"MinimumConstraint($minimum)")
   }
@@ -353,15 +408,19 @@ object Constraint {
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def maxConstraint(
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None): Constraint = {
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val maximum = Maximum(column, where)
 
-    val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maximum, assertion)
+    val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maximum, assertion,
+      hint = hint)
 
     new NamedConstraint(constraint, s"MaximumConstraint($maximum)")
   }
@@ -371,15 +430,19 @@ object Constraint {
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def meanConstraint(
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None): Constraint = {
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val mean = Mean(column, where)
 
-    val constraint = AnalysisBasedConstraint[MeanState, Double, Double](mean, assertion)
+    val constraint = AnalysisBasedConstraint[MeanState, Double, Double](mean, assertion,
+      hint = hint)
 
     new NamedConstraint(constraint, s"MeanConstraint($mean)")
   }
@@ -388,15 +451,19 @@ object Constraint {
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def sumConstraint(
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None): Constraint = {
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
 
     val sum = Sum(column, where)
 
-    val constraint = AnalysisBasedConstraint[SumState, Double, Double](sum, assertion)
+    val constraint = AnalysisBasedConstraint[SumState, Double, Double](sum, assertion,
+      hint = hint)
 
     new NamedConstraint(constraint, s"SumConstraint($sum)")
   }
@@ -407,17 +474,19 @@ object Constraint {
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def standardDeviationConstraint(
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None)
+      where: Option[String] = None,
+      hint: Option[String] = None)
     : Constraint = {
 
     val standardDeviation = StandardDeviation(column, where)
 
     val constraint = AnalysisBasedConstraint[StandardDeviationState, Double, Double](
-      standardDeviation, assertion)
+      standardDeviation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"StandardDeviationConstraint($standardDeviation)")
   }
@@ -427,17 +496,19 @@ object Constraint {
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def approxCountDistinctConstraint(
       column: String,
       assertion: Double => Boolean,
-      where: Option[String] = None)
+      where: Option[String] = None,
+      hint: Option[String] = None)
     : Constraint = {
 
     val approxCountDistinct = ApproxCountDistinct(column, where)
 
     val constraint = AnalysisBasedConstraint[ApproxCountDistinctState, Double, Double](
-      approxCountDistinct, assertion)
+      approxCountDistinct, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"ApproxCountDistinctConstraint($approxCountDistinct)")
   }
@@ -448,18 +519,20 @@ object Constraint {
     * @param columnA   First column for pearson correlation
     * @param columnB   Second column for pearson correlation
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint      A hint to provide additional context why a constraint could have failed
     */
   def correlationConstraint(
       columnA: String,
       columnB: String,
       assertion: Double => Boolean,
-      where: Option[String] = None)
+      where: Option[String] = None,
+      hint: Option[String] = None)
     : Constraint = {
 
     val correlation = Correlation(columnA, columnB, where)
 
     val constraint = AnalysisBasedConstraint[CorrelationState, Double, Double](
-      correlation, assertion)
+      correlation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"CorrelationConstraint($correlation)")
   }
@@ -470,12 +543,14 @@ object Constraint {
     * @param column Column to compute the data type distribution for.
     * @param dataType The data type that should be checked in the assertion.
     * @param assertion Function from the ratio of the data type in the specified column to boolean.
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def dataTypeConstraint(
       column: String,
       dataType: ConstrainableDataTypes.Value,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : Constraint = {
 
     /** Get the specified data type distribution ratio or maps to 0.0 */
@@ -494,7 +569,7 @@ object Constraint {
     }
 
     AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column), assertion,
-      Some(valuePicker))
+      Some(valuePicker), hint)
   }
 
   private[this] def ratio(keyType: DataTypeInstances.Value, distribution: Distribution): Double = {

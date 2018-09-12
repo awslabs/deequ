@@ -181,5 +181,21 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
     }
 
+    "fail on failed assertion function with hint in exception message if provided" in
+      withSparkSession { sparkSession =>
+
+      val df = getDfMissing(sparkSession)
+
+      val failingConstraint = AnalysisBasedConstraint[NumMatches, Double, Double](
+          SampleAnalyzer("att1"), _ == 0.9, hint = Some("Value should be like ...!"))
+
+      calculate(failingConstraint, df) match {
+        case result =>
+          assert(result.status == ConstraintStatus.Failure)
+          assert(result.message.get == "Value: 1.0 does not meet the constraint requirement! " +
+            "Value should be like ...!")
+      }
+    }
+
   }
 }
