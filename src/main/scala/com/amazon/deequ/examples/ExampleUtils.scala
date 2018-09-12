@@ -20,7 +20,7 @@ import org.apache.spark.sql.SparkSession
 
 private[deequ] object ExampleUtils {
 
-  def withSpark(func: SparkSession => Unit) = {
+  def withSpark(func: SparkSession => Unit): Unit = {
     val session = SparkSession.builder()
       .master("local")
       .appName("test")

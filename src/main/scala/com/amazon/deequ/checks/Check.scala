@@ -91,20 +91,24 @@ case class Check(
     *                  .hasSize(_>5), meaning the number of rows should be greater than 5
     *                  Or more elaborate function might be provided
     *                  .hasSize{ aNameForSize => aNameForSize > 0 && aNameForSize < 10 }
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasSize(assertion: Long => Boolean): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => Constraint.sizeConstraint(assertion, filter) }
+  def hasSize(assertion: Long => Boolean, hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => Constraint.sizeConstraint(assertion, filter, hint) }
   }
 
   /**
     * Creates a constraint that asserts on a column completion.
     *
     * @param column Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isComplete(column: String): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => completenessConstraint(column, Check.IsOne, filter) }
+  def isComplete(column: String, hint: Option[String] = None): CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter => completenessConstraint(column, Check.IsOne, filter, hint) }
   }
 
   /**
@@ -114,22 +118,26 @@ case class Check(
     *
     * @param column    Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasCompleteness(
       column: String,
-      assertion: Double => Boolean): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => completenessConstraint(column, assertion, filter) }
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter => completenessConstraint(column, assertion, filter, hint) }
   }
 
   /**
     * Creates a constraint that asserts on a column uniqueness.
     *
     * @param column Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isUnique(column: String): Check = {
-    addConstraint(uniquenessConstraint(Seq(column), Check.IsOne))
+  def isUnique(column: String, hint: Option[String] = None): Check = {
+    addConstraint(uniquenessConstraint(Seq(column), Check.IsOne, hint))
   }
 
   /**
@@ -145,6 +153,19 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on a column(s) primary key characteristics.
+    * Currently only checks uniqueness, but reserved for primary key checks if there is another
+    * assertion to run on primary key columns.
+    *
+    * @param column Columns to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def isPrimaryKey(column: String, hint: Option[String], columns: String*): Check = {
+    addConstraint(uniquenessConstraint(column :: columns.toList, Check.IsOne, hint))
+  }
+
+  /**
     * Creates a constraint that asserts on uniqueness in a single or combined set of key columns.
     *
     * @param columns Key columns
@@ -154,6 +175,24 @@ case class Check(
     */
   def hasUniqueness(columns: Seq[String], assertion: Double => Boolean): Check = {
     addConstraint(uniquenessConstraint(columns, assertion))
+  }
+
+  /**
+    * Creates a constraint that asserts on uniqueness in a single or combined set of key columns.
+    *
+    * @param columns Key columns
+    * @param assertion Function that receives a double input parameter and returns a boolean.
+    *                  Refers to the fraction of unique values
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasUniqueness(
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Check = {
+    
+    addConstraint(uniquenessConstraint(columns, assertion, hint))
   }
 
   /**
@@ -169,15 +208,33 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on the uniqueness of a key column.
+    *
+    * @param column Key column
+    * @param assertion Function that receives a double input parameter and returns a boolean.
+    *                  Refers to the fraction of unique values.
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasUniqueness(column: String, assertion: Double => Boolean, hint: Option[String]): Check = {
+    hasUniqueness(Seq(column), assertion, hint)
+  }
+
+  /**
     * Creates a constraint on the distinctness in a single or combined set of key columns.
     *
     * @param columns columns
     * @param assertion Function that receives a double input parameter and returns a boolean.
     *                  Refers to the fraction of distinct values.
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasDistinctness(columns: Seq[String], assertion: Double => Boolean): Check = {
-    addConstraint(distinctnessConstraint(columns, assertion))
+  def hasDistinctness(
+      columns: Seq[String], assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Check = {
+
+    addConstraint(distinctnessConstraint(columns, assertion, hint))
   }
 
   /**
@@ -186,10 +243,16 @@ case class Check(
     * @param columns columns
     * @param assertion Function that receives a double input parameter and returns a boolean.
     *                  Refers to the fraction of distinct values.
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasUniqueValueRatio(columns: Seq[String], assertion: Double => Boolean): Check = {
-    addConstraint(uniqueValueRatioConstraint(columns, assertion))
+  def hasUniqueValueRatio(
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Check = {
+
+    addConstraint(uniqueValueRatioConstraint(columns, assertion, hint))
   }
 
   /**
@@ -200,16 +263,18 @@ case class Check(
     * @param binningUdf An optional binning function
     * @param maxBins    Histogram details is only provided for N column values with top counts.
     *                   maxBins sets the N
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasNumberOfDistinctValues(
       column: String,
       assertion: Long => Boolean,
       binningUdf: Option[UserDefinedFunction] = None,
-      maxBins: Integer = Histogram.MaximumAllowedDetailBins)
+      maxBins: Integer = Histogram.MaximumAllowedDetailBins,
+      hint: Option[String] = None)
     : Check = {
 
-    addConstraint(histogramBinConstraint(column, assertion, binningUdf, maxBins))
+    addConstraint(histogramBinConstraint(column, assertion, binningUdf, maxBins, hint))
   }
 
   /**
@@ -224,16 +289,18 @@ case class Check(
     * @param binningUdf An optional binning function
     * @param maxBins    Histogram details is only provided for N column values with top counts.
     *                   maxBins sets the N
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasHistogramValues(
       column: String,
       assertion: Distribution => Boolean,
       binningUdf: Option[UserDefinedFunction] = None,
-      maxBins: Integer = Histogram.MaximumAllowedDetailBins)
+      maxBins: Integer = Histogram.MaximumAllowedDetailBins,
+      hint: Option[String] = None)
     : Check = {
 
-    addConstraint(histogramConstraint(column, assertion, binningUdf, maxBins))
+    addConstraint(histogramConstraint(column, assertion, binningUdf, maxBins, hint))
   }
 
   /**
@@ -248,6 +315,8 @@ case class Check(
     *                                 the Anomaly Detection
     * @param afterDate                The minimum dateTime of previous AnalysisResults to use for
     *                                 the Anomaly Detection
+    * @param hint                     A hint to provide additional context why a constraint
+    *                                 could have failed
     * @return
     */
   private[deequ] def isNewestPointNonAnomalous[S <: State[S]](
@@ -256,7 +325,8 @@ case class Check(
       analyzer: Analyzer[S, Metric[Double]],
       withTagValues: Map[String, String],
       afterDate: Option[Long],
-      beforeDate: Option[Long])
+      beforeDate: Option[Long],
+      hint: Option[String] = None)
     : Check = {
 
     val anomalyAssertionFunction = Check.isNewestPointNonAnomalous(
@@ -268,7 +338,7 @@ case class Check(
       beforeDate
     )(_)
 
-    addConstraint(anomalyConstraint(analyzer, anomalyAssertionFunction))
+    addConstraint(anomalyConstraint(analyzer, anomalyAssertionFunction, hint))
   }
 
 
@@ -277,10 +347,16 @@ case class Check(
     *
     * @param column    Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint      A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasEntropy(column: String, assertion: Double => Boolean): Check = {
-    addConstraint(entropyConstraint(column, assertion))
+  def hasEntropy(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Check = {
+
+    addConstraint(entropyConstraint(column, assertion, hint))
   }
 
   /**
@@ -289,15 +365,17 @@ case class Check(
     * @param columnA   First column for mutual information calculation
     * @param columnB   Second column for mutual information calculation
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint      A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasMutualInformation(
       columnA: String,
       columnB: String,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : Check = {
 
-    addConstraint(mutualInformationConstraint(columnA, columnB, assertion))
+    addConstraint(mutualInformationConstraint(columnA, columnB, assertion, hint))
   }
 
   /**
@@ -307,10 +385,16 @@ case class Check(
     * @param quantile Which quantile to assert on
     * @param assertion Function that receives a double input parameter (the computed quantile)
     *                  and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasApproxQuantile(column: String, quantile: Double, assertion: Double => Boolean): Check = {
-    addConstraint(approxQuantileConstraint(column, quantile, assertion))
+  def hasApproxQuantile(column: String,
+      quantile: Double,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Check = {
+
+    addConstraint(approxQuantileConstraint(column, quantile, assertion, hint))
   }
 
 
@@ -319,10 +403,16 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasMin(column: String, assertion: Double => Boolean): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => minConstraint(column, assertion, filter) }
+  def hasMin(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => minConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -330,10 +420,16 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasMax(column: String, assertion: Double => Boolean): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => maxConstraint(column, assertion, filter) }
+  def hasMax(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => maxConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -341,10 +437,16 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasMean(column: String, assertion: Double => Boolean): Check = {
-    addFilterableConstraint { filter => meanConstraint(column, assertion, filter) }
+  def hasMean(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : Check = {
+
+    addFilterableConstraint { filter => meanConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -352,10 +454,16 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasSum(column: String, assertion: Double => Boolean): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => sumConstraint(column, assertion, filter) }
+  def hasSum(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => sumConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -363,14 +471,17 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasStandardDeviation(
       column: String,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => standardDeviationConstraint(column, assertion, filter) }
+    addFilterableConstraint { filter =>
+      standardDeviationConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -378,14 +489,17 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasApproxCountDistinct(
       column: String,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => approxCountDistinctConstraint(column, assertion, filter) }
+    addFilterableConstraint { filter =>
+      approxCountDistinctConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -394,15 +508,18 @@ case class Check(
     * @param columnA   First column for correlation calculation
     * @param columnB   Second column for correlation calculation
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasCorrelation(
       columnA: String,
       columnB: String,
-      assertion: Double => Boolean)
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => correlationConstraint(columnA, columnB, assertion, filter) }
+    addFilterableConstraint { filter =>
+      correlationConstraint(columnA, columnB, assertion, filter, hint) }
   }
 
   /**
@@ -415,16 +532,18 @@ case class Check(
     * @param constraintName  A name that summarizes the check being made. This name is being used to
     *                        name the metrics for the analysis being done.
     * @param assertion       Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def satisfies(
       columnCondition: String,
       constraintName: String,
-      assertion: Double => Boolean = Check.IsOne)
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      complianceConstraint(constraintName, columnCondition, assertion, filter)
+      complianceConstraint(constraintName, columnCondition, assertion, filter, hint)
     }
   }
 
@@ -435,17 +554,19 @@ case class Check(
     * @param column Name of the column that should be checked.
     * @param pattern The columns values will be checked for a match against this pattern.
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasPattern(
       column: String,
       pattern: Regex,
       assertion: Double => Boolean = Check.IsOne,
-      name: Option[String] = None)
+      name: Option[String] = None,
+      hint: Option[String] = None)
     : Check = {
 
     addFilterableConstraint { filter =>
-      Constraint.patternMatchConstraint(column, pattern, assertion, where = filter, name = name)
+      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint)
     }
   }
 
@@ -454,14 +575,17 @@ case class Check(
     *
     * @param column Name of the column that should be checked.
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def containsCreditCardNumber(
       column: String,
-      assertion: Double => Boolean = Check.IsOne)
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
     : Check = {
 
-    hasPattern(column, Patterns.CREDITCARD, assertion, Some(s"containsCreditCardNumber($column)"))
+    hasPattern(column, Patterns.CREDITCARD, assertion, Some(s"containsCreditCardNumber($column)"),
+      hint)
   }
 
   /**
@@ -469,10 +593,16 @@ case class Check(
     *
     * @param column Name of the column that should be checked.
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def containsEmail(column: String, assertion: Double => Boolean = Check.IsOne): Check = {
-    hasPattern(column, Patterns.EMAIL, assertion, Some(s"containsEmail($column)"))
+  def containsEmail(
+      column: String,
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
+    : Check = {
+
+    hasPattern(column, Patterns.EMAIL, assertion, Some(s"containsEmail($column)"), hint)
   }
 
   /**
@@ -480,10 +610,16 @@ case class Check(
     *
     * @param column Name of the column that should be checked.
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def containsURL(column: String, assertion: Double => Boolean = Check.IsOne): Check = {
-    hasPattern(column, Patterns.URL, assertion, Some(s"containsURL($column)"))
+  def containsURL(
+      column: String,
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
+    : Check = {
+
+    hasPattern(column, Patterns.URL, assertion, Some(s"containsURL($column)"), hint)
   }
 
   /**
@@ -492,15 +628,17 @@ case class Check(
     *
     * @param column Name of the column that should be checked.
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def containsSocialSecurityNumber(
       column: String,
-      assertion: Double => Boolean = Check.IsOne)
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
     : Check = {
 
     hasPattern(column, Patterns.SOCIAL_SECURITY_NUMBER_US, assertion,
-      Some(s"containsSocialSecurityNumber($column)"))
+      Some(s"containsSocialSecurityNumber($column)"), hint)
   }
 
   /**
@@ -509,25 +647,32 @@ case class Check(
     * @param column Name of the columns that should be checked.
     * @param dataType Data type that the columns should be compared against.
     * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def hasDataType(
       column: String,
       dataType: ConstrainableDataTypes.Value,
-      assertion: Double => Boolean = Check.IsOne)
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
     : Check = {
 
-    addConstraint(Constraint.dataTypeConstraint(column, dataType, assertion))
+    addConstraint(Constraint.dataTypeConstraint(column, dataType, assertion, hint))
   }
 
   /**
     * Creates a constraint that asserts that a column contains no negative values
     *
     * @param column Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isNonNegative(column: String): CheckWithLastConstraintFilterable = {
-    satisfies(s"$column >= 0", s"$column non-negative")
+  def isNonNegative(
+      column: String,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$column >= 0", s"$column non-negative", hint = hint)
   }
 
   /**
@@ -535,10 +680,17 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isLessThan(columnA: String, columnB: String): CheckWithLastConstraintFilterable = {
-    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB")
+  def isLessThan(
+      columnA: String,
+      columnB: String,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB",
+      hint = hint)
   }
 
   /**
@@ -546,10 +698,17 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isLessThanOrEqualTo(columnA: String, columnB: String): CheckWithLastConstraintFilterable = {
-    satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB")
+  def isLessThanOrEqualTo(
+      columnA: String,
+      columnB: String,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
+      hint = hint)
   }
 
   /**
@@ -557,10 +716,17 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isGreaterThan(columnA: String, columnB: String): CheckWithLastConstraintFilterable = {
-    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB")
+  def isGreaterThan(
+      columnA: String,
+      columnB: String,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
+      hint = hint)
   }
 
   /**
@@ -569,14 +735,17 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isGreaterThanOrEqualTo(
       columnA: String,
-      columnB: String)
+      columnB: String,
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB")
+    satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
+      hint = hint)
   }
 
   /**
@@ -601,6 +770,30 @@ case class Check(
   }
 
   /**
+    * Asserts that every non-null value in a column is contained in a set of predefined values
+    *
+    * @param column Column to run the assertion on
+    * @param allowedValues allowed values for the column
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def isContainedIn(
+      column: String,
+      allowedValues: Array[String],
+      hint: Option[String])
+    : CheckWithLastConstraintFilterable = {
+
+
+    val valueList = allowedValues
+      .map { _.replaceAll("'", "\\'") }
+      .mkString("'", "','", "'")
+
+    val predicate = s"$column IS NULL OR $column IN ($valueList)"
+    satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}",
+      hint = hint)
+  }
+
+  /**
     * Asserts that the non-null values in a numeric column fall into the predefined interval
     *
     * @param column column to run the assertion
@@ -608,6 +801,7 @@ case class Check(
     * @param upperBound upper bound of the interval
     * @param includeLowerBound is a value equal to the lower bound allows?
     * @param includeUpperBound is a value equal to the upper bound allowed?
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isContainedIn(
@@ -615,7 +809,8 @@ case class Check(
       lowerBound: Double,
       upperBound: Double,
       includeLowerBound: Boolean = true,
-      includeUpperBound: Boolean = true)
+      includeUpperBound: Boolean = true,
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     val leftOperand = if (includeLowerBound) ">=" else ">"
@@ -624,7 +819,7 @@ case class Check(
     val predicate = s"$column IS NULL OR " +
       s"($column $leftOperand $lowerBound AND $column $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound")
+    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }
 
   /**
