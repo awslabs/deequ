@@ -4,9 +4,23 @@ Deequ is a library built on top of Apache Spark for defining "unit tests for dat
 
 ## Example
 
-```scala
-case class Item(id: Long, name: String, description: String, priority: String, numViews: Long)
+__Deequ__'s purpose is to "unit-test" data to find errors early, before the data gets fed to consuming systems or machine learning algorithms. In the following, we will walk you through a toy example to showcase the most basic usage of our library. An executable version of the example is available [here](/src/main/scala/com/amazon/deequ/examples/BasicExample.scala).
 
+__Deequ__ works on tabular, e.g., CSV files, database tables, logs, of flattened json files. Basically anything that you can fit into a Spark dataframe. For this example, we assume that we work on some kind of `Item` data, where every item has an id, a name, a description, a priority and a count of how often it has been viewed.
+
+```scala
+case class Item(
+  id: Long, 
+  name: String, 
+  description: String, 
+  priority: String, 
+  numViews: Long
+)
+```
+
+Our library is built on [Apache Spark](https://spark.apache.org/) and is designed to work with very large datasets (think billions of rows) that typically live in a distributed filesystem or a data warehouse. For the sake of simplicity in this example, we just generate a few toy records though.
+
+```scala
 val rdd = sc.parallelize(Seq(
   Item(1, "Thingy A", "awesome thing.", "high", 0),
   Item(2, "Thingy B", "available at http://thingb.com", null, 0),
@@ -17,20 +31,22 @@ val rdd = sc.parallelize(Seq(
 val data = session.createDataFrame(rdd)
 ```
 
+Most applications that work with data have implicit assumptions about that data, e.g. that attributes have certain types, do not contain NULL values, and so on. If these assumptions are violated, your application might crash or produce wrong outputs. The idea behind __deequ__ is to explicitly state these assumptions in the form of a "unit-test" for data, which can be verified on a piece of data hand. If the data has errors, we can "quarantine" and fix it, before we feed to an application. The main entry point for defining how you expect your data to look is the [VerificationSuite](src/main/scala/com/amazon/deequ/VerificationSuite.scala) from which you can add [Checks](src/main/scala/com/amazon/deequ/checks/Check.scala) that define constraints on attributes of the data.
 ```scala
 val verificationResult = VerificationSuite()
   .onData(data)
   .addCheck(
     Check(CheckLevel.Error, "unit testing my data") 
-      .isComplete("id") // 'id' should never be NULL
-      .isUnique("id") // 'id' should not contain duplicates
-      .isComplete("name") // 'name' should never be NULL
-      // 'priority' should only contain the values "high" and "low"
+      .hasSize(_ == 5) // we expect 5 rows
+      .isComplete("id") // should never be NULL
+      .isUnique("id") // should not contain duplicates
+      .isComplete("name") // should never be NULL
+      // should only contain the values "high" and "low"
       .isContainedIn("priority", Array("high", "low")) 
-      .isNonNegative("numViews")) // 'numViews' should not contain negative values
-      // at least half of the 'description's should contain a url          
+      .isNonNegative("numViews")) // should not contain negative values
+      // at least half of the descriptions should contain a url          
       .containsURL("description", _ >= 0.5) 
-      // half of the items should have less than 10 'numViews'
+      // half of the items should have less than 10 views
       .hasApproxQuantile("numViews", 0.5, _ <= 10)) 
     .run()
 ```
