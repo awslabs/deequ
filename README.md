@@ -1,4 +1,5 @@
-## Deequ
+# Deequ
+[![Build Status](https://travis-ci.org/awslabs/deequ.svg?branch=master)](https://travis-ci.org/awslabs/deequ)
 
 Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets.
 
