@@ -2,6 +2,10 @@
 
 Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets.
 
+## Requirements and Installation
+
+__Deequ__ depends on Java 8 and Apache Spark 2.2. We will make it available as a maven artifact soon.
+
 ## Example
 
 __Deequ__'s purpose is to "unit-test" data to find errors early, before the data gets fed to consuming systems or machine learning algorithms. In the following, we will walk you through a toy example to showcase the most basic usage of our library. An executable version of the example is available [here](/src/main/scala/com/amazon/deequ/examples/BasicExample.scala).
@@ -31,7 +35,20 @@ val rdd = sc.parallelize(Seq(
 val data = session.createDataFrame(rdd)
 ```
 
-Most applications that work with data have implicit assumptions about that data, e.g. that attributes have certain types, do not contain NULL values, and so on. If these assumptions are violated, your application might crash or produce wrong outputs. The idea behind __deequ__ is to explicitly state these assumptions in the form of a "unit-test" for data, which can be verified on a piece of data hand. If the data has errors, we can "quarantine" and fix it, before we feed to an application. The main entry point for defining how you expect your data to look is the [VerificationSuite](src/main/scala/com/amazon/deequ/VerificationSuite.scala) from which you can add [Checks](src/main/scala/com/amazon/deequ/checks/Check.scala) that define constraints on attributes of the data.
+Most applications that work with data have implicit assumptions about that data, e.g., that attributes have certain types, do not contain NULL values, and so on. If these assumptions are violated, your application might crash or produce wrong outputs. The idea behind __deequ__ is to explicitly state these assumptions in the form of a "unit-test" for data, which can be verified on a piece of data at hand. If the data has errors, we can "quarantine" and fix it, before we feed to an application. 
+
+The main entry point for defining how you expect your data to look is the [VerificationSuite](src/main/scala/com/amazon/deequ/VerificationSuite.scala) from which you can add [Checks](src/main/scala/com/amazon/deequ/checks/Check.scala) that define constraints on attributes of the data. In this example, we test for the following properties of our data:
+  
+  * there are 5 rows in total
+  * values of the `id` attribute are never NULL and unique
+  * values of the `name` attribute are never NULL
+  * the `priority` attribute can only contain "high" or "low" as value
+  * `numViews` should not contain negative values
+  * at least half of the values in `description` should contain a url 
+  * the median of `numViews` should be less than or equal to 10
+    
+In code this looks as follows:
+
 ```scala
 val verificationResult = VerificationSuite()
   .onData(data)
@@ -51,6 +68,8 @@ val verificationResult = VerificationSuite()
     .run()
 ```
 
+After calling `run`, __deequ__ translates your test to a series of Spark jobs, which it executes to compute metrics on the data. Afterwards it invokes your assertion functions (e.g., `_ == 5` for the size check) on these metrics to see if the constraints hold on the data. We can inspect the [VerificationResult](src/main/scala/com/amazon/deequ/VerificationResult.scala) to see if the test found errors:
+
 ```scala
 if (verificationResult.status == Success) {
   println("The data passed the test, everything is fine!")
@@ -66,16 +85,24 @@ if (verificationResult.status == Success) {
 }
 ```
 
+If we run the example, we get the following output:
 ```
 We found errors in the data:
 
 CompletenessConstraint(Completeness(name)): Value: 0.8 does not meet the requirement!
 PatternConstraint(containsURL(description)): Value: 0.4 does not meet the requirement!
 ```
+The test found that our assumptions are violated! Only 4 out of 5 (80%) of the values of the `name` attribute are non-null and only 2 out of 5 (40%) values of the `description` attribute contained a url. Fortunately, we ran a test and found the errors, somebody should immediately fix the data :)
+
 
 ## Advanced features
- 
-Anomaly detection, incremental tests on growing data, data profiling, constraint suggestion, ... 
+
+Our library contains much more than what we showed in the basic example. We will add examples for the following advanced features soon:
+
+ * [Anomaly detection](src/main/scala/com/amazon/deequ/anomalydetection)
+ * [Incremental tests](src/test/scala/com/amazon/deequ/analyzers/IncrementalAnalysisTest.scala) on growing data
+ * Single-column [data profiling](src/main/scala/com/amazon/deequ/suggestions/ColumnProfiler.scala)
+ * Automatic [suggestion of constraints](src/main/scala/com/amazon/deequ/suggestions/EndToEndConstraintSuggestion.scala)
 
 ## License
 
