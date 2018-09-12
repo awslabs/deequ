@@ -10,7 +10,7 @@ __Deequ__ depends on Java 8 and Apache Spark 2.2. We will make it available as a
 
 __Deequ__'s purpose is to "unit-test" data to find errors early, before the data gets fed to consuming systems or machine learning algorithms. In the following, we will walk you through a toy example to showcase the most basic usage of our library. An executable version of the example is available [here](/src/main/scala/com/amazon/deequ/examples/BasicExample.scala).
 
-__Deequ__ works on tabular, e.g., CSV files, database tables, logs, of flattened json files. Basically anything that you can fit into a Spark dataframe. For this example, we assume that we work on some kind of `Item` data, where every item has an id, a name, a description, a priority and a count of how often it has been viewed.
+__Deequ__ works on tabular data, e.g., CSV files, database tables, logs, of flattened json files, basically anything that you can fit into a Spark dataframe. For this example, we assume that we work on some kind of `Item` data, where every item has an id, a name, a description, a priority and a count of how often it has been viewed.
 
 ```scala
 case class Item(
@@ -99,6 +99,7 @@ The test found that our assumptions are violated! Only 4 out of 5 (80%) of the v
 
 Our library contains much more than what we showed in the basic example. We will add examples for the following advanced features soon:
 
+ * Storing computed metrics of the data in a [MetricsRepository](src/main/scala/com/amazon/deequ/repository)
  * [Anomaly detection](src/main/scala/com/amazon/deequ/anomalydetection)
  * [Incremental tests](src/test/scala/com/amazon/deequ/analyzers/IncrementalAnalysisTest.scala) on growing data
  * Single-column [data profiling](src/main/scala/com/amazon/deequ/suggestions/ColumnProfiler.scala)
