@@ -106,6 +106,12 @@ Our library contains much more than what we showed in the basic example. We will
  * Single-column [data profiling](src/main/scala/com/amazon/deequ/suggestions/ColumnProfiler.scala)
  * Automatic [suggestion of constraints](src/main/scala/com/amazon/deequ/suggestions/EndToEndConstraintSuggestion.scala)
 
+## Citation
+
+If you would like to reference this package in a research paper, please cite:
+
+Sebastian Schelter, Dustin Lange, Philipp Schmidt, Meltem Celikel, Felix Biessmann, and Andreas Grafberger. 2018. [Automating large-scale data quality verification](http://www.vldb.org/pvldb/vol11/p1781-schelter.pdf). Proc. VLDB Endow. 11, 12 (August 2018), 1781-1794. 
+
 ## License
 
 This library is licensed under the Apache 2.0 License. 
