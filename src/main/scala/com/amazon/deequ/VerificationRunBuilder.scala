@@ -22,20 +22,45 @@ import com.amazon.deequ.analyzers.{State, _}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a VerificationRun using a fluent API */
-class VerificationRunBuilder(data: DataFrame) {
+class VerificationRunBuilder(val data: DataFrame) {
 
-  private[this] var requiredAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
+  protected var requiredAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
 
-  protected[this] var checks: Seq[Check] = Seq.empty
+  protected var checks: Seq[Check] = Seq.empty
 
-  protected[this] var metricsRepository: Option[MetricsRepository] = None
+  protected var metricsRepository: Option[MetricsRepository] = None
 
-  protected[this] var reuseExistingResultsKey: Option[ResultKey] = None
-  protected[this] var failIfResultsForReusingMissing: Boolean = false
-  protected[this] var saveOrAppendResultsKey: Option[ResultKey] = None
+  protected var reuseExistingResultsKey: Option[ResultKey] = None
+  protected var failIfResultsForReusingMissing: Boolean = false
+  protected var saveOrAppendResultsKey: Option[ResultKey] = None
+
+  protected var sparkSession: Option[SparkSession] = None
+  protected var overwriteOutputFiles: Boolean = false
+  protected var saveCheckResultsJsonPath: Option[String] = None
+  protected var saveSuccessMetricsJsonPath: Option[String] = None
+
+  protected def this(verificationRunBuilder: VerificationRunBuilder) {
+
+    this(verificationRunBuilder.data)
+
+    requiredAnalyzers = verificationRunBuilder.requiredAnalyzers
+
+    checks = verificationRunBuilder.checks
+
+    metricsRepository = verificationRunBuilder.metricsRepository
+
+    reuseExistingResultsKey = verificationRunBuilder.reuseExistingResultsKey
+    failIfResultsForReusingMissing = verificationRunBuilder.failIfResultsForReusingMissing
+    saveOrAppendResultsKey = verificationRunBuilder.saveOrAppendResultsKey
+
+    sparkSession = verificationRunBuilder.sparkSession
+    overwriteOutputFiles = verificationRunBuilder.overwriteOutputFiles
+    saveCheckResultsJsonPath = verificationRunBuilder.saveCheckResultsJsonPath
+    saveSuccessMetricsJsonPath = verificationRunBuilder.saveSuccessMetricsJsonPath
+  }
 
   /**
     * Add a single check to the run.
@@ -87,27 +112,47 @@ class VerificationRunBuilder(data: DataFrame) {
     *                          run
     */
   def useRepository(metricsRepository: MetricsRepository): VerificationRunBuilderWithRepository = {
-    val builderWithRepository = new VerificationRunBuilderWithRepository(data,
-      Option(metricsRepository))
-    builderWithRepository.addChecks(checks).addRequiredAnalyzers(requiredAnalyzers)
+
+    new VerificationRunBuilderWithRepository(this, Option(metricsRepository))
   }
+
+  /**
+    * Use a sparkSession to conveniently create output files
+    *
+    * @param sparkSession The SparkSession
+    */
+  def useSparkSession(
+      sparkSession: SparkSession)
+    : VerificationRunBuilderWithSparkSession = {
+
+    new VerificationRunBuilderWithSparkSession(this, Option(sparkSession))
+  }
+
 
   def run(): VerificationResult = {
     VerificationSuite().doVerificationRun(
       data,
       checks,
       requiredAnalyzers,
-      metricsRepository = metricsRepository,
-      reuseExistingResultsForKey = reuseExistingResultsKey,
-      failIfResultsForReusingMissing = failIfResultsForReusingMissing,
-      saveOrAppendResultsWithKey = saveOrAppendResultsKey)
+      metricsRepositoryOptions = VerificationMetricsRepositoryOptions(
+        metricsRepository,
+        reuseExistingResultsKey,
+        failIfResultsForReusingMissing,
+        saveOrAppendResultsKey
+      ),
+      fileOutputOptions = VerificationFileOutputOptions(
+        sparkSession,
+        saveCheckResultsJsonPath,
+        saveSuccessMetricsJsonPath,
+        overwriteOutputFiles)
+    )
   }
 }
 
 class VerificationRunBuilderWithRepository(
-    data: DataFrame,
+    verificationRunBuilder: VerificationRunBuilder,
     usingMetricsRepository: Option[MetricsRepository])
-  extends VerificationRunBuilder(data) {
+  extends VerificationRunBuilder(verificationRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 
@@ -162,6 +207,52 @@ class VerificationRunBuilderWithRepository(
 
     checks :+= VerificationRunBuilderHelper.getAnomalyCheck(metricsRepository.get,
       anomalyDetectionStrategy, analyzer, anomalyCheckConfigOrDefault)
+    this
+  }
+}
+
+class VerificationRunBuilderWithSparkSession(
+    verificationRunBuilder: VerificationRunBuilder,
+    usingSparkSession: Option[SparkSession])
+  extends VerificationRunBuilder(verificationRunBuilder) {
+
+  sparkSession = usingSparkSession
+
+  /**
+    * Save the column profiles json to e.g. S3
+    *
+    * @param path The file path
+    */
+  def saveCheckResultsJsonToPath(
+      path: String)
+    : this.type = {
+
+    saveCheckResultsJsonPath = Option(path)
+    this
+  }
+
+  /**
+    * Save the constraint suggestion json to e.g. S3
+    *
+    * @param path The file path
+    */
+  def saveSuccessMetricsJsonToPath(
+      path: String)
+    : this.type = {
+
+    saveSuccessMetricsJsonPath = Option(path)
+    this
+  }
+
+  /**
+    * Whether previous files with identical names should be overwritten when
+    * saving files to some file system.
+    *
+    * @param overwriteFiles Whether previous files with identical names
+    *                       should be overwritten
+    */
+  def overwritePreviousFiles(overwriteFiles: Boolean): this.type = {
+    overwriteOutputFiles = overwriteOutputFiles
     this
   }
 }

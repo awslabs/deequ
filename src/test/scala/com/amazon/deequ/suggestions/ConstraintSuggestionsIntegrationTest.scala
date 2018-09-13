@@ -1,10 +1,26 @@
+/**
+ * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ */
+
 package com.amazon.deequ.suggestions
 
 import java.util.{Random, UUID}
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.{Analyzer, Completeness, Compliance, DataType, State, Uniqueness}
-import com.amazon.deequ.constraints.AnalysisBasedConstraint
+import com.amazon.deequ.constraints.{AnalysisBasedConstraint, Constraint, ConstraintDecorator}
 import com.amazon.deequ.metrics.Metric
 import org.scalatest.WordSpec
 
@@ -26,7 +42,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
     "return expected candidates" in withSparkSession { session =>
 
       val numRecords = 10000
-      val rng = new Random()
+      val rng = new Random(0)
 
       val categories = Array("DE", "NA", "IN", "EU")
 
@@ -55,34 +71,39 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
       val data = session.createDataFrame(records)
 
-      val suggestions = ConstraintSuggestions.suggest(data)
+      val constraintSuggestionResult = ConstraintSuggestionSuite()
+        .onData(data)
+        .addConstraintRules(Rules.ALL)
+        .run()
 
-      suggestions.columnProfiles.profiles.foreach { profile =>
+      val columnProfiles = constraintSuggestionResult.columnProfiles.values
+
+      columnProfiles.foreach { profile =>
         println(profile)
       }
 
       // IS NOT NULL for "id"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("id") && assertionFunc(1.0)
       }
 
       // UNIQUE for "id"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Uniqueness("id") && assertionFunc(1.0)
       }
 
       // No particular datatype for "id"
-      assertNoConstraintExistsIn(suggestions) { (analyzer, _) =>
+      assertNoConstraintExistsIn(constraintSuggestionResult) { (analyzer, _) =>
         analyzer == DataType("id")
       }
 
       // IS NOT NULL for "marketplace"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("marketplace") && assertionFunc(1.0)
       }
 
       // Categorical range for "marketplace"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
 
         assertionFunc(1.0) &&
           analyzer.isInstanceOf[Compliance] &&
@@ -91,12 +112,12 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       }
 
       // IS NOT NULL for "measurement"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("measurement") && assertionFunc(1.0)
       }
 
       // > 0 for "measurement"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         assertionFunc(1.0) &&
           analyzer.isInstanceOf[Compliance] &&
           analyzer.asInstanceOf[Compliance]
@@ -104,28 +125,28 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       }
 
       // No type for "measurement"
-      assertNoConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertNoConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == DataType("measurement") && assertionFunc(1.0)
       }
 
       // IS NOT NULL for "propertyA"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("propertyA") && assertionFunc(1.0)
       }
 
       // Boolean type for "measurement"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         // We cannot check which type the constraint looks for unfortunately
         analyzer == DataType("propertyA") && assertionFunc(1.0)
       }
 
       // IS NOT NULL for "measurement2"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("measurement2") && assertionFunc(1.0)
       }
 
       // No range constraints for "measurement2"
-      assertNoConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertNoConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         assertionFunc(1.0) &&
           analyzer.isInstanceOf[Compliance] &&
           analyzer.asInstanceOf[Compliance]
@@ -133,7 +154,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       }
 
       // No range constraints for "measurement2"
-      assertNoConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertNoConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         assertionFunc(1.0) &&
           analyzer.isInstanceOf[Compliance] &&
           analyzer.asInstanceOf[Compliance]
@@ -141,50 +162,59 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       }
 
       // Fractional type for "measurement2"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         // We cannot check which type the constraint looks for unfortunately
         analyzer == DataType("measurement2") && assertionFunc(1.0)
       }
 
       // Bounded completeness for "measurement3"
-      assertConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("measurement3") && assertionFunc(0.8)
       }
 
       // Bounded completeness for "measurement3"
-      assertNoConstraintExistsIn(suggestions) { (analyzer, assertionFunc) =>
+      assertNoConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("measurement3") && assertionFunc(0.2)
       }
 
     }
   }
 
-  private[this] def assertConstraintExistsIn(suggestions: SuggestedConstraints)
-      (func: (Analyzer[State[_], Metric[_]], (Double => Boolean)) => Boolean)
+  private[this] def assertConstraintExistsIn(constraintSuggestionResult: ConstraintSuggestionResult)
+      (func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
     : Unit = {
 
-    assert(evaluate(suggestions, func))
+    assert(evaluate(constraintSuggestionResult, func))
   }
 
-  private[this] def assertNoConstraintExistsIn(suggestions: SuggestedConstraints)
-      (func: (Analyzer[State[_], Metric[_]], (Double => Boolean)) => Boolean)
+  private[this] def assertNoConstraintExistsIn(
+      constraintSuggestionResult: ConstraintSuggestionResult)(
+      func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
     : Unit = {
 
-    assert(!evaluate(suggestions, func))
+    assert(!evaluate(constraintSuggestionResult, func))
   }
 
 
   private[this] def evaluate(
-      suggestions: SuggestedConstraints,
-      func: (Analyzer[State[_], Metric[_]], (Double => Boolean)) => Boolean)
+      constraintSuggestionResult: ConstraintSuggestionResult,
+      func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
     : Boolean = {
 
-    suggestions.constraints.exists { namedConstraint =>
-      val constraint = namedConstraint.inner.asInstanceOf[AnalysisBasedConstraint[_, _, _]]
-      val assertionFunction = constraint.assertion.asInstanceOf[(Double => Boolean)]
+    constraintSuggestionResult
+      .constraintSuggestions.values.reduce(_ ++ _)
+      .map(constraintSuggestion => constraintSuggestion.constraint)
+      .map {
+        case namedConstraint: ConstraintDecorator => namedConstraint.inner
+        case constraint: Constraint => constraint
+      }
+      .exists { constraint =>
+        val analysisBasedConstraint = constraint.asInstanceOf[AnalysisBasedConstraint[_, _, _]]
+        val assertionFunction = analysisBasedConstraint.assertion.asInstanceOf[Double => Boolean]
 
-      func(constraint.analyzer.asInstanceOf[Analyzer[State[_], Metric[_]]], assertionFunction)
-    }
+      val analyzer = analysisBasedConstraint.analyzer.asInstanceOf[Analyzer[State[_], Metric[_]]]
+        func(analyzer, assertionFunction)
+      }
   }
 
 }

@@ -2,6 +2,7 @@ package com.amazon.deequ.utils
 
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import scala.util.Random
 
 
 trait FixtureSupport {
@@ -186,5 +187,20 @@ trait FixtureSupport {
       (2, 5),
       (3, 6)
     ).toDF("att1", "att2")
+  }
+
+  def getDfWithCategoricalColumn(
+      sparkSession: SparkSession,
+      numberOfRows: Int,
+      categories: Seq[String])
+    : DataFrame = {
+
+    val random = new Random(0)
+
+    import sparkSession.implicits._
+    (1 to numberOfRows)
+      .toList
+      .map { index => (s"$index", random.shuffle(categories).head)}
+      .toDF("att1", "categoricalColumn")
   }
 }
