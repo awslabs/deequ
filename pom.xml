@@ -36,9 +36,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_${scala.major.version}</artifactId>
-            <version>2.2.2</version>
+            <groupId>org.scalanlp</groupId>
+            <artifactId>breeze_${scala.major.version}</artifactId>
+            <version>0.13.2</version>
         </dependency>
 
         <dependency>
