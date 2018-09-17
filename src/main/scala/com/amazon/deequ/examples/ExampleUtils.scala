@@ -16,9 +16,9 @@
 
 package com.amazon.deequ.examples
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-private[deequ] object ExampleUtils {
+private[examples] object ExampleUtils {
 
   def withSpark(func: SparkSession => Unit): Unit = {
     val session = SparkSession.builder()
@@ -34,6 +34,11 @@ private[deequ] object ExampleUtils {
       session.stop()
       System.clearProperty("spark.driver.port")
     }
+  }
+
+  def asDataframe(session: SparkSession, items: Item*): DataFrame = {
+    val rdd = session.sparkContext.parallelize(items)
+    session.createDataFrame(rdd)
   }
 
 }

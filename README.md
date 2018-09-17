@@ -97,6 +97,11 @@ PatternConstraint(containsURL(description)): Value: 0.4 does not meet the requir
 ```
 The test found that our assumptions are violated! Only 4 out of 5 (80%) of the values of the `name` attribute are non-null and only 2 out of 5 (40%) values of the `description` attribute contained a url. Fortunately, we ran a test and found the errors, somebody should immediately fix the data :)
 
+## More examples
+
+We are in the process of adding [more examples](src/main/scala/com/amazon/deequ/examples/), especially for the advanced features listed below. So far, we showcase the following functionality:
+
+ * [Incremental metrics computation](src/main/scala/com/amazon/deequ/examples/IncrementalMetricsExample.scala) on growing data
 
 ## Advanced features
 
@@ -104,7 +109,6 @@ Our library contains much more than what we showed in the basic example. We will
 
  * Storing computed metrics of the data in a [MetricsRepository](src/main/scala/com/amazon/deequ/repository)
  * [Anomaly detection](src/main/scala/com/amazon/deequ/anomalydetection)
- * [Incremental tests](src/test/scala/com/amazon/deequ/analyzers/IncrementalAnalysisTest.scala) on growing data
  * Single-column [data profiling](src/main/scala/com/amazon/deequ/suggestions/ColumnProfiler.scala)
  * Automatic [suggestion of constraints](src/main/scala/com/amazon/deequ/suggestions/EndToEndConstraintSuggestion.scala)
 
