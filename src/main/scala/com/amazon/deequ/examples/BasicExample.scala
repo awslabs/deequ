@@ -16,26 +16,22 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.withSpark
+import ExampleUtils.{withSpark, asDataframe}
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.checks.CheckStatus._
 import com.amazon.deequ.constraints.ConstraintStatus
 
-object BasicExample extends App {
-
-  case class Item(id: Long, name: String, description: String, priority: String, numViews: Long)
+private[examples] object BasicExample extends App {
 
   withSpark { session =>
 
-    val rdd = session.sparkContext.parallelize(Seq(
+    val data = asDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
       Item(2, "Thingy B", "available at http://thingb.com", null, 0),
       Item(3, null, null, "low", 5),
       Item(4, "Thingy D", "checkout https://thingd.ca", "low", 10),
-      Item(5, "Thingy E", null, "high", 12)))
-
-    val data = session.createDataFrame(rdd)
+      Item(5, "Thingy E", null, "high", 12))
 
     val verificationResult = VerificationSuite()
       .onData(data)
