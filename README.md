@@ -110,13 +110,13 @@ The test found that our assumptions are violated! Only 4 out of 5 (80%) of the v
 
 We are in the process of adding [more examples](src/main/scala/com/amazon/deequ/examples/), especially for the advanced features listed below. So far, we showcase the following functionality:
 
+ * Storing computed metrics of the data in a [MetricsRepository](src/main/scala/com/amazon/deequ/examples/MetricsRepositoryExample.scala) and retrieving them again
  * [Incremental metrics computation](src/main/scala/com/amazon/deequ/examples/IncrementalMetricsExample.scala) on growing data
 
 ## Advanced features
 
 Our library contains much more than what we showed in the basic example. We will add examples for the following advanced features soon:
-
- * Storing computed metrics of the data in a [MetricsRepository](src/main/scala/com/amazon/deequ/repository)
+ 
  * [Anomaly detection](src/main/scala/com/amazon/deequ/anomalydetection)
  * Single-column [data profiling](src/main/scala/com/amazon/deequ/suggestions/ColumnProfiler.scala)
  * Automatic [suggestion of constraints](src/main/scala/com/amazon/deequ/suggestions/EndToEndConstraintSuggestion.scala)
