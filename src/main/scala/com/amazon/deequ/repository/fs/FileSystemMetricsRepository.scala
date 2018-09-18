@@ -155,7 +155,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
 }
 
 
-private[deequ] object FileSystemMetricsRepository {
+object FileSystemMetricsRepository {
 
   val CHARSET_NAME = "UTF-8"
 
