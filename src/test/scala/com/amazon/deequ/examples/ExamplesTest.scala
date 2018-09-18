@@ -24,6 +24,7 @@ class ExamplesTest extends WordSpec {
     "run without errors" in {
       BasicExample.main(Array.empty)
       IncrementalMetricsExample.main(Array.empty)
+      MetricsRepositoryExample.main(Array.empty)
     }
   }
 
