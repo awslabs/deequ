@@ -22,6 +22,29 @@
         </license>
     </licenses>
 
+    <developers>
+        <developer>
+            <id>dustin-lange</id>
+            <name>Dustin Lange</name>
+            <url>https://github.com/dustin-lange</url>
+        </developer>
+        <developer>
+            <id>sscdotopen</id>
+            <name>Sebastian Schelter</name>
+            <url>https://github.com/sscdotopen</url>
+        </developer>
+        <developer>
+            <id>tdhd</id>
+            <name>Philipp Schmidt</name>
+            <url>https://github.com/tdhd</url>
+        </developer>
+        <developer>
+            <id>stefan-grafberger</id>
+            <name>Stefan Grafberger</name>
+            <url>https://github.com/stefan-grafberger</url>
+        </developer>
+    </developers>
+
     <scm>
         <url>https://github.com/awslabs/deequ</url>
     </scm>
