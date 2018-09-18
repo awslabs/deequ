@@ -43,6 +43,11 @@
             <name>Stefan Grafberger</name>
             <url>https://github.com/stefan-grafberger</url>
         </developer>
+        <developer>
+            <id>andrey-tpt</id>
+            <name>Andrey Taptunov</name>
+            <url>https://github.com/andrey-tpt</url>
+        </developer>
     </developers>
 
     <scm>
