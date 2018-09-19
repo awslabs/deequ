@@ -18,7 +18,7 @@ package com.amazon.deequ.examples
 
 import java.io.File
 
-import ExampleUtils.{asDataframe, withSpark}
+import ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.analyzers.Completeness
 import com.amazon.deequ.checks.{Check, CheckLevel}
@@ -31,7 +31,7 @@ object MetricsRepositoryExample extends App {
   withSpark { session =>
 
     // The toy data on which we will compute metrics
-    val data = asDataframe(session,
+    val data = itemsAsDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
       Item(2, "Thingy B", "available at http://thingb.com", null, 0),
       Item(3, null, null, "low", 5),

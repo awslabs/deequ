@@ -23,3 +23,9 @@ private[examples] case class Item(
     priority: String,
     numViews: Long
 )
+
+private[examples] case class Manufacturer(
+    id: Long,
+    name: String,
+    countryCode: String
+)

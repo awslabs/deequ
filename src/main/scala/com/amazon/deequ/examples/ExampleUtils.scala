@@ -36,9 +36,13 @@ private[examples] object ExampleUtils {
     }
   }
 
-  def asDataframe(session: SparkSession, items: Item*): DataFrame = {
+  def itemsAsDataframe(session: SparkSession, items: Item*): DataFrame = {
     val rdd = session.sparkContext.parallelize(items)
     session.createDataFrame(rdd)
   }
 
+  def manufacturersAsDataframe(session: SparkSession, manufacturers: Manufacturer*): DataFrame = {
+    val rdd = session.sparkContext.parallelize(manufacturers)
+    session.createDataFrame(rdd)
+  }
 }

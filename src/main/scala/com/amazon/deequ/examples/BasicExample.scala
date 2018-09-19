@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.{withSpark, asDataframe}
+import ExampleUtils.{withSpark, itemsAsDataframe}
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.checks.CheckStatus._
@@ -26,7 +26,7 @@ private[examples] object BasicExample extends App {
 
   withSpark { session =>
 
-    val data = asDataframe(session,
+    val data = itemsAsDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
       Item(2, "Thingy B", "available at http://thingb.com", null, 0),
       Item(3, null, null, "low", 5),
