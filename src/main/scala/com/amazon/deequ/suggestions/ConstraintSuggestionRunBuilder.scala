@@ -28,8 +28,8 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var testsetRatio: Option[Double] = None
   protected var testsetSplitRandomSeed: Option[Long] = None
   protected var cacheInputs: Boolean = false
-  protected var lowCardinalityHistogramThreshold: Int = ColumnProfiler
-    .DEFAULT_CARDINALITY_THRESHOLD
+  protected var lowCardinalityHistogramThreshold: Int =
+    ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
   protected var fromColumns: Option[Array[String]] = None
 
   protected var metricsRepository: Option[MetricsRepository] = None
@@ -172,7 +172,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 
   def run(): ConstraintSuggestionResult = {
-    ConstraintSuggestionSuite().run(
+    ConstraintSuggestionRunner().run(
       data,
       constraintRules,
       fromColumns,

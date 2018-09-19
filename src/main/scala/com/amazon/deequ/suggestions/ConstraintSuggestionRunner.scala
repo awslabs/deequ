@@ -28,8 +28,8 @@ object Rules {
 
   val ALL: Seq[ConstraintRule[ColumnProfile]] =
     Seq(CompleteIfCompleteRule, RetainCompletenessRule, UniqueIfApproximatelyUniqueRule,
-      RetainTypeRule, CategoricalRangeRule, FractionalCategoricalRangeRule, NonNegativeNumbersRule,
-      PositiveNumbersRule)
+      RetainTypeRule, CategoricalRangeRule, FractionalCategoricalRangeRule(),
+      NonNegativeNumbersRule, PositiveNumbersRule)
 }
 
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
@@ -51,7 +51,7 @@ private[suggestions] case class ConstraintSuggestionFileOutputOptions(
   *
   */
 @Experimental
-class ConstraintSuggestionSuite {
+class ConstraintSuggestionRunner {
 
   def onData(data: DataFrame): ConstraintSuggestionRunBuilder = {
     new ConstraintSuggestionRunBuilder(data)
@@ -95,7 +95,7 @@ class ConstraintSuggestionSuite {
       testData.foreach { _.cache() }
     }
 
-    val (columnProfiles, constraintSuggestions) = ConstraintSuggestionSuite()
+    val (columnProfiles, constraintSuggestions) = ConstraintSuggestionRunner()
       .profileAndSuggest(
         trainingData,
         constraintRules,
@@ -131,7 +131,8 @@ class ConstraintSuggestionSuite {
     val columnsWithSuggestions = constraintSuggestions
       .map(suggestion => suggestion.columnName -> suggestion)
       .groupBy { case (columnName, _) => columnName }
-      .mapValues { case entry => entry.map(x => x._2) }
+      .mapValues { groupedSuggestionsWithColumnNames =>
+        groupedSuggestionsWithColumnNames.map { case (_, suggestion) => suggestion } }
 
     ConstraintSuggestionResult(columnProfiles.profiles, columnsWithSuggestions, verificationResult)
   }
@@ -154,8 +155,8 @@ class ConstraintSuggestionSuite {
       lowCardinalityHistogramThreshold,
       metricsRepository = metricsRepositoryOptions.metricsRepository,
       failIfResultsForReusingMissing = metricsRepositoryOptions.failIfResultsForReusingMissing,
-      reuseExistingResultsUsingKey = metricsRepositoryOptions
-        .reuseExistingResultsKey,
+      reuseExistingResultsUsingKey =
+        metricsRepositoryOptions.reuseExistingResultsKey,
       saveInMetricsRepositoryUsingKey = metricsRepositoryOptions.saveOrAppendResultsKey
     )
 
@@ -256,8 +257,8 @@ class ConstraintSuggestionSuite {
       if (printStatusUpdates) {
         println("### RUNNING EVALUATION")
       }
-      val constraints = constraintSuggestions.map(constraintSuggestion =>
-        constraintSuggestion.constraint)
+      val constraints = constraintSuggestions.map { constraintSuggestion =>
+        constraintSuggestion.constraint }
       val generatedCheck = Check(CheckLevel.Warning, "generated constraints", constraints)
 
       val verificationResult = VerificationSuite()
@@ -279,9 +280,9 @@ class ConstraintSuggestionSuite {
 
 }
 
-object ConstraintSuggestionSuite {
+object ConstraintSuggestionRunner {
 
-  def apply(): ConstraintSuggestionSuite = {
-    new ConstraintSuggestionSuite()
+  def apply(): ConstraintSuggestionRunner = {
+    new ConstraintSuggestionRunner()
   }
 }

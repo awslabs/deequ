@@ -19,18 +19,39 @@ package com.amazon.deequ.analyzers.runners
 import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build an AnalysisRun using a fluent API */
-class AnalysisRunBuilder(data: DataFrame) {
+class AnalysisRunBuilder(val data: DataFrame) {
 
-  private[this] var analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
+  protected var analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
 
-  protected[this] var metricsRepository: Option[MetricsRepository] = None
+  protected var metricsRepository: Option[MetricsRepository] = None
 
-  protected[this] var reuseExistingResultsKey: Option[ResultKey] = None
-  protected[this] var failIfResultsForReusingMissing: Boolean = false
-  protected[this] var saveOrAppendResultsKey: Option[ResultKey] = None
+  protected var reuseExistingResultsKey: Option[ResultKey] = None
+  protected var failIfResultsForReusingMissing: Boolean = false
+  protected var saveOrAppendResultsKey: Option[ResultKey] = None
+
+  protected var sparkSession: Option[SparkSession] = None
+  protected var saveSuccessMetricsJsonPath: Option[String] = None
+  protected var overwriteOutputFiles: Boolean = false
+
+  protected def this(analysisRunBuilder: AnalysisRunBuilder) {
+
+    this(analysisRunBuilder.data)
+
+    analyzers = analysisRunBuilder.analyzers
+
+    metricsRepository = analysisRunBuilder.metricsRepository
+
+    reuseExistingResultsKey = analysisRunBuilder.reuseExistingResultsKey
+    failIfResultsForReusingMissing = analysisRunBuilder.failIfResultsForReusingMissing
+    saveOrAppendResultsKey = analysisRunBuilder.saveOrAppendResultsKey
+
+    sparkSession = analysisRunBuilder.sparkSession
+    overwriteOutputFiles = analysisRunBuilder.overwriteOutputFiles
+    saveSuccessMetricsJsonPath = analysisRunBuilder.saveSuccessMetricsJsonPath
+  }
 
    /**
     * Add a single analyzer to the run.
@@ -60,26 +81,45 @@ class AnalysisRunBuilder(data: DataFrame) {
     *                          run
     */
   def useRepository(metricsRepository: MetricsRepository): AnalysisRunBuilderWithRepository = {
-    val builderWithRepository = new AnalysisRunBuilderWithRepository(data,
-      Option(metricsRepository))
-    builderWithRepository.addAnalyzers(analyzers)
+
+    new AnalysisRunBuilderWithRepository(this, Option(metricsRepository))
+  }
+
+  /**
+    * Use a sparkSession to conveniently create output files
+    *
+    * @param sparkSession The SparkSession
+    */
+  def useSparkSession(
+      sparkSession: SparkSession)
+    : AnalysisRunBuilderWithSparkSession = {
+
+    new AnalysisRunBuilderWithSparkSession(this, Option(sparkSession))
   }
 
   def run(): AnalyzerContext = {
     AnalysisRunner.doAnalysisRun(
       data,
       analyzers,
-      metricsRepository = metricsRepository,
-      reuseExistingResultsForKey = reuseExistingResultsKey,
-      failIfResultsForReusingMissing = failIfResultsForReusingMissing,
-      saveOrAppendResultsWithKey = saveOrAppendResultsKey)
+      metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
+        metricsRepository,
+        reuseExistingResultsKey,
+        failIfResultsForReusingMissing,
+        saveOrAppendResultsKey
+      ),
+      fileOutputOptions = AnalysisRunnerFileOutputOptions(
+        sparkSession,
+        saveSuccessMetricsJsonPath,
+        overwriteOutputFiles
+      )
+    )
   }
 }
 
 class AnalysisRunBuilderWithRepository(
-    data: DataFrame,
+    analysisRunBuilder: AnalysisRunBuilder,
     usingMetricsRepository: Option[MetricsRepository])
-  extends AnalysisRunBuilder(data) {
+  extends AnalysisRunBuilder(analysisRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 
@@ -108,6 +148,39 @@ class AnalysisRunBuilderWithRepository(
     */
   def saveOrAppendResult(resultKey: ResultKey): this.type = {
     saveOrAppendResultsKey = Option(resultKey)
+    this
+  }
+}
+
+class AnalysisRunBuilderWithSparkSession(
+    analysisRunBuilder: AnalysisRunBuilder,
+    usingSparkSession: Option[SparkSession])
+  extends AnalysisRunBuilder(analysisRunBuilder) {
+
+  sparkSession = usingSparkSession
+
+  /**
+    * Save the success metrics json to e.g. S3
+    *
+    * @param path The file path
+    */
+  def saveSuccessMetricsJsonToPath(
+      path: String)
+    : this.type = {
+
+    saveSuccessMetricsJsonPath = Option(path)
+    this
+  }
+
+  /**
+    * Whether previous files with identical names should be overwritten when
+    * saving files to some file system.
+    *
+    * @param overwriteFiles Whether previous files with identical names
+    *                       should be overwritten
+    */
+  def overwritePreviousFiles(overwriteFiles: Boolean): this.type = {
+    overwriteOutputFiles = overwriteOutputFiles
     this
   }
 }

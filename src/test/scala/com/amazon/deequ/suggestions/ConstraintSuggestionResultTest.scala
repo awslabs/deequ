@@ -229,9 +229,8 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "description": "'item' is unique",
               |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule",
               |      "rule_description": "If the ratio of approximate num distinct values in a
-              | column is close to the number of records (within error of HLL sketch), we suggest
-              | a UNIQUE
-              | constraint",
+              | column is close to the number of records (within the error of the HLL sketch),
+              | we suggest a UNIQUE constraint",
               |      "code_for_constraint": ".isUnique(\"item\")"
               |    },
               |    {
@@ -243,7 +242,8 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "suggesting_rule": "RetainTypeRule",
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
-              |      "code_for_constraint": ".hasDataType(\"item\", DataTypeInstances.Integral)"
+              |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
+              |.Integral)"
               |    },
               |    {
               |      "constraint_name": "ComplianceConstraint(Compliance('item' has only positive
@@ -314,8 +314,8 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "description": "\u0027item\u0027 is unique",
               |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule",
               |      "rule_description": "If the ratio of approximate num distinct values in a
-              | column is close to the number of records (within error of HLL sketch), we suggest a
-              | UNIQUE constraint",
+              | column is close to the number of records (within the error of the HLL sketch),
+              | we suggest a UNIQUE constraint",
               |      "code_for_constraint": ".isUnique(\"item\")",
               |      "constraint_result": "Failure"
               |    },
@@ -328,7 +328,8 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "suggesting_rule": "RetainTypeRule",
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
-              |      "code_for_constraint": ".hasDataType(\"item\", DataTypeInstances.Integral)",
+              |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
+              |.Integral)",
               |      "constraint_result": "Failure"
               |    },
               |    {
@@ -357,7 +358,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
 
     val data = getDfFull(session)
 
-    val results = ConstraintSuggestionSuite()
+    val results = ConstraintSuggestionRunner()
       .onData(data)
       .addConstraintRules(Rules.ALL)
       .useTrainTestSplitWithTestsetRatio(0.1, Some(0))

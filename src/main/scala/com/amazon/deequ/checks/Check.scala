@@ -672,7 +672,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$column >= 0", s"$column non-negative", hint = hint)
+    satisfies(s"$column >= 0", s"$column is Fnon-negative", hint = hint)
   }
 
   /**
@@ -682,7 +682,7 @@ case class Check(
     * @return
     */
   def isPositive(column: String): CheckWithLastConstraintFilterable = {
-    satisfies(s"$column > 0", s"$column positive")
+    satisfies(s"$column > 0", s"$column is positive")
   }
 
   /**
@@ -759,6 +759,7 @@ case class Check(
       hint = hint)
   }
 
+  // We can't use default values here as you can't combine default values and overloading in Scala
   /**
     * Asserts that every non-null value in a column is contained in a set of predefined values
     *
@@ -772,7 +773,25 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
 
-    isContainedIn(column, allowedValues, Check.IsOne)
+    isContainedIn(column, allowedValues, Check.IsOne, None)
+  }
+
+  // We can't use default values here as you can't combine default values and overloading in Scala
+  /**
+    * Asserts that every non-null value in a column is contained in a set of predefined values
+    *
+    * @param column Column to run the assertion on
+    * @param allowedValues allowed values for the column
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def isContainedIn(
+      column: String,
+      allowedValues: Array[String],
+      hint: Option[String])
+    : CheckWithLastConstraintFilterable = {
+
+    isContainedIn(column, allowedValues, Check.IsOne, hint)
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -791,35 +810,33 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
 
-    val valueList = allowedValues
-      .map { _.replaceAll("'", "\\'") }
-      .mkString("'", "','", "'")
-
-    val predicate = s"$column IS NULL OR $column IN ($valueList)"
-    satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion)
+    isContainedIn(column, allowedValues, assertion, None)
   }
 
+  // We can't use default values here as you can't combine default values and overloading in Scala
   /**
     * Asserts that every non-null value in a column is contained in a set of predefined values
     *
     * @param column Column to run the assertion on
-    * @param allowedValues allowed values for the column
+    * @param allowedValues Allowed values for the column
+    * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isContainedIn(
       column: String,
       allowedValues: Array[String],
+      assertion: Double => Boolean,
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
 
+
     val valueList = allowedValues
-      .map { _.replaceAll("'", "\\'") }
+      .map { _.replaceAll("'", "''") }
       .mkString("'", "','", "'")
 
     val predicate = s"$column IS NULL OR $column IN ($valueList)"
-    satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}",
-      hint = hint)
+    satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
   }
 
   /**

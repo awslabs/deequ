@@ -71,7 +71,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
       val data = session.createDataFrame(records)
 
-      val constraintSuggestionResult = ConstraintSuggestionSuite()
+      val constraintSuggestionResult = ConstraintSuggestionRunner()
         .onData(data)
         .addConstraintRules(Rules.ALL)
         .run()

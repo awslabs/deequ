@@ -20,6 +20,7 @@ import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.analyzers.DataTypeInstances._
 import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.constraints.ConstrainableDataTypes
 import com.amazon.deequ.metrics.{Distribution, DistributionValue}
 import com.amazon.deequ.suggestions.{ColumnProfile, NumericColumnProfile, StandardColumnProfile}
 import com.amazon.deequ.utils.FixtureSupport
@@ -30,9 +31,8 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
   with MockFactory{
 
 
-  "Suggestion rules" should {
-
-    "be applied correctly for the CompleteIfCompleteRule" in {
+  "CompleteIfCompleteRule" should {
+    "be applied correctly" in {
 
       val complete = StandardColumnProfile("col1", 1.0, 100, String, false, Map.empty, None)
       val incomplete = StandardColumnProfile("col1", .25, 100, String, false, Map.empty, None)
@@ -41,7 +41,55 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(!CompleteIfCompleteRule.shouldBeApplied(incomplete, 1000))
     }
 
-    "be applied correctly for the RetainCompletenessRule" in {
+    "return evaluable constraint candidates" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .addConstraint(CompleteIfCompleteRule.candidate(fakeColumnProfile, 100).constraint)
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
+
+      val codeForConstraint = CompleteIfCompleteRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+      val expectedCodeForConstraint = """.isComplete("att1")"""
+
+      assert(expectedCodeForConstraint == codeForConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .isComplete("att1")
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+  }
+
+  "RetainCompletenessRule" should {
+    "be applied correctly" in {
 
       val complete = StandardColumnProfile("col1", 1.0, 100, String, false, Map.empty, None)
       val incomplete = StandardColumnProfile("col1", .25, 100, String, false, Map.empty, None)
@@ -50,7 +98,57 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(RetainCompletenessRule.shouldBeApplied(incomplete, 1000))
     }
 
-    "be applied correctly for the UniqueIfApproximatelyUniqueRule" in {
+    "return evaluable constraint candidates" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .addConstraint(RetainCompletenessRule.candidate(fakeColumnProfile, 100).constraint)
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+
+      val codeForConstraint = RetainCompletenessRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+
+      val expectedCodeForConstraint = """.hasCompleteness("att1", _ >= 0.4,
+          | Some("It should be above 0.4!"))""".stripMargin.replaceAll("\n", "")
+
+      assert(expectedCodeForConstraint == codeForConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .hasCompleteness("att1", _ >= 0.4, Some("It should be above 0.4!"))
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+  }
+
+  "UniqueIfApproximatelyUniqueRule" should {
+    "be applied correctly" in {
 
       val unique = StandardColumnProfile("col1", 1.0, 100, String, false, Map.empty, None)
       val maybeUnique = StandardColumnProfile("col1", 1.0, 95, String, false, Map.empty, None)
@@ -63,7 +161,56 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(!UniqueIfApproximatelyUniqueRule.shouldBeApplied(nonUnique, 100))
     }
 
-    "be applied correctly for the RetainTypeRule" in {
+    "return evaluable constraint candidates" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndApproxNumDistinctValues("item", 100)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .addConstraint(UniqueIfApproximatelyUniqueRule.candidate(fakeColumnProfile, 100).constraint)
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndApproxNumDistinctValues("item", 100)
+
+      val codeForConstraint = UniqueIfApproximatelyUniqueRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+
+      val expectedCodeForConstraint = """.isUnique("item")"""
+
+      assert(expectedCodeForConstraint == codeForConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .isUnique("item")
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+  }
+
+  "RetainTypeRule" should {
+    "be applied correctly" in {
 
       val string = StandardColumnProfile("col1", 1.0, 100, String, true, Map.empty, None)
       val boolean = StandardColumnProfile("col1", 1.0, 100, Boolean, true, Map.empty, None)
@@ -92,7 +239,58 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(RetainTypeRule.shouldBeApplied(integer, 100))
     }
 
-    "be applied correctly for the CategoricalRangeRule" in {
+    "return evaluable constraint candidates" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+     val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item",
+       DataTypeInstances.Integral)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .addConstraint(RetainTypeRule.candidate(fakeColumnProfile, 100).constraint)
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item",
+       DataTypeInstances.Integral)
+
+      val codeForConstraint = RetainTypeRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+
+      val expectedCodeForConstraint = """.hasDataType("item", ConstrainableDataTypes.Integral)"""
+
+      assert(expectedCodeForConstraint == codeForConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .hasDataType("item", ConstrainableDataTypes.Integral)
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+  }
+
+  "CategoricalRangeRule" should {
+    "be applied correctly" in {
 
       // Ratio of non-unique distinct values must be > 90%
       val nonSkewedDist = Distribution(Map(
@@ -135,165 +333,10 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(!CategoricalRangeRule.shouldBeApplied(boolWithEmptyDist, 100))
     }
 
-    "be applied correctly for the FractionalCategoricalRangeRule" in {
-
-      // Ratio of non-unique distinct values must be > 90%
-      val nonSkewedDistWithFractionalCategoricalRange = Distribution(Map(
-        "Y" -> DistributionValue(42, 0.42),
-        "'Y'" -> DistributionValue(1, 0.01),
-        "N" -> DistributionValue(57, 0.57)),
-        3)
-
-      val nonSkewedDistWithActualCategoricalRange = Distribution(Map(
-        "Y" -> DistributionValue(5, 0.4),
-        "N" -> DistributionValue(10, 0.6)),
-        2)
-
-      val somewhatSkewedDist = Distribution(Map(
-        "a" -> DistributionValue(85, 0.85),
-        "b" -> DistributionValue(7, 0.07),
-        "c" -> DistributionValue(2, 0.07),
-        "d" -> DistributionValue(1, 0.01)),
-        4)
-
-      val skewedDist = Distribution(Map(
-        "a" -> DistributionValue(17, 0.79),
-        "b" -> DistributionValue(1, 0.07),
-        "c" -> DistributionValue(1, 0.07),
-        "d" -> DistributionValue(1, 0.07)),
-        4)
-
-      val noDistribution = Distribution(Map.empty, 0)
-
-      val stringWithNonSkewedDistWithFractionalCategoricalRange = StandardColumnProfile("col1", 1.0,
-        100, String, false, Map.empty, Some(nonSkewedDistWithFractionalCategoricalRange))
-      val stringWithNonSkewedDistWithActualCategoricalRange = StandardColumnProfile("col1", 1.0,
-        100, String, false, Map.empty, Some(nonSkewedDistWithActualCategoricalRange))
-      val stringWithSomewhatSkewedDist = StandardColumnProfile("col1", 1.0, 100, String, false,
-        Map.empty, Some(somewhatSkewedDist))
-      val stringWithSkewedDist = StandardColumnProfile("col1", 1.0, 100, String, false,
-        Map.empty, Some(skewedDist))
-      val stringNoDist = StandardColumnProfile("col1", 1.0, 95, String, false, Map.empty, None)
-      val boolNoDist = StandardColumnProfile("col1", 1.0, 94, Boolean, false, Map.empty, None)
-      val boolWithEmptyDist = StandardColumnProfile("col1", 1.0, 20, Boolean, false, Map.empty,
-        Some(noDistribution))
-
-
-      assert(FractionalCategoricalRangeRule.shouldBeApplied(stringWithSomewhatSkewedDist, 100))
-      assert(FractionalCategoricalRangeRule.shouldBeApplied(
-        stringWithNonSkewedDistWithFractionalCategoricalRange, 100))
-
-      assert(!FractionalCategoricalRangeRule.shouldBeApplied(stringWithSkewedDist, 100))
-      assert(!FractionalCategoricalRangeRule.shouldBeApplied(
-        stringWithNonSkewedDistWithActualCategoricalRange, 100))
-      assert(!FractionalCategoricalRangeRule.shouldBeApplied(stringNoDist, 100))
-      assert(!FractionalCategoricalRangeRule.shouldBeApplied(boolNoDist, 100))
-      assert(!FractionalCategoricalRangeRule.shouldBeApplied(boolWithEmptyDist, 100))
-    }
-
-    "be applied correctly for the NonNegativeNumbersRule and PositiveNumbersRule" in {
-
-      val negative = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
-        Some(10), Some(100), Some(-1.76), Some(10000), Some(1.0), None)
-      val zero = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
-        Some(10), Some(100), Some(0.0), Some(10000), Some(1.0), None)
-      val positive = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
-        Some(10), Some(100), Some(0.05), Some(10000), Some(1.0), None)
-
-      assert(!NonNegativeNumbersRule.shouldBeApplied(negative, 100))
-      assert(NonNegativeNumbersRule.shouldBeApplied(zero, 100))
-      assert(!NonNegativeNumbersRule.shouldBeApplied(positive, 100))
-
-      assert(!PositiveNumbersRule.shouldBeApplied(negative, 100))
-      assert(!PositiveNumbersRule.shouldBeApplied(zero, 100))
-      assert(PositiveNumbersRule.shouldBeApplied(positive, 100))
-    }
-
-    "CompleteIfCompleteRule should return evaluable constraint candidates" in
+    "return evaluable constraint candidates" in
       withSparkSession { session =>
 
-      val dfWithColumnCandidate = getDfFull(session)
-
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
-
-      val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(CompleteIfCompleteRule.candidate(fakeColumnProfile, 100).constraint)
-
-      val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate)
-        .addCheck(check)
-        .run()
-
-      val metricResult = verificationResult.metrics.head._2
-
-      assert(metricResult.value.isSuccess)
-    }
-
-    "RetainCompletenessRule should return evaluable constraint candidates" in
-      withSparkSession { session =>
-
-      val dfWithColumnCandidate = getDfFull(session)
-
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
-
-      val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(RetainCompletenessRule.candidate(fakeColumnProfile, 100).constraint)
-
-      val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate)
-        .addCheck(check)
-        .run()
-
-      val metricResult = verificationResult.metrics.head._2
-
-      assert(metricResult.value.isSuccess)
-    }
-
-    "UniqueIfApproximatelyUniqueRule should return evaluable constraint candidates" in
-      withSparkSession { session =>
-
-      val dfWithColumnCandidate = getDfFull(session)
-
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndApproxNumDistinctValues("item", 100)
-
-      val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(UniqueIfApproximatelyUniqueRule.candidate(fakeColumnProfile, 100).constraint)
-
-      val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate)
-        .addCheck(check)
-        .run()
-
-      val metricResult = verificationResult.metrics.head._2
-
-      assert(metricResult.value.isSuccess)
-    }
-
-    "RetainTypeRule should return evaluable constraint candidates" in
-      withSparkSession { session =>
-
-      val dfWithColumnCandidate = getDfFull(session)
-
-     val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item",
-       DataTypeInstances.Integral)
-
-      val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(RetainTypeRule.candidate(fakeColumnProfile, 100).constraint)
-
-      val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate)
-        .addCheck(check)
-        .run()
-
-      val metricResult = verificationResult.metrics.head._2
-
-      assert(metricResult.value.isSuccess)
-    }
-
-    "CategoricalRangeRule should return evaluable constraint candidates" in
-      withSparkSession { session =>
-
-       val dfWithColumnCandidate = getDfWithCategoricalColumn(session, 10,
+      val dfWithColumnCandidate = getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__"))
 
       val distribution = Distribution(Map(
@@ -345,7 +388,100 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(metricResult.value.isSuccess)
     }
 
-    "FractionalCategoricalRangeRule should return evaluable constraint candidates" in
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfWithCategoricalColumn(session, 10,
+        Seq("'_[a_[]}!@'", "_b%%__"))
+
+      val distribution = Distribution(Map(
+        "'_[a_[]}!@'" -> DistributionValue(4, 0.4),
+        "_b%%__" -> DistributionValue(6, 0.6)),
+        10)
+
+      val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndHistogram("categoricalColumn",
+        Some(distribution))
+
+      val codeForConstraint = CategoricalRangeRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+
+      val expectedCodeForConstraint = ".isContainedIn(\"categoricalColumn\", " +
+        "Array(\"_b%%__\", \"'_[a_[]}!@'\"))"
+
+      assert(expectedCodeForConstraint == codeForConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .isContainedIn("categoricalColumn", Array("_b%%__", "'_[a_[]}!@'"))
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+  }
+
+  "FractionalCategoricalRangeRule" should {
+    "be applied correctly" in {
+
+      // Ratio of non-unique distinct values must be > 90%
+      val nonSkewedDistWithFractionalCategoricalRange = Distribution(Map(
+        "Y" -> DistributionValue(42, 0.42),
+        "'Y'" -> DistributionValue(1, 0.01),
+        "N" -> DistributionValue(57, 0.57)),
+        3)
+
+      val nonSkewedDistWithActualCategoricalRange = Distribution(Map(
+        "Y" -> DistributionValue(5, 0.4),
+        "N" -> DistributionValue(10, 0.6)),
+        2)
+
+      val somewhatSkewedDist = Distribution(Map(
+        "a" -> DistributionValue(85, 0.85),
+        "b" -> DistributionValue(7, 0.07),
+        "c" -> DistributionValue(2, 0.07),
+        "d" -> DistributionValue(1, 0.01)),
+        4)
+
+      val skewedDist = Distribution(Map(
+        "a" -> DistributionValue(17, 0.79),
+        "b" -> DistributionValue(1, 0.07),
+        "c" -> DistributionValue(1, 0.07),
+        "d" -> DistributionValue(1, 0.07)),
+        4)
+
+      val noDistribution = Distribution(Map.empty, 0)
+
+      val stringWithNonSkewedDistWithFractionalCategoricalRange = StandardColumnProfile("col1", 1.0,
+        100, String, false, Map.empty, Some(nonSkewedDistWithFractionalCategoricalRange))
+      val stringWithNonSkewedDistWithActualCategoricalRange = StandardColumnProfile("col1", 1.0,
+        100, String, false, Map.empty, Some(nonSkewedDistWithActualCategoricalRange))
+      val stringWithSomewhatSkewedDist = StandardColumnProfile("col1", 1.0, 100, String, false,
+        Map.empty, Some(somewhatSkewedDist))
+      val stringWithSkewedDist = StandardColumnProfile("col1", 1.0, 100, String, false,
+        Map.empty, Some(skewedDist))
+      val stringNoDist = StandardColumnProfile("col1", 1.0, 95, String, false, Map.empty, None)
+      val boolNoDist = StandardColumnProfile("col1", 1.0, 94, Boolean, false, Map.empty, None)
+      val boolWithEmptyDist = StandardColumnProfile("col1", 1.0, 20, Boolean, false, Map.empty,
+        Some(noDistribution))
+
+
+      assert(FractionalCategoricalRangeRule().shouldBeApplied(stringWithSomewhatSkewedDist, 100))
+      assert(FractionalCategoricalRangeRule().shouldBeApplied(
+        stringWithNonSkewedDistWithFractionalCategoricalRange, 100))
+
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(stringWithSkewedDist, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(
+        stringWithNonSkewedDistWithActualCategoricalRange, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(stringNoDist, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(boolNoDist, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(boolWithEmptyDist, 100))
+    }
+
+    "return evaluable constraint candidates" in
       withSparkSession { session =>
 
        val dfWithColumnCandidate = getDfWithCategoricalColumn(session, 10,
@@ -360,7 +496,8 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         Some(distribution))
 
       val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(FractionalCategoricalRangeRule.candidate(fakeColumnProfile, 100).constraint)
+        .addConstraint(FractionalCategoricalRangeRule().candidate(fakeColumnProfile, 100)
+          .constraint)
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -372,7 +509,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(metricResult.value.isSuccess)
     }
 
-    "FractionalCategoricalRangeRule should return evaluable constraint candidates even " +
+    "return evaluable constraint candidates even " +
       "if category names contain potentially problematic characters" in
       withSparkSession { session =>
 
@@ -389,7 +526,8 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         Some(distribution))
 
       val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(FractionalCategoricalRangeRule.candidate(fakeColumnProfile, 100).constraint)
+        .addConstraint(FractionalCategoricalRangeRule().candidate(fakeColumnProfile, 100)
+          .constraint)
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -401,8 +539,67 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(metricResult.value.isSuccess)
     }
 
-    "NonNegativeNumbersRule and PositiveNumbersRule should return evaluable " +
-      "constraint candidates" in
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfWithCategoricalColumn(session, 10,
+        Seq("'_[a_[]}!@'", "_b%%__"))
+
+      val distribution = Distribution(Map(
+        "'_[a_[]}!@'" -> DistributionValue(6, 0.3),
+        "_b%%__" -> DistributionValue(13, 0.65),
+        "_b%__" -> DistributionValue(1, 0.05)),
+        20)
+
+      val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndHistogram("categoricalColumn",
+        Some(distribution))
+
+      val codeForConstraint = FractionalCategoricalRangeRule().candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+
+      val expectedCodeForConstraint = ".isContainedIn(\"categoricalColumn\", Array(\"_b%%__\"," +
+        " \"'_[a_[]}!@'\"), _ >= 0.9, Some(\"It should be above 0.9!\"))"
+
+      assert(expectedCodeForConstraint == codeForConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .isContainedIn(
+          "categoricalColumn",
+          Array("_b%%__", "'_[a_[]}!@'", "_b%__"),
+          _ >= 0.9,
+          Some("It should be above 0.9!"))
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResult = verificationResult.metrics.head._2
+
+      assert(metricResult.value.isSuccess)
+    }
+  }
+
+  "NonNegativeNumbersRule and PositiveNumbersRule" should {
+    "be applied correctly" in {
+
+      val negative = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
+        Some(10), Some(100), Some(-1.76), Some(10000), Some(1.0), None)
+      val zero = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
+        Some(10), Some(100), Some(0.0), Some(10000), Some(1.0), None)
+      val positive = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
+        Some(10), Some(100), Some(0.05), Some(10000), Some(1.0), None)
+
+      assert(!NonNegativeNumbersRule.shouldBeApplied(negative, 100))
+      assert(NonNegativeNumbersRule.shouldBeApplied(zero, 100))
+      assert(!NonNegativeNumbersRule.shouldBeApplied(positive, 100))
+
+      assert(!PositiveNumbersRule.shouldBeApplied(negative, 100))
+      assert(!PositiveNumbersRule.shouldBeApplied(zero, 100))
+      assert(PositiveNumbersRule.shouldBeApplied(positive, 100))
+    }
+
+    "return evaluable constraint candidates" in
       withSparkSession { session =>
 
       val dfWithColumnCandidate = getDfFull(session)
@@ -412,6 +609,39 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val check = Check(CheckLevel.Warning, "some")
         .addConstraint(NonNegativeNumbersRule.candidate(fakeColumnProfile, 100).constraint)
         .addConstraint(PositiveNumbersRule.candidate(fakeColumnProfile, 100).constraint)
+
+      val verificationResult = VerificationSuite()
+        .onData(dfWithColumnCandidate)
+        .addCheck(check)
+        .run()
+
+      val metricResultNonNegativeRule = verificationResult.metrics.head._2
+      val metricResultPositiveRule = verificationResult.metrics.toSeq(1)._2
+
+      assert(metricResultNonNegativeRule.value.isSuccess)
+      assert(metricResultPositiveRule.value.isSuccess)
+    }
+
+    "return working code to add constraint to check" in
+      withSparkSession { session =>
+
+      val dfWithColumnCandidate = getDfFull(session)
+
+      val fakeColumnProfile = getFakeColumnProfileWithName("item")
+
+      val codeForNonNegativeConstraint = NonNegativeNumbersRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+      val expectedCodeForNonNegativeConstraint = ".isNonNegative(\"item\")"
+      assert(expectedCodeForNonNegativeConstraint == codeForNonNegativeConstraint)
+
+      val codeForPositiveConstraint = PositiveNumbersRule.candidate(fakeColumnProfile, 100)
+        .codeForConstraint
+      val expectedCodeForPositiveConstraint = ".isPositive(\"item\")"
+      assert(expectedCodeForPositiveConstraint == codeForPositiveConstraint)
+
+      val check = Check(CheckLevel.Warning, "some")
+        .isNonNegative("item")
+        .isPositive("item")
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)

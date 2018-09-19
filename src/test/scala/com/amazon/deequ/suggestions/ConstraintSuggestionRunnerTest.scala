@@ -28,7 +28,7 @@ import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.scalatest.{Matchers, WordSpec}
 import scala.util.Try
 
-class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkContextSpec
+class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "Constraint Suggestion Suite" should {
@@ -41,14 +41,14 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
 
-        ConstraintSuggestionSuite().onData(df).addConstraintRules(Rules.ALL)
+        ConstraintSuggestionRunner().onData(df).addConstraintRules(Rules.ALL)
           .useRepository(repository)
           .saveOrAppendResult(resultKey)
           .run()
 
         val (separateResults: ConstraintSuggestionResult, jobNumberAllCalculations) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ConstraintSuggestionSuite().onData(df)
+            val results = ConstraintSuggestionRunner().onData(df)
               .addConstraintRules(Rules.ALL).run()
 
             (results, stat.jobCount)
@@ -56,7 +56,7 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
 
         val (resultsReusingMetrics: ConstraintSuggestionResult, jobNumberReusing) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ConstraintSuggestionSuite().onData(df).useRepository(repository)
+            val results = ConstraintSuggestionRunner().onData(df).useRepository(repository)
               .reuseExistingResultsForKey(resultKey).addConstraintRules(Rules.ALL).run()
 
             (results, stat.jobCount)
@@ -77,7 +77,7 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        ConstraintSuggestionSuite().onData(df).useRepository(repository)
+        ConstraintSuggestionRunner().onData(df).useRepository(repository)
           .addConstraintRules(Rules.ALL).saveOrAppendResult(resultKey).run()
 
         val analyzerContext = AnalysisRunner.onData(df).addAnalyzers(analyzers).run()
@@ -103,11 +103,11 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
         val completeAnalyzerContext = AnalyzerContext(completeMetricResults)
 
         // Calculate and save results for first analyzer
-        ConstraintSuggestionSuite().onData(df).useRepository(repository)
+        ConstraintSuggestionRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         // Calculate and append results for second analyzer
-        ConstraintSuggestionSuite().onData(df).useRepository(repository)
+        ConstraintSuggestionRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         assert(completeAnalyzerContext.metricMap.size == 2)
@@ -136,7 +136,7 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
       repository.save(resultKey, resultWhichShouldBeOverwritten)
 
       // This should overwrite the previous Size value
-      ConstraintSuggestionSuite().onData(df).useRepository(repository)
+      ConstraintSuggestionRunner().onData(df).useRepository(repository)
         .saveOrAppendResult(resultKey).run()
 
       assert(expectedAnalyzerContextOnLoadByKey.metricMap.size == 2)
@@ -153,7 +153,7 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
       val constraintSuggestionsPath = tempDir + "/constraint-suggestions.json"
       val evaluationResultsPath = tempDir + "/evaluation-results.json"
 
-      ConstraintSuggestionSuite().onData(df)
+      ConstraintSuggestionRunner().onData(df)
         .addConstraintRules(Rules.ALL)
         .useSparkSession(sparkSession)
         .saveColumnProfilesJsonToPath(columnProfilesPath)
@@ -179,7 +179,7 @@ class ConstraintSuggestionSuiteTest extends WordSpec with Matchers with SparkCon
       val df = getDfWithNumericValues(sparkSession)
 
       intercept[ReusingNotPossibleResultsMissingException](
-        ConstraintSuggestionSuite()
+        ConstraintSuggestionRunner()
           .onData(df)
           .addConstraintRules(Rules.ALL)
           .useRepository(new InMemoryMetricsRepository())

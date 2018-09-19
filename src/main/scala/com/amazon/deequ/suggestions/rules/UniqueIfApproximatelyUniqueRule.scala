@@ -50,6 +50,6 @@ object UniqueIfApproximatelyUniqueRule extends ConstraintRule[ColumnProfile] {
   }
 
   override val ruleDescription: String = "If the ratio of approximate num distinct values " +
-    "in a column is close to the number of records (within error of HLL sketch), we suggest " +
-    "a UNIQUE constraint"
+    "in a column is close to the number of records (within the error of the HLL sketch), " +
+    "we suggest a UNIQUE constraint"
 }

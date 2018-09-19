@@ -17,7 +17,7 @@
 package com.amazon.deequ
 
 import com.amazon.deequ.analyzers.applicability.ApplicabilityResult
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerRepositoryOptions, AnalyzerContext}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.applicability.Applicability
 import com.amazon.deequ.checks.{Check, CheckStatus}
@@ -124,11 +124,11 @@ class VerificationSuite {
       analyzers,
       aggregateWith,
       saveStatesWith,
-      metricsRepository = metricsRepositoryOptions.metricsRepository,
-      reuseExistingResultsForKey = metricsRepositoryOptions.reuseExistingResultsForKey,
-      failIfResultsForReusingMissing = metricsRepositoryOptions
-        .failIfResultsForReusingMissing,
-      saveOrAppendResultsWithKey = None)
+      metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
+        metricsRepositoryOptions.metricsRepository,
+        metricsRepositoryOptions.reuseExistingResultsForKey,
+        metricsRepositoryOptions.failIfResultsForReusingMissing,
+        saveOrAppendResultsWithKey = None))
 
     val verificationResult = evaluate(checks, analysisResults)
 
@@ -139,12 +139,12 @@ class VerificationSuite {
       metricsRepositoryOptions.metricsRepository,
       metricsRepositoryOptions.saveOrAppendResultsWithKey)
 
-    saveJsonOutputsToFileSystemsIfNecessary(fileOutputOptions, verificationResult)
+    saveJsonOutputsToFilesystemIfNecessary(fileOutputOptions, verificationResult)
 
     verificationResult
   }
 
-  private[this] def saveJsonOutputsToFileSystemsIfNecessary(
+  private[this] def saveJsonOutputsToFilesystemIfNecessary(
     fileOutputOptions: VerificationFileOutputOptions,
     verificationResult: VerificationResult)
   : Unit = {

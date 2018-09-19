@@ -94,7 +94,7 @@ object ColumnProfiler {
     }
 
     // First pass
-    if(printStatusUpdates) {
+    if (printStatusUpdates) {
       println("### PROFILING: Computing generic column statistics in pass (1/3)...")
     }
 
@@ -130,7 +130,7 @@ object ColumnProfiler {
     val genericStatistics = extractGenericStatistics(columns, data.schema, firstPassResults)
 
     // Second pass
-    if(printStatusUpdates) {
+    if (printStatusUpdates) {
       println("### PROFILING: Computing numeric column statistics in pass (2/3)...")
     }
 
@@ -164,7 +164,7 @@ object ColumnProfiler {
     val numericStatistics = extractNumericStatistics(secondPassResults)
 
     // Third pass
-    if(printStatusUpdates) {
+    if (printStatusUpdates) {
       println("### PROFILING: Computing histograms of low-cardinality columns in pass (3/3)...")
     }
 
@@ -172,7 +172,7 @@ object ColumnProfiler {
     val targetColumnsForHistograms = findTargetColumnsForHistograms(data.schema, genericStatistics,
       lowCardinalityHistogramThreshold)
 
-    // Find if we have values for those we can reuse
+    // Find out, if we have values for those we can reuse
     val analyzerContextExistingValues = getAnalyzerContextWithHistogramResultsForReusingIfNecessary(
       metricsRepository,
       reuseExistingResultsUsingKey,
@@ -181,22 +181,22 @@ object ColumnProfiler {
 
     // The columns we need to calculate the histograms for
     val nonExistingHistogramColumns = targetColumnsForHistograms
-      .filter { column => analyzerContextExistingValues.metricMap.get(Histogram(column)).isEmpty}
+      .filter { column => analyzerContextExistingValues.metricMap.get(Histogram(column)).isEmpty }
 
     // Calculate them if necessary
     val histograms: Map[String, Distribution] = if (nonExistingHistogramColumns.nonEmpty) {
 
-      // Throw an error if all needed metrics should have gotten calculated before but did not
+      // Throw an error if all required metrics should have been calculated before but did not
       if (failIfResultsForReusingMissing) {
         throw new ReusingNotPossibleResultsMissingException(
           "Could not find all necessary results in the MetricsRepository, the calculation of " +
-            s"the histograms for these columns would be needed: " +
+            s"the histograms for these columns would be required: " +
             s"${nonExistingHistogramColumns.mkString(", ")}")
       }
 
       val columnNamesAndDistribution = computeHistograms(data, nonExistingHistogramColumns)
 
-      // Now merge these results with ones we want to reuse and store them if specified
+      // Now merge these results with the results that we want to reuse and store them if specified
 
       val analyzerAndHistogramMetrics = convertColumnNamesAndDistributionToHistogramWithMetric(
         columnNamesAndDistribution)
@@ -213,7 +213,7 @@ object ColumnProfiler {
           histogram.column -> metric.value.get
         }
     } else {
-      // No new histograms we need to calculate
+      // We do not need to calculate new histograms
       if (printStatusUpdates) {
         println("### PROFILING: Skipping pass (3/3), no new histograms need to be calculated.")
       }
@@ -291,7 +291,7 @@ object ColumnProfiler {
   : Map[Analyzer[_, Metric[_]], Metric[_]] = {
 
     columnNamesAndDistribution
-      .map{ case (columnName, distribution) =>
+      .map { case (columnName, distribution) =>
 
         val analyzer = Histogram(columnName)
         val metric = HistogramMetric(columnName, Success(distribution))

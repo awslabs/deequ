@@ -38,9 +38,9 @@ class VerificationRunBuilder(val data: DataFrame) {
   protected var saveOrAppendResultsKey: Option[ResultKey] = None
 
   protected var sparkSession: Option[SparkSession] = None
-  protected var overwriteOutputFiles: Boolean = false
   protected var saveCheckResultsJsonPath: Option[String] = None
   protected var saveSuccessMetricsJsonPath: Option[String] = None
+  protected var overwriteOutputFiles: Boolean = false
 
   protected def this(verificationRunBuilder: VerificationRunBuilder) {
 
@@ -138,8 +138,7 @@ class VerificationRunBuilder(val data: DataFrame) {
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
-        saveOrAppendResultsKey
-      ),
+        saveOrAppendResultsKey),
       fileOutputOptions = VerificationFileOutputOptions(
         sparkSession,
         saveCheckResultsJsonPath,
@@ -219,7 +218,7 @@ class VerificationRunBuilderWithSparkSession(
   sparkSession = usingSparkSession
 
   /**
-    * Save the column profiles json to e.g. S3
+    * Save the check results json to e.g. S3
     *
     * @param path The file path
     */
@@ -232,7 +231,7 @@ class VerificationRunBuilderWithSparkSession(
   }
 
   /**
-    * Save the constraint suggestion json to e.g. S3
+    * Save the success metrics json to e.g. S3
     *
     * @param path The file path
     */

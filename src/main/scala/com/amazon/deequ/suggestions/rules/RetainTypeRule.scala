@@ -51,7 +51,7 @@ object RetainTypeRule extends ConstraintRule[ColumnProfile] {
       "DataType: " + profile.dataType.toString,
       s"'${profile.column}' has type ${profile.dataType}",
       this,
-      s""".hasDataType("${profile.column}", DataTypeInstances.${profile.dataType})"""
+      s""".hasDataType("${profile.column}", ConstrainableDataTypes.${profile.dataType})"""
     )
   }
 

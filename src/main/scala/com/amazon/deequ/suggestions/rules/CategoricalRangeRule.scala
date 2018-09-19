@@ -20,6 +20,7 @@ import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import org.apache.commons.lang3.StringEscapeUtils
 
 /** If we see a categorical range for a column, we suggest an IS IN (...) constraint */
 object CategoricalRangeRule extends ConstraintRule[ColumnProfile] {
@@ -47,12 +48,18 @@ object CategoricalRangeRule extends ConstraintRule[ColumnProfile] {
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
       .sortBy { case (_, value) => value.absolute }
       .reverse
+
+    val categoriesSql = valuesByPopularity
       // the character "'" can be contained in category names
       .map { case (key, _) => key.replace("'", "''") }
       .mkString("'", "', '", "'")
 
-    val description = s"'${profile.column}' has value range $valuesByPopularity"
-    val columnCondition = s"${profile.column} IN ($valuesByPopularity)"
+    val categoriesCode = valuesByPopularity
+      .map { case (key, _) => StringEscapeUtils.escapeJava(key) }
+      .mkString(""""""", """", """", """"""")
+
+    val description = s"'${profile.column}' has value range $categoriesSql"
+    val columnCondition = s"${profile.column} IN ($categoriesSql)"
     val constraint = complianceConstraint(description, columnCondition, Check.IsOne)
 
     ConstraintSuggestion(
@@ -61,7 +68,7 @@ object CategoricalRangeRule extends ConstraintRule[ColumnProfile] {
       "Compliance: 1",
       description,
       this,
-      s""".isContainedIn("${profile.column}", Seq($valuesByPopularity))"""
+      s""".isContainedIn("${profile.column}", Array($categoriesCode))"""
     )
   }
 

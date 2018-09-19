@@ -52,7 +52,9 @@ object RetainCompletenessRule extends ConstraintRule[ColumnProfile] {
       "Completeness: " + profile.completeness.toString,
       description,
       this,
-      s""".hasCompleteness("${profile.column}", _ >= $targetCompleteness")"""
+      s""".hasCompleteness("${profile.column}", _ >= $targetCompleteness,
+         | Some("It should be above $targetCompleteness!"))"""
+        .stripMargin.replaceAll("\n", "")
     )
   }
 
