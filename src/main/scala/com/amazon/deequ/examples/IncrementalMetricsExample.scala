@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.{asDataframe, withSpark}
+import ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.analyzers.{Analysis, ApproxCountDistinct, Completeness, InMemoryStateProvider, Size}
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 
@@ -28,12 +28,12 @@ private[examples] object IncrementalMetricsExample extends App {
 
   withSpark { session =>
 
-    val data = asDataframe(session,
+    val data = itemsAsDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
       Item(2, "Thingy B", "available tomorrow", "low", 0),
       Item(3, "Thing C", null, null, 5))
 
-    val moreData = asDataframe(session,
+    val moreData = itemsAsDataframe(session,
       Item(4, "Thingy D", null, "low", 10),
       Item(5, "Thingy E", null, "high", 12))
 
