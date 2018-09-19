@@ -25,6 +25,7 @@ class ExamplesTest extends WordSpec {
       BasicExample.main(Array.empty)
       IncrementalMetricsExample.main(Array.empty)
       MetricsRepositoryExample.main(Array.empty)
+      UpdateMetricsOnPartitionedDataExample.main(Array.empty)
     }
   }
 
