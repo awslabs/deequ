@@ -112,7 +112,8 @@ We are in the process of adding [more examples](src/main/scala/com/amazon/deequ/
 
  * Storing computed metrics of the data in a [MetricsRepository](src/main/scala/com/amazon/deequ/examples/MetricsRepositoryExample.scala) and retrieving them again
  * [Incremental metrics computation](src/main/scala/com/amazon/deequ/examples/IncrementalMetricsExample.scala) on growing data
-
+ * [Metric updates](src/main/scala/com/amazon/deequ/examples/UpdateMetricsOnPartitionedDataExample.scala) on partitioned data
+ 
 ## Advanced features
 
 Our library contains much more than what we showed in the basic example. We will add examples for the following advanced features soon:
