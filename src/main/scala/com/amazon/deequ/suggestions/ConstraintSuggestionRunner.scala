@@ -19,6 +19,7 @@ package com.amazon.deequ.suggestions
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
+import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler, ColumnProfiles}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.suggestions.rules._
 import org.apache.spark.annotation.Experimental
@@ -26,10 +27,10 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object Rules {
 
-  val ALL: Seq[ConstraintRule[ColumnProfile]] =
-    Seq(CompleteIfCompleteRule, RetainCompletenessRule, UniqueIfApproximatelyUniqueRule,
-      RetainTypeRule, CategoricalRangeRule, FractionalCategoricalRangeRule(),
-      NonNegativeNumbersRule, PositiveNumbersRule)
+  val DEFAULT: Seq[ConstraintRule[ColumnProfile]] =
+    Seq(CompleteIfCompleteRule(), RetainCompletenessRule(), UniqueIfApproximatelyUniqueRule(),
+      RetainTypeRule(), CategoricalRangeRule(), FractionalCategoricalRangeRule(),
+      NonNegativeNumbersRule(), PositiveNumbersRule())
 }
 
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(

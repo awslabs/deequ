@@ -19,11 +19,12 @@ package com.amazon.deequ.suggestions.rules
 import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 import org.apache.commons.lang3.StringEscapeUtils
 
 /** If we see a categorical range for a column, we suggest an IS IN (...) constraint */
-object CategoricalRangeRule extends ConstraintRule[ColumnProfile] {
+case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     val hasHistogram = profile.histogram.isDefined && profile.dataType == DataTypeInstances.String

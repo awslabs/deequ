@@ -18,10 +18,11 @@ package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion, NumericColumnProfile}
+import com.amazon.deequ.profiles.{ColumnProfile, NumericColumnProfile}
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /** If we see only non-negative numbers in a column, we suggest a corresponding constraint */
-object NonNegativeNumbersRule extends ConstraintRule[ColumnProfile] {
+case class NonNegativeNumbersRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     profile match {

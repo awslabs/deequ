@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
 import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.metrics.Distribution
@@ -57,7 +57,7 @@ case class NumericColumnProfile(
     approxPercentiles: Option[Seq[Double]])
   extends ColumnProfile
 
-private[suggestions] case class ColumnProfiles(
+case class ColumnProfiles(
     profiles: Map[String, ColumnProfile],
     numRecords: Long)
 

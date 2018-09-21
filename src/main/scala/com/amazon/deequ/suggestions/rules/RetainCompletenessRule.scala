@@ -17,14 +17,15 @@
 package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.constraints.Constraint.completenessConstraint
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import com.amazon.deequ.profiles._
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 import scala.math.BigDecimal.RoundingMode
 
 /**
   * If a column is incomplete in the sample, we model its completeness as a binomial variable,
   * estimate a confidence interval and use this to define a lower bound for the completeness
   */
-object RetainCompletenessRule extends ConstraintRule[ColumnProfile] {
+case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     profile.completeness > 0.2 && profile.completeness < 1.0

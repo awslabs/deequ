@@ -14,15 +14,15 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
+import com.amazon.deequ.analyzers.DataTypeInstances._
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunBuilder, AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{BooleanType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType, DataType => SparkDataType}
-import DataTypeInstances._
 import scala.util.Success
 
 private[deequ] case class GenericColumnStatistics(
@@ -77,11 +77,12 @@ object ColumnProfiler {
     *                                         histograms for it (defaults to 120)
     * @return
     */
-  def profile(
+  private[deequ] def profile(
       data: DataFrame,
-      columns: Seq[String],
-      printStatusUpdates: Boolean,
-      lowCardinalityHistogramThreshold: Int,
+      columns: Seq[String] = Seq.empty,
+      printStatusUpdates: Boolean = false,
+      lowCardinalityHistogramThreshold: Int =
+        ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD,
       metricsRepository: Option[MetricsRepository] = None,
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
@@ -101,7 +102,7 @@ object ColumnProfiler {
     // We compute completeness, approximate number of distinct values
     // and type detection for string columns in the first pass
     val analyzersForGenericStats = data.schema.fields
-      .filter { field => columns.contains(field.name) }
+      .filter { field => columns.isEmpty || columns.contains(field.name) }
       .flatMap { field =>
 
         val name = field.name
@@ -321,7 +322,7 @@ object ColumnProfiler {
   }
 
   /* Cast string columns detected as numeric to their detected type */
-  private[suggestions] def castColumn(
+  private[profiles] def castColumn(
       data: DataFrame,
       name: String,
       toType: SparkDataType)

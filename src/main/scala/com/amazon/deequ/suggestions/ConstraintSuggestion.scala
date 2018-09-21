@@ -18,6 +18,7 @@ package com.amazon.deequ.suggestions
 
 import com.amazon.deequ.VerificationResult
 import com.amazon.deequ.constraints.Constraint
+import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.rules.ConstraintRule
 import com.google.gson.{GsonBuilder, JsonArray, JsonObject}
 

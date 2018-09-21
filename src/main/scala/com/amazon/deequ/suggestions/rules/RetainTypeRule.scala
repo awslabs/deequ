@@ -20,10 +20,11 @@ import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.ConstrainableDataTypes
 import com.amazon.deequ.constraints.Constraint.dataTypeConstraint
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /** If we detect a non-string type, we suggest a type constraint */
-object RetainTypeRule extends ConstraintRule[ColumnProfile] {
+case class RetainTypeRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     val testableType = profile.dataType match {

@@ -17,6 +17,7 @@
 package com.amazon.deequ.suggestions
 
 import com.amazon.deequ.VerificationResult
+import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
 
 /**
   * The result returned from the ConstraintSuggestionSuite

@@ -19,7 +19,8 @@ package com.amazon.deequ.suggestions.rules
 import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.metrics.DistributionValue
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 import org.apache.commons.lang3.StringEscapeUtils
 import scala.math.BigDecimal.RoundingMode
 

@@ -14,12 +14,11 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
-import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
+import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
@@ -28,10 +27,10 @@ import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.scalatest.{Matchers, WordSpec}
 import scala.util.Try
 
-class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkContextSpec
+class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
-  "Constraint Suggestion Suite" should {
+  "Column Profiler runner" should {
 
     "save and reuse existing results for constraint suggestion runs" in
       withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
@@ -41,28 +40,27 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
 
-        ConstraintSuggestionRunner().onData(df).addConstraintRules(Rules.DEFAULT)
+        ColumnProfilerRunner().onData(df)
           .useRepository(repository)
           .saveOrAppendResult(resultKey)
           .run()
 
-        val (separateResults: ConstraintSuggestionResult, jobNumberAllCalculations) = sparkMonitor
+        val (separateResults: ColumnProfiles, jobNumberAllCalculations) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ConstraintSuggestionRunner().onData(df)
-              .addConstraintRules(Rules.DEFAULT).run()
+            val results = ColumnProfilerRunner().onData(df).run()
 
             (results, stat.jobCount)
           }
 
-        val (resultsReusingMetrics: ConstraintSuggestionResult, jobNumberReusing) = sparkMonitor
+        val (resultsReusingMetrics: ColumnProfiles, jobNumberReusing) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ConstraintSuggestionRunner().onData(df).useRepository(repository)
-              .reuseExistingResultsForKey(resultKey).addConstraintRules(Rules.DEFAULT).run()
+            val results = ColumnProfilerRunner().onData(df).useRepository(repository)
+              .reuseExistingResultsForKey(resultKey).run()
 
             (results, stat.jobCount)
           }
 
-        assert(jobNumberAllCalculations == 2)
+        assert(jobNumberAllCalculations == 1)
         assert(jobNumberReusing == 0)
         assertConstraintSuggestionResultsEquals(separateResults, resultsReusingMetrics)
       }
@@ -77,8 +75,8 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        ConstraintSuggestionRunner().onData(df).useRepository(repository)
-          .addConstraintRules(Rules.DEFAULT).saveOrAppendResult(resultKey).run()
+        ColumnProfilerRunner().onData(df).useRepository(repository)
+          .saveOrAppendResult(resultKey).run()
 
         val analyzerContext = AnalysisRunner.onData(df).addAnalyzers(analyzers).run()
 
@@ -103,11 +101,11 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
         val completeAnalyzerContext = AnalyzerContext(completeMetricResults)
 
         // Calculate and save results for first analyzer
-        ConstraintSuggestionRunner().onData(df).useRepository(repository)
+        ColumnProfilerRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         // Calculate and append results for second analyzer
-        ConstraintSuggestionRunner().onData(df).useRepository(repository)
+        ColumnProfilerRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         assert(completeAnalyzerContext.metricMap.size == 2)
@@ -136,7 +134,7 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
       repository.save(resultKey, resultWhichShouldBeOverwritten)
 
       // This should overwrite the previous Size value
-      ConstraintSuggestionRunner().onData(df).useRepository(repository)
+      ColumnProfilerRunner().onData(df).useRepository(repository)
         .saveOrAppendResult(resultKey).run()
 
       assert(expectedAnalyzerContextOnLoadByKey.metricMap.size == 2)
@@ -150,25 +148,13 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
       val tempDir = TempFileUtils.tempDir("constraintSuggestionOuput")
       val columnProfilesPath = tempDir + "/column-profiles.json"
-      val constraintSuggestionsPath = tempDir + "/constraint-suggestions.json"
-      val evaluationResultsPath = tempDir + "/evaluation-results.json"
 
-      ConstraintSuggestionRunner().onData(df)
-        .addConstraintRules(Rules.DEFAULT)
+      ColumnProfilerRunner().onData(df)
         .useSparkSession(sparkSession)
         .saveColumnProfilesJsonToPath(columnProfilesPath)
-        .saveConstraintSuggestionsJsonToPath(constraintSuggestionsPath)
-        .useTrainTestSplitWithTestsetRatio(0.1, Some(0))
-        .saveEvaluationResultsJsonToPath(evaluationResultsPath)
         .run()
 
       DfsUtils.readFromFileOnDfs(sparkSession, columnProfilesPath) {
-        inputStream => assert(inputStream.read() > 0)
-      }
-      DfsUtils.readFromFileOnDfs(sparkSession, constraintSuggestionsPath) {
-        inputStream => assert(inputStream.read() > 0)
-      }
-      DfsUtils.readFromFileOnDfs(sparkSession, evaluationResultsPath) {
         inputStream => assert(inputStream.read() > 0)
       }
     }
@@ -179,9 +165,8 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
       val df = getDfWithNumericValues(sparkSession)
 
       intercept[ReusingNotPossibleResultsMissingException](
-        ConstraintSuggestionRunner()
+        ColumnProfilerRunner()
           .onData(df)
-          .addConstraintRules(Rules.DEFAULT)
           .useRepository(new InMemoryMetricsRepository())
           .reuseExistingResultsForKey(ResultKey(0), true)
           .run()
@@ -190,17 +175,17 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
   }
 
   private[this] def assertConstraintSuggestionResultsEquals(
-    expectedResult: ConstraintSuggestionResult,
-    actualResult: ConstraintSuggestionResult): Unit = {
+    expectedResult: ColumnProfiles,
+    actualResult: ColumnProfiles): Unit = {
 
-    assert(expectedResult.columnProfiles == actualResult.columnProfiles)
+    assert(expectedResult == actualResult)
 
-    val expectedConstraintSuggestionJson = ConstraintSuggestionResult
-      .getConstraintSuggestionsAsJson(expectedResult)
+    val expectedConstraintSuggestionJson = ColumnProfiles
+      .toJson(expectedResult.profiles.values.toSeq)
 
 
-    val actualConstraintSuggestionJson = ConstraintSuggestionResult
-      .getConstraintSuggestionsAsJson(actualResult)
+    val actualConstraintSuggestionJson = ColumnProfiles
+      .toJson(actualResult.profiles.values.toSeq)
 
     assert(expectedConstraintSuggestionJson == actualConstraintSuggestionJson)
   }

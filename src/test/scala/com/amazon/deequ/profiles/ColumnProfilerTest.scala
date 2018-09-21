@@ -1,4 +1,4 @@
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.DataTypeInstances

@@ -73,7 +73,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
       val constraintSuggestionResult = ConstraintSuggestionRunner()
         .onData(data)
-        .addConstraintRules(Rules.ALL)
+        .addConstraintRules(Rules.DEFAULT)
         .run()
 
       val columnProfiles = constraintSuggestionResult.columnProfiles.values

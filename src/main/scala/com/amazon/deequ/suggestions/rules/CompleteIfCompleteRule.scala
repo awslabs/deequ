@@ -18,10 +18,11 @@ package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.completenessConstraint
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /** If a column is complete in the sample, we suggest a NOT NULL constraint */
-object CompleteIfCompleteRule extends ConstraintRule[ColumnProfile] {
+case class CompleteIfCompleteRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     profile.completeness == 1.0

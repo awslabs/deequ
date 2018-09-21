@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions.rules
 
+import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions._
 
 /** Abstract base class for all constraint suggestion rules */

@@ -14,20 +14,16 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
-import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.suggestions.rules.ConstraintRule
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a Constraint Suggestion run using a fluent API */
-class ConstraintSuggestionRunBuilder(val data: DataFrame) {
+class ColumnProfilerRunBuilder(val data: DataFrame) {
 
-  protected var constraintRules: Seq[ConstraintRule[ColumnProfile]] = Seq.empty
   protected var printStatusUpdates: Boolean = false
-  protected var testsetRatio: Option[Double] = None
-  protected var testsetSplitRandomSeed: Option[Long] = None
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int =
     ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
@@ -44,14 +40,11 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
 
-  protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
+  protected def this(constraintSuggestionRunBuilder: ColumnProfilerRunBuilder) {
 
     this(constraintSuggestionRunBuilder.data)
 
-    constraintRules = constraintSuggestionRunBuilder.constraintRules
     printStatusUpdates = constraintSuggestionRunBuilder.printStatusUpdates
-    testsetRatio = constraintSuggestionRunBuilder.testsetRatio
-    testsetSplitRandomSeed = constraintSuggestionRunBuilder.testsetSplitRandomSeed
     cacheInputs = constraintSuggestionRunBuilder.cacheInputs
     lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
       .lowCardinalityHistogramThreshold
@@ -71,26 +64,6 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 
   /**
-    * Add a single rule for suggesting constraints based on ColumnProfiles to the run.
-    *
-    * @param constraintRule A rule ...
-    */
-  def addConstraintRule(constraintRule: ConstraintRule[ColumnProfile]): this.type = {
-    constraintRules :+= constraintRule
-    this
-  }
-
-  /**
-    * Add multiple rules for suggesting constraints based on ColumnProfiles to the run.
-    *
-    * @param constraintRules A sequence of rules ...
-    */
-  def addConstraintRules(constraintRules: Seq[ConstraintRule[ColumnProfile]]): this.type = {
-    this.constraintRules ++= constraintRules
-    this
-  }
-
-  /**
     * Print status updates between passes
     *
     * @param printStatusUpdates Whether to print status updates
@@ -107,22 +80,6 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     */
   def cacheInputs(cacheInputs: Boolean): this.type = {
     this.cacheInputs = cacheInputs
-    this
-  }
-
-  /**
-    * Run constraint suggestion on part of data and evaluate suggestions
-    * on hold-out test set
-    *
-    * @param testsetRatio A value between 0 and 1
-    */
-  def useTrainTestSplitWithTestsetRatio(
-      testsetRatio: Double,
-      testsetSplitRandomSeed: Option[Long] = None)
-    : this.type = {
-
-    this.testsetRatio = Option(testsetRatio)
-    this.testsetSplitRandomSeed = testsetSplitRandomSeed
     this
   }
 
@@ -155,9 +112,9 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     *                          run
     */
   def useRepository(metricsRepository: MetricsRepository)
-    : ConstraintSuggestionRunBuilderWithRepository = {
+    : ColumnProfilerRunBuilderWithRepository = {
 
-    new ConstraintSuggestionRunBuilderWithRepository(this, Option(metricsRepository))
+    new ColumnProfilerRunBuilderWithRepository(this, Option(metricsRepository))
   }
 
   /**
@@ -167,28 +124,25 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     */
   def useSparkSession(
       sparkSession: SparkSession)
-    : ConstraintSuggestionRunBuilderWithSparkSession = {
+    : ColumnProfilerRunBuilderWithSparkSession = {
 
-    new ConstraintSuggestionRunBuilderWithSparkSession(this, Option(sparkSession))
+    new ColumnProfilerRunBuilderWithSparkSession(this, Option(sparkSession))
   }
 
-  def run(): ConstraintSuggestionResult = {
-    ConstraintSuggestionRunner().run(
+  def run(): ColumnProfiles = {
+    ColumnProfilerRunner().run(
       data,
-      constraintRules,
       fromColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
-      testsetRatio,
-      testsetSplitRandomSeed,
       cacheInputs,
-      ConstraintSuggestionFileOutputOptions(
+      ColumnProfilerRunBuilderFileOutputOptions(
         sparkSession,
         saveColumnProfilesJsonPath,
         saveConstraintSuggestionsJsonPath,
         saveEvaluationResultsJsonPath,
         overwriteOutputFiles),
-      ConstraintSuggestionMetricsRepositoryOptions(
+      ColumnProfilerRunBuilderMetricsRepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
@@ -197,10 +151,10 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 }
 
-class ConstraintSuggestionRunBuilderWithRepository(
-    constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder,
+class ColumnProfilerRunBuilderWithRepository(
+    columnProfilerRunBuilder: ColumnProfilerRunBuilder,
     usingMetricsRepository: Option[MetricsRepository])
-  extends ConstraintSuggestionRunBuilder(constraintSuggestionRunBuilder) {
+  extends ColumnProfilerRunBuilder(columnProfilerRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 
@@ -232,10 +186,10 @@ class ConstraintSuggestionRunBuilderWithRepository(
   }
 }
 
-class ConstraintSuggestionRunBuilderWithSparkSession(
-    constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder,
+class ColumnProfilerRunBuilderWithSparkSession(
+    columnProfilerRunBuilder: ColumnProfilerRunBuilder,
     usingSparkSession: Option[SparkSession])
-  extends ConstraintSuggestionRunBuilder(constraintSuggestionRunBuilder) {
+  extends ColumnProfilerRunBuilder(columnProfilerRunBuilder) {
 
   sparkSession = usingSparkSession
 

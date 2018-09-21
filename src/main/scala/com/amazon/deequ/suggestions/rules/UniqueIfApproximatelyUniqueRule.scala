@@ -18,13 +18,14 @@ package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.uniquenessConstraint
-import com.amazon.deequ.suggestions.{ColumnProfile, ConstraintSuggestion}
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /**
   * If the ratio of approximate num distinct values in a column is close to the number of records
   * (within error of HLL sketch), we suggest a UNIQUE constraint
   */
-object UniqueIfApproximatelyUniqueRule extends ConstraintRule[ColumnProfile] {
+case class UniqueIfApproximatelyUniqueRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
 

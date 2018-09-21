@@ -360,7 +360,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
 
     val results = ConstraintSuggestionRunner()
       .onData(data)
-      .addConstraintRules(Rules.ALL)
+      .addConstraintRules(Rules.DEFAULT)
       .useTrainTestSplitWithTestsetRatio(0.1, Some(0))
       .run()
 
