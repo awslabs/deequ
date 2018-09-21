@@ -102,7 +102,7 @@ object ConstraintSuggestions {
     jsonObject.addProperty("current_value", constraintSuggestion.currentValue)
     jsonObject.addProperty("description", constraintSuggestion.description)
     jsonObject.addProperty("suggesting_rule", constraintSuggestion.suggestingRule
-      .getClass.getSimpleName.dropRight(1))
+      .getClass.getSimpleName)
     jsonObject.addProperty("rule_description", constraintSuggestion.suggestingRule.ruleDescription)
     jsonObject.addProperty("code_for_constraint", constraintSuggestion.codeForConstraint)
   }
