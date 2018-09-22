@@ -204,12 +204,16 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val nonNegativeCheck = Check(CheckLevel.Error, "a")
         .isNonNegative("item")
 
+      val isPositiveCheck = Check(CheckLevel.Error, "a")
+        .isPositive("item")
+
       val results = run(getDfWithNumericValues(sparkSession), lessThanCheck, incorrectLessThanCheck,
-        nonNegativeCheck)
+        nonNegativeCheck, isPositiveCheck)
 
       assertEvaluatesTo(lessThanCheck, results, CheckStatus.Success)
       assertEvaluatesTo(incorrectLessThanCheck, results, CheckStatus.Error)
       assertEvaluatesTo(nonNegativeCheck, results, CheckStatus.Success)
+      assertEvaluatesTo(isPositiveCheck, results, CheckStatus.Success)
 
       val rangeCheck = Check(CheckLevel.Error, "a")
         .isContainedIn("att1", Array("a", "b", "c"))
@@ -217,10 +221,16 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val inCorrectRangeCheck = Check(CheckLevel.Error, "a")
         .isContainedIn("att1", Array("a", "b"))
 
-      val rangeResults = run(getDfWithDistinctValues(sparkSession), rangeCheck, inCorrectRangeCheck)
+      val inCorrectRangeCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isContainedIn("att1", Array("a"), _ == 0.5)
+
+      val rangeResults = run(getDfWithDistinctValues(sparkSession), rangeCheck, inCorrectRangeCheck,
+        inCorrectRangeCheckWithCustomAssertionFunction)
 
       assertEvaluatesTo(rangeCheck, rangeResults, CheckStatus.Success)
       assertEvaluatesTo(inCorrectRangeCheck, rangeResults, CheckStatus.Error)
+      assertEvaluatesTo(inCorrectRangeCheckWithCustomAssertionFunction, rangeResults,
+        CheckStatus.Success)
 
       val numericRangeCheck1 = Check(CheckLevel.Error, "nr1")
         .isContainedIn("att2", 0, 7)

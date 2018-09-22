@@ -17,13 +17,24 @@
 package com.amazon.deequ.analyzers.runners
 
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
-
 import scala.util.Success
+
+private[deequ] case class AnalysisRunnerRepositoryOptions(
+      metricsRepository: Option[MetricsRepository] = None,
+      reuseExistingResultsForKey: Option[ResultKey] = None,
+      failIfResultsForReusingMissing: Boolean = false,
+      saveOrAppendResultsWithKey: Option[ResultKey] = None)
+
+private[deequ] case class AnalysisRunnerFileOutputOptions(
+      sparkSession: Option[SparkSession] = None,
+      saveSuccessMetricsJsonToPath: Option[String] = None,
+      overwriteOutputFiles: Boolean = false)
 
 /**
   * Runs a set of analyzers on the data at hand and optimizes the resulting computations to minimize
@@ -80,11 +91,8 @@ object AnalysisRunner {
     *                                                   accessed multiple times (use
     *                                                   StorageLevel.NONE to completely disable
     *                                                   caching)
-    * @param metricsRepository the associated metrics repository
-    * @param reuseExistingResultsForKey the resultKey to look up previously calculated values
-    * @param failIfResultsForReusingMissing Whether the run should fail if new metric
-    *                                       calculations are needed
-    * @param saveOrAppendResultsWithKey the resultKey to save the analysis results
+    * @param metricsRepositoryOptions Options related to the MetricsRepository
+    * @param fileOutputOptions Options related to FileOuput using a SparkSession
     * @return AnalyzerContext holding the requested metrics per analyzer
     */
   private[deequ] def doAnalysisRun(
@@ -93,10 +101,10 @@ object AnalysisRunner {
       aggregateWith: Option[StateLoader] = None,
       saveStatesWith: Option[StatePersister] = None,
       storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
-      metricsRepository: Option[MetricsRepository] = None,
-      reuseExistingResultsForKey: Option[ResultKey] = None,
-      failIfResultsForReusingMissing: Boolean = false,
-      saveOrAppendResultsWithKey: Option[ResultKey] = None)
+      metricsRepositoryOptions: AnalysisRunnerRepositoryOptions =
+        AnalysisRunnerRepositoryOptions(),
+      fileOutputOptions: AnalysisRunnerFileOutputOptions =
+        AnalysisRunnerFileOutputOptions())
     : AnalyzerContext = {
 
     if (analyzers.isEmpty) {
@@ -106,19 +114,21 @@ object AnalysisRunner {
     val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
-    val resultsComputedPreviously: AnalyzerContext = (metricsRepository, reuseExistingResultsForKey)
-      match {
-        case (Some(metricsRepository: MetricsRepository), Some(resultKey: ResultKey)) =>
-          metricsRepository.loadByKey(resultKey).getOrElse(AnalyzerContext.empty)
-        case _ => AnalyzerContext.empty
-      }
+    val resultsComputedPreviously: AnalyzerContext =
+      (metricsRepositoryOptions.metricsRepository,
+        metricsRepositoryOptions.reuseExistingResultsForKey)
+        match {
+          case (Some(metricsRepository: MetricsRepository), Some(resultKey: ResultKey)) =>
+            metricsRepository.loadByKey(resultKey).getOrElse(AnalyzerContext.empty)
+          case _ => AnalyzerContext.empty
+        }
 
     val analyzersAlreadyRan = resultsComputedPreviously.metricMap.keys.toSet
 
     val analyzersToRun = allAnalyzers.filterNot(analyzersAlreadyRan.contains)
 
     /* Throw an error if all needed metrics should have gotten calculated before but did not */
-    if (failIfResultsForReusingMissing && analyzersToRun.nonEmpty) {
+    if (metricsRepositoryOptions.failIfResultsForReusingMissing && analyzersToRun.nonEmpty) {
       throw new ReusingNotPossibleResultsMissingException(
         "Could not find all necessary results in the MetricsRepository, the calculation of " +
           s"the metrics for these analyzers would be needed: ${analyzersToRun.mkString(", ")}")
@@ -172,8 +182,12 @@ object AnalysisRunner {
     val resultingAnalyzerContext = resultsComputedPreviously ++ preconditionFailures ++
       nonGroupedMetrics ++ groupedMetrics
 
-    saveOrAppendResultsIfNecessary(resultingAnalyzerContext, metricsRepository,
-      saveOrAppendResultsWithKey)
+    saveOrAppendResultsIfNecessary(
+      resultingAnalyzerContext,
+      metricsRepositoryOptions.metricsRepository,
+      metricsRepositoryOptions.saveOrAppendResultsWithKey)
+
+    saveJsonOutputsToFilesystemIfNecessary(fileOutputOptions, resultingAnalyzerContext)
 
     resultingAnalyzerContext
   }
@@ -195,6 +209,23 @@ object AnalysisRunner {
 
         repository.save(saveOrAppendResultsWithKey.get, valueToSave)
       }
+    }
+  }
+
+  private[this] def saveJsonOutputsToFilesystemIfNecessary(
+    fileOutputOptions: AnalysisRunnerFileOutputOptions,
+    analyzerContext: AnalyzerContext)
+  : Unit = {
+
+    fileOutputOptions.sparkSession.foreach { session =>
+      fileOutputOptions.saveSuccessMetricsJsonToPath.foreach { profilesOutput =>
+
+        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
+          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
+            writer.append(AnalyzerContext.successMetricsAsJson(analyzerContext))
+            writer.newLine()
+          }
+        }
     }
   }
 

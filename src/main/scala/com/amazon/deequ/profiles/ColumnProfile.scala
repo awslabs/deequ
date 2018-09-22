@@ -14,11 +14,11 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
 import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.metrics.Distribution
-import com.google.gson.{JsonArray, JsonElement, JsonObject, JsonPrimitive}
+import com.google.gson.{GsonBuilder, JsonArray, JsonObject, JsonPrimitive}
 
 /* Profiling results for the columns which will be given to the constraint suggestion engine */
 abstract class ColumnProfile {
@@ -52,25 +52,28 @@ case class NumericColumnProfile(
     mean: Option[Double],
     maximum: Option[Double],
     minimum: Option[Double],
+    sum: Option[Double],
     stdDev: Option[Double],
-    approxPercentiles: Option[Array[Double]])
+    approxPercentiles: Option[Seq[Double]])
   extends ColumnProfile
 
-case class ColumnProfiles(profiles: Map[String, ColumnProfile], numRecords: Long)
+case class ColumnProfiles(
+    profiles: Map[String, ColumnProfile],
+    numRecords: Long)
 
 
 object ColumnProfiles {
 
-  def toJson(columnProfiles: ColumnProfiles): JsonObject = {
+  def toJson(columnProfiles: Seq[ColumnProfile]): String = {
 
     val json = new JsonObject()
 
     val columns = new JsonArray()
 
-    columnProfiles.profiles.foreach { case (column, profile) =>
+    columnProfiles.foreach { case profile =>
 
       val columnProfileJson = new JsonObject()
-      columnProfileJson.addProperty("column", column)
+      columnProfileJson.addProperty("column", profile.column)
       columnProfileJson.addProperty("dataType", profile.dataType.toString)
       columnProfileJson.addProperty("isDataTypeInferred", profile.isDataTypeInferred.toString)
 
@@ -111,6 +114,9 @@ object ColumnProfiles {
           numericColumnProfile.minimum.foreach { minimum =>
             columnProfileJson.addProperty("minimum", minimum)
           }
+          numericColumnProfile.sum.foreach { sum =>
+            columnProfileJson.addProperty("sum", sum)
+          }
           numericColumnProfile.stdDev.foreach { stdDev =>
             columnProfileJson.addProperty("stdDev", stdDev)
           }
@@ -132,6 +138,10 @@ object ColumnProfiles {
 
     json.add("columns", columns)
 
-    json
+    val gson = new GsonBuilder()
+      .setPrettyPrinting()
+      .create()
+
+    gson.toJson(json)
   }
 }

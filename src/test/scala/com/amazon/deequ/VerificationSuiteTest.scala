@@ -4,14 +4,15 @@ import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
+import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
-import com.amazon.deequ.utils.FixtureSupport
+import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.{Matchers, WordSpec}
-
 import scala.util.{Success, Try}
 
 
@@ -257,6 +258,33 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         assert(checkResults(0)._2.status == CheckStatus.Warning)
         assert(checkResults(1)._2.status == CheckStatus.Success)
         assert(checkResults(2)._2.status == CheckStatus.Success)
+      }
+    }
+
+    "should write output files to specified locations" in withSparkSession { sparkSession =>
+
+      val df = getDfWithNumericValues(sparkSession)
+
+      val checkToSucceed = Check(CheckLevel.Error, "group-1")
+        .isComplete("att1") // 1.0
+        .hasCompleteness("att1", _ == 1.0) // 1.0
+
+      val tempDir = TempFileUtils.tempDir("verificationOuput")
+      val checkResultsPath = tempDir + "/check-result.json"
+      val successMetricsPath = tempDir + "/success-metrics.json"
+
+      VerificationSuite().onData(df)
+        .addCheck(checkToSucceed)
+        .useSparkSession(sparkSession)
+        .saveCheckResultsJsonToPath(checkResultsPath)
+        .saveSuccessMetricsJsonToPath(successMetricsPath)
+        .run()
+
+      DfsUtils.readFromFileOnDfs(sparkSession, checkResultsPath) {
+        inputStream => assert(inputStream.read() > 0)
+      }
+      DfsUtils.readFromFileOnDfs(sparkSession, successMetricsPath) {
+        inputStream => assert(inputStream.read() > 0)
       }
     }
   }
