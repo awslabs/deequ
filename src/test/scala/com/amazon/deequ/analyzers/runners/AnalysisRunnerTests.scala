@@ -2,14 +2,13 @@ package com.amazon.deequ.analyzers.runners
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.functions.expr
+import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
 import org.apache.spark.sql.functions.udf
-
 import scala.util.Try
 
 class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
@@ -235,6 +234,26 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         .addAnalyzers(analyzers).saveOrAppendResult(resultKey).run()
 
       assert(expectedAnalyzerContextOnLoadByKey == repository.loadByKey(resultKey).get)
+    }
+
+    "should write output files to specified locations" in withSparkSession { sparkSession =>
+
+      val df = getDfWithNumericValues(sparkSession)
+
+      val analyzers = Size() :: Completeness("item") :: Nil
+
+      val tempDir = TempFileUtils.tempDir("analysisOuput")
+      val successMetricsPath = tempDir + "/success-metrics.json"
+
+      AnalysisRunner.onData(df)
+        .addAnalyzers(analyzers)
+        .useSparkSession(sparkSession)
+        .saveSuccessMetricsJsonToPath(successMetricsPath)
+        .run()
+
+      DfsUtils.readFromFileOnDfs(sparkSession, successMetricsPath) {
+        inputStream => assert(inputStream.read() > 0)
+      }
     }
   }
 }

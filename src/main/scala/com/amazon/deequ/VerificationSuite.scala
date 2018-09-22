@@ -17,14 +17,27 @@
 package com.amazon.deequ
 
 import com.amazon.deequ.analyzers.applicability.ApplicabilityResult
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerRepositoryOptions, AnalyzerContext}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.applicability.Applicability
 import com.amazon.deequ.checks.{Check, CheckStatus}
+import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.types.StructType
+
+private[deequ] case class VerificationMetricsRepositoryOptions(
+      metricsRepository: Option[MetricsRepository] = None,
+      reuseExistingResultsForKey: Option[ResultKey] = None,
+      failIfResultsForReusingMissing: Boolean = false,
+      saveOrAppendResultsWithKey: Option[ResultKey] = None)
+
+private[deequ] case class VerificationFileOutputOptions(
+      sparkSession: Option[SparkSession] = None,
+      saveCheckResultsJsonToPath: Option[String] = None,
+      saveSuccessMetricsJsonToPath: Option[String] = None,
+      overwriteOutputFiles: Boolean = false)
 
 /** Responsible for running checks and required analysis and return the results */
 class VerificationSuite {
@@ -69,8 +82,12 @@ class VerificationSuite {
       analyzers,
       aggregateWith,
       saveStatesWith,
-      metricsRepository = metricsRepository,
-      saveOrAppendResultsWithKey = saveOrAppendResultsWithKey)
+      metricsRepositoryOptions =
+        VerificationMetricsRepositoryOptions(
+          metricsRepository,
+          saveOrAppendResultsWithKey = saveOrAppendResultsWithKey
+        )
+    )
   }
 
   /**
@@ -83,11 +100,8 @@ class VerificationSuite {
     *                          regardless of if there are constraints on them (optional)
     * @param aggregateWith    loader from which we retrieve initial states to aggregate (optional)
     * @param saveStatesWith   persist resulting states for the configured analyzers (optional)
-    * @param metricsRepository the associated metrics repository
-    * @param reuseExistingResultsForKey the resultKey to look up previously calculated values
-    * @param failIfResultsForReusingMissing Whether the run should fail if new metric
-    *                                       calculations are needed
-    * @param saveOrAppendResultsWithKey the resultKey to save the analysis results
+    * @param metricsRepositoryOptions Options related to the MetricsRepository
+    * @param fileOutputOptions Options related to FileOuput using a SparkSession
     * @return Result for every check including the overall status, detailed status for each
     *         constraints and all metrics produced
     */
@@ -97,10 +111,10 @@ class VerificationSuite {
       requiredAnalyzers: Seq[Analyzer[_, Metric[_]]],
       aggregateWith: Option[StateLoader] = None,
       saveStatesWith: Option[StatePersister] = None,
-      metricsRepository: Option[MetricsRepository] = None,
-      reuseExistingResultsForKey: Option[ResultKey] = None,
-      failIfResultsForReusingMissing: Boolean = false,
-      saveOrAppendResultsWithKey: Option[ResultKey] = None)
+      metricsRepositoryOptions: VerificationMetricsRepositoryOptions =
+        VerificationMetricsRepositoryOptions(),
+      fileOutputOptions: VerificationFileOutputOptions =
+        VerificationFileOutputOptions())
     : VerificationResult = {
 
     val analyzers = requiredAnalyzers ++ checks.flatMap { _.requiredAnalyzers() }
@@ -110,19 +124,52 @@ class VerificationSuite {
       analyzers,
       aggregateWith,
       saveStatesWith,
-      metricsRepository = metricsRepository,
-      reuseExistingResultsForKey = reuseExistingResultsForKey,
-      failIfResultsForReusingMissing = failIfResultsForReusingMissing,
-      saveOrAppendResultsWithKey = None)
+      metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
+        metricsRepositoryOptions.metricsRepository,
+        metricsRepositoryOptions.reuseExistingResultsForKey,
+        metricsRepositoryOptions.failIfResultsForReusingMissing,
+        saveOrAppendResultsWithKey = None))
 
     val verificationResult = evaluate(checks, analysisResults)
 
     val analyzerContext = AnalyzerContext(verificationResult.metrics)
 
-    saveOrAppendResultsIfNecessary(analyzerContext, metricsRepository,
-      saveOrAppendResultsWithKey)
+    saveOrAppendResultsIfNecessary(
+      analyzerContext,
+      metricsRepositoryOptions.metricsRepository,
+      metricsRepositoryOptions.saveOrAppendResultsWithKey)
+
+    saveJsonOutputsToFilesystemIfNecessary(fileOutputOptions, verificationResult)
 
     verificationResult
+  }
+
+  private[this] def saveJsonOutputsToFilesystemIfNecessary(
+    fileOutputOptions: VerificationFileOutputOptions,
+    verificationResult: VerificationResult)
+  : Unit = {
+
+    fileOutputOptions.sparkSession.foreach { session =>
+      fileOutputOptions.saveCheckResultsJsonToPath.foreach { profilesOutput =>
+
+        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
+          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
+            writer.append(VerificationResult.checkResultsAsJson(verificationResult))
+            writer.newLine()
+          }
+        }
+    }
+
+    fileOutputOptions.sparkSession.foreach { session =>
+      fileOutputOptions.saveSuccessMetricsJsonToPath.foreach { profilesOutput =>
+
+        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
+          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
+            writer.append(VerificationResult.successMetricsAsJson(verificationResult))
+            writer.newLine()
+          }
+        }
+    }
   }
 
   private[this] def saveOrAppendResultsIfNecessary(
