@@ -2,7 +2,14 @@ package com.amazon.deequ.profiles
 
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.{DataFrame, SparkSession}
+
+private[profiles] case class ColumnProfilerRunBuilderStandardOptions(
+      onlyConsiderColumnSubset: Option[Seq[String]],
+      lowCardinalityHistogramThreshold: Int,
+      printStatusUpdates: Boolean,
+      cacheInputs: Boolean)
 
 private[profiles] case class ColumnProfilerRunBuilderMetricsRepositoryOptions(
       metricsRepository: Option[MetricsRepository],
@@ -17,6 +24,7 @@ private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
       saveEvaluationResultsJsonToPath: Option[String],
       overwriteResults: Boolean)
 
+@Experimental
 class ColumnProfilerRunner {
 
   def onData(data: DataFrame): ColumnProfilerRunBuilder = {
@@ -25,24 +33,21 @@ class ColumnProfilerRunner {
 
   private[profiles] def run(
       data: DataFrame,
-      fromColumns: Option[Array[String]],
-      lowCardinalityHistogramThreshold: Int,
-      printStatusUpdates: Boolean,
-      cacheInputs: Boolean,
+      standardOptions: ColumnProfilerRunBuilderStandardOptions,
       fileOutputOptions: ColumnProfilerRunBuilderFileOutputOptions,
       metricsRepositoryOptions: ColumnProfilerRunBuilderMetricsRepositoryOptions)
     : ColumnProfiles = {
 
-    if (cacheInputs) {
+    if (standardOptions.cacheInputs) {
       data.cache()
     }
 
     val columnProfiles = ColumnProfiler
       .profile(
         data,
-        fromColumns.getOrElse(Array.empty).toSeq,
-        printStatusUpdates,
-        lowCardinalityHistogramThreshold,
+        standardOptions.onlyConsiderColumnSubset,
+        standardOptions.printStatusUpdates,
+        standardOptions.lowCardinalityHistogramThreshold,
         metricsRepositoryOptions.metricsRepository,
         metricsRepositoryOptions.reuseExistingResultsKey,
         metricsRepositoryOptions.failIfResultsForReusingMissing,
@@ -51,11 +56,11 @@ class ColumnProfilerRunner {
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
       fileOutputOptions,
-      printStatusUpdates,
+      standardOptions.printStatusUpdates,
       columnProfiles
     )
 
-    if (cacheInputs) {
+    if (standardOptions.cacheInputs) {
       data.unpersist()
     }
 

@@ -31,7 +31,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int =
     ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
-  protected var fromColumns: Option[Array[String]] = None
+  protected var onlyConsiderColumnSubset: Option[Seq[String]] = None
 
   protected var metricsRepository: Option[MetricsRepository] = None
   protected var reuseExistingResultsKey: Option[ResultKey] = None
@@ -55,7 +55,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     cacheInputs = constraintSuggestionRunBuilder.cacheInputs
     lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
       .lowCardinalityHistogramThreshold
-    fromColumns = constraintSuggestionRunBuilder.fromColumns
+    onlyConsiderColumnSubset = constraintSuggestionRunBuilder.onlyConsiderColumnSubset
 
     metricsRepository = constraintSuggestionRunBuilder.metricsRepository
     reuseExistingResultsKey = constraintSuggestionRunBuilder.reuseExistingResultsKey
@@ -140,10 +140,11 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param fromColumns The columns to look at
+    * @param onlyConsiderColumnSubset can contain a subset of columns to profile, otherwise
+    *                                 all columns will be considered
     */
-  def onlyConsiderColumnSubset(fromColumns: Array[String]): this.type = {
-    this.fromColumns = Option(fromColumns)
+  def onlyConsiderColumnSubset(onlyConsiderColumnSubset: Seq[String]): this.type = {
+    this.onlyConsiderColumnSubset = Option(onlyConsiderColumnSubset)
     this
   }
 
@@ -175,13 +176,14 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   def run(): ConstraintSuggestionResult = {
     ConstraintSuggestionRunner().run(
       data,
-      constraintRules,
-      fromColumns,
-      lowCardinalityHistogramThreshold,
-      printStatusUpdates,
-      testsetRatio,
-      testsetSplitRandomSeed,
-      cacheInputs,
+      ConstraintSuggestionStandardOptions(
+        constraintRules,
+        onlyConsiderColumnSubset,
+        lowCardinalityHistogramThreshold,
+        printStatusUpdates,
+        testsetRatio,
+        testsetSplitRandomSeed,
+        cacheInputs),
       ConstraintSuggestionFileOutputOptions(
         sparkSession,
         saveColumnProfilesJsonPath,

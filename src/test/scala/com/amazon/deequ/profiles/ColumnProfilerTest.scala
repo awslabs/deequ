@@ -15,7 +15,8 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      val actualColumnProfile = ColumnProfiler.profile(data, Seq("att2"), false, 1).profiles("att2")
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 1)
+        .profiles("att2")
 
       val expectedColumnProfile = StandardColumnProfile(
         "att2",
@@ -40,7 +41,8 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      val actualColumnProfile = ColumnProfiler.profile(data, Seq("item"), false, 1).profiles("item")
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("item")), false, 1)
+        .profiles("item")
 
       val expectedColumnProfile = NumericColumnProfile(
         "item",
@@ -77,7 +79,8 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
       val data = getDfWithNumericFractionalValues(session)
 
-      val actualColumnProfile = ColumnProfiler.profile(data, Seq("att1"), false, 1).profiles("att1")
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att1")), false, 1)
+        .profiles("att1")
 
       val expectedColumnProfile = NumericColumnProfile(
         "att1",
@@ -107,7 +110,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      val actualColumnProfile = ColumnProfiler.profile(data, Seq("att2"), false, 10)
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 10)
         .profiles("att2")
 
       val expectedColumnProfile = StandardColumnProfile(

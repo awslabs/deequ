@@ -27,7 +27,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int =
     ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
-  protected var fromColumns: Option[Array[String]] = None
+  protected var onlyConsiderColumnSubset: Option[Seq[String]] = None
 
   protected var metricsRepository: Option[MetricsRepository] = None
   protected var reuseExistingResultsKey: Option[ResultKey] = None
@@ -48,7 +48,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     cacheInputs = constraintSuggestionRunBuilder.cacheInputs
     lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
       .lowCardinalityHistogramThreshold
-    fromColumns = constraintSuggestionRunBuilder.fromColumns
+    onlyConsiderColumnSubset = constraintSuggestionRunBuilder.onlyConsiderColumnSubset
 
     metricsRepository = constraintSuggestionRunBuilder.metricsRepository
     reuseExistingResultsKey = constraintSuggestionRunBuilder.reuseExistingResultsKey
@@ -97,10 +97,10 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param fromColumns The columns to look at
+    * @param onlyConsiderColumnSubset The columns to look at
     */
-  def onlyConsiderColumnSubset(fromColumns: Array[String]): this.type = {
-    this.fromColumns = Option(fromColumns)
+  def onlyConsiderColumnSubset(onlyConsiderColumnSubset: Seq[String]): this.type = {
+    this.onlyConsiderColumnSubset = Option(onlyConsiderColumnSubset)
     this
   }
 
@@ -132,10 +132,11 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   def run(): ColumnProfiles = {
     ColumnProfilerRunner().run(
       data,
-      fromColumns,
-      lowCardinalityHistogramThreshold,
-      printStatusUpdates,
-      cacheInputs,
+      ColumnProfilerRunBuilderStandardOptions(
+        onlyConsiderColumnSubset,
+        lowCardinalityHistogramThreshold,
+        printStatusUpdates,
+        cacheInputs),
       ColumnProfilerRunBuilderFileOutputOptions(
         sparkSession,
         saveColumnProfilesJsonPath,

@@ -71,7 +71,8 @@ object ColumnProfiler {
     * Profile a (potentially very large) dataset
     *
     * @param data dataset as dataframe
-    * @param columns  the columns in the data which we want to profile
+    * @param onlyConsiderColumnSubset  can contain a subset of columns to profile, otherwise
+    *                                  all columns will be considered
     * @param lowCardinalityHistogramThreshold the maximum  (estimated) number of distinct values
     *                                         in a column until which we should compute exact
     *                                         histograms for it (defaults to 120)
@@ -79,7 +80,7 @@ object ColumnProfiler {
     */
   private[deequ] def profile(
       data: DataFrame,
-      columns: Seq[String] = Seq.empty,
+      onlyConsiderColumnSubset: Option[Seq[String]] = None,
       printStatusUpdates: Boolean = false,
       lowCardinalityHistogramThreshold: Int =
         ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD,
@@ -90,9 +91,14 @@ object ColumnProfiler {
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
-    columns.foreach { columnName =>
-      require(data.schema.fieldNames.contains(columnName), s"Unable to find column $columnName")
+    onlyConsiderColumnSubset.foreach { onlyConsiderColumnSubset =>
+      onlyConsiderColumnSubset.foreach { columnName =>
+        require(data.schema.fieldNames.contains(columnName), s"Unable to find column $columnName")
+      }
     }
+
+    // Find columns we want to profile
+    val relevantColumns = getRelevantColumns(data.schema, onlyConsiderColumnSubset)
 
     // First pass
     if (printStatusUpdates) {
@@ -101,18 +107,7 @@ object ColumnProfiler {
 
     // We compute completeness, approximate number of distinct values
     // and type detection for string columns in the first pass
-    val analyzersForGenericStats = data.schema.fields
-      .filter { field => columns.isEmpty || columns.contains(field.name) }
-      .flatMap { field =>
-
-        val name = field.name
-
-        if (field.dataType == StringType) {
-          Seq(Completeness(name), ApproxCountDistinct(name), DataType(name))
-        } else {
-          Seq(Completeness(name), ApproxCountDistinct(name))
-        }
-      }
+    val analyzersForGenericStats = getAnalyzersForGenericStats(data.schema, relevantColumns)
 
     var analysisRunnerFirstPass = AnalysisRunner
       .onData(data)
@@ -128,7 +123,7 @@ object ColumnProfiler {
 
     val firstPassResults = analysisRunnerFirstPass.run()
 
-    val genericStatistics = extractGenericStatistics(columns, data.schema, firstPassResults)
+    val genericStatistics = extractGenericStatistics(relevantColumns, data.schema, firstPassResults)
 
     // Second pass
     if (printStatusUpdates) {
@@ -136,18 +131,11 @@ object ColumnProfiler {
     }
 
     // We cast all string columns that were detected as numeric
-    val castedDataForSecondPass = castNumericStringColumns(columns, data, genericStatistics)
+    val castedDataForSecondPass = castNumericStringColumns(relevantColumns, data,
+      genericStatistics)
 
     // We compute mean, stddev, min, max for all numeric columns
-    val analyzersForSecondPass = columns
-      .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }
-      .flatMap { name =>
-
-        val percentiles = (1 to 100).map { _.toDouble / 100 }
-
-        Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
-          Sum(name), ApproxQuantiles(name, percentiles))
-      }
+    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)
@@ -184,50 +172,68 @@ object ColumnProfiler {
     val nonExistingHistogramColumns = targetColumnsForHistograms
       .filter { column => analyzerContextExistingValues.metricMap.get(Histogram(column)).isEmpty }
 
-    // Calculate them if necessary
-    val histograms: Map[String, Distribution] = if (nonExistingHistogramColumns.nonEmpty) {
-
-      // Throw an error if all required metrics should have been calculated before but did not
-      if (failIfResultsForReusingMissing) {
-        throw new ReusingNotPossibleResultsMissingException(
-          "Could not find all necessary results in the MetricsRepository, the calculation of " +
-            s"the histograms for these columns would be required: " +
-            s"${nonExistingHistogramColumns.mkString(", ")}")
-      }
-
-      val columnNamesAndDistribution = computeHistograms(data, nonExistingHistogramColumns)
-
-      // Now merge these results with the results that we want to reuse and store them if specified
-
-      val analyzerAndHistogramMetrics = convertColumnNamesAndDistributionToHistogramWithMetric(
-        columnNamesAndDistribution)
-
-      val analyzerContext = AnalyzerContext(analyzerAndHistogramMetrics) ++
-        analyzerContextExistingValues
-
-      saveOrAppendResultsIfNecessary(analyzerContext, metricsRepository,
-        saveInMetricsRepositoryUsingKey)
-
-      // Return overall results using the more simple Distribution format
-      analyzerContext.metricMap
-        .map { case (histogram: Histogram, metric: HistogramMetric) if metric.value.isSuccess =>
-          histogram.column -> metric.value.get
-        }
-    } else {
-      // We do not need to calculate new histograms
-      if (printStatusUpdates) {
-        println("### PROFILING: Skipping pass (3/3), no new histograms need to be calculated.")
-      }
-      analyzerContextExistingValues.metricMap
-        .map { case (histogram: Histogram, metric: HistogramMetric) if metric.value.isSuccess =>
-          histogram.column -> metric.value.get
-        }
-    }
+    // Calculate and save/append results if necessary
+    val histograms: Map[String, Distribution] = getHistogramsForThirdPass(
+      data,
+      nonExistingHistogramColumns,
+      analyzerContextExistingValues,
+      printStatusUpdates,
+      failIfResultsForReusingMissing,
+      metricsRepository,
+      saveInMetricsRepositoryUsingKey)
 
     val thirdPassResults = CategoricalColumnStatistics(histograms)
 
-    createProfiles(columns, genericStatistics, numericStatistics, thirdPassResults)
+    createProfiles(relevantColumns, genericStatistics, numericStatistics, thirdPassResults)
   }
+
+  private[this] def getRelevantColumns(
+      schema: StructType,
+      onlyConsiderColumnSubset: Option[Seq[String]])
+    : Seq[String] = {
+
+    schema.fields
+      .filter { field => onlyConsiderColumnSubset.isEmpty || onlyConsiderColumnSubset.get.contains(
+        field.name) }
+      .map { field => field.name }
+  }
+
+  private[this] def getAnalyzersForGenericStats(
+      schema: StructType,
+      relevantColumns: Seq[String])
+    : Seq[Analyzer[_, Metric[_]]] = {
+
+    schema.fields
+      .filter { field => relevantColumns.contains(field.name) }
+      .flatMap { field =>
+
+        val name = field.name
+
+        if (field.dataType == StringType) {
+          Seq(Completeness(name), ApproxCountDistinct(name), DataType(name))
+        } else {
+          Seq(Completeness(name), ApproxCountDistinct(name))
+        }
+      }
+  }
+
+   private[this] def getAnalyzersForSecondPass(
+      relevantColumnNames: Seq[String],
+      genericStatistics: GenericColumnStatistics)
+    : Seq[Analyzer[_, Metric[_]]] = {
+
+      relevantColumnNames
+        .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }
+        .flatMap { name =>
+
+          val percentiles = (1 to 100).map {
+            _.toDouble / 100
+          }
+
+          Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
+            Sum(name), ApproxQuantiles(name, percentiles))
+        }
+    }
 
   private[this] def setMetricsRepositoryConfigurationIfNecessary(
       analysisRunBuilder: AnalysisRunBuilder,
@@ -551,6 +557,55 @@ object ColumnProfiler {
     .toMap
   }
 
+  def getHistogramsForThirdPass(
+      data: DataFrame,
+      nonExistingHistogramColumns: Seq[String],
+      analyzerContextExistingValues: AnalyzerContext,
+      printStatusUpdates: Boolean,
+      failIfResultsForReusingMissing: Boolean,
+      metricsRepository: Option[MetricsRepository],
+      saveInMetricsRepositoryUsingKey: Option[ResultKey])
+    : Map[String, Distribution] = {
+
+    if (nonExistingHistogramColumns.nonEmpty) {
+
+      // Throw an error if all required metrics should have been calculated before but did not
+      if (failIfResultsForReusingMissing) {
+        throw new ReusingNotPossibleResultsMissingException(
+          "Could not find all necessary results in the MetricsRepository, the calculation of " +
+            s"the histograms for these columns would be required: " +
+            s"${nonExistingHistogramColumns.mkString(", ")}")
+      }
+
+      val columnNamesAndDistribution = computeHistograms(data, nonExistingHistogramColumns)
+
+      // Now merge these results with the results that we want to reuse and store them if specified
+
+      val analyzerAndHistogramMetrics = convertColumnNamesAndDistributionToHistogramWithMetric(
+        columnNamesAndDistribution)
+
+      val analyzerContext = AnalyzerContext(analyzerAndHistogramMetrics) ++
+        analyzerContextExistingValues
+
+      saveOrAppendResultsIfNecessary(analyzerContext, metricsRepository,
+        saveInMetricsRepositoryUsingKey)
+
+      // Return overall results using the more simple Distribution format
+      analyzerContext.metricMap
+        .map { case (histogram: Histogram, metric: HistogramMetric) if metric.value.isSuccess =>
+          histogram.column -> metric.value.get
+        }
+    } else {
+      // We do not need to calculate new histograms
+      if (printStatusUpdates) {
+        println("### PROFILING: Skipping pass (3/3), no new histograms need to be calculated.")
+      }
+      analyzerContextExistingValues.metricMap
+        .map { case (histogram: Histogram, metric: HistogramMetric) if metric.value.isSuccess =>
+          histogram.column -> metric.value.get
+        }
+    }
+  }
 
   private[this] def createProfiles(
       columns: Seq[String],

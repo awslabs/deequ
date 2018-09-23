@@ -132,8 +132,9 @@ class VerificationRunBuilder(val data: DataFrame) {
   def run(): VerificationResult = {
     VerificationSuite().doVerificationRun(
       data,
-      checks,
-      requiredAnalyzers,
+      VerificationStandardOptions(
+        checks,
+        requiredAnalyzers),
       metricsRepositoryOptions = VerificationMetricsRepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
