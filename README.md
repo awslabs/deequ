@@ -126,7 +126,7 @@ Our library contains much more than what we showed in the basic example. We will
  
  * [Anomaly detection](src/main/scala/com/amazon/deequ/anomalydetection)
  * Single-column [data profiling](https://github.com/awslabs/deequ/tree/master/src/main/scala/com/amazon/deequ/profiles)
- * Automatic [suggestion of constraints](src/main/scala/com/amazon/deequ/suggestions/EndToEndConstraintSuggestion.scala)
+ * Automatic [suggestion of constraints](https://github.com/awslabs/deequ/tree/master/src/main/scala/com/amazon/deequ/suggestions)
 
 ## Citation
 
