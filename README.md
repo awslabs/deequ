@@ -2,13 +2,15 @@
 [![GitHub license](https://img.shields.io/github/license/awslabs/deequ.svg)](https://github.com/awslabs/deequ/blob/master/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/awslabs/deequ.svg)](https://github.com/awslabs/deequ/issues)
 [![Build Status](https://travis-ci.org/awslabs/deequ.svg?branch=master)](https://travis-ci.org/awslabs/deequ)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ)
 
-Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets.
+Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets. We are happy to receive feedback and [contributions](CONTRIBUTING.md).
 
 ## Requirements and Installation
 
-__Deequ__ depends on Java 8 and Apache Spark 2.2. Use the following maven dependency for adding the latest release to your project:
+__Deequ__ depends on Java 8 and Apache Spark 2.2, and is available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). Add the latest release as a dependency to your project:
 
+__Maven__
 ```
 <dependency>
   <groupId>com.amazon.deequ</groupId>
@@ -17,6 +19,10 @@ __Deequ__ depends on Java 8 and Apache Spark 2.2. Use the following maven depend
 </dependency>
 ```
 
+__sbt__
+```
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.0-rc0"
+```
 
 ## Example
 
