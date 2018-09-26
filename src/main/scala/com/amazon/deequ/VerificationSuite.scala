@@ -17,7 +17,7 @@
 package com.amazon.deequ
 
 import com.amazon.deequ.analyzers.applicability.ApplicabilityResult
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerRepositoryOptions, AnalysisRunnerStandardOptions, AnalyzerContext}
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerRepositoryOptions, AnalyzerContext}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.applicability.Applicability
 import com.amazon.deequ.checks.{Check, CheckStatus}
@@ -26,12 +26,6 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.types.StructType
-
-private[deequ] case class VerificationStandardOptions(
-      checks: Seq[Check],
-      requiredAnalyzers: Seq[Analyzer[_, Metric[_]]],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None)
 
 private[deequ] case class VerificationMetricsRepositoryOptions(
       metricsRepository: Option[MetricsRepository] = None,
@@ -61,12 +55,12 @@ class VerificationSuite {
     * Runs all check groups and returns the verification result.
     * Verification result includes all the metrics computed during the run.
     *
-    * @param data tabular data on which the checks should be verified
+    * @param data Tabular data on which the checks should be verified
     * @param checks A sequence of check objects to be executed
-    * @param requiredAnalysis can be used to enforce the calculation of some some metrics
+    * @param requiredAnalysis Can be used to enforce the calculation of some some metrics
     *                         regardless of if there are constraints on them (optional)
-    * @param aggregateWith loader from which we retrieve an initial states to aggregate (optional)
-    * @param saveStatesWith persist resulting states for the configured analyzers (optional)
+    * @param aggregateWith Loader from which we retrieve an initial states to aggregate (optional)
+    * @param saveStatesWith Persist resulting states for the configured analyzers (optional)
     * @return Result for every check including the overall status, detailed status for each
     *         constraints and all metrics produced
     */
@@ -84,11 +78,10 @@ class VerificationSuite {
     val analyzers = requiredAnalysis.analyzers ++ checks.flatMap { _.requiredAnalyzers() }
     doVerificationRun(
       data,
-      VerificationStandardOptions(
-        checks,
-        analyzers,
-        aggregateWith,
-        saveStatesWith),
+      checks,
+      analyzers,
+      aggregateWith,
+      saveStatesWith,
       metricsRepositoryOptions =
         VerificationMetricsRepositoryOptions(
           metricsRepository,
@@ -101,38 +94,44 @@ class VerificationSuite {
     * Runs all check groups and returns the verification result.
     * Verification result includes all the metrics computed during the run.
     *
-    * @param data             tabular data on which the checks should be verified
-    * @param standardOptions   Options that don't have any additional requirements
+    * @param data tabular data on which the checks should be verified
+    * @param checks           A sequence of check objects to be executed
+    * @param requiredAnalyzers can be used to enforce the calculation of some some metrics
+    *                          regardless of if there are constraints on them (optional)
+    * @param aggregateWith    loader from which we retrieve initial states to aggregate (optional)
+    * @param saveStatesWith   persist resulting states for the configured analyzers (optional)
     * @param metricsRepositoryOptions Options related to the MetricsRepository
-    * @param fileOutputOptions Options related to FileOuput using a SparkSession
+    * @param fileOutputOptions        Options related to FileOuput using a SparkSession
     * @return Result for every check including the overall status, detailed status for each
     *         constraints and all metrics produced
     */
   private[deequ] def doVerificationRun(
       data: DataFrame,
-      standardOptions: VerificationStandardOptions,
+      checks: Seq[Check],
+      requiredAnalyzers: Seq[Analyzer[_, Metric[_]]],
+      aggregateWith: Option[StateLoader] = None,
+      saveStatesWith: Option[StatePersister] = None,
       metricsRepositoryOptions: VerificationMetricsRepositoryOptions =
         VerificationMetricsRepositoryOptions(),
       fileOutputOptions: VerificationFileOutputOptions =
         VerificationFileOutputOptions())
     : VerificationResult = {
 
-    val analyzers = standardOptions.requiredAnalyzers ++ standardOptions.checks
+    val analyzers = requiredAnalyzers ++ checks
       .flatMap { _.requiredAnalyzers() }
 
     val analysisResults = AnalysisRunner.doAnalysisRun(
       data,
-      AnalysisRunnerStandardOptions(
-        analyzers,
-        standardOptions.aggregateWith,
-        standardOptions.saveStatesWith),
+      analyzers,
+      aggregateWith,
+      saveStatesWith,
       metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
         metricsRepositoryOptions.metricsRepository,
         metricsRepositoryOptions.reuseExistingResultsForKey,
         metricsRepositoryOptions.failIfResultsForReusingMissing,
         saveOrAppendResultsWithKey = None))
 
-    val verificationResult = evaluate(standardOptions.checks, analysisResults)
+    val verificationResult = evaluate(checks, analysisResults)
 
     val analyzerContext = AnalyzerContext(verificationResult.metrics)
 
@@ -299,7 +298,7 @@ object VerificationSuite {
     : VerificationResult = {
 
     val analyzers = requiredAnalysis.analyzers ++ checks.flatMap { _.requiredAnalyzers() }
-    VerificationSuite().doVerificationRun(data, VerificationStandardOptions(checks, analyzers))
+    VerificationSuite().doVerificationRun(data, checks, analyzers)
   }
 
   def runOnAggregatedStates(

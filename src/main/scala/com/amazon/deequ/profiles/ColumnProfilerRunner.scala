@@ -5,12 +5,6 @@ import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-private[profiles] case class ColumnProfilerRunBuilderStandardOptions(
-      onlyConsiderColumnSubset: Option[Seq[String]],
-      lowCardinalityHistogramThreshold: Int,
-      printStatusUpdates: Boolean,
-      cacheInputs: Boolean)
-
 private[profiles] case class ColumnProfilerRunBuilderMetricsRepositoryOptions(
       metricsRepository: Option[MetricsRepository],
       reuseExistingResultsKey: Option[ResultKey],
@@ -33,21 +27,24 @@ class ColumnProfilerRunner {
 
   private[profiles] def run(
       data: DataFrame,
-      standardOptions: ColumnProfilerRunBuilderStandardOptions,
+      onlyConsiderColumnSubset: Option[Seq[String]],
+      lowCardinalityHistogramThreshold: Int,
+      printStatusUpdates: Boolean,
+      cacheInputs: Boolean,
       fileOutputOptions: ColumnProfilerRunBuilderFileOutputOptions,
       metricsRepositoryOptions: ColumnProfilerRunBuilderMetricsRepositoryOptions)
     : ColumnProfiles = {
 
-    if (standardOptions.cacheInputs) {
+    if (cacheInputs) {
       data.cache()
     }
 
     val columnProfiles = ColumnProfiler
       .profile(
         data,
-        standardOptions.onlyConsiderColumnSubset,
-        standardOptions.printStatusUpdates,
-        standardOptions.lowCardinalityHistogramThreshold,
+        onlyConsiderColumnSubset,
+        printStatusUpdates,
+        lowCardinalityHistogramThreshold,
         metricsRepositoryOptions.metricsRepository,
         metricsRepositoryOptions.reuseExistingResultsKey,
         metricsRepositoryOptions.failIfResultsForReusingMissing,
@@ -56,11 +53,11 @@ class ColumnProfilerRunner {
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
       fileOutputOptions,
-      standardOptions.printStatusUpdates,
+      printStatusUpdates,
       columnProfiles
     )
 
-    if (standardOptions.cacheInputs) {
+    if (cacheInputs) {
       data.unpersist()
     }
 

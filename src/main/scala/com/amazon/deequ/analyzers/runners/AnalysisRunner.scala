@@ -25,12 +25,6 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import scala.util.Success
 
-private[deequ] case class AnalysisRunnerStandardOptions(
-      analyzers: Seq[Analyzer[_, Metric[_]]],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None,
-      storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
-
 private[deequ] case class AnalysisRunnerRepositoryOptions(
       metricsRepository: Option[MetricsRepository] = None,
       reuseExistingResultsForKey: Option[ResultKey] = None,
@@ -81,33 +75,43 @@ object AnalysisRunner {
       storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     : AnalyzerContext = {
 
-    doAnalysisRun(data, AnalysisRunnerStandardOptions(analysis.analyzers, aggregateWith,
-      saveStatesWith, storageLevelOfGroupedDataForMultiplePasses))
+    doAnalysisRun(data, analysis.analyzers, aggregateWith, saveStatesWith,
+      storageLevelOfGroupedDataForMultiplePasses)
   }
 
   /**
     * Compute the metrics from the analyzers configured in the analyis
     *
     * @param data data on which to operate
-    * @param standardOptions   Options that don't have any additional requirements
+    * @param analyzers the analyzers to run
+    * @param aggregateWith load existing states for the configured analyzers and aggregate them
+    *                      (optional)
+    * @param saveStatesWith persist resulting states for the configured analyzers (optional)
+    * @param storageLevelOfGroupedDataForMultiplePasses caching level for grouped data that must be
+    *                                                   accessed multiple times (use
+    *                                                   StorageLevel.NONE to completely disable
+    *                                                   caching)
     * @param metricsRepositoryOptions Options related to the MetricsRepository
     * @param fileOutputOptions Options related to FileOuput using a SparkSession
     * @return AnalyzerContext holding the requested metrics per analyzer
     */
   private[deequ] def doAnalysisRun(
       data: DataFrame,
-      standardOptions: AnalysisRunnerStandardOptions,
+      analyzers: Seq[Analyzer[_, Metric[_]]],
+      aggregateWith: Option[StateLoader] = None,
+      saveStatesWith: Option[StatePersister] = None,
+      storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
       metricsRepositoryOptions: AnalysisRunnerRepositoryOptions =
         AnalysisRunnerRepositoryOptions(),
       fileOutputOptions: AnalysisRunnerFileOutputOptions =
         AnalysisRunnerFileOutputOptions())
     : AnalyzerContext = {
 
-    if (standardOptions.analyzers.isEmpty) {
+    if (analyzers.isEmpty) {
       return AnalyzerContext.empty
     }
 
-    val allAnalyzers = standardOptions.analyzers.map { _.asInstanceOf[Analyzer[State[_],
+    val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_],
       Metric[_]]] }
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
@@ -148,8 +152,7 @@ object AnalysisRunner {
 
     /* Run the analyzers which do not require grouping in a single pass over the data */
     val nonGroupedMetrics =
-      runScanningAnalyzers(data, scanningAnalyzers, standardOptions.aggregateWith,
-        standardOptions.saveStatesWith)
+      runScanningAnalyzers(data, scanningAnalyzers, aggregateWith, saveStatesWith)
 
     // TODO this can be further improved, we can get the number of rows from other metrics as well
     // TODO we could also insert an extra Size() computation if we have to scan the data anyways
@@ -170,9 +173,9 @@ object AnalysisRunner {
             data,
             groupingColumns,
             analyzersForGrouping,
-            standardOptions.aggregateWith,
-            standardOptions.saveStatesWith,
-            standardOptions.storageLevelOfGroupedDataForMultiplePasses,
+            aggregateWith,
+            saveStatesWith,
+            storageLevelOfGroupedDataForMultiplePasses,
             numRowsOfData)
 
         groupedMetrics = groupedMetrics ++ metrics

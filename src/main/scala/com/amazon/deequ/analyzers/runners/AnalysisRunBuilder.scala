@@ -100,8 +100,7 @@ class AnalysisRunBuilder(val data: DataFrame) {
   def run(): AnalyzerContext = {
     AnalysisRunner.doAnalysisRun(
       data,
-      AnalysisRunnerStandardOptions(
-        analyzers),
+      analyzers,
       metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,

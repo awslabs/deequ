@@ -17,7 +17,6 @@
 package com.amazon.deequ.profiles
 
 import com.amazon.deequ.repository._
-import com.amazon.deequ.suggestions.rules.ConstraintRule
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a Constraint Suggestion run using a fluent API */
@@ -132,11 +131,10 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   def run(): ColumnProfiles = {
     ColumnProfilerRunner().run(
       data,
-      ColumnProfilerRunBuilderStandardOptions(
-        onlyConsiderColumnSubset,
-        lowCardinalityHistogramThreshold,
-        printStatusUpdates,
-        cacheInputs),
+      onlyConsiderColumnSubset,
+      lowCardinalityHistogramThreshold,
+      printStatusUpdates,
+      cacheInputs,
       ColumnProfilerRunBuilderFileOutputOptions(
         sparkSession,
         saveColumnProfilesJsonPath,

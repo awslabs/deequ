@@ -176,14 +176,13 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   def run(): ConstraintSuggestionResult = {
     ConstraintSuggestionRunner().run(
       data,
-      ConstraintSuggestionStandardOptions(
-        constraintRules,
-        onlyConsiderColumnSubset,
-        lowCardinalityHistogramThreshold,
-        printStatusUpdates,
-        testsetRatio,
-        testsetSplitRandomSeed,
-        cacheInputs),
+      constraintRules,
+      onlyConsiderColumnSubset,
+      lowCardinalityHistogramThreshold,
+      printStatusUpdates,
+      testsetRatio,
+      testsetSplitRandomSeed,
+      cacheInputs,
       ConstraintSuggestionFileOutputOptions(
         sparkSession,
         saveColumnProfilesJsonPath,

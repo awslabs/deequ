@@ -34,16 +34,6 @@ object Rules {
       NonNegativeNumbersRule(), PositiveNumbersRule())
 }
 
-private[suggestions] case class ConstraintSuggestionStandardOptions(
-      constraintRules: Seq[ConstraintRule[ColumnProfile]],
-      onlyConsiderColumnSubset: Option[Seq[String]],
-      lowCardinalityHistogramThreshold: Int,
-      printStatusUpdates: Boolean,
-      testsetRatio: Option[Double],
-      testsetSplitRandomSeed: Option[Long],
-      cacheInputs: Boolean)
-
-
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
       metricsRepository: Option[MetricsRepository],
       reuseExistingResultsKey: Option[ResultKey],
@@ -71,51 +61,56 @@ class ConstraintSuggestionRunner {
 
   private[suggestions] def run(
       data: DataFrame,
-      standardOptions: ConstraintSuggestionStandardOptions,
+      constraintRules: Seq[ConstraintRule[ColumnProfile]],
+      onlyConsiderColumnSubset: Option[Seq[String]],
+      lowCardinalityHistogramThreshold: Int,
+      printStatusUpdates: Boolean,
+      testsetRatio: Option[Double],
+      testsetSplitRandomSeed: Option[Long],
+      cacheInputs: Boolean,
       fileOutputOptions: ConstraintSuggestionFileOutputOptions,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
     : ConstraintSuggestionResult = {
 
-    standardOptions.testsetRatio.foreach { testsetRatio =>
+    testsetRatio.foreach { testsetRatio =>
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
     }
 
-    val (trainingData, testData) = splitTrainTestSets(data, standardOptions.testsetRatio,
-      standardOptions.testsetSplitRandomSeed)
+    val (trainingData, testData) = splitTrainTestSets(data, testsetRatio, testsetSplitRandomSeed)
 
-    if (standardOptions.cacheInputs) {
+    if (cacheInputs) {
       trainingData.cache()
       testData.foreach { _.cache() }
     }
 
     val (columnProfiles, constraintSuggestions) = ConstraintSuggestionRunner().profileAndSuggest(
         trainingData,
-        standardOptions.constraintRules,
-        standardOptions.onlyConsiderColumnSubset,
-        standardOptions.lowCardinalityHistogramThreshold,
-        standardOptions.printStatusUpdates,
+        constraintRules,
+        onlyConsiderColumnSubset,
+        lowCardinalityHistogramThreshold,
+        printStatusUpdates,
         metricsRepositoryOptions
       )
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
       fileOutputOptions,
-      standardOptions.printStatusUpdates,
+      printStatusUpdates,
       columnProfiles
     )
 
-    if (standardOptions.cacheInputs) {
+    if (cacheInputs) {
       trainingData.unpersist()
     }
 
     saveConstraintSuggestionJsonToFileSystemIfNecessary(
       fileOutputOptions,
-      standardOptions.printStatusUpdates,
+      printStatusUpdates,
       constraintSuggestions
     )
 
     val verificationResult = evaluateConstraintsIfNecessary(
       testData,
-      standardOptions.printStatusUpdates,
+      printStatusUpdates,
       constraintSuggestions,
       fileOutputOptions
     )

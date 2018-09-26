@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerStandardOptions, AnalyzerContext}
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
@@ -57,7 +57,7 @@ case class Analysis(analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty) {
       storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     : AnalyzerContext = {
 
-    AnalysisRunner.doAnalysisRun(data, AnalysisRunnerStandardOptions(analyzers,
-      aggregateWith = aggregateWith, saveStatesWith = saveStatesWith))
+    AnalysisRunner.doAnalysisRun(data, analyzers, aggregateWith = aggregateWith,
+      saveStatesWith = saveStatesWith)
   }
 }
