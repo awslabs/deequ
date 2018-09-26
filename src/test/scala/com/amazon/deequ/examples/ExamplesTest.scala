@@ -16,7 +16,6 @@
 
 package com.amazon.deequ.examples
 
-import MetricsRepositoryExample
 import org.scalatest.WordSpec
 
 class ExamplesTest extends WordSpec {
