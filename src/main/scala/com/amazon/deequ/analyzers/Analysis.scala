@@ -26,7 +26,6 @@ import org.apache.spark.storage.StorageLevel
   *
   * @param analyzers
   */
-@deprecated("Use the AnalysisRunner instead (use the onData method)", "24-09-2019")
 case class Analysis(analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty) {
 
   def addAnalyzer(analyzer: Analyzer[_, Metric[_]]): Analysis = {
@@ -50,6 +49,7 @@ case class Analysis(analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty) {
     *                                                   caching)
     * @return
     */
+  @deprecated("Use the AnalysisRunner instead (the onData method there)", "24-09-2019")
   def run(
       data: DataFrame,
       aggregateWith: Option[StateLoader] = None,
