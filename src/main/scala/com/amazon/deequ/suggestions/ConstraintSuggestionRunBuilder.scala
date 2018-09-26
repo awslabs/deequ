@@ -140,8 +140,8 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param restrictToColumns can contain a subset of columns to profile and suggest constraints for,
-    *                          otherwise all columns will be considered
+    * @param restrictToColumns can contain a subset of columns to profile and suggest constraints
+    *                          for, otherwise all columns will be considered
     */
   def restrictToColumns(restrictToColumns: Seq[String]): this.type = {
     this.restrictToColumns = Option(restrictToColumns)
