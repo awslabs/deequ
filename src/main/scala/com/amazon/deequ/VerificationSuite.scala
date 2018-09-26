@@ -101,7 +101,7 @@ class VerificationSuite {
     * @param aggregateWith    loader from which we retrieve initial states to aggregate (optional)
     * @param saveStatesWith   persist resulting states for the configured analyzers (optional)
     * @param metricsRepositoryOptions Options related to the MetricsRepository
-    * @param fileOutputOptions        Options related to FileOuput using a SparkSession
+    * @param fileOutputOptions Options related to FileOuput using a SparkSession
     * @return Result for every check including the overall status, detailed status for each
     *         constraints and all metrics produced
     */
@@ -117,8 +117,7 @@ class VerificationSuite {
         VerificationFileOutputOptions())
     : VerificationResult = {
 
-    val analyzers = requiredAnalyzers ++ checks
-      .flatMap { _.requiredAnalyzers() }
+    val analyzers = requiredAnalyzers ++ checks.flatMap { _.requiredAnalyzers() }
 
     val analysisResults = AnalysisRunner.doAnalysisRun(
       data,
