@@ -135,10 +135,11 @@ tableMetrics.metricMap.foreach { case (analyzer, metric) =>
 ```
 Completeness(name,None): 1.0
 PatternMatch(name,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.0
-Compliance("countryCode contained in DE,US,CN", countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
+Compliance("countryCode contained in DE,US,CN", 
+  countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
 ```
 
-Let us now assume that a single partition changes and we need to recompute the metrics for the table as a whole. The advantage provided by the stateful computation is that we only need to recompute the state of the changed partition in order to update the metrics for the whole table. We do not need to touch the other partitions!
+Let us now assume that a single partition changes and that we need to recompute the metrics for the table as a whole. The advantage provided by the stateful computation is that we only need to recompute the state of the changed partition in order to update the metrics for the whole table. We do not need to touch the other partitions!
 
 ```scala
 val updatedUsManufacturers = ExampleUtils.manufacturersAsDataframe(spark,
@@ -166,10 +167,13 @@ updatedTableMetrics.metricMap.foreach { case (analyzer, metric) =>
 }
 ```
 
+This code will only operate on the updated partition and the states, but will still return the correct metrics for the table as a whole:
+
 ```
 Completeness(name,None): 0.8571428571428571
 PatternMatch(name,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.14285714285714285
-Compliance("countryCode contained in DE,US,CN", countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
+Compliance("countryCode contained in DE,US,CN", 
+  countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
 ```
 
 An [executable version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/UpdateMetricsOnPartitionedDataExample.scala) is part of our codebase.
