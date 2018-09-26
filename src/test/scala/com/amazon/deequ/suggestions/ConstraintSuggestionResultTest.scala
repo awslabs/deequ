@@ -197,7 +197,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "att2",
               |      "current_value": "Completeness: 1.0",
               |      "description": "'att2' is not null",
-              |      "suggesting_rule": "CompleteIfCompleteRule",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
               |      "code_for_constraint": ".isComplete(\"att2\")"
@@ -207,7 +207,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "att1",
               |      "current_value": "Completeness: 1.0",
               |      "description": "'att1' is not null",
-              |      "suggesting_rule": "CompleteIfCompleteRule",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
               |      "code_for_constraint": ".isComplete(\"att1\")"
@@ -217,7 +217,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "item",
               |      "current_value": "Completeness: 1.0",
               |      "description": "'item' is not null",
-              |      "suggesting_rule": "CompleteIfCompleteRule",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
               |      "code_for_constraint": ".isComplete(\"item\")"
@@ -227,7 +227,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "'item' is unique",
-              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule",
+              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
               |      "rule_description": "If the ratio of approximate num distinct values in a
               | column is close to the number of records (within the error of the HLL sketch),
               | we suggest a UNIQUE constraint",
@@ -239,7 +239,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "item",
               |      "current_value": "DataType: Integral",
               |      "description": "'item' has type Integral",
-              |      "suggesting_rule": "RetainTypeRule",
+              |      "suggesting_rule": "RetainTypeRule()",
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
               |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
@@ -251,7 +251,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
               |      "description": "'item' has only positive values",
-              |      "suggesting_rule": "PositiveNumbersRule",
+              |      "suggesting_rule": "PositiveNumbersRule()",
               |      "rule_description": "If we see only positive numbers in a column, we suggest
               | a corresponding constraint",
               |      "code_for_constraint": ".isPositive(\"item\")"
@@ -267,6 +267,93 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
     "return Json that is formatted as expected for getEvaluationResultsAsJson" in
       withSparkSession { session =>
 
+        evaluateWithTrainTestSplit(session) { results =>
+
+          val evaluationResultsJson = ConstraintSuggestionResult.getEvaluationResultsAsJson(results)
+
+          val expectedJson =
+            """{
+              |  "constraint_suggestions": [
+              |    {
+              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None))",
+              |      "column_name": "att2",
+              |      "current_value": "Completeness: 1.0",
+              |      "description": "\u0027att2\u0027 is not null",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
+              |      "rule_description": "If a column is complete in the sample, we suggest a NOT
+              | NULL constraint",
+              |      "code_for_constraint": ".isComplete(\"att2\")",
+              |      "constraint_result_on_test_set": "Failure"
+              |    },
+              |    {
+              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
+              |      "column_name": "att1",
+              |      "current_value": "Completeness: 1.0",
+              |      "description": "\u0027att1\u0027 is not null",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
+              |      "rule_description": "If a column is complete in the sample, we suggest a NOT
+              | NULL constraint",
+              |      "code_for_constraint": ".isComplete(\"att1\")",
+              |      "constraint_result_on_test_set": "Failure"
+              |    },
+              |    {
+              |      "constraint_name": "CompletenessConstraint(Completeness(item,None))",
+              |      "column_name": "item",
+              |      "current_value": "Completeness: 1.0",
+              |      "description": "\u0027item\u0027 is not null",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
+              |      "rule_description": "If a column is complete in the sample, we suggest a NOT
+              | NULL constraint",
+              |      "code_for_constraint": ".isComplete(\"item\")",
+              |      "constraint_result_on_test_set": "Failure"
+              |    },
+              |    {
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "column_name": "item",
+              |      "current_value": "ApproxDistinctness: 1.0",
+              |      "description": "\u0027item\u0027 is unique",
+              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
+              |      "rule_description": "If the ratio of approximate num distinct values in a
+              | column is close to the number of records (within the error of the HLL sketch),
+              | we suggest a UNIQUE constraint",
+              |      "code_for_constraint": ".isUnique(\"item\")",
+              |      "constraint_result_on_test_set": "Failure"
+              |    },
+              |    {
+              |      "constraint_name": "AnalysisBasedConstraint(DataType(item,None),
+              |\u003cfunction1\u003e,Some(\u003cfunction1\u003e),None)",
+              |      "column_name": "item",
+              |      "current_value": "DataType: Integral",
+              |      "description": "\u0027item\u0027 has type Integral",
+              |      "suggesting_rule": "RetainTypeRule()",
+              |      "rule_description": "If we detect a non-string type, we suggest a type
+              | constraint",
+              |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
+              |.Integral)",
+              |      "constraint_result_on_test_set": "Failure"
+              |    },
+              |    {
+              |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has only
+              | positive values,item \u003e 0,None))",
+              |      "column_name": "item",
+              |      "current_value": "Minimum: 1.0",
+              |      "description": "\u0027item\u0027 has only positive values",
+              |      "suggesting_rule": "PositiveNumbersRule()",
+              |      "rule_description": "If we see only positive numbers in a column, we suggest a
+              | corresponding constraint",
+              |      "code_for_constraint": ".isPositive(\"item\")",
+              |      "constraint_result_on_test_set": "Failure"
+              |    }
+              |  ]
+              |}"""
+              .stripMargin.replaceAll("\n", "")
+
+          assertJsonStringsAreEqual(evaluationResultsJson, expectedJson)
+        }
+      }
+
+    "return Json that is formatted as expected for getEvaluationResultsAsJson without" +
+      " train/test-split" in withSparkSession { session =>
         evaluate(session) { results =>
 
           val evaluationResultsJson = ConstraintSuggestionResult.getEvaluationResultsAsJson(results)
@@ -279,45 +366,45 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "att2",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027att2\u0027 is not null",
-              |      "suggesting_rule": "CompleteIfCompleteRule",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
               |      "code_for_constraint": ".isComplete(\"att2\")",
-              |      "constraint_result": "Failure"
+              |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
               |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
               |      "column_name": "att1",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027att1\u0027 is not null",
-              |      "suggesting_rule": "CompleteIfCompleteRule",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
               |      "code_for_constraint": ".isComplete(\"att1\")",
-              |      "constraint_result": "Failure"
+              |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
               |      "constraint_name": "CompletenessConstraint(Completeness(item,None))",
               |      "column_name": "item",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027item\u0027 is not null",
-              |      "suggesting_rule": "CompleteIfCompleteRule",
+              |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
               |      "code_for_constraint": ".isComplete(\"item\")",
-              |      "constraint_result": "Failure"
+              |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
               |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "\u0027item\u0027 is unique",
-              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule",
+              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
               |      "rule_description": "If the ratio of approximate num distinct values in a
               | column is close to the number of records (within the error of the HLL sketch),
               | we suggest a UNIQUE constraint",
               |      "code_for_constraint": ".isUnique(\"item\")",
-              |      "constraint_result": "Failure"
+              |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
               |      "constraint_name": "AnalysisBasedConstraint(DataType(item,None),
@@ -325,12 +412,12 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "item",
               |      "current_value": "DataType: Integral",
               |      "description": "\u0027item\u0027 has type Integral",
-              |      "suggesting_rule": "RetainTypeRule",
+              |      "suggesting_rule": "RetainTypeRule()",
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
               |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
               |.Integral)",
-              |      "constraint_result": "Failure"
+              |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
               |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has only
@@ -338,11 +425,11 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
               |      "description": "\u0027item\u0027 has only positive values",
-              |      "suggesting_rule": "PositiveNumbersRule",
+              |      "suggesting_rule": "PositiveNumbersRule()",
               |      "rule_description": "If we see only positive numbers in a column, we suggest a
               | corresponding constraint",
               |      "code_for_constraint": ".isPositive(\"item\")",
-              |      "constraint_result": "Failure"
+              |      "constraint_result_on_test_set": "Unknown"
               |    }
               |  ]
               |}"""
@@ -354,6 +441,20 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
   }
 
   private[this] def evaluate(session: SparkSession)(test: ConstraintSuggestionResult => Unit)
+    : Unit = {
+
+    val data = getDfFull(session)
+
+    val results = ConstraintSuggestionRunner()
+      .onData(data)
+      .addConstraintRules(Rules.DEFAULT)
+      .run()
+
+    test(results)
+  }
+
+  private[this] def evaluateWithTrainTestSplit(session: SparkSession)(
+      test: ConstraintSuggestionResult => Unit)
     : Unit = {
 
     val data = getDfFull(session)

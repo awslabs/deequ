@@ -17,6 +17,7 @@
 package com.amazon.deequ.suggestions
 
 import com.amazon.deequ.VerificationResult
+import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
 
 /**
@@ -49,14 +50,10 @@ object ConstraintSuggestionResult {
   def getEvaluationResultsAsJson(constraintSuggestionResult: ConstraintSuggestionResult)
     : String = {
 
-    if (constraintSuggestionResult.verificationResult.isDefined) {
-      ConstraintSuggestions
-        .evaluationResultsToJson(
-          constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _),
-          constraintSuggestionResult.verificationResult.get
-        )
-    } else {
-      getColumnProfilesAsJson(constraintSuggestionResult)
-    }
+    ConstraintSuggestions
+      .evaluationResultsToJson(
+        constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _),
+        constraintSuggestionResult.verificationResult.getOrElse(
+          VerificationResult(CheckStatus.Warning, Map.empty, Map.empty)))
   }
 }

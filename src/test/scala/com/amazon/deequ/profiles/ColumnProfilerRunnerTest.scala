@@ -32,7 +32,7 @@ class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextS
 
   "Column Profiler runner" should {
 
-    "save and reuse existing results for constraint suggestion runs" in
+    "save and reuse existing results for column profile runs" in
       withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
 
         val df = getDfWithNumericValues(sparkSession)
@@ -60,7 +60,7 @@ class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextS
             (results, stat.jobCount)
           }
 
-        assert(jobNumberAllCalculations == 1)
+        assert(jobNumberAllCalculations == 2)
         assert(jobNumberReusing == 0)
         assertConstraintSuggestionResultsEquals(separateResults, resultsReusingMetrics)
       }

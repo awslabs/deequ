@@ -2,6 +2,7 @@ package com.amazon.deequ.profiles
 
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[profiles] case class ColumnProfilerRunBuilderMetricsRepositoryOptions(
@@ -17,6 +18,7 @@ private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
       saveEvaluationResultsJsonToPath: Option[String],
       overwriteResults: Boolean)
 
+@Experimental
 class ColumnProfilerRunner {
 
   def onData(data: DataFrame): ColumnProfilerRunBuilder = {
@@ -25,7 +27,7 @@ class ColumnProfilerRunner {
 
   private[profiles] def run(
       data: DataFrame,
-      fromColumns: Option[Array[String]],
+      restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       cacheInputs: Boolean,
@@ -40,7 +42,7 @@ class ColumnProfilerRunner {
     val columnProfiles = ColumnProfiler
       .profile(
         data,
-        fromColumns.getOrElse(Array.empty).toSeq,
+        restrictToColumns,
         printStatusUpdates,
         lowCardinalityHistogramThreshold,
         metricsRepositoryOptions.metricsRepository,
