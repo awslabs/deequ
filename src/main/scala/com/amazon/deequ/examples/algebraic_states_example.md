@@ -81,8 +81,7 @@ An [executable version of this example](https://github.com/awslabs/deequ/blob/ma
 
 ## Update metrics on partitioned data
 
-// Assume we store and process our data in a partitioned manner:
-// In this example, we operate on a table of manufacturers partitioned by country code
+In the next application of stateful computation, we process data in a different way. Instead of working on growing data, we assume that we store and update our data in a partitioned manner. In this example, we operate on a table of manufacturers partitioned by country code:
 
 ```scala
 val deManufacturers = ExampleUtils.manufacturersAsDataframe(spark,
@@ -99,19 +98,17 @@ val cnManufacturers = ExampleUtils.manufacturersAsDataframe(spark,
   Manufacturer(7, "ManufacturerH", "CN"))
 ```
 
+And we have the following metrics (defined by a check) that we're interested in for the whole table:
+
 ```scala
-// We are interested in the the following constraints of the table as a whole
 val check = Check(CheckLevel.Warning, "a check")
   .isComplete("name")
   .containsURL("name", _ == 0.0)
   .isContainedIn("countryCode", Array("DE", "US", "CN"))
 ```
-// Deequ now allows us to compute states for the metrics on which the constraints are defined
-// according to the partitions of the data.
 
-// We first compute and store the state per partition
-// Next, we compute the metrics for the whole table from the partition states
-// Note that we do not need to touch the data again, the states are sufficient
+**Deequ** now allows us to compute states for the metrics on which the constraints are defined according to the partitions of the data. We first compute and store the state per partition, and than cheaply compute the metrics for the whole table from the partition states via the `runOnAggregatedStates` method. (Note that we do not need to touch the data again, the states are sufficient).
+
 ```scala
 val analysis = Analysis(check.requiredAnalyzers().toSeq)
 
@@ -135,19 +132,20 @@ tableMetrics.metricMap.foreach { case (analyzer, metric) =>
 }
 ```
 
-// Lets now assume that a single partition changes. We only need to recompute the state of this
-// partition in order to update the metrics for the whole table.
+```
+Completeness(name,None): 1.0
+PatternMatch(name,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.0
+Compliance("countryCode contained in DE,US,CN", countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
+```
+
+Let us now assume that a single partition changes and we need to recompute the metrics for the table as a whole. The advantage provided by the stateful computation is that we only need to recompute the state of the changed partition in order to update the metrics for the whole table. We do not need to touch the other partitions!
 
 ```scala
 val updatedUsManufacturers = ExampleUtils.manufacturersAsDataframe(spark,
   Manufacturer(3, "ManufacturerDNew", "US"),
   Manufacturer(4, null, "US"),
   Manufacturer(5, "ManufacturerFNew http://clickme.com", "US"))
-```
-
-// Recompute state of partition
-// Recompute metrics for whole tables from states. We do not need to touch old data!
-```scala
+  
 val updatedUsStates = InMemoryStateProvider()
 
 AnalysisRunner.run(
@@ -167,3 +165,11 @@ updatedTableMetrics.metricMap.foreach { case (analyzer, metric) =>
   println(s"\t$analyzer: ${metric.value.get}")
 }
 ```
+
+```
+Completeness(name,None): 0.8571428571428571
+PatternMatch(name,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.14285714285714285
+Compliance("countryCode contained in DE,US,CN", countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
+```
+
+An [executable version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/UpdateMetricsOnPartitionedDataExample.scala) is part of our codebase.
