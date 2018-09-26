@@ -55,12 +55,12 @@ class VerificationSuite {
     * Runs all check groups and returns the verification result.
     * Verification result includes all the metrics computed during the run.
     *
-    * @param data Tabular data on which the checks should be verified
+    * @param data tabular data on which the checks should be verified
     * @param checks A sequence of check objects to be executed
-    * @param requiredAnalysis Can be used to enforce the calculation of some some metrics
+    * @param requiredAnalysis can be used to enforce the calculation of some some metrics
     *                         regardless of if there are constraints on them (optional)
-    * @param aggregateWith Loader from which we retrieve an initial states to aggregate (optional)
-    * @param saveStatesWith Persist resulting states for the configured analyzers (optional)
+    * @param aggregateWith loader from which we retrieve an initial states to aggregate (optional)
+    * @param saveStatesWith persist resulting states for the configured analyzers (optional)
     * @return Result for every check including the overall status, detailed status for each
     *         constraints and all metrics produced
     */
@@ -94,7 +94,7 @@ class VerificationSuite {
     * Runs all check groups and returns the verification result.
     * Verification result includes all the metrics computed during the run.
     *
-    * @param data tabular data on which the checks should be verified
+    * @param data             tabular data on which the checks should be verified
     * @param checks           A sequence of check objects to be executed
     * @param requiredAnalyzers can be used to enforce the calculation of some some metrics
     *                          regardless of if there are constraints on them (optional)

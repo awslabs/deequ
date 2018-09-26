@@ -111,8 +111,7 @@ object AnalysisRunner {
       return AnalyzerContext.empty
     }
 
-    val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_],
-      Metric[_]]] }
+    val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
     val resultsComputedPreviously: AnalyzerContext =
@@ -169,14 +168,8 @@ object AnalysisRunner {
       .foreach { case (groupingColumns, analyzersForGrouping) =>
 
         val (numRows, metrics) =
-          runGroupingAnalyzers(
-            data,
-            groupingColumns,
-            analyzersForGrouping,
-            aggregateWith,
-            saveStatesWith,
-            storageLevelOfGroupedDataForMultiplePasses,
-            numRowsOfData)
+          runGroupingAnalyzers(data, groupingColumns, analyzersForGrouping, aggregateWith,
+            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
 
         groupedMetrics = groupedMetrics ++ metrics
 
