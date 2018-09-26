@@ -118,7 +118,7 @@ We are in the process of adding [more examples](src/main/scala/com/amazon/deequ/
 
  * [Storing computed metrics of the data in a MetricsRepository](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/metrics_repository_example.md) and retrieving them again
  * [Incremental metrics computation](src/main/scala/com/amazon/deequ/examples/IncrementalMetricsExample.scala) on growing data
- * [Metric updates](src/main/scala/com/amazon/deequ/examples/UpdateMetricsOnPartitionedDataExample.scala) on partitioned data
+ * [Incremental metrics computation and metric updates on partitioned data](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/algebraic_states_example.md)
  
 ## Advanced features
 
