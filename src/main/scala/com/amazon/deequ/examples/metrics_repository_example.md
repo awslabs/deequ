@@ -122,3 +122,4 @@ repository.load()
 +-------+--------------------+------------+-----+-------------+-----------------+
 ```
 
+We provide an [executable version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/MetricsRepositoryExample.scala) as part of our codebase.
