@@ -116,7 +116,7 @@ The test found that our assumptions are violated! Only 4 out of 5 (80%) of the v
 
 We are in the process of adding [more examples](src/main/scala/com/amazon/deequ/examples/), especially for the advanced features listed below. So far, we showcase the following functionality:
 
- * Storing computed metrics of the data in a [MetricsRepository](src/main/scala/com/amazon/deequ/examples/MetricsRepositoryExample.scala) and retrieving them again
+ * [Storing computed metrics of the data in a MetricsRepository](https://github.com/awslabs/deequ/blob/deequ-27/src/main/scala/com/amazon/deequ/examples/metrics_repository_example.md) and retrieving them again
  * [Incremental metrics computation](src/main/scala/com/amazon/deequ/examples/IncrementalMetricsExample.scala) on growing data
  * [Metric updates](src/main/scala/com/amazon/deequ/examples/UpdateMetricsOnPartitionedDataExample.scala) on partitioned data
  
