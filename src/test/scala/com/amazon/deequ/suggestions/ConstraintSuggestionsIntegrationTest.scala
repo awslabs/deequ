@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
-import java.util.{Random, UUID}
+import scala.util.Random
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.{Analyzer, Completeness, Compliance, DataType, State, Uniqueness}
@@ -47,10 +47,10 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       val categories = Array("DE", "NA", "IN", "EU")
 
       val records = (0 until numRecords)
-        .map { _ =>
+        .map { record =>
 
-          // Unique string id
-          val id = UUID.randomUUID().toString
+          // Unique string id which is not just a number
+          val id = s"id$record"
           // Categorial string value
           val marketplace = categories(rng.nextInt(categories.length))
           // Non-negative fractional
