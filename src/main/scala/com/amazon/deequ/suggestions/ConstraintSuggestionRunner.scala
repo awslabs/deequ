@@ -62,7 +62,7 @@ class ConstraintSuggestionRunner {
   private[suggestions] def run(
       data: DataFrame,
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
-      onlyConsiderColumnSubset: Option[Seq[String]],
+      restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       testsetRatio: Option[Double],
@@ -86,7 +86,7 @@ class ConstraintSuggestionRunner {
     val (columnProfiles, constraintSuggestions) = ConstraintSuggestionRunner().profileAndSuggest(
         trainingData,
         constraintRules,
-        onlyConsiderColumnSubset,
+        restrictToColumns,
         lowCardinalityHistogramThreshold,
         printStatusUpdates,
         metricsRepositoryOptions
@@ -150,7 +150,7 @@ class ConstraintSuggestionRunner {
   private[suggestions] def profileAndSuggest(
       trainingData: DataFrame,
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
-      onlyConsiderColumnSubset: Option[Seq[String]],
+      restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
@@ -161,8 +161,8 @@ class ConstraintSuggestionRunner {
       .printStatusUpdates(printStatusUpdates)
       .withLowCardinalityHistogramThreshold(lowCardinalityHistogramThreshold)
 
-    onlyConsiderColumnSubset.foreach { onlyConsiderColumnSubset =>
-      columnProfilerRunner = columnProfilerRunner.onlyConsiderColumnSubset(onlyConsiderColumnSubset)
+    restrictToColumns.foreach { restrictToColumns =>
+      columnProfilerRunner = columnProfilerRunner.restrictToColumns(restrictToColumns)
     }
 
     metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
@@ -184,7 +184,7 @@ class ConstraintSuggestionRunner {
 
     val profiles = columnProfilerRunner.run()
 
-    val relevantColumns = getRelevantColumns(trainingData.schema, onlyConsiderColumnSubset)
+    val relevantColumns = getRelevantColumns(trainingData.schema, restrictToColumns)
     val suggestions = applyRules(constraintRules, profiles, relevantColumns)
 
     (profiles, suggestions)
@@ -209,12 +209,11 @@ class ConstraintSuggestionRunner {
 
   private[this] def getRelevantColumns(
       schema: StructType,
-      onlyConsiderColumnSubset: Option[Seq[String]])
+      restrictToColumns: Option[Seq[String]])
     : Seq[String] = {
 
     schema.fields
-      .filter { field => onlyConsiderColumnSubset.isEmpty || onlyConsiderColumnSubset.get.contains(
-        field.name) }
+      .filter { field => restrictToColumns.isEmpty || restrictToColumns.get.contains(field.name) }
       .map { field => field.name }
   }
 

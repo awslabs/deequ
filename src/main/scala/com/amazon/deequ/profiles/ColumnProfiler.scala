@@ -71,8 +71,8 @@ object ColumnProfiler {
     * Profile a (potentially very large) dataset
     *
     * @param data dataset as dataframe
-    * @param onlyConsiderColumnSubset  can contain a subset of columns to profile, otherwise
-    *                                  all columns will be considered
+    * @param restrictToColumns  can contain a subset of columns to profile, otherwise
+    *                           all columns will be considered
     * @param lowCardinalityHistogramThreshold the maximum  (estimated) number of distinct values
     *                                         in a column until which we should compute exact
     *                                         histograms for it (defaults to 120)
@@ -80,7 +80,7 @@ object ColumnProfiler {
     */
   private[deequ] def profile(
       data: DataFrame,
-      onlyConsiderColumnSubset: Option[Seq[String]] = None,
+      restrictToColumns: Option[Seq[String]] = None,
       printStatusUpdates: Boolean = false,
       lowCardinalityHistogramThreshold: Int =
         ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD,
@@ -91,14 +91,14 @@ object ColumnProfiler {
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
-    onlyConsiderColumnSubset.foreach { onlyConsiderColumnSubset =>
-      onlyConsiderColumnSubset.foreach { columnName =>
+    restrictToColumns.foreach { restrictToColumns =>
+      restrictToColumns.foreach { columnName =>
         require(data.schema.fieldNames.contains(columnName), s"Unable to find column $columnName")
       }
     }
 
     // Find columns we want to profile
-    val relevantColumns = getRelevantColumns(data.schema, onlyConsiderColumnSubset)
+    val relevantColumns = getRelevantColumns(data.schema, restrictToColumns)
 
     // First pass
     if (printStatusUpdates) {
@@ -189,12 +189,11 @@ object ColumnProfiler {
 
   private[this] def getRelevantColumns(
       schema: StructType,
-      onlyConsiderColumnSubset: Option[Seq[String]])
+      restrictToColumns: Option[Seq[String]])
     : Seq[String] = {
 
     schema.fields
-      .filter { field => onlyConsiderColumnSubset.isEmpty || onlyConsiderColumnSubset.get.contains(
-        field.name) }
+      .filter { field => restrictToColumns.isEmpty || restrictToColumns.get.contains(field.name) }
       .map { field => field.name }
   }
 

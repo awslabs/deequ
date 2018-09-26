@@ -26,7 +26,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int =
     ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
-  protected var onlyConsiderColumnSubset: Option[Seq[String]] = None
+  protected var restrictToColumns: Option[Seq[String]] = None
 
   protected var metricsRepository: Option[MetricsRepository] = None
   protected var reuseExistingResultsKey: Option[ResultKey] = None
@@ -47,7 +47,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     cacheInputs = constraintSuggestionRunBuilder.cacheInputs
     lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
       .lowCardinalityHistogramThreshold
-    onlyConsiderColumnSubset = constraintSuggestionRunBuilder.onlyConsiderColumnSubset
+    restrictToColumns = constraintSuggestionRunBuilder.restrictToColumns
 
     metricsRepository = constraintSuggestionRunBuilder.metricsRepository
     reuseExistingResultsKey = constraintSuggestionRunBuilder.reuseExistingResultsKey
@@ -96,10 +96,10 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param onlyConsiderColumnSubset The columns to look at
+    * @param restrictToColumns The columns to look at
     */
-  def onlyConsiderColumnSubset(onlyConsiderColumnSubset: Seq[String]): this.type = {
-    this.onlyConsiderColumnSubset = Option(onlyConsiderColumnSubset)
+  def restrictToColumns(restrictToColumns: Seq[String]): this.type = {
+    this.restrictToColumns = Option(restrictToColumns)
     this
   }
 
@@ -131,7 +131,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   def run(): ColumnProfiles = {
     ColumnProfilerRunner().run(
       data,
-      onlyConsiderColumnSubset,
+      restrictToColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
       cacheInputs,

@@ -27,7 +27,7 @@ class ColumnProfilerRunner {
 
   private[profiles] def run(
       data: DataFrame,
-      onlyConsiderColumnSubset: Option[Seq[String]],
+      restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       cacheInputs: Boolean,
@@ -42,7 +42,7 @@ class ColumnProfilerRunner {
     val columnProfiles = ColumnProfiler
       .profile(
         data,
-        onlyConsiderColumnSubset,
+        restrictToColumns,
         printStatusUpdates,
         lowCardinalityHistogramThreshold,
         metricsRepositoryOptions.metricsRepository,

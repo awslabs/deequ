@@ -31,7 +31,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int =
     ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
-  protected var onlyConsiderColumnSubset: Option[Seq[String]] = None
+  protected var restrictToColumns: Option[Seq[String]] = None
 
   protected var metricsRepository: Option[MetricsRepository] = None
   protected var reuseExistingResultsKey: Option[ResultKey] = None
@@ -55,7 +55,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     cacheInputs = constraintSuggestionRunBuilder.cacheInputs
     lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
       .lowCardinalityHistogramThreshold
-    onlyConsiderColumnSubset = constraintSuggestionRunBuilder.onlyConsiderColumnSubset
+    restrictToColumns = constraintSuggestionRunBuilder.restrictToColumns
 
     metricsRepository = constraintSuggestionRunBuilder.metricsRepository
     reuseExistingResultsKey = constraintSuggestionRunBuilder.reuseExistingResultsKey
@@ -140,11 +140,11 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param onlyConsiderColumnSubset can contain a subset of columns to profile, otherwise
-    *                                 all columns will be considered
+    * @param restrictToColumns can contain a subset of columns to profile and suggest constraints for,
+    *                          otherwise all columns will be considered
     */
-  def onlyConsiderColumnSubset(onlyConsiderColumnSubset: Seq[String]): this.type = {
-    this.onlyConsiderColumnSubset = Option(onlyConsiderColumnSubset)
+  def restrictToColumns(restrictToColumns: Seq[String]): this.type = {
+    this.restrictToColumns = Option(restrictToColumns)
     this
   }
 
@@ -177,7 +177,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     ConstraintSuggestionRunner().run(
       data,
       constraintRules,
-      onlyConsiderColumnSubset,
+      restrictToColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
       testsetRatio,
