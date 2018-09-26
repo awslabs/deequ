@@ -19,10 +19,11 @@ package com.amazon.deequ.suggestions
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
-import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler, ColumnProfiles}
+import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfilerRunner, ColumnProfiles}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.suggestions.rules._
 import org.apache.spark.annotation.Experimental
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 object Rules {
@@ -61,7 +62,7 @@ class ConstraintSuggestionRunner {
   private[suggestions] def run(
       data: DataFrame,
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
-      fromColumns: Option[Array[String]],
+      restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       testsetRatio: Option[Double],
@@ -75,32 +76,17 @@ class ConstraintSuggestionRunner {
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
     }
 
-    var testData: Option[DataFrame] = None
-
-    val trainingData = if (testsetRatio.isDefined) {
-
-      val trainsetRatio = 1.0 - testsetRatio.get
-      val Array(trainingData, testSplit) = if (testsetSplitRandomSeed.isDefined) {
-        data.randomSplit(Array(trainsetRatio, testsetRatio.get), testsetSplitRandomSeed.get)
-      } else {
-         data.randomSplit(Array(trainsetRatio, testsetRatio.get))
-      }
-      testData = Some(testSplit)
-      trainingData
-    } else {
-      data
-    }
+    val (trainingData, testData) = splitTrainTestSets(data, testsetRatio, testsetSplitRandomSeed)
 
     if (cacheInputs) {
       trainingData.cache()
       testData.foreach { _.cache() }
     }
 
-    val (columnProfiles, constraintSuggestions) = ConstraintSuggestionRunner()
-      .profileAndSuggest(
+    val (columnProfiles, constraintSuggestions) = ConstraintSuggestionRunner().profileAndSuggest(
         trainingData,
         constraintRules,
-        fromColumns,
+        restrictToColumns,
         lowCardinalityHistogramThreshold,
         printStatusUpdates,
         metricsRepositoryOptions
@@ -138,30 +124,68 @@ class ConstraintSuggestionRunner {
     ConstraintSuggestionResult(columnProfiles.profiles, columnsWithSuggestions, verificationResult)
   }
 
+  private[this] def splitTrainTestSets(
+      data: DataFrame,
+      testsetRatio: Option[Double],
+      testsetSplitRandomSeed: Option[Long])
+    : (DataFrame, Option[DataFrame]) = {
+
+    if (testsetRatio.isDefined) {
+
+      val trainsetRatio = 1.0 - testsetRatio.get
+      val Array(trainSplit, testSplit) =
+        if (testsetSplitRandomSeed.isDefined) {
+          data.randomSplit(
+            Array(trainsetRatio, testsetRatio.get),
+            testsetSplitRandomSeed.get)
+        } else {
+          data.randomSplit(Array(trainsetRatio, testsetRatio.get))
+        }
+      (trainSplit, Some(testSplit))
+    } else {
+      (data, None)
+    }
+  }
+
   private[suggestions] def profileAndSuggest(
       trainingData: DataFrame,
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
-      fromColumns: Option[Array[String]],
+      restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
     : (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
-    val interestingColumns = fromColumns.getOrElse(trainingData.schema.fieldNames)
+    var columnProfilerRunner = ColumnProfilerRunner()
+      .onData(trainingData)
+      .printStatusUpdates(printStatusUpdates)
+      .withLowCardinalityHistogramThreshold(lowCardinalityHistogramThreshold)
 
-    val profiles = ColumnProfiler.profile(
-      trainingData,
-      interestingColumns,
-      printStatusUpdates,
-      lowCardinalityHistogramThreshold,
-      metricsRepository = metricsRepositoryOptions.metricsRepository,
-      failIfResultsForReusingMissing = metricsRepositoryOptions.failIfResultsForReusingMissing,
-      reuseExistingResultsUsingKey =
-        metricsRepositoryOptions.reuseExistingResultsKey,
-      saveInMetricsRepositoryUsingKey = metricsRepositoryOptions.saveOrAppendResultsKey
-    )
+    restrictToColumns.foreach { restrictToColumns =>
+      columnProfilerRunner = columnProfilerRunner.restrictToColumns(restrictToColumns)
+    }
 
-    val suggestions = applyRules(constraintRules, profiles, interestingColumns)
+    metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
+      var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)
+
+      metricsRepositoryOptions.reuseExistingResultsKey.foreach { reuseExistingResultsKey =>
+        columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
+          .reuseExistingResultsForKey(reuseExistingResultsKey,
+            metricsRepositoryOptions.failIfResultsForReusingMissing)
+      }
+
+      metricsRepositoryOptions.saveOrAppendResultsKey.foreach { saveOrAppendResultsKey =>
+        columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
+          .saveOrAppendResult(saveOrAppendResultsKey)
+      }
+
+      columnProfilerRunner = columnProfilerRunnerWithRepository
+    }
+
+    val profiles = columnProfilerRunner.run()
+
+    val relevantColumns = getRelevantColumns(trainingData.schema, restrictToColumns)
+    val suggestions = applyRules(constraintRules, profiles, relevantColumns)
 
     (profiles, suggestions)
   }
@@ -169,11 +193,10 @@ class ConstraintSuggestionRunner {
   private[this] def applyRules(
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
       profiles: ColumnProfiles,
-      columns: Array[String])
+      columns: Seq[String])
     : Seq[ConstraintSuggestion] = {
 
     columns
-      .filter { name => profiles.profiles.contains(name) }
       .flatMap { column =>
 
         val profile = profiles.profiles(column)
@@ -182,6 +205,16 @@ class ConstraintSuggestionRunner {
           .filter { _.shouldBeApplied(profile, profiles.numRecords) }
           .map { _.candidate(profile, profiles.numRecords) }
       }
+  }
+
+  private[this] def getRelevantColumns(
+      schema: StructType,
+      restrictToColumns: Option[Seq[String]])
+    : Seq[String] = {
+
+    schema.fields
+      .filter { field => restrictToColumns.isEmpty || restrictToColumns.get.contains(field.name) }
+      .map { field => field.name }
   }
 
   private[this] def saveColumnProfilesJsonToFileSystemIfNecessary(

@@ -49,6 +49,7 @@ case class Analysis(analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty) {
     *                                                   caching)
     * @return
     */
+  @deprecated("Use the AnalysisRunner instead (the onData method there)", "24-09-2019")
   def run(
       data: DataFrame,
       aggregateWith: Option[StateLoader] = None,

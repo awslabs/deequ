@@ -65,20 +65,27 @@ object ConstraintSuggestions {
 
     val constraintResults = result.checkResults
       .map { case (_, checkResult) => checkResult }
-      .head
-      .constraintResults
+      .headOption.map { checkResult =>
+        checkResult.constraintResults
+      }
+      .getOrElse(Seq.empty)
 
     val json = new JsonObject()
 
     val constraintEvaluations = new JsonArray()
 
-    constraintSuggestions.zip(constraintResults)
+    val constraintResultsOnTestSet = constraintResults.map { checkResult =>
+      checkResult.status.toString
+    }
+
+    constraintSuggestions.zipAll(constraintResultsOnTestSet, null, "Unknown")
       .foreach { case (constraintSuggestion, constraintResult) =>
 
         val constraintEvaluation = new JsonObject()
         addSharedProperties(constraintEvaluation, constraintSuggestion)
 
-        constraintEvaluation.addProperty("constraint_result", constraintResult.status.toString)
+        constraintEvaluation.addProperty("constraint_result_on_test_set",
+          constraintResult)
 
         constraintEvaluations.add(constraintEvaluation)
       }
@@ -101,8 +108,7 @@ object ConstraintSuggestions {
     jsonObject.addProperty("column_name", constraintSuggestion.columnName)
     jsonObject.addProperty("current_value", constraintSuggestion.currentValue)
     jsonObject.addProperty("description", constraintSuggestion.description)
-    jsonObject.addProperty("suggesting_rule", constraintSuggestion.suggestingRule
-      .getClass.getSimpleName)
+    jsonObject.addProperty("suggesting_rule", constraintSuggestion.suggestingRule.toString)
     jsonObject.addProperty("rule_description", constraintSuggestion.suggestingRule.ruleDescription)
     jsonObject.addProperty("code_for_constraint", constraintSuggestion.codeForConstraint)
   }

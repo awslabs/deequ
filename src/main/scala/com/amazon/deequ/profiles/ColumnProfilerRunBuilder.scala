@@ -17,7 +17,6 @@
 package com.amazon.deequ.profiles
 
 import com.amazon.deequ.repository._
-import com.amazon.deequ.suggestions.rules.ConstraintRule
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a Constraint Suggestion run using a fluent API */
@@ -27,7 +26,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int =
     ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD
-  protected var fromColumns: Option[Array[String]] = None
+  protected var restrictToColumns: Option[Seq[String]] = None
 
   protected var metricsRepository: Option[MetricsRepository] = None
   protected var reuseExistingResultsKey: Option[ResultKey] = None
@@ -48,7 +47,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     cacheInputs = constraintSuggestionRunBuilder.cacheInputs
     lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
       .lowCardinalityHistogramThreshold
-    fromColumns = constraintSuggestionRunBuilder.fromColumns
+    restrictToColumns = constraintSuggestionRunBuilder.restrictToColumns
 
     metricsRepository = constraintSuggestionRunBuilder.metricsRepository
     reuseExistingResultsKey = constraintSuggestionRunBuilder.reuseExistingResultsKey
@@ -97,10 +96,10 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param fromColumns The columns to look at
+    * @param restrictToColumns The columns to look at
     */
-  def onlyConsiderColumnSubset(fromColumns: Array[String]): this.type = {
-    this.fromColumns = Option(fromColumns)
+  def restrictToColumns(restrictToColumns: Seq[String]): this.type = {
+    this.restrictToColumns = Option(restrictToColumns)
     this
   }
 
@@ -132,7 +131,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   def run(): ColumnProfiles = {
     ColumnProfilerRunner().run(
       data,
-      fromColumns,
+      restrictToColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
       cacheInputs,
