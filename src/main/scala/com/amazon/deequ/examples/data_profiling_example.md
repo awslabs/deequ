@@ -6,6 +6,8 @@ Very often we are faced with large, raw datasets and struggle to make sense of t
 Assume we have raw data that is string typed (such as the data you would get from a CSV file). For the sake of simplicity, we use the following toy data in this example:
 
 ```scala
+case class RawData(name: String, count: String, status: String, valuable: String)
+
 val rows = spark.parallelize(Seq(
   RawData("thingA", "13.0", "IN_TRANSIT", "true"),
   RawData("thingA", "5", "DELAYED", "false"),
@@ -27,7 +29,7 @@ val result = ColumnProfilerRunner()
   .run()
 ```
 
-As a result, we get a profile for each column in the data, which allows to inspect the completeness of the column,
+As a result, we get a profile for each column in the data, which allows us to inspect the completeness of the column,
 the approximate number of distinct values and the inferred datatype:
 
 ```scala
