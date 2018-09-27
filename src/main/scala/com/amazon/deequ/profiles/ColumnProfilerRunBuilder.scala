@@ -138,8 +138,6 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
       ColumnProfilerRunBuilderFileOutputOptions(
         sparkSession,
         saveColumnProfilesJsonPath,
-        saveConstraintSuggestionsJsonPath,
-        saveEvaluationResultsJsonPath,
         overwriteOutputFiles),
       ColumnProfilerRunBuilderMetricsRepositoryOptions(
         metricsRepository,
@@ -202,32 +200,6 @@ class ColumnProfilerRunBuilderWithSparkSession(
     : this.type = {
 
     saveColumnProfilesJsonPath = Option(path)
-    this
-  }
-
-  /**
-    * Save the constraint suggestion json to e.g. S3
-    *
-    * @param path The file path
-    */
-  def saveConstraintSuggestionsJsonToPath(
-      path: String)
-    : this.type = {
-
-    saveConstraintSuggestionsJsonPath = Option(path)
-    this
-  }
-
-  /**
-    * Save the evaluation results json to e.g. S3
-    *
-    * @param path The file path
-    */
-  def saveEvaluationResultsJsonToPath(
-      path: String)
-    : this.type = {
-
-    saveEvaluationResultsJsonPath = Option(path)
     this
   }
 
