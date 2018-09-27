@@ -1,8 +1,12 @@
 # Single column profiling
 
-// We profile raw data, mostly in string format (e.g., from a csv file)
+Very often we are faced with large, raw datasets and struggle to make sense of the data. A common example might that we are given a huge CSV file and want to understand and clean the contained data. **Deequ** supports single-column profiling of such data and its implementation scales to large datasets with billions of rows. In the following, we showcase the basic usage of this profiling functionality:
+
+
+Assume we have raw data that is string typed (such as the data you would get from a CSV file). For the sake of simplicity, we use the following toy data in this example:
+
 ```scala
-val rows = session.sparkContext.parallelize(Seq(
+val rows = spark.parallelize(Seq(
   RawData("thingA", "13.0", "IN_TRANSIT", "true"),
   RawData("thingA", "5", "DELAYED", "false"),
   RawData("thingB", null,  "DELAYED", null),
@@ -16,16 +20,15 @@ val rows = session.sparkContext.parallelize(Seq(
 val rawData = session.createDataFrame(rows)
 ``` 
 
-/* Make deequ profile this data. It will execute the three passes over the data and avoid
-any shuffles. */
+It only takes a single method invocation to make **deequ** profile this data. Note that it will execute the three passes over the data and avoid any shuffles in order to easily scale to large data.
 ```scala
 val result = ColumnProfilerRunner()
   .onData(rawData)
   .run()
 ```
 
-/* We get a profile for each column which allows to inspect the completeness of the column,
-the approximate number of distinct values and the inferred datatype. */
+As a result, we get a profile for each column in the data, which allows to inspect the completeness of the column,
+the approximate number of distinct values and the inferred datatype:
 
 ```scala
 result.profiles.foreach { case (name, profile) =>
@@ -36,30 +39,9 @@ result.profiles.foreach { case (name, profile) =>
 }
 ```
 
-/* For numeric columns, we get descriptive statistics */
-```scala
-val countProfile = result.profiles("count").asInstanceOf[NumericColumnProfile]
+In case of our toy data, we would get the following profiling results. Note that **deequ** detected that `count` is a fractional column (and could be casted to float or double type) and that `valuable` is a boolean column. 
 
-println(s"Statistics of 'count':\n" +
-  s"\tminimum: ${countProfile.minimum.get}\n" +
-  s"\tmaximum: ${countProfile.maximum.get}\n" +
-  s"\tmean: ${countProfile.mean.get}\n" +
-  s"\tstandard deviation: ${countProfile.stdDev.get}\n")
 ```
-
-```scala
-val statusProfile = result.profiles("status")
-
-/* For columns with a low number of distinct values, we get the full value distribution. */
-```scala
-println("Value distribution in 'stats':")
-statusProfile.histogram.foreach {
-  _.values.foreach { case (key, entry) =>
-    println(s"\t$key occurred ${entry.absolute} times (ratio is ${entry.ratio})")
-  }
-}
-```
-
 Column 'name':
  	completeness: 1.0
 	approximate number of distinct values: 5
@@ -79,14 +61,45 @@ Column 'valuable':
  	completeness: 0.625
 	approximate number of distinct values: 2
 	datatype: Boolean
+```
 
+For numeric columns, we get an extended profile which also contains descriptive statistics:
+```scala
+val countProfile = result.profiles("count").asInstanceOf[NumericColumnProfile]
+
+println(s"Statistics of 'count':\n" +
+  s"\tminimum: ${countProfile.minimum.get}\n" +
+  s"\tmaximum: ${countProfile.maximum.get}\n" +
+  s"\tmean: ${countProfile.mean.get}\n" +
+  s"\tstandard deviation: ${countProfile.stdDev.get}\n")
+```
+
+For the `count` column we can inspect its minimum, maximum, mean and standard deviation:
+```
 Statistics of 'count':
 	minimum: 1.0
 	maximum: 20.0
 	mean: 8.25
 	standard deviation: 7.280109889280518
+```
 
-Value distribution in 'stats':
+For columns with a low number of distinct values, we collect the full value distribution.
+```scala
+val statusProfile = result.profiles("status")
+
+println("Value distribution in 'status':")
+statusProfile.histogram.foreach {
+  _.values.foreach { case (key, entry) =>
+    println(s"\t$key occurred ${entry.absolute} times (ratio is ${entry.ratio})")
+  }
+}
+```
+Here are accurate statistics about the values in the `status` column:
+```
+Value distribution in 'status':
 	IN_TRANSIT occurred 2 times (ratio is 0.25)
 	UNKNOWN occurred 2 times (ratio is 0.25)
 	DELAYED occurred 4 times (ratio is 0.5)
+```
+
+An [executable version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/DataProfilingExample.scala) is part of our code base.
