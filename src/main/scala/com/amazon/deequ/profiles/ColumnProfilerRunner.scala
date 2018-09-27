@@ -14,8 +14,6 @@ private[profiles] case class ColumnProfilerRunBuilderMetricsRepositoryOptions(
 private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
       session: Option[SparkSession],
       saveColumnProfilesJsonToPath: Option[String],
-      saveConstraintSuggestionsJsonToPath: Option[String],
-      saveEvaluationResultsJsonToPath: Option[String],
       overwriteResults: Boolean)
 
 @Experimental
