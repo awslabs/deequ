@@ -117,14 +117,14 @@ The test found that our assumptions are violated! Only 4 out of 5 (80%) of the v
 We are in the process of adding [more examples](src/main/scala/com/amazon/deequ/examples/), especially for the advanced features listed below. So far, we showcase the following functionality:
 
  * [Storing computed metrics of the data in a MetricsRepository](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/metrics_repository_example.md) and retrieving them again
- * [Incremental metrics computation on growing data and metric updates on partitioned data](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/algebraic_states_example.md)
+ * [Data profiling](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/data_profiling_example.md) of large data sets
+ * [Incremental metrics computation on growing data and metric updates on partitioned data](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/algebraic_states_example.md) (advanced)
  
 ## Advanced features
 
 Our library contains much more than what we showed in the basic example. We will add examples for the following advanced features soon:
  
  * [Anomaly detection](src/main/scala/com/amazon/deequ/anomalydetection)
- * Single-column [data profiling](https://github.com/awslabs/deequ/tree/master/src/main/scala/com/amazon/deequ/profiles)
  * Automatic [suggestion of constraints](https://github.com/awslabs/deequ/tree/master/src/main/scala/com/amazon/deequ/suggestions)
 
 ## Citation
