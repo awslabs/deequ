@@ -24,6 +24,7 @@ import com.amazon.deequ.analyzers.ApproxCountDistinctState
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.catalyst.expressions.aggregate.HLLConstants._
 
 /** Adjusted version of org.apache.spark.sql.catalyst.expressions.aggregate.HyperloglogPlus */
 private[sql] case class StatefulHyperloglogPlus(
@@ -31,7 +32,7 @@ private[sql] case class StatefulHyperloglogPlus(
     mutableAggBufferOffset: Int = 0,
     inputAggBufferOffset: Int = 0)
   extends ImperativeAggregate {
-  import HyperLogLogPlusPlus._
+
   import HyperLogLogPlusPlusUtils._
 
   def this(child: Expression) = {
@@ -192,10 +193,10 @@ object HyperLogLogPlusPlusUtils {
       val word2 = words2(wordOffset)
       var word = 0L
       var i = 0
-      var mask = HyperLogLogPlusPlus.REGISTER_WORD_MASK
-      while (idx < M && i < HyperLogLogPlusPlus.REGISTERS_PER_WORD) {
+      var mask = REGISTER_WORD_MASK
+      while (idx < M && i < REGISTERS_PER_WORD) {
         word |= Math.max(word1 & mask, word2 & mask)
-        mask <<= HyperLogLogPlusPlus.REGISTER_SIZE
+        mask <<= REGISTER_SIZE
         i += 1
         idx += 1
       }
@@ -215,13 +216,13 @@ object HyperLogLogPlusPlusUtils {
       val word = words(wordOffset)
       var i = 0
       var shift = 0
-      while (idx < M && i < HyperLogLogPlusPlus.REGISTERS_PER_WORD) {
-        val Midx = (word >>> shift) & HyperLogLogPlusPlus.REGISTER_WORD_MASK
+      while (idx < M && i < REGISTERS_PER_WORD) {
+        val Midx = (word >>> shift) & REGISTER_WORD_MASK
         zInverse += 1.0 / (1 << Midx)
         if (Midx == 0) {
           V += 1.0d
         }
-        shift += HyperLogLogPlusPlus.REGISTER_SIZE
+        shift += REGISTER_SIZE
         i += 1
         idx += 1
       }
@@ -241,7 +242,7 @@ object HyperLogLogPlusPlusUtils {
     val estimate = if (V > 0) {
       // Use linear counting for small cardinality estimates.
       val H = M * Math.log(M / V)
-      if (H <= HyperLogLogPlusPlus.THRESHOLDS(P - 4)) {
+      if (H <= THRESHOLDS(P - 4)) {
         H
       } else {
         EBiasCorrected
@@ -255,7 +256,7 @@ object HyperLogLogPlusPlusUtils {
   }
 
   def estimateBias(e: Double): Double = {
-    val estimates = HyperLogLogPlusPlus.RAW_ESTIMATE_DATA(P - 4)
+    val estimates = RAW_ESTIMATE_DATA(P - 4)
     val numEstimates = estimates.length
 
     // The estimates are sorted so we can use a binary search to find the index of the
@@ -274,15 +275,15 @@ object HyperLogLogPlusPlusUtils {
 
     // Keep moving bounds as long as the (exclusive) high bound is closer to the estimate than
     // the lower (inclusive) bound.
-    var low = math.max(nearestEstimateIndex - HyperLogLogPlusPlus.K + 1, 0)
-    var high = math.min(low + HyperLogLogPlusPlus.K, numEstimates)
+    var low = math.max(nearestEstimateIndex - K + 1, 0)
+    var high = math.min(low + K, numEstimates)
     while (high < numEstimates && distance(high) < distance(low)) {
       low += 1
       high += 1
     }
 
     // Calculate the sum of the biases in low-high interval.
-    val biases = HyperLogLogPlusPlus.BIAS_DATA(P - 4)
+    val biases = BIAS_DATA(P - 4)
     var i = low
     var biasSum = 0.0
     while (i < high) {

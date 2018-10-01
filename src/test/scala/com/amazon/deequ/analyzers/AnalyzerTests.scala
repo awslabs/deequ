@@ -475,10 +475,6 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val df = getDfWithUniqueColumns(sparkSession)
       val result = ApproxCountDistinct("uniqueWithNulls").calculate(df).value
 
-      if (result.isFailure) {
-        result.failed.get.printStackTrace()
-      }
-
       result shouldBe Success(5.0)
     }
 
