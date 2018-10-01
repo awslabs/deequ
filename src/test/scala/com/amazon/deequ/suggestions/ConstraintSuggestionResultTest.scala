@@ -17,6 +17,7 @@
 package com.amazon.deequ.suggestions
 
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.FixtureSupport
 import com.google.gson.JsonParser
 import org.apache.spark.sql.SparkSession
@@ -240,17 +241,6 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "code_for_constraint": ".isComplete(\"item\")"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
-              |      "column_name": "item",
-              |      "current_value": "ApproxDistinctness: 1.0",
-              |      "description": "'item' is unique",
-              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
-              |      "rule_description": "If the ratio of approximate num distinct values in a
-              | column is close to the number of records (within the error of the HLL sketch),
-              | we suggest a UNIQUE constraint",
-              |      "code_for_constraint": ".isUnique(\"item\")"
-              |    },
-              |    {
               |      "constraint_name": "AnalysisBasedConstraint(DataType(item,None),
               |\u003cfunction1\u003e,Some(\u003cfunction1\u003e),None)",
               |      "column_name": "item",
@@ -272,6 +262,17 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "rule_description": "If we see only positive numbers in a column, we suggest
               | a corresponding constraint",
               |      "code_for_constraint": ".isPositive(\"item\")"
+              |    },
+              |    {
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "column_name": "item",
+              |      "current_value": "ApproxDistinctness: 1.0",
+              |      "description": "'item' is unique",
+              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
+              |      "rule_description": "If the ratio of approximate num distinct values in a
+              | column is close to the number of records (within the error of the HLL sketch),
+              | we suggest a UNIQUE constraint",
+              |      "code_for_constraint": ".isUnique(\"item\")"
               |    }
               |  ]
               |}"""
@@ -325,18 +326,6 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
-              |      "column_name": "item",
-              |      "current_value": "ApproxDistinctness: 1.0",
-              |      "description": "\u0027item\u0027 is unique",
-              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
-              |      "rule_description": "If the ratio of approximate num distinct values in a
-              | column is close to the number of records (within the error of the HLL sketch),
-              | we suggest a UNIQUE constraint",
-              |      "code_for_constraint": ".isUnique(\"item\")",
-              |      "constraint_result_on_test_set": "Failure"
-              |    },
-              |    {
               |      "constraint_name": "AnalysisBasedConstraint(DataType(item,None),
               |\u003cfunction1\u003e,Some(\u003cfunction1\u003e),None)",
               |      "column_name": "item",
@@ -359,6 +348,18 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "rule_description": "If we see only positive numbers in a column, we suggest a
               | corresponding constraint",
               |      "code_for_constraint": ".isPositive(\"item\")",
+              |      "constraint_result_on_test_set": "Failure"
+              |    },
+              |    {
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "column_name": "item",
+              |      "current_value": "ApproxDistinctness: 1.0",
+              |      "description": "\u0027item\u0027 is unique",
+              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
+              |      "rule_description": "If the ratio of approximate num distinct values in a
+              | column is close to the number of records (within the error of the HLL sketch),
+              | we suggest a UNIQUE constraint",
+              |      "code_for_constraint": ".isUnique(\"item\")",
               |      "constraint_result_on_test_set": "Failure"
               |    }
               |  ]
@@ -412,18 +413,6 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
-              |      "column_name": "item",
-              |      "current_value": "ApproxDistinctness: 1.0",
-              |      "description": "\u0027item\u0027 is unique",
-              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
-              |      "rule_description": "If the ratio of approximate num distinct values in a
-              | column is close to the number of records (within the error of the HLL sketch),
-              | we suggest a UNIQUE constraint",
-              |      "code_for_constraint": ".isUnique(\"item\")",
-              |      "constraint_result_on_test_set": "Unknown"
-              |    },
-              |    {
               |      "constraint_name": "AnalysisBasedConstraint(DataType(item,None),
               |\u003cfunction1\u003e,Some(\u003cfunction1\u003e),None)",
               |      "column_name": "item",
@@ -447,6 +436,18 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               | corresponding constraint",
               |      "code_for_constraint": ".isPositive(\"item\")",
               |      "constraint_result_on_test_set": "Unknown"
+              |    },
+              |    {
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "column_name": "item",
+              |      "current_value": "ApproxDistinctness: 1.0",
+              |      "description": "\u0027item\u0027 is unique",
+              |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
+              |      "rule_description": "If the ratio of approximate num distinct values in a
+              | column is close to the number of records (within the error of the HLL sketch),
+              | we suggest a UNIQUE constraint",
+              |      "code_for_constraint": ".isUnique(\"item\")",
+              |      "constraint_result_on_test_set": "Unknown"
               |    }
               |  ]
               |}"""
@@ -465,6 +466,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
     val results = ConstraintSuggestionRunner()
       .onData(data)
       .addConstraintRules(Rules.DEFAULT)
+      .addConstraintRule(UniqueIfApproximatelyUniqueRule())
       .run()
 
     test(results)
@@ -479,6 +481,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
     val results = ConstraintSuggestionRunner()
       .onData(data)
       .addConstraintRules(Rules.DEFAULT)
+      .addConstraintRule(UniqueIfApproximatelyUniqueRule())
       .useTrainTestSplitWithTestsetRatio(0.1, Some(0))
       .run()
 

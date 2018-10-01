@@ -21,7 +21,7 @@ __Maven__
 
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.0-rc0"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.0-rc1"
 ```
 
 ## Example

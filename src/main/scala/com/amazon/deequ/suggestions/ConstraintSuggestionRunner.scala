@@ -29,8 +29,8 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 object Rules {
 
   val DEFAULT: Seq[ConstraintRule[ColumnProfile]] =
-    Seq(CompleteIfCompleteRule(), RetainCompletenessRule(), UniqueIfApproximatelyUniqueRule(),
-      RetainTypeRule(), CategoricalRangeRule(), FractionalCategoricalRangeRule(),
+    Seq(CompleteIfCompleteRule(), RetainCompletenessRule(), RetainTypeRule(),
+      CategoricalRangeRule(), FractionalCategoricalRangeRule(),
       NonNegativeNumbersRule(), PositiveNumbersRule())
 }
 

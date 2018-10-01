@@ -16,13 +16,12 @@
 
 package com.amazon.deequ.suggestions
 
-import java.util.UUID
-
 import scala.util.Random
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.{Analyzer, Completeness, Compliance, DataType, State, Uniqueness}
 import com.amazon.deequ.constraints.{AnalysisBasedConstraint, Constraint, ConstraintDecorator}
 import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import org.scalatest.WordSpec
 
 case class Record(
@@ -75,6 +74,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       val constraintSuggestionResult = ConstraintSuggestionRunner()
         .onData(data)
         .addConstraintRules(Rules.DEFAULT)
+        .addConstraintRule(UniqueIfApproximatelyUniqueRule())
         .run()
 
       val columnProfiles = constraintSuggestionResult.columnProfiles.values
