@@ -25,7 +25,7 @@ private[examples] object DataProfilingExample extends App {
 
   withSpark { session =>
 
-    // We profile raw data, mostly in string format (e.g., from a csv file)
+    /* We profile raw data, mostly in string format (e.g., from a csv file) */
     val rows = session.sparkContext.parallelize(Seq(
       RawData("thingA", "13.0", "IN_TRANSIT", "true"),
       RawData("thingA", "5", "DELAYED", "false"),

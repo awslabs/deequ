@@ -27,6 +27,7 @@ class ExamplesTest extends WordSpec {
       MetricsRepositoryExample.main(Array.empty)
       UpdateMetricsOnPartitionedDataExample.main(Array.empty)
       DataProfilingExample.main(Array.empty)
+      AnomalyDetectionExample.main(Array.empty)
     }
   }
 
