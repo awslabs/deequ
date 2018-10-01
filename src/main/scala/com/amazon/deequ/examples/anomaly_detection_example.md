@@ -9,14 +9,14 @@ Anomaly detection operates on metrics stored in a metrics repository, so lets cr
 val metricsRepository = new InMemoryMetricsRepository()
 ```
 
-This is our fictitious data from yesterday, which only has only two rows. 
+This is our fictious data from yesterday which only has only two rows. 
 ```scala
 val yesterdaysDataset = itemsAsDataframe(session,
   Item(1, "Thingy A", "awesome thing.", "high", 0),
   Item(2, "Thingy B", "available at http://thingb.com", null, 0))   
 ```
 
-We test for anomalies in the size of the data, it should not increase by more than 2x. We define a check for this by using the [RateOfChangeStrategy](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/anomalydetection/RateOfChangeStrategy.scala) for detecting anomalies. Note that we store the resulting metrics in our repository via `useRepository` and `saveOrAppendResult` under a result key `yesterdaysKey` with yesterdays timestamp.
+We test for anomalies in the size of the data, and want to enforce that it should not increase by more than 2x. We define a check for this by using the [RateOfChangeStrategy](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/anomalydetection/RateOfChangeStrategy.scala) for detecting anomalies. Note that we store the resulting metrics in our repository via `useRepository` and `saveOrAppendResult` under a result key `yesterdaysKey` with yesterdays timestamp.
 ```scala
 val yesterdaysKey = ResultKey(System.currentTimeMillis() - 24 * 60 * 1000) 
 
@@ -30,7 +30,7 @@ VerificationSuite()
   .run()
 ```  
 
-The fictitions data of todays has five rows, so the data size more than doubled and our anomaly check should
+The fictious data of today has five rows, so the data size more than doubled and our anomaly check should
 catch this.
 ```scala
 val todaysDataset = itemsAsDataframe(session,
@@ -77,4 +77,4 @@ We see that the following metrics are stored in the repository, which shows us t
 +-------+--------+----+-----+-------------+
 ```
 
-Executable, more strategies available, easy to implement your own or connect it to existing libraries
+An [executable version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/AnomalyDetectionExample.scala) is available as part of our code base. We also provide more [anomaly detection strategies](https://github.com/awslabs/deequ/tree/master/src/main/scala/com/amazon/deequ/anomalydetection).
