@@ -21,6 +21,7 @@ import java.lang.{Long => JLong}
 import java.nio.ByteBuffer
 
 import com.amazon.deequ.analyzers.ApproxCountDistinctState
+import com.amazon.deequ.analyzers.catalyst.AttributeReferenceCreation
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types._
@@ -63,7 +64,7 @@ private[sql] case class StatefulHyperloglogPlus(
 
   /** Allocate enough words to store all registers. */
   override val aggBufferAttributes: Seq[AttributeReference] = Seq.tabulate(NUM_WORDS) { i =>
-    AttributeReference(s"MS[$i]", LongType)()
+    AttributeReferenceCreation.createSafe(s"MS[$i]")
   }
   // Note: although this simply copies aggBufferAttributes, this common code can not be placed
   // in the superclass because that will lead to initialization ordering issues.

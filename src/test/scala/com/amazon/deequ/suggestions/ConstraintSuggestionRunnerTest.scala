@@ -24,8 +24,10 @@ import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
+import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.scalatest.{Matchers, WordSpec}
+
 import scala.util.Try
 
 class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkContextSpec
@@ -41,23 +43,34 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
 
-        ConstraintSuggestionRunner().onData(df).addConstraintRules(Rules.DEFAULT)
+        ConstraintSuggestionRunner()
+          .onData(df)
+          .addConstraintRules(Rules.DEFAULT)
+          .addConstraintRule(UniqueIfApproximatelyUniqueRule())
           .useRepository(repository)
           .saveOrAppendResult(resultKey)
           .run()
 
         val (separateResults: ConstraintSuggestionResult, jobNumberAllCalculations) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ConstraintSuggestionRunner().onData(df)
-              .addConstraintRules(Rules.DEFAULT).run()
+            val results = ConstraintSuggestionRunner()
+              .onData(df)
+              .addConstraintRules(Rules.DEFAULT)
+              .addConstraintRule(UniqueIfApproximatelyUniqueRule())
+              .run()
 
             (results, stat.jobCount)
           }
 
         val (resultsReusingMetrics: ConstraintSuggestionResult, jobNumberReusing) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ConstraintSuggestionRunner().onData(df).useRepository(repository)
-              .reuseExistingResultsForKey(resultKey).addConstraintRules(Rules.DEFAULT).run()
+            val results = ConstraintSuggestionRunner()
+              .onData(df)
+              .useRepository(repository)
+              .reuseExistingResultsForKey(resultKey)
+              .addConstraintRules(Rules.DEFAULT)
+              .addConstraintRule(UniqueIfApproximatelyUniqueRule())
+              .run()
 
             (results, stat.jobCount)
           }
@@ -77,8 +90,13 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        ConstraintSuggestionRunner().onData(df).useRepository(repository)
-          .addConstraintRules(Rules.DEFAULT).saveOrAppendResult(resultKey).run()
+        ConstraintSuggestionRunner()
+          .onData(df)
+          .useRepository(repository)
+          .addConstraintRules(Rules.DEFAULT)
+          .addConstraintRule(UniqueIfApproximatelyUniqueRule())
+          .saveOrAppendResult(resultKey)
+          .run()
 
         val analyzerContext = AnalysisRunner.onData(df).addAnalyzers(analyzers).run()
 
@@ -136,8 +154,11 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
       repository.save(resultKey, resultWhichShouldBeOverwritten)
 
       // This should overwrite the previous Size value
-      ConstraintSuggestionRunner().onData(df).useRepository(repository)
-        .saveOrAppendResult(resultKey).run()
+      ConstraintSuggestionRunner()
+        .onData(df)
+        .useRepository(repository)
+        .saveOrAppendResult(resultKey)
+        .run()
 
       assert(expectedAnalyzerContextOnLoadByKey.metricMap.size == 2)
       assert(expectedAnalyzerContextOnLoadByKey.metricMap.toSet
