@@ -49,7 +49,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       val records = (0 until numRecords)
         .map { record =>
 
-          // Unique string id which is not just a number
+          // Unique string id
           val id = s"id$record"
           // Categorial string value
           val marketplace = categories(rng.nextInt(categories.length))
