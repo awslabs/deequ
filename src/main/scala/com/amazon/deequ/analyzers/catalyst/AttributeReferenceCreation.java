@@ -34,8 +34,8 @@ public class AttributeReferenceCreation {
     /**
         Allows us to invoke the apply method on
         org.apache.spark.sql.catalyst.expressions.AttributeReference which has a non-compatible
-        signature in Spark 2.x. Therefore we need to invoke it via reflection depending on which
-        version of Spark we run.
+        signature in different versions of Spark 2.x. Therefore we need to invoke it via reflection
+        depending on which version of Spark we run.
 
         SPARK 2.3:
 
@@ -71,18 +71,24 @@ public class AttributeReferenceCreation {
                 }
             }
 
-            LongType longType = LongType$.MODULE$.asNullable();
+            if (apply == null) {
+                throw new IllegalStateException("Unable to find apply method!");
+            }
+
+            LongType dataType = LongType$.MODULE$.asNullable();
             Metadata emptyMetadata = Metadata$.MODULE$.empty();
             scala.Option none = scala.Option.apply(null);
             ExprId exprId = NamedExpression$.MODULE$.newExprId();
 
-            Object singleton = AttributeReference$.MODULE$;
+            Object companion = AttributeReference$.MODULE$;
 
             if (apply.getParameterCount() == 7) {
-                return (AttributeReference) apply.invoke(singleton, name, longType, true,
+                // Spark 2.2
+                return (AttributeReference) apply.invoke(companion, name, dataType, true,
                         emptyMetadata, exprId, none, false);
             } else {
-                return (AttributeReference) apply.invoke(singleton, name, longType, true,
+                // Spark 2.3
+                return (AttributeReference) apply.invoke(companion, name, dataType, true,
                         emptyMetadata, exprId, none);
             }
         } catch (Exception e) {
