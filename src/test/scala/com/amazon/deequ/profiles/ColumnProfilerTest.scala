@@ -170,6 +170,22 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
       assert(actualColumnProfile == expectedColumnProfile)
     }
+
+    "return histograms for boolean columns" in withSparkSession { session =>
+
+      val data = getDfWithBooleanValues(session)
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles("att2")
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("true").absolute == 3L)
+      assert(histogram("true").ratio == 0.5)
+      assert(histogram("false").absolute == 3L)
+      assert(histogram("true").ratio == 0.5)
+    }
   }
 
 }

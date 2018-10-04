@@ -143,6 +143,18 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
+  def getDfWithBooleanValues(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+    Seq(
+      ("1", 1.0, true),
+      ("2", 2.0, false),
+      ("3", 3.0, false),
+      ("4", 4.0, true),
+      ("5", 5.0, true),
+      ("6", 6.0, false)
+    ).toDF("item", "att1", "att2")
+  }
+
   def getDfWithUniqueColumns(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
