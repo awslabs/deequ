@@ -484,9 +484,9 @@ object ColumnProfiler {
     NumericColumnStatistics(means, stdDevs, minima, maxima, sums, approxPercentiles)
   }
 
-  /* Identifies all string columns, which:
+  /* Identifies all columns, which:
    *
-   * (1) have not been detected as a particular type
+   * (1) have type string or boolean
    * (2) have less than `lowCardinalityHistogramThreshold` approximate distinct values
    */
   private[this] def findTargetColumnsForHistograms(
@@ -495,13 +495,21 @@ object ColumnProfiler {
       lowCardinalityHistogramThreshold: Long)
     : Seq[String] = {
 
-    val originalStringColumns = schema
-      .flatMap { field => if (field.dataType == StringType) Some(field.name) else None }
+    val originalStringOrBooleanColumns = schema
+      .flatMap { field =>
+        if (field.dataType == StringType || field.dataType == BooleanType) {
+          Some(field.name)
+        } else {
+          None
+        }
+      }
       .toSet
 
     genericStatistics.approximateNumDistincts
-      .filter { case (column, _) => originalStringColumns.contains(column) }
-      .filter { case (column, _) => genericStatistics.typeOf(column) == String }
+      .filter { case (column, _) => originalStringOrBooleanColumns.contains(column) }
+      .filter { case (column, _) =>
+        genericStatistics.typeOf(column) == String || genericStatistics.typeOf(column) == Boolean
+      }
       .filter { case (_, count) => count <= lowCardinalityHistogramThreshold }
       .map { case (column, _) => column }
       .toSeq
@@ -530,7 +538,7 @@ object ColumnProfiler {
           val valueInColumn = if (row.isNullAt(index)) {
             Histogram.NullFieldReplacement
           } else {
-            row.getString(index)
+            row.get(index).toString
           }
 
           (column -> valueInColumn, 1)

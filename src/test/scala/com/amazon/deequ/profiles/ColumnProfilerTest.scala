@@ -20,6 +20,8 @@ import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.metrics.{Distribution, DistributionValue}
 import com.amazon.deequ.utils.FixtureSupport
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.BooleanType
 import org.scalatest.{Matchers, WordSpec}
 
 class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
@@ -155,7 +157,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         2.0 / 3.0,
         2,
         DataTypeInstances.String,
-        true,
+        isDataTypeInferred = true,
         Map(
           "Boolean" -> 0,
           "Fractional" -> 0,
@@ -169,6 +171,35 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           "NullValue" -> DistributionValue(2, 0.3333333333333333)), 3)))
 
       assert(actualColumnProfile == expectedColumnProfile)
+    }
+
+    "return histograms for boolean columns" in withSparkSession { session =>
+      val attribute = "attribute"
+      val nRows = 6
+      val data = com.amazon.deequ.dataFrameWithColumn(
+        attribute,
+        BooleanType,
+        session,
+        Row(true),
+        Row(true),
+        Row(true),
+        Row(false),
+        Row(false),
+        Row(null)
+      )
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("true").absolute == 3L)
+      assert(histogram("true").ratio == 3.0 / nRows)
+      assert(histogram("false").absolute == 2L)
+      assert(histogram("false").ratio == 2.0 / nRows)
+      assert(histogram("NullValue").absolute == 1)
+      assert(histogram("NullValue").ratio == 1.0 / nRows)
     }
   }
 
