@@ -195,11 +195,11 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       val histogram = actualColumnProfile.histogram.get
 
       assert(histogram("true").absolute == 3L)
-      assert(histogram("true").ratio == 3.0/nRows)
+      assert(histogram("true").ratio == 3.0 / nRows)
       assert(histogram("false").absolute == 2L)
-      assert(histogram("false").ratio == 2.0/nRows)
+      assert(histogram("false").ratio == 2.0 / nRows)
       assert(histogram("NullValue").absolute == 1)
-      assert(histogram("NullValue").ratio == 1.0/nRows)
+      assert(histogram("NullValue").ratio == 1.0 / nRows)
     }
   }
 
