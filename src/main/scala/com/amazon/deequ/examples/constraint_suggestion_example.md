@@ -48,12 +48,12 @@ The corresponding scala code is .hasCompleteness("valuable", _ >= 0.38, Some("It
 
 Constraint suggestion for 'valuable': 'valuable' has type Boolean
 The corresponding scala code is .hasDataType("valuable", ConstrainableDataTypes.Boolean)
+```
 
+```
 Constraint suggestion for 'count': 'count' has less than 47% missing values
 The corresponding scala code is .hasCompleteness("count", _ >= 0.53, Some("It should be above 0.53!"))
-```
 
-```
 Constraint suggestion for 'count': 'count' has type Fractional
 The corresponding scala code is .hasDataType("count", ConstrainableDataTypes.Fractional)
 
