@@ -2,3 +2,5 @@
 *.iml
 **/*.iml
 target/
+bachelor-project/usda.sql
+**/jdbc.properties
