@@ -1,4 +1,6 @@
 .idea/
 *.iml
 **/*.iml
-target/.travis/public-signing-key.gpg
+target/
+bachelor-project/usda.sql
+**/jdbc.properties

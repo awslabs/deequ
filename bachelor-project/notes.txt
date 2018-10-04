@@ -1,0 +1,5 @@
+(1) install postgres
+(2) create database food
+(3) download https://raw.githubusercontent.com/morenoh149/postgresDBSamples/master/usda-r18-1.0/usda.sql
+(4) import using sudo -u postgres psql food < usda.sql
+(5) create a file jdbc.properties from the template in src/main/resources
