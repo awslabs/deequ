@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.{Connection, ResultSet}
+import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
@@ -31,11 +31,10 @@ case class JdbcCompleteness(column: String)
     val connection = table.jdbcConnection
 
     //TODO Query parameters must be validated to avoid SQL injection
-
     val query =
       s"""
         |SELECT
-        | SUM(CASE WHEN ${column} IS NULL THEN 0 ELSE 1 END) AS num_matches,
+        | SUM(CASE WHEN $column IS NULL THEN 0 ELSE 1 END) AS num_matches,
         | COUNT(*) AS num_rows
         |FROM
         | ${table.name}
@@ -46,8 +45,10 @@ case class JdbcCompleteness(column: String)
 
     val result = statement.executeQuery()
 
+    // TODO Handle potential errors
     result.next()
 
+    // TODO handle nulls in the result
     Some(NumMatchesAndCount(result.getLong("num_matches"), result.getLong("num_rows")))
   }
 
@@ -56,8 +57,8 @@ case class JdbcCompleteness(column: String)
       case Some(theState) =>
         metricFromValue(theState.metricValue(), "Completeness", column, Entity.Column)
       case _ =>
-        toFailureMetric(new EmptyStateException(s"Empty state for analyzer JdbcCompleteness, " +
-          s"all input values were NULL."))
+        toFailureMetric(new EmptyStateException(
+          s"Empty state for analyzer JdbcCompleteness, all input values were NULL."))
     }
   }
 

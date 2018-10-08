@@ -31,7 +31,6 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
     try {
       val state = computeStateFrom(table)
       computeMetricFrom(state)
-
     } catch {
       case error: Exception => toFailureMetric(error)
     }
