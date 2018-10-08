@@ -22,9 +22,9 @@ object CompletenessWithJdbc extends App {
 
   withJdbc { connection =>
 
-    val table = Table("food_des")
+    val table = Table("food_des", connection)
 
-    val completenessOfFatFactor = JdbcCompleteness(connection, "fat_factor").calculate(table)
+    val completenessOfFatFactor = JdbcCompleteness("fat_factor").calculate(table)
 
     println(completenessOfFatFactor)
 

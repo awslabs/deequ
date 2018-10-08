@@ -23,10 +23,12 @@ import com.amazon.deequ.analyzers.NumMatchesAndCount
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 
-case class JdbcCompleteness(connection: Connection, column: String)
+case class JdbcCompleteness(column: String)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
+
+    val connection = table.jdbcConnection
 
     //TODO Query parameters must be validated to avoid SQL injection
 

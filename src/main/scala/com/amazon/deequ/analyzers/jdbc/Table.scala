@@ -16,6 +16,9 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
+import java.sql.Connection
+
 case class Table(
-  name: String
+  name: String,
+  jdbcConnection: Connection
 )
