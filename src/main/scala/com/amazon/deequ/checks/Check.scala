@@ -672,7 +672,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$column >= 0", s"$column is Fnon-negative", hint = hint)
+    satisfies(s"$column >= 0", s"$column is non-negative", hint = hint)
   }
 
   /**
