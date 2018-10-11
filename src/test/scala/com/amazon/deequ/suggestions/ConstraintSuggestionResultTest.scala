@@ -253,15 +253,15 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |.Integral)"
               |    },
               |    {
-              |      "constraint_name": "ComplianceConstraint(Compliance('item' has only positive
-              | values,item \u003e 0,None))",
+              |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
+              | negative values,item \u003e\u003d 0,None))",
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
-              |      "description": "'item' has only positive values",
-              |      "suggesting_rule": "PositiveNumbersRule()",
-              |      "rule_description": "If we see only positive numbers in a column, we suggest
-              | a corresponding constraint",
-              |      "code_for_constraint": ".isPositive(\"item\")"
+              |      "description": "\u0027item\u0027 has no negative values",
+              |      "suggesting_rule": "NonNegativeNumbersRule()",
+              |      "rule_description": "If we see only non-negative numbers in a column, we
+              | suggest a corresponding constraint",
+              |      "code_for_constraint": ".isNonNegative(\"item\")"
               |    },
               |    {
               |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
@@ -339,15 +339,15 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has only
-              | positive values,item \u003e 0,None))",
+              |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
+              | negative values,item \u003e\u003d 0,None))",
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
-              |      "description": "\u0027item\u0027 has only positive values",
-              |      "suggesting_rule": "PositiveNumbersRule()",
-              |      "rule_description": "If we see only positive numbers in a column, we suggest a
-              | corresponding constraint",
-              |      "code_for_constraint": ".isPositive(\"item\")",
+              |      "description": "\u0027item\u0027 has no negative values",
+              |      "suggesting_rule": "NonNegativeNumbersRule()",
+              |      "rule_description": "If we see only non-negative numbers in a column, we
+              | suggest a corresponding constraint",
+              |      "code_for_constraint": ".isNonNegative(\"item\")",
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
@@ -426,15 +426,15 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has only
-              | positive values,item \u003e 0,None))",
+              |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
+              | negative values,item \u003e\u003d 0,None))",
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
-              |      "description": "\u0027item\u0027 has only positive values",
-              |      "suggesting_rule": "PositiveNumbersRule()",
-              |      "rule_description": "If we see only positive numbers in a column, we suggest a
-              | corresponding constraint",
-              |      "code_for_constraint": ".isPositive(\"item\")",
+              |      "description": "\u0027item\u0027 has no negative values",
+              |      "suggesting_rule": "NonNegativeNumbersRule()",
+              |      "rule_description": "If we see only non-negative numbers in a column, we
+              | suggest a corresponding constraint",
+              |      "code_for_constraint": ".isNonNegative(\"item\")",
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {

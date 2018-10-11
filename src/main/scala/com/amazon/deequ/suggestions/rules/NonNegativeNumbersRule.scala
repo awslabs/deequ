@@ -26,8 +26,7 @@ case class NonNegativeNumbersRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     profile match {
-      case numericProfile: NumericColumnProfile
-        if numericProfile.minimum.isDefined && numericProfile.minimum.get == 0.0 => true
+      case numericProfile: NumericColumnProfile => numericProfile.minimum.exists(_ >= 0.0)
       case _ => false
     }
   }
