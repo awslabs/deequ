@@ -78,7 +78,7 @@ val verificationResult = VerificationSuite()
       .isComplete("name") // should never be NULL
       // should only contain the values "high" and "low"
       .isContainedIn("priority", Array("high", "low")) 
-      .isNonNegative("numViews")) // should not contain negative values
+      .isNonNegative("numViews") // should not contain negative values
       // at least half of the descriptions should contain a url          
       .containsURL("description", _ >= 0.5) 
       // half of the items should have less than 10 views
