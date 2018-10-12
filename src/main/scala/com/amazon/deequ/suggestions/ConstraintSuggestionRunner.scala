@@ -31,7 +31,7 @@ object Rules {
   val DEFAULT: Seq[ConstraintRule[ColumnProfile]] =
     Seq(CompleteIfCompleteRule(), RetainCompletenessRule(), RetainTypeRule(),
       CategoricalRangeRule(), FractionalCategoricalRangeRule(),
-      NonNegativeNumbersRule(), PositiveNumbersRule())
+      NonNegativeNumbersRule())
 }
 
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(

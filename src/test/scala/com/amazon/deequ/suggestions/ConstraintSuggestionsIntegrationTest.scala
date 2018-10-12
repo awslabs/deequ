@@ -14,15 +14,18 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ
+package suggestions
 
-import scala.util.Random
-import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.analyzers.{Analyzer, Completeness, Compliance, DataType, State, Uniqueness}
+import com.amazon.deequ.analyzers._
 import com.amazon.deequ.constraints.{AnalysisBasedConstraint, Constraint, ConstraintDecorator}
 import com.amazon.deequ.metrics.Metric
-import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
+import com.amazon.deequ.suggestions.rules.{NonNegativeNumbersRule, UniqueIfApproximatelyUniqueRule}
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.IntegerType
 import org.scalatest.WordSpec
+
+import scala.util.Random
 
 case class Record(
     id: String,
@@ -122,7 +125,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
         assertionFunc(1.0) &&
           analyzer.isInstanceOf[Compliance] &&
           analyzer.asInstanceOf[Compliance]
-            .instance == "'measurement' has only positive values"
+            .instance == "'measurement' has no negative values"
       }
 
       // No type for "measurement"
@@ -178,6 +181,30 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
         analyzer == Completeness("measurement3") && assertionFunc(0.2)
       }
 
+    }
+
+    "issue non negativity constraint for positive data" in withSparkSession { sparkSession =>
+      val col = "some"
+      val data = dataFrameWithColumn(col, IntegerType, sparkSession, Row(0), Row(1), Row(null))
+
+      val results = ConstraintSuggestionRunner()
+        .onData(data)
+        .addConstraintRules(NonNegativeNumbersRule() :: Nil)
+        .run()
+
+      assert(results.constraintSuggestions.size == 1)
+    }
+
+    "issue non negativity constraint for data > 0" in withSparkSession { sparkSession =>
+      val col = "some"
+      val data = dataFrameWithColumn(col, IntegerType, sparkSession, Row(1), Row(null))
+
+      val results = ConstraintSuggestionRunner()
+        .onData(data)
+        .addConstraintRules(NonNegativeNumbersRule() :: Nil)
+        .run()
+
+      assert(results.constraintSuggestions.size == 1)
     }
   }
 

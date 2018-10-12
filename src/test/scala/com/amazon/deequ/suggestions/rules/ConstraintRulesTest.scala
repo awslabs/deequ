@@ -583,21 +583,20 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
   "NonNegativeNumbersRule and PositiveNumbersRule" should {
     "be applied correctly" in {
+      def columnProfileWithMinimum(minimum: Double): NumericColumnProfile = {
+        NumericColumnProfile("col1", 1.0, 100, Fractional, isDataTypeInferred = false,
+          Map.empty, None, Some(10), Some(100), Some(minimum), Some(10000), Some(1.0), None)
+      }
 
-      val negative = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
-        Some(10), Some(100), Some(-1.76), Some(10000), Some(1.0), None)
-      val zero = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
-        Some(10), Some(100), Some(0.0), Some(10000), Some(1.0), None)
-      val positive = NumericColumnProfile("col1", 1.0, 100, Fractional, false, Map.empty, None,
-        Some(10), Some(100), Some(0.05), Some(10000), Some(1.0), None)
+      val nRecords = 100
 
-      assert(!NonNegativeNumbersRule().shouldBeApplied(negative, 100))
-      assert(NonNegativeNumbersRule().shouldBeApplied(zero, 100))
-      assert(!NonNegativeNumbersRule().shouldBeApplied(positive, 100))
+      val negative = columnProfileWithMinimum(-1.76)
+      val zero = columnProfileWithMinimum(0.0)
+      val positive = columnProfileWithMinimum(0.05)
 
-      assert(!PositiveNumbersRule().shouldBeApplied(negative, 100))
-      assert(!PositiveNumbersRule().shouldBeApplied(zero, 100))
-      assert(PositiveNumbersRule().shouldBeApplied(positive, 100))
+      assert(!NonNegativeNumbersRule().shouldBeApplied(negative, nRecords))
+      assert(NonNegativeNumbersRule().shouldBeApplied(zero, nRecords))
+      assert(NonNegativeNumbersRule().shouldBeApplied(positive, nRecords))
     }
 
     "return evaluable constraint candidates" in
@@ -609,7 +608,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val check = Check(CheckLevel.Warning, "some")
         .addConstraint(NonNegativeNumbersRule().candidate(fakeColumnProfile, 100).constraint)
-        .addConstraint(PositiveNumbersRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -617,10 +615,8 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .run()
 
       val metricResultNonNegativeRule = verificationResult.metrics.head._2
-      val metricResultPositiveRule = verificationResult.metrics.toSeq(1)._2
 
       assert(metricResultNonNegativeRule.value.isSuccess)
-      assert(metricResultPositiveRule.value.isSuccess)
     }
 
     "return working code to add constraint to check" in
@@ -634,11 +630,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .codeForConstraint
       val expectedCodeForNonNegativeConstraint = ".isNonNegative(\"item\")"
       assert(expectedCodeForNonNegativeConstraint == codeForNonNegativeConstraint)
-
-      val codeForPositiveConstraint = PositiveNumbersRule().candidate(fakeColumnProfile, 100)
-        .codeForConstraint
-      val expectedCodeForPositiveConstraint = ".isPositive(\"item\")"
-      assert(expectedCodeForPositiveConstraint == codeForPositiveConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
         .isNonNegative("item")
