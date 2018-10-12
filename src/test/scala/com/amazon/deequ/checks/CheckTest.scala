@@ -1,18 +1,16 @@
 package com.amazon.deequ
 package checks
 
-import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.constraints.ConstrainableDataTypes
-import com.amazon.deequ.constraints.ConstraintStatus
+import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
+import com.amazon.deequ.constraints.{ConstrainableDataTypes, ConstraintStatus}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
+import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 
@@ -21,24 +19,7 @@ import scala.util.Success
 class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
   with MockFactory {
 
-  private[this] def assertSuccess(check: Check, context: AnalyzerContext): Unit = {
-    check.evaluate(context).status shouldBe CheckStatus.Success
-  }
-
-  private[this] def run(data: DataFrame, check: Check, checks: Check*): AnalyzerContext = {
-    val analyzers = (check.requiredAnalyzers() ++ checks.flatMap { _.requiredAnalyzers() }).toSeq
-
-    Analysis(analyzers).run(data)
-  }
-
-  private[this] def assertEvaluatesTo(
-      check: Check,
-      context: AnalyzerContext,
-      status: CheckStatus.Value)
-    : Unit = {
-
-    assert(check.evaluate(context).status == status)
-  }
+  import CheckTest._
 
   "Check" should {
 
@@ -54,7 +35,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val check3 = Check(CheckLevel.Warning, "group-2-W")
         .hasCompleteness("att2", _ > 0.8) // 0.75
 
-      val context = run(getDfCompleteAndInCompleteColumns(sparkSession), check1, check2, check3)
+      val context = runChecks(getDfCompleteAndInCompleteColumns(sparkSession),
+        check1, check2, check3)
 
       context.metricMap.foreach { println }
 
@@ -71,7 +53,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         .isUnique("nonUnique")
         .isUnique("nonUniqueWithNulls")
 
-      val context = run(getDfWithUniqueColumns(sparkSession), check)
+      val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
       val result = check.evaluate(context)
 
       assert(result.status == CheckStatus.Error)
@@ -89,7 +71,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         .hasDistinctness(Seq("att1", "att2"), _ == 1.0 / 3)
         .hasDistinctness(Seq("att2"), _ == 1.0)
 
-      val context = run(getDfWithDistinctValues(sparkSession), check)
+      val context = runChecks(getDfWithDistinctValues(sparkSession), check)
       val result = check.evaluate(context)
 
       assert(result.status == CheckStatus.Error)
@@ -110,7 +92,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         .hasUniqueness("unique", Check.IsOne)
         .hasUniqueness("uniqueWithNulls", Check.IsOne)
 
-      val context = run(getDfWithUniqueColumns(sparkSession), check)
+      val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
       val result = check.evaluate(context)
 
       assert(result.status == CheckStatus.Error)
@@ -146,7 +128,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val check5 = Check(CheckLevel.Warning, "group-1-W-Range")
         .hasSize { size => size > 0 && size < numberOfRows + 1 }
 
-      val context = run(df, check1, check2, check3, check4, check5)
+      val context = runChecks(df, check1, check2, check3, check4, check5)
 
       assertEvaluatesTo(check1, context, CheckStatus.Success)
       assertEvaluatesTo(check2, context, CheckStatus.Success)
@@ -166,7 +148,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val check3 = Check(CheckLevel.Error, "group-2-to-succeed")
         .satisfies("att1 > 3", "rule3", _ == 0.5)
 
-      val context = run(getDfWithNumericValues(sparkSession), check1, check2, check3)
+      val context = runChecks(getDfWithNumericValues(sparkSession), check1, check2, check3)
 
       assertEvaluatesTo(check1, context, CheckStatus.Success)
       assertEvaluatesTo(check2, context, CheckStatus.Error)
@@ -185,7 +167,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         val checkPartiallyGetsSatisfied = Check(CheckLevel.Error, "group-1")
           .satisfies("att2 > 0", "rule3", _ == 0.5).where("att1 > 0")
 
-        val context = run(getDfWithNumericValues(sparkSession), checkToSucceed, checkToFail,
+        val context = runChecks(getDfWithNumericValues(sparkSession), checkToSucceed, checkToFail,
           checkPartiallyGetsSatisfied)
 
         assertEvaluatesTo(checkToSucceed, context, CheckStatus.Success)
@@ -207,8 +189,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val isPositiveCheck = Check(CheckLevel.Error, "a")
         .isPositive("item")
 
-      val results = run(getDfWithNumericValues(sparkSession), lessThanCheck, incorrectLessThanCheck,
-        nonNegativeCheck, isPositiveCheck)
+      val results = runChecks(getDfWithNumericValues(sparkSession), lessThanCheck,
+        incorrectLessThanCheck, nonNegativeCheck, isPositiveCheck)
 
       assertEvaluatesTo(lessThanCheck, results, CheckStatus.Success)
       assertEvaluatesTo(incorrectLessThanCheck, results, CheckStatus.Error)
@@ -224,8 +206,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val inCorrectRangeCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
         .isContainedIn("att1", Array("a"), _ == 0.5)
 
-      val rangeResults = run(getDfWithDistinctValues(sparkSession), rangeCheck, inCorrectRangeCheck,
-        inCorrectRangeCheckWithCustomAssertionFunction)
+      val rangeResults = runChecks(getDfWithDistinctValues(sparkSession), rangeCheck,
+        inCorrectRangeCheck, inCorrectRangeCheckWithCustomAssertionFunction)
 
       assertEvaluatesTo(rangeCheck, rangeResults, CheckStatus.Success)
       assertEvaluatesTo(inCorrectRangeCheck, rangeResults, CheckStatus.Error)
@@ -244,7 +226,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val numericRangeCheck4 = Check(CheckLevel.Error, "nr4")
         .isContainedIn("att2", 0, 7, includeLowerBound = false, includeUpperBound = false)
 
-      val numericRangeResults = run(getDfWithNumericValues(sparkSession), numericRangeCheck1,
+      val numericRangeResults = runChecks(getDfWithNumericValues(sparkSession), numericRangeCheck1,
         numericRangeCheck2, numericRangeCheck3, numericRangeCheck4)
 
       assertEvaluatesTo(numericRangeCheck1, numericRangeResults, CheckStatus.Success)
@@ -275,7 +257,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         val check3 = Check(CheckLevel.Error, "group-1")
           .hasNumberOfDistinctValues("unKnownColumn", _ == 3)
 
-        val context = run(getDfCompleteAndInCompleteColumns(sparkSession), check1, check2, check3)
+        val context = runChecks(getDfCompleteAndInCompleteColumns(sparkSession), check1,
+          check2, check3)
 
         assertEvaluatesTo(check1, context, CheckStatus.Success)
         assertEvaluatesTo(check2, context, CheckStatus.Success)
@@ -292,7 +275,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val check2 = Check(CheckLevel.Error, "group-1")
         .hasEntropy("att1", _ != expectedValue)
 
-      val context = run(getDfFull(sparkSession), check1, check2)
+      val context = runChecks(getDfFull(sparkSession), check1, check2)
 
       assertEvaluatesTo(check1, context, CheckStatus.Success)
       assertEvaluatesTo(check2, context, CheckStatus.Error)
@@ -335,7 +318,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("someone@else.com"))
       val check = Check(CheckLevel.Error, "some description")
         .hasPattern(col, Patterns.EMAIL)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -345,7 +328,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("someone@else"))
       val check = Check(CheckLevel.Error, "some description")
         .hasPattern(col, Patterns.EMAIL)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
     }
 
@@ -354,7 +337,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val df = dataFrameWithColumn(col, StringType, sparkSession,
         Row("https://www.example.com/foo/?bar=baz&inga=42&quux"), Row("https://foo.bar/baz"))
       val check = Check(CheckLevel.Error, "some description").hasPattern(col, Patterns.URL)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -364,7 +347,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val df = dataFrameWithColumn(col, StringType, sparkSession,
         Row("https://www.example.com/foo/?bar=baz&inga=42&quux"), Row("http:// shouldfail.com"))
       val check = Check(CheckLevel.Error, "some description").hasPattern(col, Patterns.URL)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
     }
 
@@ -374,7 +357,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("9999888877776666"))
       val check = Check(CheckLevel.Error, "some description")
         .containsCreditCardNumber(col, _ == 0.5)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -383,7 +366,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val df = dataFrameWithColumn(col, StringType, sparkSession, Row("someone@somewhere.org"),
         Row("someone@else"))
       val check = Check(CheckLevel.Error, "some description").containsEmail(col, _ == 0.5)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -393,7 +376,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("something else"))
       val check = Check(CheckLevel.Error, "some description")
         .containsSocialSecurityNumber(col, _ == 0.5)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -403,7 +386,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("https://www.example.com/foo/?bar=baz&inga=42&quux"), Row("http:// shouldfail.com"))
       val check = Check(CheckLevel.Error, "some description")
         .containsURL(col, _ == 0.5)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -412,7 +395,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val df = dataFrameWithColumn(col, StringType, sparkSession, Row("2"), Row("1.0"))
       val check = Check(CheckLevel.Error, "some description")
         .hasDataType(col, ConstrainableDataTypes.Integral, _ == 0.5)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -422,7 +405,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("My credit card number is: 4111-1111-1111-1111."))
       val check = Check(CheckLevel.Error, "some description")
         .containsCreditCardNumber(col, _ == 1.0)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       context.allMetrics.foreach(println)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
@@ -432,7 +415,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val df = dataFrameWithColumn(col, StringType, sparkSession,
         Row("Please contact me at someone@somewhere.org, thank you."))
       val check = Check(CheckLevel.Error, "some description").containsEmail(col, _ == 1.0)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -441,7 +424,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val df = dataFrameWithColumn(col, StringType, sparkSession,
         Row("Hey, please have a look at https://www.example.com/foo/?bar=baz&inga=42&quux!"))
       val check = Check(CheckLevel.Error, "some description").containsURL(col, _ == 1.0)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
@@ -451,8 +434,20 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         Row("My SSN is 111-05-1130, thanks."))
       val check = Check(CheckLevel.Error, "some description")
         .containsSocialSecurityNumber(col, _ == 1.0)
-      val context = run(df, check)
+      val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Success)
+    }
+
+    "non negativity check works for numeric columns" in withSparkSession { sparkSession =>
+      Seq(ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType).foreach { dataType =>
+        assertNonNegativeCheckIsSuccessFor(dataType, sparkSession)
+      }
+    }
+
+    "is positive check works for numeric columns" in withSparkSession { sparkSession =>
+      Seq(ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType).foreach { dataType =>
+        assertIsPositiveCheckIsSuccessFor(dataType, sparkSession)
+      }
     }
   }
 
@@ -640,5 +635,63 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
    /** Create a repository for testing */
   private[this] def createRepository(): MetricsRepository = {
     new InMemoryMetricsRepository()
+  }
+}
+
+object CheckTest extends WordSpec with Matchers {
+
+  def assertSuccess(check: Check, context: AnalyzerContext): Unit = {
+    check.evaluate(context).status shouldBe CheckStatus.Success
+  }
+
+  def assertEvaluatesTo(
+    check: Check,
+    context: AnalyzerContext,
+    status: CheckStatus.Value)
+  : Unit = {
+
+    assert(check.evaluate(context).status == status)
+  }
+
+  def runChecks(data: DataFrame, check: Check, checks: Check*): AnalyzerContext = {
+    val analyzers = (check.requiredAnalyzers() ++ checks.flatMap { _.requiredAnalyzers() }).toSeq
+
+    Analysis(analyzers).run(data)
+  }
+
+  private[this] def runAndAssertSuccessFor[T](
+    checkOn: String => Check, dataType: NumericType, sparkSession: SparkSession
+  ): Unit = {
+    val col = "some"
+    val numericRow = dataType match {
+      case FloatType => Row(1.0f)
+      case DoubleType => Row(1.0d)
+      case ByteType => Row(1.toByte)
+      case ShortType => Row(1.toShort)
+      case IntegerType => Row(1)
+      case LongType => Row(1L)
+    }
+    val df = dataFrameWithColumn(col, dataType, sparkSession, numericRow, Row(null))
+    val check = checkOn(col)
+    val context = runChecks(df, check)
+    assertEvaluatesTo(check, context, CheckStatus.Success)
+  }
+
+  def assertNonNegativeCheckIsSuccessFor(
+    dataType: NumericType,
+    sparkSession: SparkSession)
+  : Unit = {
+
+    runAndAssertSuccessFor(Check(CheckLevel.Error, "some description").isNonNegative(_),
+      dataType, sparkSession)
+  }
+
+  def assertIsPositiveCheckIsSuccessFor(
+    dataType: NumericType,
+    sparkSession: SparkSession)
+  : Unit = {
+
+    runAndAssertSuccessFor(Check(CheckLevel.Error, "some description").isPositive(_),
+      dataType, sparkSession)
   }
 }

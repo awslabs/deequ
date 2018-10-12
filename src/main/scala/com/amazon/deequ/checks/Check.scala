@@ -672,7 +672,8 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$column >= 0", s"$column is non-negative", hint = hint)
+    // coalescing column to not count NULL values as non-compliant
+    satisfies(s"COALESCE($column, 0.0) >= 0", s"$column is non-negative", hint = hint)
   }
 
   /**
@@ -682,7 +683,8 @@ case class Check(
     * @return
     */
   def isPositive(column: String): CheckWithLastConstraintFilterable = {
-    satisfies(s"$column > 0", s"$column is positive")
+    // coalescing column to not count NULL values as non-compliant
+    satisfies(s"COALESCE($column, 1.0) > 0", s"$column is positive")
   }
 
   /**
