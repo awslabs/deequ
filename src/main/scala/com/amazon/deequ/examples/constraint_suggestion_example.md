@@ -70,8 +70,8 @@ The corresponding scala code is .hasDataType("count", ConstrainableDataTypes.Fra
 Constraint suggestion for 'count': 'count' has less than 47% missing values
 The corresponding scala code is .hasCompleteness("count", _ >= 0.53, Some("It should be above 0.53!"))
 
-Constraint suggestion for 'count': 'count' has only positive values
-The corresponding scala code is .isPositive("count")
+Constraint suggestion for 'count': 'count' has only values that are equal to or greater than 0
+The corresponding scala code is .isNonNegative("count")
 ```
 
 Finally, we look at the suggestions for the `name` and `status` columns. Both of them did not have a single missing value in the example data, so an `isComplete` constraint is suggested for them. Furthermore, both of them only have a small set of possible values, therefore an `isContainedIn` constraint is suggested, which would check that future values are also contained in the range of observed values.
