@@ -34,7 +34,7 @@ private[sql] case class StatefulHyperloglogPlus(
     inputAggBufferOffset: Int = 0)
   extends ImperativeAggregate {
 
-  import HyperLogLogPlusPlusUtils._
+  import DeequHyperLogLogPlusPlusUtils._
 
   def this(child: Expression) = {
     this(child = child, mutableAggBufferOffset = 0, inputAggBufferOffset = 0)
@@ -121,7 +121,7 @@ private[sql] case class StatefulHyperloglogPlus(
   override def merge(buffer1: InternalRow, buffer2: InternalRow): Unit = {
     var idx = 0
     var wordOffset = 0
-    while (wordOffset < HyperLogLogPlusPlusUtils.NUM_WORDS) {
+    while (wordOffset < DeequHyperLogLogPlusPlusUtils.NUM_WORDS) {
       val word1 = buffer1.getLong(mutableAggBufferOffset + wordOffset)
       val word2 = buffer2.getLong(inputAggBufferOffset + wordOffset)
       var word = 0L
@@ -149,7 +149,7 @@ private[sql] case class StatefulHyperloglogPlus(
 
 }
 
-object HyperLogLogPlusPlusUtils {
+object DeequHyperLogLogPlusPlusUtils {
 
   val NUM_WORDS = 52
   val RELATIVE_SD = 0.05

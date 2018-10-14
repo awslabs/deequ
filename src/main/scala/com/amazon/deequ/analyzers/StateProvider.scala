@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 import com.google.common.io.Closeables
 import org.apache.hadoop.fs.{FSDataInputStream, FSDataOutputStream, FileSystem, Path}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.expressions.aggregate.{ApproximatePercentile, HyperLogLogPlusPlusUtils}
+import org.apache.spark.sql.catalyst.expressions.aggregate.{ApproximatePercentile, DeequHyperLogLogPlusPlusUtils}
 
 import scala.collection.JavaConversions._
 import scala.util.hashing.MurmurHash3
@@ -115,7 +115,7 @@ case class HdfsStateProvider(
 
       case _: ApproxCountDistinct =>
         val counters = state.asInstanceOf[ApproxCountDistinctState]
-        persistBytes(HyperLogLogPlusPlusUtils.wordsToBytes(counters.words), identifier)
+        persistBytes(DeequHyperLogLogPlusPlusUtils.wordsToBytes(counters.words), identifier)
 
       case _ : Correlation =>
         persistCorrelationState(state.asInstanceOf[CorrelationState], identifier)
@@ -155,7 +155,8 @@ case class HdfsStateProvider(
 
       case _ : DataType => DataTypeHistogram.fromBytes(loadBytes(identifier))
 
-      case _ : ApproxCountDistinct => HyperLogLogPlusPlusUtils.wordsFromBytes(loadBytes(identifier))
+      case _ : ApproxCountDistinct =>
+        DeequHyperLogLogPlusPlusUtils.wordsFromBytes(loadBytes(identifier))
 
       case _ : Correlation => loadCorrelationState(identifier)
 

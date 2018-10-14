@@ -18,7 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import org.apache.spark.sql.DeequFunctions.stateful_approx_count_distinct
-import org.apache.spark.sql.catalyst.expressions.aggregate.HyperLogLogPlusPlusUtils
+import org.apache.spark.sql.catalyst.expressions.aggregate.DeequHyperLogLogPlusPlusUtils
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, Row}
 import Analyzers._
@@ -27,11 +27,11 @@ case class ApproxCountDistinctState(words: Array[Long])
   extends DoubleValuedState[ApproxCountDistinctState] {
 
   override def sum(other: ApproxCountDistinctState): ApproxCountDistinctState = {
-    ApproxCountDistinctState(HyperLogLogPlusPlusUtils.merge(words, other.words))
+    ApproxCountDistinctState(DeequHyperLogLogPlusPlusUtils.merge(words, other.words))
   }
 
   override def metricValue(): Double = {
-    HyperLogLogPlusPlusUtils.count(words)
+    DeequHyperLogLogPlusPlusUtils.count(words)
   }
 
   override def toString: String = {
@@ -54,7 +54,7 @@ case class ApproxCountDistinct(column: String, where: Option[String] = None)
   override def fromAggregationResult(result: Row, offset: Int): Option[ApproxCountDistinctState] = {
 
     ifNoNullsIn(result, offset) { _ =>
-      HyperLogLogPlusPlusUtils.wordsFromBytes(result.getAs[Array[Byte]](offset))
+      DeequHyperLogLogPlusPlusUtils.wordsFromBytes(result.getAs[Array[Byte]](offset))
     }
   }
 
