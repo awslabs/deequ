@@ -157,7 +157,7 @@ class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
       )
 
       val strategy = new HoltWinters(
-        HoltWinters.Seasonality.Yearly, HoltWinters.MetricInterval.Monthly)
+        HoltWinters.SeriesSeasonality.Yearly, HoltWinters.MetricInterval.Monthly)
 
       val nYearsTrain = 3
       val nYearsTest = 1
@@ -188,7 +188,7 @@ class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
       )
 
       val strategy = new HoltWinters(
-        HoltWinters.Seasonality.Yearly, HoltWinters.MetricInterval.Monthly)
+        HoltWinters.SeriesSeasonality.Yearly, HoltWinters.MetricInterval.Monthly)
 
       val nYearsTrain = 3
       val nYearsTest = 1
