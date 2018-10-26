@@ -31,9 +31,12 @@ object HoltWinters {
   }
 
   private[seasonal] case class ModelResults(
-    forecasts: Seq[Double], standardDeviationForecastResiduals: Double,
-    level: Seq[Double], trend: Seq[Double], seasonality: Seq[Double],
-    residuals: Seq[Double])
+    forecasts: Seq[Double],
+    level: Seq[Double],
+    trend: Seq[Double],
+    seasonality: Seq[Double],
+    residuals: Seq[Double]
+  )
 
 }
 
@@ -110,10 +113,9 @@ class HoltWinters(
     val residuals = y.zip(series).map { case (modelForecast, seriesValue) =>
       seriesValue - modelForecast
     }
-    val sigma = breeze.stats.stddev(residuals)
     val forecasted = Y.drop(series.size)
 
-    ModelResults(forecasted, sigma, level, trend, seasonality, residuals)
+    ModelResults(forecasted, level, trend, seasonality, residuals)
   }
 
   private def modelSelectionFor(
