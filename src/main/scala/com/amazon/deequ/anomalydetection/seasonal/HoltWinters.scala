@@ -100,7 +100,7 @@ class HoltWinters(
     val seasonality = ListBuffer(series.take(periodicity).map(_ - level.head): _*)
     // running signal estimate
     val y = ListBuffer(level.head + trend.head + seasonality.head)
-    // inout `series`, `numberOfPointsToForecast` forecasts will be appended here
+    // input `series`, `numberOfPointsToForecast` forecasts will be appended here
     val Y = ListBuffer(series: _*)
 
     for (t <- 0 until series.size + numberOfPointsToForecast) {
