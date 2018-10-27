@@ -20,6 +20,8 @@ import breeze.linalg.DenseVector
 import breeze.optimize.{ApproximateGradientFunction, DiffFunction, LBFGSB}
 import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
 
+import collection.mutable.ListBuffer
+
 object HoltWinters {
 
   object SeriesSeasonality extends Enumeration {
@@ -50,8 +52,9 @@ object HoltWinters {
   * @param metricsInterval: How often a metric is available
   */
 class HoltWinters(
-  seasonality: HoltWinters.SeriesSeasonality.Value,
-  metricsInterval: HoltWinters.MetricInterval.Value) extends AnomalyDetectionStrategy {
+    seasonality: HoltWinters.SeriesSeasonality.Value,
+    metricsInterval: HoltWinters.MetricInterval.Value)
+  extends AnomalyDetectionStrategy {
 
   import HoltWinters._
 
@@ -70,34 +73,38 @@ class HoltWinters(
     *
     * @param series: input time series
     * @param periodicity: periodicity of series
-    * @param nPointsToForecast: number of data points to forecast
+    * @param numberOfPointsToForecast: number of data points to forecast
     * @return (forecasts, one step ahead residual SD)
     */
   private[seasonal] def additiveHoltWinters(
-    series: Seq[Double],
-    periodicity: Int,
-    nPointsToForecast: Int,
-    alpha: Double,
-    beta: Double,
-    gamma: Double): ModelResults = {
+      series: Seq[Double],
+      periodicity: Int,
+      numberOfPointsToForecast: Int,
+      alpha: Double,
+      beta: Double,
+      gamma: Double)
+    : ModelResults = {
 
     // mean of first period
-    val level = collection.mutable.ListBuffer(series.take(periodicity).sum/periodicity.toDouble)
-    // mean of first period - mean of second period
-    val trend = collection.mutable.ListBuffer(
-      (series.slice(periodicity, 2 * periodicity).sum - series.take(periodicity).sum) /
-        (periodicity.toDouble*periodicity.toDouble)
+    val level = ListBuffer(series.take(periodicity).sum / periodicity.toDouble)
+
+    // mean of second period - mean of first period
+    val firstPeriodSum = series.take(periodicity).sum
+    val secondPeriodSum = series.slice(periodicity, 2 * periodicity).sum
+    val trend = ListBuffer(
+      (secondPeriodSum - firstPeriodSum) / (periodicity.toDouble * periodicity.toDouble)
     )
+
     // first `periodicity` data points - level
-    val seasonality = collection.mutable.ListBuffer((0 until periodicity).map { i =>
-      series(i) - level.head }: _*
+    val seasonality = ListBuffer(
+      (0 until periodicity).map { i => series(i) - level.head }: _*
     )
     // signal estimate
-    val y = collection.mutable.ListBuffer(level.head + trend.head + seasonality.head)
-    // series with `nPointsToForecast` forecasts
-    val Y = collection.mutable.ListBuffer(series: _*)
+    val y = ListBuffer(level.head + trend.head + seasonality.head)
+    // series with `numberOfPointsToForecast` forecasts
+    val Y = ListBuffer(series: _*)
 
-    for(t <- 0 until series.size + nPointsToForecast) {
+    for (t <- 0 until series.size + numberOfPointsToForecast) {
       if (t >= series.size) {
         Y.append(level.last + trend.last + seasonality(seasonality.size - periodicity))
       }
@@ -119,7 +126,10 @@ class HoltWinters(
   }
 
   private def modelSelectionFor(
-    dataSeries: Seq[Double], nObservationsToForecast: Int): (Double, Double, Double) = {
+      dataSeries: Seq[Double],
+      numberOfObservationsToForecast: Int)
+    : (Double, Double, Double) = {
+
     // solver with parameter bounds
     val solver = new LBFGSB(
       lowerBounds = DenseVector[Double](0, 0, 0),
@@ -132,7 +142,7 @@ class HoltWinters(
     val objective = new DiffFunction[DenseVector[Double]] {
       override def calculate(x: DenseVector[Double]): (Double, DenseVector[Double]) = {
         val modelResults = additiveHoltWinters(
-          dataSeries, seriesPeriodicity, nObservationsToForecast,
+          dataSeries, seriesPeriodicity, numberOfObservationsToForecast,
           alpha = x(0), beta = x(1), gamma = x(2)
         )
         val rss = modelResults.residuals.map(math.pow(_, 2)).sum
@@ -150,10 +160,12 @@ class HoltWinters(
   }
 
   private def findAnomalies(
-    testSeries: Vector[Double],
-    forecasts: Seq[Double],
-    startIndex: Int,
-    residualSD: Double): Seq[(Int, Anomaly)] = {
+      testSeries: Vector[Double],
+      forecasts: Seq[Double],
+      startIndex: Int,
+      residualSD: Double)
+    : Seq[(Int, Anomaly)] = {
+
     testSeries.zip(forecasts).zipWithIndex.collect {
       case ((inputValue, forecastedValue), detectionIndex)
         if math.abs(inputValue - forecastedValue) > 1.96 * residualSD =>
@@ -174,8 +186,9 @@ class HoltWinters(
     * @return The indices of all anomalies in the interval and their corresponding wrapper object.
     */
   override def detect(
-    dataSeries: Vector[Double],
-    searchInterval: (Int, Int) = (0, Int.MaxValue)): Seq[(Int, Anomaly)] = {
+      dataSeries: Vector[Double],
+      searchInterval: (Int, Int) = (0, Int.MaxValue))
+    : Seq[(Int, Anomaly)] = {
 
     require(dataSeries.nonEmpty, "Provided data series is empty")
 
@@ -188,16 +201,15 @@ class HoltWinters(
     require(start >= seriesPeriodicity * 2,
       "Need at least two full cycles of data to estimate model")
 
-    val nObservationsToForecast = {
+    val numberOfObservationsToForecast =
       if (start >= dataSeries.size) {
         1
       } else {
         math.min(end, dataSeries.size) - start
       }
-    }
 
     val trainingSeries = dataSeries.slice(0, start)
-    val (alpha, beta, gamma) = modelSelectionFor(trainingSeries, nObservationsToForecast)
+    val (alpha, beta, gamma) = modelSelectionFor(trainingSeries, numberOfObservationsToForecast)
     println(s"Found optimal parameters for level, trend and seasonality to be " +
       "$alpha, $beta and $gamma respectively.")
 
@@ -205,16 +217,16 @@ class HoltWinters(
     val modelResults = additiveHoltWinters(
       trainingSeries,
       seriesPeriodicity,
-      nObservationsToForecast,
+      numberOfObservationsToForecast,
       alpha,
       beta,
       gamma
     )
 
     val residualsStandardDeviation =
-      breeze.stats.stddev(modelResults.residuals.map(r => math.abs(r)))
+      breeze.stats.stddev(modelResults.residuals.map(math.abs))
 
-    require(modelResults.forecasts.size == nObservationsToForecast)
+    require(modelResults.forecasts.size == numberOfObservationsToForecast)
 
     val testSeries = dataSeries.drop(start)
     findAnomalies(testSeries, modelResults.forecasts, start, residualsStandardDeviation)
