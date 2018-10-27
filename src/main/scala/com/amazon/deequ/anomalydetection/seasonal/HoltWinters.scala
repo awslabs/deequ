@@ -85,23 +85,22 @@ class HoltWinters(
       gamma: Double)
     : ModelResults = {
 
-    // mean of first period
-    val level = ListBuffer(series.take(periodicity).sum / periodicity.toDouble)
-
-    // mean of second period - mean of first period
     val firstPeriodSum = series.take(periodicity).sum
     val secondPeriodSum = series.slice(periodicity, 2 * periodicity).sum
+
+    // mean of first period
+    val level = ListBuffer(firstPeriodSum / periodicity.toDouble)
+
+    // mean of second period - mean of first period
     val trend = ListBuffer(
       (secondPeriodSum - firstPeriodSum) / (periodicity.toDouble * periodicity.toDouble)
     )
 
-    // first `periodicity` data points - level
-    val seasonality = ListBuffer(
-      (0 until periodicity).map { i => series(i) - level.head }: _*
-    )
-    // signal estimate
+    // first `periodicity` data points - estimated level
+    val seasonality = ListBuffer(series.take(periodicity).map(_ - level.head): _*)
+    // running signal estimate
     val y = ListBuffer(level.head + trend.head + seasonality.head)
-    // series with `numberOfPointsToForecast` forecasts
+    // inout `series`, `numberOfPointsToForecast` forecasts will be appended here
     val Y = ListBuffer(series: _*)
 
     for (t <- 0 until series.size + numberOfPointsToForecast) {
