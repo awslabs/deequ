@@ -50,16 +50,19 @@ object HoltWinters {
 
 /**
   * Detects anomalies based on additive Holt-Winters model. The methods has two
-  * parameters, one for the expected periodicity and one for the metric frequency,
-  * as in how often the metric of interest is computed (e.g. daily). The periodicity
-  * is the longest cycle in the data to be expected.
+  * parameters, one for the metric frequency, as in how often the metric of interest
+  * is computed (e.g. daily) and one for the expected metric seasonality which
+  * defines the longest cycle in series. This quantity is also referred to as periodicity.
   *
-  * @param seasonality: Cycle length of the metric
+  * For example, if a metric is produced daily and repeats itself every Monday, then the
+  * model should be created with a Daily metric interval and a Weekly seasonality parameter.
+  *
   * @param metricsInterval: How often a metric is available
+  * @param seasonality: Cycle length (or periodicity) of the metric
   */
 class HoltWinters(
-    seasonality: HoltWinters.SeriesSeasonality.Value,
-    metricsInterval: HoltWinters.MetricInterval.Value)
+    metricsInterval: HoltWinters.MetricInterval.Value,
+    seasonality: HoltWinters.SeriesSeasonality.Value)
   extends AnomalyDetectionStrategy {
 
   import HoltWinters._

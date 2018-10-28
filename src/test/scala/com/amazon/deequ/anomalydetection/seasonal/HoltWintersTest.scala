@@ -157,7 +157,8 @@ class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
       )
 
       val strategy = new HoltWinters(
-        HoltWinters.SeriesSeasonality.Yearly, HoltWinters.MetricInterval.Monthly)
+        HoltWinters.MetricInterval.Monthly,
+        HoltWinters.SeriesSeasonality.Yearly)
 
       val nYearsTrain = 3
       val nYearsTest = 1
@@ -188,7 +189,8 @@ class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
       )
 
       val strategy = new HoltWinters(
-        HoltWinters.SeriesSeasonality.Yearly, HoltWinters.MetricInterval.Monthly)
+        HoltWinters.MetricInterval.Monthly,
+        HoltWinters.SeriesSeasonality.Yearly)
 
       val nYearsTrain = 3
       val nYearsTest = 1
@@ -212,8 +214,8 @@ object HoltWintersTest {
     series: Vector[Double], interval: (Int, Int)): Seq[(Int, Anomaly)] = {
 
     val strategy = new HoltWinters(
-      HoltWinters.SeriesSeasonality.Weekly,
-      HoltWinters.MetricInterval.Daily
+      HoltWinters.MetricInterval.Daily,
+      HoltWinters.SeriesSeasonality.Weekly
     )
 
     strategy.detect(series, interval)
