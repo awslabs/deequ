@@ -40,6 +40,12 @@ object HoltWinters {
     residuals: Seq[Double]
   )
 
+  private[seasonal] case class HoltWintersParameters(
+    alpha: Double,
+    beta: Double,
+    gamma: Double
+  )
+
 }
 
 /**
@@ -88,19 +94,20 @@ class HoltWinters(
     val firstPeriodSum = series.take(periodicity).sum
     val secondPeriodSum = series.slice(periodicity, 2 * periodicity).sum
 
-    // mean of first period
+    // Mean of first period
     val level = ListBuffer(firstPeriodSum / periodicity.toDouble)
 
-    // mean of second period - mean of first period
+    // Mean of second period - mean of first period
     val trend = ListBuffer(
       (secondPeriodSum - firstPeriodSum) / (periodicity.toDouble * periodicity.toDouble)
     )
 
-    // first `periodicity` data points - estimated level
-    val seasonality = ListBuffer(series.take(periodicity).map(_ - level.head): _*)
-    // running signal estimate
+    // First `periodicity` data points - estimated level
+    val seriesMinusEstimatedLevel = series.take(periodicity).map(_ - level.head)
+    val seasonality = ListBuffer(seriesMinusEstimatedLevel: _*)
+    // Running signal estimate
     val y = ListBuffer(level.head + trend.head + seasonality.head)
-    // input `series`, `numberOfPointsToForecast` forecasts will be appended here
+    // Input `series`, `numberOfPointsToForecast` forecasts will be appended here
     val Y = ListBuffer(series: _*)
 
     for (t <- 0 until series.size + numberOfPointsToForecast) {
@@ -115,10 +122,11 @@ class HoltWinters(
       y.append(level(t + 1) + trend(t + 1) + seasonality(t + 1))
     }
 
-    // forecast residuals
-    val residuals = y.zip(series).map { case (modelForecast, seriesValue) =>
-      seriesValue - modelForecast
-    }
+    // Forecast residuals
+    val residuals = y.zip(series)
+      .map { case (modelForecast, seriesValue) =>
+        seriesValue - modelForecast
+      }
     val forecasted = Y.drop(series.size)
 
     ModelResults(forecasted, level, trend, seasonality, residuals)
@@ -127,15 +135,15 @@ class HoltWinters(
   private def modelSelectionFor(
       dataSeries: Seq[Double],
       numberOfObservationsToForecast: Int)
-    : (Double, Double, Double) = {
+    : HoltWintersParameters = {
 
-    // solver with parameter bounds
+    // Solver with parameter bounds
     val solver = new LBFGSB(
       lowerBounds = DenseVector[Double](0, 0, 0),
       upperBounds = DenseVector[Double](1, 1, 1)
     )
 
-    // initial smoothing parameters for level, trend, and seasonality respectively
+    // Initial smoothing parameters for level, trend, and seasonality respectively
     val initialParameters = DenseVector[Double](0.3, 0.1, 0.1)
 
     val objective = new DiffFunction[DenseVector[Double]] {
@@ -155,7 +163,11 @@ class HoltWinters(
       new ApproximateGradientFunction[Int, DenseVector[Double]](objective)
 
     val optimalParameters = solver.minimize(objectiveWithApproximateGradients, initialParameters)
-    (optimalParameters(0), optimalParameters(1), optimalParameters(2))
+    HoltWintersParameters(
+      alpha = optimalParameters(0),
+      beta = optimalParameters(1),
+      gamma = optimalParameters(2)
+    )
   }
 
   private def findAnomalies(
@@ -165,8 +177,8 @@ class HoltWinters(
       residualSD: Double)
     : Seq[(Int, Anomaly)] = {
 
-    testSeries.zip(forecasts).zipWithIndex.collect {
-      case ((inputValue, forecastedValue), detectionIndex)
+    testSeries.zip(forecasts).zipWithIndex
+      .collect { case ((inputValue, forecastedValue), detectionIndex)
         if math.abs(inputValue - forecastedValue) > 1.96 * residualSD =>
 
         detectionIndex + startIndex -> Anomaly(
@@ -208,18 +220,19 @@ class HoltWinters(
       }
 
     val trainingSeries = dataSeries.slice(0, start)
-    val (alpha, beta, gamma) = modelSelectionFor(trainingSeries, numberOfObservationsToForecast)
-    println(s"Found optimal parameters for level, trend and seasonality to be " +
-      "$alpha, $beta and $gamma respectively.")
+    val optimalParameters = modelSelectionFor(trainingSeries, numberOfObservationsToForecast)
+    println("Found optimal parameters for level, trend and seasonality to be " +
+      s"${optimalParameters.alpha}, ${optimalParameters.beta} and ${optimalParameters.gamma} " +
+      "respectively.")
 
-    // forecast with estimated parameters
+    // Forecast with estimated parameters
     val modelResults = additiveHoltWinters(
       trainingSeries,
       seriesPeriodicity,
       numberOfObservationsToForecast,
-      alpha,
-      beta,
-      gamma
+      optimalParameters.alpha,
+      optimalParameters.beta,
+      optimalParameters.gamma
     )
 
     val residualsStandardDeviation =
