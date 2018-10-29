@@ -19,6 +19,7 @@ package com.amazon.deequ.analyzers.jdbc
 import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.State
+import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.Metric
 import org.postgresql.util.PSQLException
 
@@ -103,7 +104,7 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
     try {
       if (!result.first())
-        throw new Exception(s"The column '$column' does not exist in the table '${table.name}'")
+        throw new NoSuchColumnException(s"The column '$column' does not exist in the table '${table.name}'")
     }
     catch {
       case error: PSQLException => throw error
