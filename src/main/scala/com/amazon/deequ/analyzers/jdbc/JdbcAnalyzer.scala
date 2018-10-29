@@ -16,8 +16,11 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
+import java.sql.ResultSet
+
 import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.metrics.Metric
+import org.postgresql.util.PSQLException
 
 
 trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
@@ -38,6 +41,73 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
   private[deequ] def toFailureMetric(failure: Exception): M
 
+  def validateParams(table: Table, column: String): Unit = {
+    validateTable(table)
+    validateColumn(table, column)
+  }
 
+  def validateTable(table: Table): Unit = {
+
+    val connection = table.jdbcConnection
+
+    val query =
+      s"""
+         |SELECT
+         | *
+         |FROM
+         | INFORMATION_SCHEMA.TABLES
+         |WHERE
+         | TABLE_NAME = ?
+        """.stripMargin
+
+    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
+      ResultSet.CONCUR_READ_ONLY)
+
+    statement.setString(1, table.name)
+
+    val result = statement.executeQuery()
+
+
+    try {
+      if (!result.first())
+        throw new Exception(s"The table '${table.name}' does not exist")
+    }
+    catch {
+      case error: PSQLException => throw error
+    }
+  }
+
+  def validateColumn(table: Table, column: String): Unit = {
+
+    val connection = table.jdbcConnection
+
+    val query =
+      s"""
+         |SELECT
+         | *
+         |FROM
+         | INFORMATION_SCHEMA.COLUMNS
+         |WHERE
+         | TABLE_NAME = ?
+         |AND
+         | COLUMN_NAME = ?
+      """.stripMargin
+
+    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
+      ResultSet.CONCUR_READ_ONLY)
+
+    statement.setString(1, table.name)
+    statement.setString(2, column)
+
+    val result = statement.executeQuery()
+
+    try {
+      if (!result.first())
+        throw new Exception(s"The column '$column' does not exist in the table '${table.name}'")
+    }
+    catch {
+      case error: PSQLException => throw error
+    }
+  }
 
 }

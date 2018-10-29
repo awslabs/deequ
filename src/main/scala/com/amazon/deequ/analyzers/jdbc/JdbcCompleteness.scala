@@ -22,6 +22,7 @@ import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import org.postgresql.util.PSQLException
 
 case class JdbcCompleteness(column: String)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
@@ -30,7 +31,8 @@ case class JdbcCompleteness(column: String)
 
     val connection = table.jdbcConnection
 
-    //TODO Query parameters must be validated to avoid SQL injection
+    validateParams(table, column)
+
     val query =
       s"""
         |SELECT
@@ -45,11 +47,22 @@ case class JdbcCompleteness(column: String)
 
     val result = statement.executeQuery()
 
-    // TODO Handle potential errors
-    result.next()
+    try {
+      result.next()
+    }
+    catch {
+      case error: PSQLException => throw error
+    }
 
-    // TODO handle nulls in the result
-    Some(NumMatchesAndCount(result.getLong("num_matches"), result.getLong("num_rows")))
+    try {
+      val num_matches = result.getLong("num_matches")
+      val num_rows = result.getLong("num_rows")
+
+      Some(NumMatchesAndCount(num_matches, num_rows))
+    }
+    catch {
+      case error: Exception => throw error
+    }
   }
 
   override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
