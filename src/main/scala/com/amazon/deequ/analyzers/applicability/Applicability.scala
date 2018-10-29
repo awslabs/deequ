@@ -36,15 +36,7 @@ private[deequ] object Applicability {
     nullable && math.random < 0.01
   }
 
-  private def nullableIf(nullable: Boolean)(n: java.lang.Number): java.lang.Number = {
-    if (shouldBeNull(nullable)) {
-      null
-    } else {
-      n
-    }
-  }
-
-  private def randomBoolean(nullable: Boolean): java.lang.Boolean = {
+  def randomBoolean(nullable: Boolean): java.lang.Boolean = {
     if (shouldBeNull(nullable)) {
       null
     } else {
@@ -52,35 +44,63 @@ private[deequ] object Applicability {
     }
   }
 
-  private def randomInteger(nullable: Boolean) = {
-    nullableIf(nullable)(util.Random.nextInt())
+  def randomInteger(nullable: Boolean): java.lang.Integer = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextInt()
+    }
   }
 
-  private def randomFloat(nullable: Boolean) = {
-    nullableIf(nullable)(util.Random.nextFloat())
+  def randomFloat(nullable: Boolean): java.lang.Float = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextFloat()
+    }
   }
 
-  private def randomDouble(nullable: Boolean) = {
-    nullableIf(nullable)(util.Random.nextDouble())
+  def randomDouble(nullable: Boolean): java.lang.Double = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextDouble()
+    }
   }
 
-  private def randomByte(nullable: Boolean) = {
-    nullableIf(nullable)(util.Random.nextInt().toByte)
+  def randomByte(nullable: Boolean): java.lang.Byte = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextInt().toByte
+    }
   }
 
-  private def randomShort(nullable: Boolean) = {
-    nullableIf(nullable)(util.Random.nextInt().toShort)
+  def randomShort(nullable: Boolean): java.lang.Short = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextInt().toShort
+    }
   }
 
-  private def randomLong(nullable: Boolean) = {
-    nullableIf(nullable)(util.Random.nextLong())
+  def randomLong(nullable: Boolean): java.lang.Long = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextLong()
+    }
   }
 
-  private def randomDecimal(nullable: Boolean) = {
-    nullableIf(nullable)(BigDecimal(util.Random.nextLong()).bigDecimal)
+  def randomDecimal(nullable: Boolean): java.math.BigDecimal = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      BigDecimal(util.Random.nextLong()).bigDecimal
+    }
   }
 
-  private def randomTimestamp(nullable: Boolean): java.sql.Timestamp = {
+  def randomTimestamp(nullable: Boolean): java.sql.Timestamp = {
     if (shouldBeNull(nullable)) {
       null
     } else {
@@ -88,11 +108,11 @@ private[deequ] object Applicability {
     }
   }
 
-  private def randomString(nullable: Boolean): java.lang.String = {
+  def randomString(nullable: Boolean): java.lang.String = {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      val length = (util.Random.nextDouble() * 20 + 1).toInt
+      val length = util.Random.nextInt(20) + 1
       util.Random.alphanumeric.take(length).mkString
     }
   }
