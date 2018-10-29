@@ -14,9 +14,9 @@
   *
   */
 
-package com.amazon.deequ.checks
+package com.amazon.deequ
+package checks
 
-import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.{Completeness, Compliance}
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.{Matchers, WordSpec}

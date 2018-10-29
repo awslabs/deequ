@@ -21,7 +21,6 @@ import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.{AnalysisBasedConstraint, Constraint, ConstraintDecorator}
 import com.amazon.deequ.metrics.Metric
 import java.sql.Timestamp
-import org.apache.commons.lang3.RandomStringUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import scala.util.Failure
@@ -31,6 +30,94 @@ private[deequ] case class ApplicabilityResult(
   failures: Seq[(String, Throwable)]
 )
 
+private[deequ] object Applicability {
+
+  private def shouldBeNull(nullable: Boolean): Boolean = {
+    nullable && math.random < 0.01
+  }
+
+  def randomBoolean(nullable: Boolean): java.lang.Boolean = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextDouble() > 0.5
+    }
+  }
+
+  def randomInteger(nullable: Boolean): java.lang.Integer = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextInt()
+    }
+  }
+
+  def randomFloat(nullable: Boolean): java.lang.Float = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextFloat()
+    }
+  }
+
+  def randomDouble(nullable: Boolean): java.lang.Double = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextDouble()
+    }
+  }
+
+  def randomByte(nullable: Boolean): java.lang.Byte = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextInt().toByte
+    }
+  }
+
+  def randomShort(nullable: Boolean): java.lang.Short = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextInt().toShort
+    }
+  }
+
+  def randomLong(nullable: Boolean): java.lang.Long = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      util.Random.nextLong()
+    }
+  }
+
+  def randomDecimal(nullable: Boolean): java.math.BigDecimal = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      BigDecimal(util.Random.nextLong()).bigDecimal
+    }
+  }
+
+  def randomTimestamp(nullable: Boolean): java.sql.Timestamp = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      new Timestamp(util.Random.nextLong())
+    }
+  }
+
+  def randomString(nullable: Boolean): java.lang.String = {
+    if (shouldBeNull(nullable)) {
+      null
+    } else {
+      val length = util.Random.nextInt(20) + 1
+      util.Random.alphanumeric.take(length).mkString
+    }
+  }
+}
+
 /**
   * A class to Check whether a check is applicable to some data using the schema of the data.
   *
@@ -38,6 +125,7 @@ private[deequ] case class ApplicabilityResult(
   */
 private[deequ] class Applicability(session: SparkSession) {
 
+  import Applicability._
 
   /**
     * Check whether a check is applicable to some data using the schema of the data.
@@ -116,6 +204,9 @@ private[deequ] class Applicability(session: SparkSession) {
           case IntegerType => randomInteger(field.nullable)
           case FloatType => randomFloat(field.nullable)
           case DoubleType => randomDouble(field.nullable)
+          case ByteType => randomByte(field.nullable)
+          case ShortType => randomShort(field.nullable)
+          case LongType => randomLong(field.nullable)
           case _ : DecimalType => randomDecimal(field.nullable)
           case TimestampType => randomTimestamp(field.nullable)
           case BooleanType => randomBoolean(field.nullable)
@@ -133,64 +224,5 @@ private[deequ] class Applicability(session: SparkSession) {
     }
 
     session.createDataFrame(session.sparkContext.parallelize(rows), schema)
-  }
-
-
-  def randomString(nullable: Boolean = false): java.lang.String = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      val length = (math.random * 20 + 1).toInt
-      RandomStringUtils.randomAlphanumeric(length)
-    }
-  }
-
-  def randomInteger(nullable: Boolean = false): java.lang.Integer = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      (math.random * 100).toInt
-    }
-  }
-
-  def randomFloat(nullable: Boolean = false): java.lang.Float = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      (math.random * 100).toFloat
-    }
-  }
-
-
-  def randomDouble(nullable: Boolean = false): java.lang.Double = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      math.random * 100
-    }
-  }
-
-  def randomDecimal(nullable: Boolean = false): java.math.BigDecimal = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      BigDecimal(math.random * 100).bigDecimal
-    }
-  }
-
-  def randomTimestamp(nullable: Boolean = false): java.sql.Timestamp = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      new Timestamp((math.random * 100).toLong)
-    }
-  }
-
-  def randomBoolean(nullable: Boolean = false): java.lang.Boolean = {
-    if (nullable && math.random < 0.01) {
-      null
-    } else {
-      math.random > 0.5
-    }
   }
 }

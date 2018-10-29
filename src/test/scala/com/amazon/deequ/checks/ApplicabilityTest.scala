@@ -15,10 +15,10 @@
   */
 
 package com.amazon.deequ
+package checks
 
-import com.amazon.deequ.analyzers.{Completeness, Compliance}
 import com.amazon.deequ.analyzers.applicability.Applicability
-import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.analyzers.{Completeness, Compliance}
 import org.apache.spark.sql.types._
 import org.scalatest.WordSpec
 
@@ -27,8 +27,11 @@ class ApplicabilityTest extends WordSpec with SparkContextSpec {
   private[this] val schema = StructType(Array(
       StructField("stringCol", StringType, nullable = true),
       StructField("stringCol2", StringType, nullable = true),
+      StructField("byteCol", ByteType, nullable = true),
+      StructField("shortCol", ShortType, nullable = true),
       StructField("intCol", IntegerType, nullable = true),
       StructField("intCol2", IntegerType, nullable = true),
+      StructField("longCol", LongType, nullable = true),
       StructField("floatCol", FloatType, nullable = true),
       StructField("floatCol2", FloatType, nullable = true),
       StructField("doubleCol", DoubleType, nullable = true),
