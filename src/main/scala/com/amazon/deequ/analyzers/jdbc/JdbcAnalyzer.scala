@@ -19,6 +19,7 @@ package com.amazon.deequ.analyzers.jdbc
 import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.State
+import com.amazon.deequ.analyzers.runners.WrongColumnTypeException
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.Metric
 import org.postgresql.util.PSQLException
@@ -105,6 +106,48 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
     try {
       if (!result.first())
         throw new NoSuchColumnException(s"The column '$column' does not exist in the table '${table.name}'")
+    }
+    catch {
+      case error: PSQLException => throw error
+    }
+  }
+
+  def isNumeric(table: Table, column: String): Unit = {
+    var numericDataTypes: List[String] = List("smallint", "integer", "bigint", "decimal", "numeric", "real", "double precision", "smallserial", "serial", "bigserial")
+    var col_type = columnType(table, column)
+
+    if (!numericDataTypes.contains(col_type))
+      throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
+        s"(${numericDataTypes.mkString(",")}), but found $col_type instead!")
+
+  }
+
+  def columnType(table: Table, column: String): String = {
+    val connection = table.jdbcConnection
+
+    val query =
+      s"""
+         |SELECT
+         | *
+         |FROM
+         | INFORMATION_SCHEMA.COLUMNS
+         |WHERE
+         | TABLE_NAME = ?
+         |AND
+         | COLUMN_NAME = ?
+      """.stripMargin
+
+    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
+      ResultSet.CONCUR_READ_ONLY)
+
+    statement.setString(1, table.name)
+    statement.setString(2, column)
+
+    val result = statement.executeQuery()
+
+    try {
+      result.next()
+      result.getString("data_type")
     }
     catch {
       case error: PSQLException => throw error
