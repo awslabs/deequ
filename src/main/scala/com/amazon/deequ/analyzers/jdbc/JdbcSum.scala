@@ -23,6 +23,7 @@ import com.amazon.deequ.analyzers.{NumMatchesAndCount, SumState}
 import com.amazon.deequ.analyzers.runners.{EmptyStateException, WrongColumnTypeException}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
+import Preconditions.isNumeric
 
 case class JdbcSum(column: String)
   extends JdbcAnalyzer[SumState, DoubleMetric] {

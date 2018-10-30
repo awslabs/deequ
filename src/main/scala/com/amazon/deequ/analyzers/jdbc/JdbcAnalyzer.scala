@@ -16,13 +16,15 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
+import java.sql.{JDBCType, ResultSet}
 
 import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.analyzers.runners.WrongColumnTypeException
-import com.amazon.deequ.analyzers.runners.NoSuchColumnException
+import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, NoSuchTableException, WrongColumnTypeException}
 import com.amazon.deequ.metrics.Metric
 import org.postgresql.util.PSQLException
+import java.sql.Types._
+
+import Preconditions.{hasColumn, hasTable}
 
 
 trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
@@ -44,11 +46,19 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
   private[deequ] def toFailureMetric(failure: Exception): M
 
   def validateParams(table: Table, column: String): Unit = {
-    validateTable(table)
-    validateColumn(table, column)
+    hasTable(table)
+    hasColumn(table, column)
   }
+}
 
-  def validateTable(table: Table): Unit = {
+/** Helper method to check conditions on the schema of the data */
+object Preconditions {
+
+  private[this] val numericDataTypes =
+    Set(BIGINT, DECIMAL, DOUBLE, FLOAT, INTEGER, NUMERIC, SMALLINT, TINYINT)
+
+  /** Specified table exists in the data */
+  def hasTable(table: Table): Unit = {
 
     val connection = table.jdbcConnection
 
@@ -69,18 +79,17 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
     val result = statement.executeQuery()
 
-
     try {
       if (!result.first())
-        throw new Exception(s"The table '${table.name}' does not exist")
+        throw new NoSuchTableException(s"Input data does not include table ${table.name}!")
     }
     catch {
       case error: PSQLException => throw error
     }
   }
 
-  def validateColumn(table: Table, column: String): Unit = {
-
+  /** Specified column exists in the table */
+  def hasColumn(table: Table, column: String): Unit = {
     val connection = table.jdbcConnection
 
     val query =
@@ -105,53 +114,49 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
     try {
       if (!result.first())
-        throw new NoSuchColumnException(s"The column '$column' does not exist in the table '${table.name}'")
+        throw new NoSuchColumnException(s"Input data does not include column $column!")
     }
     catch {
       case error: PSQLException => throw error
     }
   }
 
+  /** data type of specified column */
+  def getColumnDataType(table: Table, column: String): Int = {
+    val connection = table.jdbcConnection
+
+    val query =
+      s"""
+         |SELECT
+         | $column
+         |FROM
+         | ${table.name}
+         |LIMIT 0
+      """.stripMargin
+
+    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
+      ResultSet.CONCUR_READ_ONLY)
+
+    val result = statement.executeQuery()
+
+    try {
+      val metaData = result.getMetaData
+      metaData.getColumnType(1)
+    }
+    catch {
+      case error: PSQLException => throw error
+    }
+  }
+
+  /** Specified column has a numeric type */
   def isNumeric(table: Table, column: String): Unit = {
-    var numericDataTypes: List[String] = List("smallint", "integer", "bigint", "decimal", "numeric", "real", "double precision", "smallserial", "serial", "bigserial")
-    var col_type = columnType(table, column)
+    val columnDataType = getColumnDataType(table, column)
 
-    if (!numericDataTypes.contains(col_type))
+    val hasNumericType = numericDataTypes.contains(columnDataType)
+
+    if (!hasNumericType) {
       throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
-        s"(${numericDataTypes.mkString(",")}), but found $col_type instead!")
-
-  }
-
-  def columnType(table: Table, column: String): String = {
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | *
-         |FROM
-         | INFORMATION_SCHEMA.COLUMNS
-         |WHERE
-         | TABLE_NAME = ?
-         |AND
-         | COLUMN_NAME = ?
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
-      ResultSet.CONCUR_READ_ONLY)
-
-    statement.setString(1, table.name)
-    statement.setString(2, column)
-
-    val result = statement.executeQuery()
-
-    try {
-      result.next()
-      result.getString("data_type")
-    }
-    catch {
-      case error: PSQLException => throw error
+        s"(${numericDataTypes.map(t => JDBCType.valueOf(t).getName).mkString(",")}), but found ${JDBCType.valueOf(columnDataType).getName} instead!")
     }
   }
-
 }

@@ -35,6 +35,9 @@ class MetricCalculationPreconditionException(message: String)
   extends MetricCalculationException(message)
 
 
+class NoSuchTableException(message: String)
+  extends MetricCalculationPreconditionException(message)
+
 class NoSuchColumnException(message: String)
   extends MetricCalculationPreconditionException(message)
 

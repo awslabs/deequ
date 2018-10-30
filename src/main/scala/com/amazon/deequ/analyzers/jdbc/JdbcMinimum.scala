@@ -23,6 +23,8 @@ import com.amazon.deequ.analyzers.MinState
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
+import Preconditions.isNumeric
+
 
 case class JdbcMinimum(column: String)
   extends JdbcAnalyzer[MinState, DoubleMetric] {
