@@ -116,6 +116,15 @@ private[deequ] object Applicability {
       util.Random.alphanumeric.take(length).mkString
     }
   }
+
+  private def namedFailure(t: util.Try[_])(name: String): Option[(String, Exception)] = {
+    t match {
+      // An exception occurred during analysis
+      case Failure(exception: Exception) => Some(name -> exception)
+      // Analysis done successfully and result metric is there
+      case _ => None
+    }
+  }
 }
 
 /**
@@ -151,13 +160,7 @@ private[deequ] class Applicability(session: SparkSession) {
     val failures = constraintsByName
       .flatMap { case (name, constraint) =>
         val maybeValue = constraint.analyzer.calculate(data).value
-
-        maybeValue match {
-          // An exception occurred during analysis
-          case Failure(exception: Exception) => Some(name -> exception)
-          // Analysis done successfully and result metric is there
-          case _ => None
-        }
+        namedFailure(maybeValue)(name)
       }
 
     ApplicabilityResult(failures.isEmpty, failures)
@@ -180,13 +183,7 @@ private[deequ] class Applicability(session: SparkSession) {
     val failures = analyzersByName
       .flatMap { case (name, analyzer) =>
         val maybeValue = analyzer.calculate(data).value
-
-        maybeValue match {
-          // An exception occurred during analysis
-          case Failure(exception) => Some(name -> exception)
-          // Analysis done successfully and result metric is there
-          case _ => None
-        }
+        namedFailure(maybeValue)(name)
       }
 
     ApplicabilityResult(failures.isEmpty, failures)
