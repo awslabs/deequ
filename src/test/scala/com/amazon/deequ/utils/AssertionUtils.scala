@@ -36,7 +36,7 @@ object AssertionUtils {
     }
     def compareOuterAndInnerFailureTypes[B](other: Try[B]): Boolean = {
       (something, other) match {
-        case (Failure(a: Throwable), Failure(b: Throwable))
+        case (Failure(a: Exception), Failure(b: Exception))
           if (a.getCause != null) && (b.getCause != null) =>
             (a.getClass == b.getClass) && (a.getCause.getClass == b.getCause.getClass)
         case (_, _) => false

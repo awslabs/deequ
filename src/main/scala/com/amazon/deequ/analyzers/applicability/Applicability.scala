@@ -27,7 +27,7 @@ import scala.util.Failure
 
 private[deequ] case class ApplicabilityResult(
   isApplicable: Boolean,
-  failures: Seq[(String, Throwable)]
+  failures: Seq[(String, Exception)]
 )
 
 private[deequ] object Applicability {
@@ -154,7 +154,7 @@ private[deequ] class Applicability(session: SparkSession) {
 
         maybeValue match {
           // An exception occurred during analysis
-          case Failure(exception) => Some(name -> exception)
+          case Failure(exception: Exception) => Some(name -> exception)
           // Analysis done successfully and result metric is there
           case _ => None
         }

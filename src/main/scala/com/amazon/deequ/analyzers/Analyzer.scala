@@ -431,7 +431,7 @@ private[deequ] object Analyzers {
   }
 
   def metricFromFailure(
-      exception: Throwable,
+      exception: Exception,
       name: String,
       instance: String,
       entity: Entity.Value = Entity.Column)

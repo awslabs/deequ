@@ -21,12 +21,12 @@ abstract class MetricCalculationException(message: String) extends Exception(mes
 class MetricCalculationRuntimeException(message: String)
   extends MetricCalculationException(message) {
 
-  def this(message: String, cause: Throwable) {
+  def this(message: String, cause: Exception) {
     this(message)
     initCause(cause)
   }
 
-  def this(cause: Throwable) {
+  def this(cause: Exception) {
     this(Option(cause).map(_.toString).orNull, cause)
   }
 }
@@ -66,12 +66,12 @@ object MetricCalculationException {
       s"Currently, the value is: $relativeError!"
   }
 
-  def wrapIfNecessary(exception: Throwable)
+  def wrapIfNecessary(exception: Exception)
     : MetricCalculationException = {
 
     exception match {
       case error: MetricCalculationException => error
-      case error: Throwable => new MetricCalculationRuntimeException(error)
+      case error: Exception => new MetricCalculationRuntimeException(error)
     }
   }
 
