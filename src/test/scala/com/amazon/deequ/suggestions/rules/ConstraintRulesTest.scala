@@ -14,16 +14,19 @@
  *
  */
 
-package com.amazon.deequ.suggestions.rules
+package com.amazon.deequ
+package suggestions.rules
 
-import com.amazon.deequ.analyzers.DataTypeInstances
+import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
 import com.amazon.deequ.analyzers.DataTypeInstances._
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.constraints.ConstrainableDataTypes
-import com.amazon.deequ.metrics.{Distribution, DistributionValue}
+import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
 import com.amazon.deequ.profiles._
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.StringType
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 
@@ -426,6 +429,33 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
   }
 
   "FractionalCategoricalRangeRule" should {
+
+    "work correctly with NullValue" in withSparkSession { sparkSession =>
+      val rows = List.fill(10)(Row(null)) ++ List.fill(1)(Row("not null"))
+      val column = "column-with-nulls"
+      val df = dataFrameWithColumn(
+        column, StringType, sparkSession,
+        rows: _ *
+        //Row(null), Row(null), Row(null), Row(null), Row("a"), Row("a"), Row("a")
+      )
+
+      val metric = Histogram(column).calculate(df)
+
+      val cp = StandardColumnProfile(
+        column, completeness = 1.0 / 11.0, approximateNumDistinctValues = 2,
+        dataType = String, isDataTypeInferred = false,
+        typeCounts = Map.empty,
+        histogram = Some(metric.value.get))
+
+      // target data coverage cannot be met due too many nulls
+      val shouldBeApplied = FractionalCategoricalRangeRule().shouldBeApplied(cp, df.count)
+
+      val suggestedConstraint = FractionalCategoricalRangeRule().candidate(cp, df.count)
+
+//      assert()
+      assert(!shouldBeApplied)
+    }
+
     "be applied correctly" in {
 
       // Ratio of non-unique distinct values must be > 90%

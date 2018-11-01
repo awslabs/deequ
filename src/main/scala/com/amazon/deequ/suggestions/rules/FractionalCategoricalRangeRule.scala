@@ -44,7 +44,7 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
       val ratioSums = topCategories.map { case (_, value) => value.ratio }.sum
 
       // TODO find a principled way to define these thresholds...
-      uniqueValueRatio <= 0.4 && ratioSums < 1
+      uniqueValueRatio <= 0.4 && ratioSums >= targetDataCoverageFraction
     } else {
       false
     }
@@ -57,9 +57,7 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
     val ratioSums = topCategories.map { case (_, categoryValue) => categoryValue.ratio }.sum
 
     val valuesByPopularity = topCategories.toArray
-      .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
-      .sortBy { case (_, value) => value.absolute }
-      .reverse
+      .sortBy { case (_, value) => - value.absolute }
 
     val categoriesSql = valuesByPopularity
       // the character "'" can be contained in category names
@@ -102,15 +100,17 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
     : Map[String, DistributionValue] = {
 
     val sortedHistogramValues = columnProfile.histogram.get.values.toSeq
-      .sortBy { case (_, value) => value.ratio }.reverse
+      .sortBy { case (_, value) => - value.ratio }
 
     var currentDataCoverage = 0.0
     var rangeValues = Map.empty[String, DistributionValue]
 
     sortedHistogramValues.foreach { case (categoryName, value) =>
-      if (currentDataCoverage < dataCoverageFraction) {
-        currentDataCoverage += value.ratio
-        rangeValues += (categoryName -> value)
+      if (categoryName != Histogram.NullFieldReplacement) {
+        if (currentDataCoverage < dataCoverageFraction) {
+          currentDataCoverage += value.ratio
+          rangeValues += (categoryName -> value)
+        }
       }
     }
 
