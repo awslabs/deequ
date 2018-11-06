@@ -83,7 +83,7 @@ case class JdbcUniqueness(column: String)
         metricFromValue(theState.metricValue(), "Uniqueness", column, Entity.Column)
       case _ =>
         toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer Jdbc all input values were NULL."))
+          s"Empty state for analyzer JdbcUniqueness all input values were NULL."))
     }
   }
 
