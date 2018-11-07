@@ -65,7 +65,7 @@ trait JdbcFixtureSupport {
         Seq("11", null, "f"),
         Seq("12", null, "d")
       )
-    (fillTableWithData(conn, "Full", columns, data), data.size)
+    (fillTableWithData(conn, "Missing", columns, data), data.size)
   }
 
   def getTableMissing(conn: Connection): Table = {
