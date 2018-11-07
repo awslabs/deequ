@@ -36,6 +36,20 @@ case class JdbcCorrelation(firstColumn: String,
     validateParams(table, firstColumn)
     validateParams(table, secondColumn)
 
+    /*
+    * How to calculate the Correlation:
+    * calculate the mean of firstColumn (called avg_first)
+    * calculate the mean of secondColum (called avt_second)
+    * subtract avg_first of every value in firstColumn (column indirectly called a)
+    * subtract avg_second of every value in second Column (column indirectly called b)
+    * calculate the square of the values in a (column called axa) and the square of the values in b (bxb) and the product of the values in a and b (axb)
+    * sum all the values in axb (called ck, same name as in CorrelationState)
+    * sum all the values in axa (called xMk, same name as in CorrelationState)
+    * sum all the values in bxb (called yMk, same name as in Correlation State)
+    * the result values (including the number of values (called n), avg_first (called xAvg) and avg_second (called yAvg)) are given to CorrelationState
+    * Correlation State then calculates ck / math.sqrt(xMk * yMk)
+    * */
+
     val query =
       s"""
         SELECT
@@ -54,7 +68,10 @@ case class JdbcCorrelation(firstColumn: String,
             ($firstColumn-avg_first)*($firstColumn-avg_first) AS axa_val,
             ($secondColumn-avg_second)*($secondColumn-avg_second)AS bxb_val
           FROM
-          ${table.name},
+            (SELECT CAST($firstColumn AS NUMERIC), CAST($secondColumn AS NUMERIC)
+              FROM ${table.name}
+              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL
+              ) AS noNullValueTable,
             (SELECT
               COUNT ($firstColumn) AS count_all,
               AVG(CAST($firstColumn AS NUMERIC)) AS avg_first,
