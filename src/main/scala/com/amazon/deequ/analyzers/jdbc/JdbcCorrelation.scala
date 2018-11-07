@@ -39,7 +39,7 @@ case class JdbcCorrelation(firstColumn: String,
     /*
     * How to calculate the Correlation:
     * calculate the mean of firstColumn (called avg_first)
-    * calculate the mean of secondColum (called avt_second)
+    * calculate the mean of secondColumn (called avg_second)
     * subtract avg_first of every value in firstColumn (column indirectly called a)
     * subtract avg_second of every value in second Column (column indirectly called b)
     * calculate the square of the values in a (column called axa) and the square of the values in b (bxb) and the product of the values in a and b (axb)
