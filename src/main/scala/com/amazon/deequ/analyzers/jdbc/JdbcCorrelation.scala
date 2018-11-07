@@ -70,7 +70,7 @@ case class JdbcCorrelation(firstColumn: String,
           FROM
             (SELECT CAST($firstColumn AS NUMERIC), CAST($secondColumn AS NUMERIC)
               FROM ${table.name}
-              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL
+              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL AND ${where.getOrElse("TRUE=TRUE")}
               ) AS noNullValueTable,
             (SELECT
               COUNT ($firstColumn) AS count_all,
@@ -79,7 +79,7 @@ case class JdbcCorrelation(firstColumn: String,
             FROM
               (SELECT *
               FROM ${table.name}
-              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL
+              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL AND ${where.getOrElse("TRUE=TRUE")}
               ) AS noNullValueTable
             ) AS meanTable
           ) AS calculationTable
