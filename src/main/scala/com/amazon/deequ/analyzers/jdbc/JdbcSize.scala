@@ -20,18 +20,23 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatches
+import com.amazon.deequ.analyzers.jdbc.Preconditions.hasTable
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 
-case class JdbcSize(column: String)
+case class JdbcSize()
   extends JdbcAnalyzer[NumMatches, DoubleMetric] {
+
+  val column = "*"
+
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: Nil
+  }
 
   override def computeStateFrom(table: Table): Option[NumMatches] = {
 
     val connection = table.jdbcConnection
-
-    validateParams(table, column)
 
     val query =
       s"""

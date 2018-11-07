@@ -19,26 +19,22 @@ package com.amazon.deequ.analyzers.jdbc
 import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
-import com.amazon.deequ.analyzers.{NumMatchesAndCount, SumState}
-import com.amazon.deequ.analyzers.runners.{EmptyStateException, WrongColumnTypeException}
+import com.amazon.deequ.analyzers.SumState
+import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
-import Preconditions.isNumeric
+import Preconditions.{hasColumn, hasTable, isNumeric}
 
 case class JdbcSum(column: String)
   extends JdbcAnalyzer[SumState, DoubleMetric] {
 
-  override def validateParams(table: Table, column: String): Unit = {
-    super.validateParams(table, column)
-
-    isNumeric(table, column)
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[SumState] = {
 
     val connection = table.jdbcConnection
-
-    validateParams(table, column)
 
     val query =
       s"""

@@ -20,6 +20,7 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasColumn}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
@@ -27,11 +28,13 @@ import org.postgresql.util.PSQLException
 case class JdbcCompleteness(column: String)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: hasColumn(column) :: Nil
+  }
+
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
 
     val connection = table.jdbcConnection
-
-    validateParams(table, column)
 
     val query =
       s"""

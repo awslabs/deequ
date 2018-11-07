@@ -16,17 +16,24 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
+import java.sql.{Connection, DriverManager}
 
-object SizeWithJdbc extends App {
+/**
+  * TODO
+  * To be mixed with Tests so they can use a default spark context suitable for testing
+  */
+trait JdbcContextSpec {
 
-  withJdbc { connection =>
+  val jdbcUrl = "jdbc:sqlite:memory"
 
-    val table = Table("food_des", connection)
-
-    val sizeOfTable = JdbcSize().calculate(table)
-
-    println(sizeOfTable)
-
+  def withJdbc(testFunc: Connection => Unit): Unit = {
+    classOf[org.postgresql.Driver]
+    val connection = DriverManager.getConnection(jdbcUrl)
+    try {
+      testFunc(connection)
+    } finally {
+      connection.close()
+    }
   }
+
 }

@@ -28,17 +28,13 @@ import Preconditions._
 case class JdbcMaximum(column: String)
   extends JdbcAnalyzer[MaxState, DoubleMetric] {
 
-  override def validateParams(table: Table, column: String): Unit = {
-    super.validateParams(table, column)
-
-    isNumeric(table, column)
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MaxState] = {
 
     val connection = table.jdbcConnection
-
-    validateParams(table, column)
 
     val query =
       s"""

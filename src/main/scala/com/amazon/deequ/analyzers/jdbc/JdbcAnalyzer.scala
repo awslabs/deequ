@@ -21,21 +21,43 @@ import java.sql.{JDBCType, ResultSet}
 import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, NoSuchTableException, WrongColumnTypeException}
 import com.amazon.deequ.metrics.Metric
-import org.postgresql.util.PSQLException
 import java.sql.Types._
-
-import Preconditions.{hasColumn, hasTable}
-
 
 trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
+  /**
+    * Compute the state (sufficient statistics) from the data
+    * @param table database table
+    * @return
+    */
   def computeStateFrom(table: Table): Option[S]
 
+  /**
+    * Compute the metric from the state (sufficient statistics)
+    * @param state wrapper holding a state of type S (required due to typing issues...)
+    * @return
+    */
   def computeMetricFrom(state: Option[S]): M
+
+  /**
+    * A set of assertions that must hold on the database table
+    * @return
+    */
+  def preconditions: Seq[Table => Unit] = {
+    Seq.empty
+  }
+
+  def validatePreconditions(table: Table): Unit = {
+    val exceptionOption = Preconditions.findFirstFailing(table, this.preconditions)
+    if (exceptionOption.nonEmpty) {
+      throw exceptionOption.get
+    }
+  }
 
   def calculate(table: Table): M = {
 
     try {
+      validatePreconditions(table)
       val state = computeStateFrom(table)
       computeMetricFrom(state)
     } catch {
@@ -44,10 +66,17 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
   }
 
   private[deequ] def toFailureMetric(failure: Exception): M
+}
 
-  def validateParams(table: Table, column: String): Unit = {
-    hasTable(table)
-    hasColumn(table, column)
+/** Base class for analyzers that require to group the data by specific columns */
+abstract class GroupingAnalyzer[S <: State[_], +M <: Metric[_]] extends JdbcAnalyzer[S, M] {
+
+  /** The columns to group the data by */
+  def groupingColumns(): Seq[String]
+
+  /** Ensure that the grouping columns exist in the data */
+  override def preconditions: Seq[Table => Unit] = {
+    groupingColumns().map { name => Preconditions.hasColumn(name) } ++ super.preconditions
   }
 }
 
@@ -57,40 +86,49 @@ object Preconditions {
   private[this] val numericDataTypes =
     Set(BIGINT, DECIMAL, DOUBLE, FLOAT, INTEGER, NUMERIC, SMALLINT, TINYINT)
 
+  /* Return the first (potential) exception thrown by a precondition */
+  def findFirstFailing(
+                        table: Table,
+                        conditions: Seq[Table => Unit])
+  : Option[Exception] = {
+
+    conditions.map { condition =>
+      try {
+        condition(table)
+        None
+      } catch {
+        /* We only catch exceptions, not errors! */
+        case e: Exception => Some(e)
+      }
+    }
+      .find { _.isDefined }
+      .flatten
+  }
+
   /** Specified table exists in the data */
-  def hasTable(table: Table): Unit = {
+  def hasTable(tableName: String): Table => Unit = { table =>
 
     val connection = table.jdbcConnection
 
-    val query =
-      s"""
-         |SELECT
-         | *
-         |FROM
-         | INFORMATION_SCHEMA.TABLES
-         |WHERE
-         | TABLE_NAME = ?
-        """.stripMargin
+    val metaData = connection.getMetaData
+    val result = metaData.getTables(null, null, null, Array[String]("TABLE"))
 
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
-      ResultSet.CONCUR_READ_ONLY)
+    var hasTable = false
 
-    statement.setString(1, table.name)
-
-    val result = statement.executeQuery()
-
-    try {
-      if (!result.first()) {
-        throw new NoSuchTableException(s"Input data does not include table ${table.name}!")
+    while (result.next()) {
+      if (result.getString("TABLE_NAME") == table.name) {
+        hasTable = true
       }
     }
-    catch {
-      case error: PSQLException => throw error
+
+    if (!hasTable) {
+      throw new NoSuchTableException(s"Input data does not include table ${table.name}!")
     }
   }
 
   /** Specified column exists in the table */
-  def hasColumn(table: Table, column: String): Unit = {
+  def hasColumn(column: String): Table => Unit = { table =>
+
     val connection = table.jdbcConnection
 
     val query =
@@ -98,28 +136,26 @@ object Preconditions {
          |SELECT
          | *
          |FROM
-         | INFORMATION_SCHEMA.COLUMNS
-         |WHERE
-         | TABLE_NAME = ?
-         |AND
-         | COLUMN_NAME = ?
+         | ${table.name}
+         |LIMIT 0
       """.stripMargin
 
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
+    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
       ResultSet.CONCUR_READ_ONLY)
 
-    statement.setString(1, table.name)
-    statement.setString(2, column)
-
     val result = statement.executeQuery()
+    val metaData = result.getMetaData
 
-    try {
-      if (!result.first()) {
-        throw new NoSuchColumnException(s"Input data does not include column $column!")
+    var hasColumn = false
+
+    for (i <- 1 to metaData.getColumnCount) {
+      if (metaData.getColumnName(i) == column) {
+        hasColumn = true
       }
     }
-    catch {
-      case error: PSQLException => throw error
+
+    if (!hasColumn) {
+      throw new NoSuchColumnException(s"Input data does not include column $column!")
     }
   }
 
@@ -136,22 +172,17 @@ object Preconditions {
          |LIMIT 0
       """.stripMargin
 
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE,
+    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
       ResultSet.CONCUR_READ_ONLY)
 
     val result = statement.executeQuery()
 
-    try {
-      val metaData = result.getMetaData
-      metaData.getColumnType(1)
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
+    val metaData = result.getMetaData
+    metaData.getColumnType(1)
   }
 
   /** Specified column has a numeric type */
-  def isNumeric(table: Table, column: String): Unit = {
+  def isNumeric(column: String): Table => Unit = { table =>
     val columnDataType = getColumnDataType(table, column)
 
     val hasNumericType = numericDataTypes.contains(columnDataType)

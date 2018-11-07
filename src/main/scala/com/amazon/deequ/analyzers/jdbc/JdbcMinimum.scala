@@ -23,23 +23,19 @@ import com.amazon.deequ.analyzers.MinState
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
-import Preconditions.isNumeric
+import Preconditions.{hasTable, hasColumn, isNumeric}
 
 
 case class JdbcMinimum(column: String)
   extends JdbcAnalyzer[MinState, DoubleMetric] {
 
-  override def validateParams(table: Table, column: String): Unit = {
-    super.validateParams(table, column)
-
-    isNumeric(table, column)
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MinState] = {
 
     val connection = table.jdbcConnection
-
-    validateParams(table, column)
 
     val query =
       s"""

@@ -23,23 +23,18 @@ import com.amazon.deequ.analyzers.StandardDeviationState
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
-import Preconditions.isNumeric
+import Preconditions.{hasColumn, hasTable, isNumeric}
 
 case class JdbcStandardDeviation(column: String)
   extends JdbcAnalyzer[StandardDeviationState, DoubleMetric] {
 
-  override def validateParams(table: Table, column: String): Unit = {
-    super.validateParams(table, column)
-
-    isNumeric(table, column)
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[StandardDeviationState] = {
 
     val connection = table.jdbcConnection
-
-    validateParams(table, column)
-
     val query =
       s"""
          |SELECT
