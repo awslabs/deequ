@@ -1,7 +1,7 @@
 # Deequ - Unit Tests for Data
 [![GitHub license](https://img.shields.io/github/license/awslabs/deequ.svg)](https://github.com/awslabs/deequ/blob/master/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/awslabs/deequ.svg)](https://github.com/awslabs/deequ/issues)
-[![Build Status](https://travis-ci.org/hpi-bp1819-naumann/deequ.svg?branch=jdbc-analyers)](https://travis-ci.org/hpi-bp1819-naumann/deequ)
+[![Build Status](https://travis-ci.org/hpi-bp1819-naumann/deequ.svg?branch=jdbc-analyzers)](https://travis-ci.org/hpi-bp1819-naumann/deequ)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ)
 
 Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets. We are happy to receive feedback and [contributions](CONTRIBUTING.md).
