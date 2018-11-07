@@ -80,8 +80,9 @@ object Preconditions {
     val result = statement.executeQuery()
 
     try {
-      if (!result.first())
+      if (!result.first()) {
         throw new NoSuchTableException(s"Input data does not include table ${table.name}!")
+      }
     }
     catch {
       case error: PSQLException => throw error
@@ -113,8 +114,9 @@ object Preconditions {
     val result = statement.executeQuery()
 
     try {
-      if (!result.first())
+      if (!result.first()) {
         throw new NoSuchColumnException(s"Input data does not include column $column!")
+      }
     }
     catch {
       case error: PSQLException => throw error
@@ -156,7 +158,8 @@ object Preconditions {
 
     if (!hasNumericType) {
       throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
-        s"(${numericDataTypes.map(t => JDBCType.valueOf(t).getName).mkString(",")}), but found ${JDBCType.valueOf(columnDataType).getName} instead!")
+        s"(${numericDataTypes.map(t => JDBCType.valueOf(t).getName).mkString(",")}), " +
+        s"but found ${JDBCType.valueOf(columnDataType).getName} instead!")
     }
   }
 }
