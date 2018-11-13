@@ -24,7 +24,8 @@ object ComplianceWithJdbc extends App {
 
     val table = Table("food_des", connection)
 
-    val complianceWithFatFactorRange = JdbcCompliance("constraint name","fat_factor BETWEEN 0 AND 1").calculate(table)
+    val complianceWithFatFactorRange =
+      JdbcCompliance("constraint name", "fat_factor BETWEEN 0 AND 1").calculate(table)
 
     println(complianceWithFatFactorRange)
 

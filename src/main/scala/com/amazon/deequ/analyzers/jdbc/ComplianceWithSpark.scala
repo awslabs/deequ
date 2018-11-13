@@ -25,7 +25,8 @@ object ComplianceWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val complianceWithFatFactorRange = Compliance(s"constraintName", s"fat_factor BETWEEN 0 AND 1").calculate(data)
+    val complianceWithFatFactorRange =
+      Compliance(s"constraintName", s"fat_factor BETWEEN 0 AND 1").calculate(data)
 
     println(complianceWithFatFactorRange)
   }

@@ -20,6 +20,7 @@ package com.amazon.deequ.analyzers.jdbc
 
 import java.sql.ResultSet
 
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
 import com.amazon.deequ.analyzers.runners.{EmptyStateException, MetricCalculationException}
 import com.amazon.deequ.metrics._
 
@@ -28,11 +29,14 @@ import scala.util.{Failure, Try}
 case class JdbcHistogram(column: String)
   extends JdbcAnalyzer[JdbcFrequenciesAndNumRows, HistogramMetric] {
 
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable(column) :: hasColumn(column) :: Nil
+  }
+
   override def computeStateFrom(table: Table): Option[JdbcFrequenciesAndNumRows] = {
 
     val connection = table.jdbcConnection
 
-    validateParams(table, column)
     // TODO: resolve rounding error somehow
     val query =
       s"""
@@ -62,10 +66,10 @@ case class JdbcHistogram(column: String)
         if (result.next()) {
           val columnName = result.getString("name")
           println(columnName)
-          val absolute =  result.getLong("absolute")
-          val ratio =  result.getDouble("ratio")
+          val absolute = result.getLong("absolute")
+          val ratio = result.getDouble("ratio")
           val entry = columnName -> DistributionValue(absolute, ratio)
-          convertResult(result, map + entry, total + absolute)
+          convertResult(result, map + entry, totals + absolute)
         } else {
           (map, total)
         }
