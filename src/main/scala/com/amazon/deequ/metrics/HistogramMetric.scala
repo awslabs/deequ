@@ -18,22 +18,9 @@ package com.amazon.deequ.metrics
 
 import scala.util.{Failure, Success, Try}
 
-case class DistributionValue(absolute: Long, ratio: Double) {
-  def sum(other: DistributionValue, total: Long): DistributionValue = {
-    val absoluteSum = absolute + other.absolute
-    DistributionValue(absoluteSum, absoluteSum / total)
-  }
-}
+case class DistributionValue(absolute: Long, ratio: Double)
 
 case class Distribution(values: Map[String, DistributionValue], numberOfBins: Long) {
-  def sum(other: Distribution, total: Long): Distribution = {
-    val sumValues = (values ++ other.values).keySet.map {
-      k => k -> values.getOrElse(k, DistributionValue(0, 0))
-                  .sum(other.values.getOrElse(k, DistributionValue(0, 0)), total)
-    }.toMap
-    Distribution(sumValues, sumValues.size)
-  }
-
   def apply(key: String): DistributionValue = {
     values(key)
   }
