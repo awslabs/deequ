@@ -194,7 +194,7 @@ object Preconditions {
     }
   }
 
-  /* Statement has no ; outside of quotation marks (SQL injections) */
+  /** Statement has no ; outside of quotation marks (SQL injections) */
   def hasNoInjection(statement: Option[String]): Table => Unit = { _ =>
     val pattern = """("[^"]*"|'[^']*'|[^;'"]*)*"""
     val st = statement.get
