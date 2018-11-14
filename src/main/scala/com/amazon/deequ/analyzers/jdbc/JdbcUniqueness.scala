@@ -53,7 +53,7 @@ case class JdbcUniqueness(column: String)
        |  CROSS JOIN
        |
        |  (SELECT COUNT(*) AS num_rows
-       |  FROM ${table.name}) AS num_rows
+       |  FROM ${table.name}) AS _
       """.stripMargin
 
 
