@@ -24,7 +24,7 @@ object SumWithJdbc extends App {
 
     val table = Table("food_des", connection)
 
-    val sumOfFatFactor = JdbcSum("fat_factor").calculate(table)
+    val sumOfFatFactor = JdbcSum("fat_factor", Some("fat_factor > 5.0")).calculate(table)
 
     println(sumOfFatFactor)
 

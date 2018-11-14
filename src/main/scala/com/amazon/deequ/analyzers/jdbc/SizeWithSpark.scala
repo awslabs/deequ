@@ -25,7 +25,7 @@ object SizeWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val sizeOfTable = Size().calculate(data)
+    val sizeOfTable = Size(Some("fat_factor < 5.0")).calculate(data)
 
     println(sizeOfTable)
   }

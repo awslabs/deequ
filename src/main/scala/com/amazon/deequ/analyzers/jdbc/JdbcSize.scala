@@ -25,7 +25,7 @@ import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 
-case class JdbcSize()
+case class JdbcSize(where: Option[String] = None)
   extends JdbcAnalyzer[NumMatches, DoubleMetric] {
 
   val column = "*"
@@ -44,6 +44,8 @@ case class JdbcSize()
          | COUNT (*) AS num_rows
          |FROM
          | ${table.name}
+         |WHERE
+         | ${where.getOrElse("TRUE=TRUE")}
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

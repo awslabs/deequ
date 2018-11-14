@@ -14,12 +14,15 @@ class JdbcAnalyzerTests
 
       val tableMissing = getTableMissingWithSize(connection)
       val tableFull = getTableFullWithSize(connection)
+      val tableFiltered = getTableFullWithSize(connection)
       val tableEmpty = getTableEmptyWithSize(connection)
 
       assert(JdbcSize().calculate(tableMissing._1) == DoubleMetric(Entity.Dataset, "Size", "*",
         Success(tableMissing._2)))
       assert(JdbcSize().calculate(tableFull._1) == DoubleMetric(Entity.Dataset, "Size", "*",
         Success(tableFull._2)))
+      assert(JdbcSize(where = Some("item != 3")).calculate(tableFiltered._1) ==
+        DoubleMetric(Entity.Dataset, "Size", "*", Success(3.0)))
       assert(JdbcSize().calculate(tableEmpty._1) == DoubleMetric(Entity.Dataset, "Size", "*",
         Success(tableEmpty._2)))
 
@@ -101,12 +104,10 @@ class JdbcAnalyzerTests
     }
 
     "work with filtering" in withJdbc { connection =>
-      /*
       val dfMissing = getTableMissing(connection)
 
       val result = JdbcCompleteness("att1", Some("item IN ('1', '2')")).calculate(dfMissing)
       assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0)))
-      */
     }
 
     "prevent sql injections" should {
@@ -227,6 +228,12 @@ class JdbcAnalyzerTests
         result shouldBe Success(3.5)
       }
 
+      "compute mean correctly for numeric data with filtering" in withJdbc { connection =>
+        val table = getTableWithNumericValues(connection)
+        val result = JdbcMean("att1", where = Some("item != '6'")).calculate(table).value
+        result shouldBe Success(3.0)
+      }
+
       "error handling for mean" should {
         "fail to compute mean for non numeric type" in withJdbc { connection =>
           val table = getTableFull(connection)
@@ -263,6 +270,14 @@ class JdbcAnalyzerTests
         result shouldBe Success(1.707825127659933)
       }
 
+      "compute standard deviation correctly for numeric data with filtering" in withJdbc {
+        connection =>
+          val table = getTableWithNumericValues(connection)
+          val result = JdbcStandardDeviation("att1", where =
+            Some("item != '6'")).calculate(table).value
+          result shouldBe Success(1.4142135623730951)
+      }
+
       "error handling for standard deviation" should {
         "fail to compute standard deviation for empty table" in withJdbc { connection =>
           val table = getTableEmpty(connection)
@@ -296,6 +311,12 @@ class JdbcAnalyzerTests
       "compute minimum correctly for numeric data" in withJdbc { connection =>
         val table = getTableWithNumericValues(connection)
         val result = JdbcMinimum("att1").calculate(table).value
+        result shouldBe Success(1.0)
+      }
+
+      "compute minimum correctly for numeric data with filtering" in withJdbc { connection =>
+        val table = getTableWithNumericValues(connection)
+        val result = JdbcMinimum("att1", where = Some("item != '6'")).calculate(table).value
         result shouldBe Success(1.0)
       }
 
@@ -337,11 +358,9 @@ class JdbcAnalyzerTests
 
       "compute maximum correctly for numeric data with filtering" in
         withJdbc { connection =>
-          /*
           val table = getTableWithNumericValues(connection)
           val result = JdbcMaximum("att1", where = Some("item != '6'")).calculate(table).value
           result shouldBe Success(5.0)
-          */
         }
 
       "error handling for maximum" should {
@@ -377,6 +396,12 @@ class JdbcAnalyzerTests
       "compute sum correctly for numeric data" in withJdbc { connection =>
         val table = getTableWithNumericValues(connection)
         JdbcSum("att1").calculate(table).value shouldBe Success(21)
+      }
+
+      "compute sum correctly for numeric data with filtering" in withJdbc { connection =>
+        val table = getTableWithNumericValues(connection)
+        val result = JdbcSum("att1", where = Some("item != '6'")).calculate(table).value
+        result shouldBe Success(15.0)
       }
 
       "should work correctly on decimal columns" in withJdbc { connection =>

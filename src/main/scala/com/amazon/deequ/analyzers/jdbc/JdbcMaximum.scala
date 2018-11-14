@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 import Preconditions._
 
-case class JdbcMaximum(column: String)
+case class JdbcMaximum(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[MaxState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
@@ -42,6 +42,8 @@ case class JdbcMaximum(column: String)
          | MAX($column) AS col_max
          |FROM
          | ${table.name}
+         |WHERE
+         | ${where.getOrElse("TRUE=TRUE")}
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

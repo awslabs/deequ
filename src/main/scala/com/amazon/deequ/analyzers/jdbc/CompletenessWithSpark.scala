@@ -26,7 +26,8 @@ object CompletenessWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val completenessOfFatFactor = Completeness("fat_factor").calculate(data)
+    val completenessOfFatFactor = Completeness("fat_factor",
+      Some("cho_factor < 2.0")).calculate(data)
 
     println(completenessOfFatFactor)
   }

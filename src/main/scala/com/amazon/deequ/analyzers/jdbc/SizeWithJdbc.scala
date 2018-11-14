@@ -24,7 +24,7 @@ object SizeWithJdbc extends App {
 
     val table = Table("food_des", connection)
 
-    val sizeOfTable = JdbcSize().calculate(table)
+    val sizeOfTable = JdbcSize(Some("fat_factor < 5.0")).calculate(table)
 
     println(sizeOfTable)
 

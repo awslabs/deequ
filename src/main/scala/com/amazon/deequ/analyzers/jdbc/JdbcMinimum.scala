@@ -26,7 +26,7 @@ import org.postgresql.util.PSQLException
 import Preconditions.{hasTable, hasColumn, isNumeric}
 
 
-case class JdbcMinimum(column: String)
+case class JdbcMinimum(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[MinState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
@@ -43,6 +43,8 @@ case class JdbcMinimum(column: String)
          | MIN($column) AS col_min
          |FROM
          | ${table.name}
+         |WHERE
+         | ${where.getOrElse("TRUE=TRUE")}
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 import Preconditions.{hasColumn, hasTable, isNumeric}
 
-case class JdbcStandardDeviation(column: String)
+case class JdbcStandardDeviation(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[StandardDeviationState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
@@ -45,12 +45,16 @@ case class JdbcStandardDeviation(column: String)
          | (SELECT
          |  $column
          | FROM
-         |  ${table.name}) AS A
+         |  ${table.name}
+         | WHERE
+         |  ${where.getOrElse("TRUE=TRUE")}) AS A
          |CROSS JOIN
          | (SELECT
          |   COUNT($column) AS col_count,
          |   AVG($column) AS col_avg
-         |  FROM ${table.name}) AS B
+         |  FROM ${table.name}
+         |  WHERE
+         |   ${where.getOrElse("TRUE=TRUE")}) AS B
          |GROUP BY
          | col_count,
          | col_avg

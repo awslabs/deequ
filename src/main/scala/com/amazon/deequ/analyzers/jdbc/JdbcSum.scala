@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 import Preconditions.{hasColumn, hasTable, isNumeric}
 
-case class JdbcSum(column: String)
+case class JdbcSum(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[SumState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
@@ -42,6 +42,8 @@ case class JdbcSum(column: String)
          | SUM($column) AS col_sum
          |FROM
          | ${table.name}
+         |WHERE
+         | ${where.getOrElse("TRUE=TRUE")}
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

@@ -25,7 +25,7 @@ object MaximumWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val maximumOfFatFactor = Maximum("fat_factor").calculate(data)
+    val maximumOfFatFactor = Maximum("fat_factor", Some("fat_factor < 5.0")).calculate(data)
 
     println(maximumOfFatFactor)
   }

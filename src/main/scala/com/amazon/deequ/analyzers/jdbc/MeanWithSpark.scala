@@ -25,7 +25,7 @@ object MeanWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val meanOfFatFactor = Mean("fat_factor").calculate(data)
+    val meanOfFatFactor = Mean("fat_factor", Some("fat_factor < 5.0")).calculate(data)
 
     println(meanOfFatFactor)
   }

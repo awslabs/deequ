@@ -25,7 +25,7 @@ object SumWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val sumOfFatFactor = Sum("fat_factor").calculate(data)
+    val sumOfFatFactor = Sum("fat_factor", Some("fat_factor > 5.0")).calculate(data)
 
     println(sumOfFatFactor)
   }

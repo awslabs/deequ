@@ -25,7 +25,7 @@ import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 
-case class JdbcCompleteness(column: String)
+case class JdbcCompleteness(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
@@ -43,6 +43,8 @@ case class JdbcCompleteness(column: String)
         | COUNT(*) AS num_rows
         |FROM
         | ${table.name}
+        |WHERE
+        | ${where.getOrElse("TRUE=TRUE")}
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

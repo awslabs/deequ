@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
 import Preconditions.{hasTable, hasColumn, isNumeric}
 
-case class JdbcMean(column: String)
+case class JdbcMean(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[MeanState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
@@ -43,6 +43,8 @@ case class JdbcMean(column: String)
          | COUNT(*) AS col_count
          |FROM
          | ${table.name}
+         |WHERE
+         | ${where.getOrElse("TRUE=TRUE")}
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

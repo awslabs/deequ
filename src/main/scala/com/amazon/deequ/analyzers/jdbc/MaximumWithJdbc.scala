@@ -24,7 +24,7 @@ object MaximumWithJdbc extends App {
 
     val table = Table("food_des", connection)
 
-    val maximumOfFatFactor = JdbcMaximum("fat_factor").calculate(table)
+    val maximumOfFatFactor = JdbcMaximum("fat_factor", Some("fat_factor < 5.0")).calculate(table)
 
     println(maximumOfFatFactor)
 
