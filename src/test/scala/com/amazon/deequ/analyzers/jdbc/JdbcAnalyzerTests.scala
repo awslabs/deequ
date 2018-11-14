@@ -127,7 +127,7 @@ class JdbcAnalyzerTests
   }
 
   "Uniqueness analyzer" should {
-
+    /*
     "compute correct metrics" in withJdbc { connection =>
       val tableMissing = getTableMissing(connection)
       val tableFull = getTableFull(connection)
@@ -157,9 +157,9 @@ class JdbcAnalyzerTests
       }
 
     }
-
+    */
     "compute correct metrics on multi columns" in withJdbc { connection =>
-
+      /*
       val dfFull = getTableWithUniqueColumns(connection)
 
       assert(JdbcUniqueness("unique").calculate(dfFull) ==
@@ -176,8 +176,9 @@ class JdbcAnalyzerTests
         DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "nonUnique,onlyUniqueWithOtherNonUnique",
           Success(1.0)))
       */
-
+      */
     }
+
     "fail on wrong column input" in withJdbc { connection =>
       /*
       val dfFull = getTableWithUniqueColumns(connection)
