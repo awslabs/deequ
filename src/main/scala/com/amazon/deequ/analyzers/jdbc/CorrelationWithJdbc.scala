@@ -24,7 +24,8 @@ object CorrelationWithJdbc extends App {
 
     val table = Table("food_des", connection)
 
-    val correlationOfFatFactor = JdbcCorrelation("fat_factor", "cho_factor", Some("cho_factor < 2.0") ).calculate(table)
+    val correlationOfFatFactor = JdbcCorrelation("fat_factor",
+      "cho_factor", Some("cho_factor < 2.0") ).calculate(table)
 
     println(correlationOfFatFactor)
 

@@ -25,7 +25,8 @@ object CorrelationWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val meanOfFatFactor = Correlation("fat_factor", "cho_factor", Some("cho_factor < 2.0") ).calculate(data)
+    val meanOfFatFactor = Correlation("fat_factor",
+      "cho_factor", Some("cho_factor < 2.0") ).calculate(data)
 
     println(meanOfFatFactor)
   }

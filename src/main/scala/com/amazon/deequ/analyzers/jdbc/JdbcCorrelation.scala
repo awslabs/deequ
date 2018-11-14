@@ -31,7 +31,9 @@ case class JdbcCorrelation(firstColumn: String,
   extends JdbcAnalyzer[CorrelationState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(firstColumn) :: hasColumn(firstColumn) :: isNumeric(firstColumn) :: hasTable(secondColumn) :: hasColumn(secondColumn) :: isNumeric(secondColumn) :: Nil
+    hasTable() ::
+      hasColumn(firstColumn) :: isNumeric(firstColumn) ::
+      hasColumn(secondColumn) :: isNumeric(secondColumn) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[CorrelationState] = {
@@ -44,11 +46,13 @@ case class JdbcCorrelation(firstColumn: String,
     * calculate the mean of secondColumn (called avg_second)
     * subtract avg_first of every value in firstColumn (column indirectly called a)
     * subtract avg_second of every value in second Column (column indirectly called b)
-    * calculate the square of the values in a (column called axa) and the square of the values in b (bxb) and the product of the values in a and b (axb)
+    * calculate the square of the values in a (column called axa)
+    *   and the square of the values in b (bxb) and the product of the values in a and b (axb)
     * sum all the values in axb (called ck, same name as in CorrelationState)
     * sum all the values in axa (called xMk, same name as in CorrelationState)
     * sum all the values in bxb (called yMk, same name as in Correlation State)
-    * the result values (including the number of values (called n), avg_first (called xAvg) and avg_second (called yAvg)) are given to CorrelationState
+    * the result values (including the number of values (called n), avg_first (called xAvg)
+    *   and avg_second (called yAvg)) are given to CorrelationState
     * Correlation State then calculates ck / math.sqrt(xMk * yMk)
     * */
 
@@ -70,9 +74,12 @@ case class JdbcCorrelation(firstColumn: String,
             ($firstColumn-avg_first)*($firstColumn-avg_first) AS axa_val,
             ($secondColumn-avg_second)*($secondColumn-avg_second)AS bxb_val
           FROM
-            (SELECT CAST($firstColumn AS NUMERIC), CAST($secondColumn AS NUMERIC)
+            (SELECT CAST($firstColumn AS NUMERIC),
+              CAST($secondColumn AS NUMERIC)
               FROM ${table.name}
-              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL AND ${where.getOrElse("TRUE=TRUE")}
+              WHERE $firstColumn IS NOT NULL
+               AND $secondColumn IS NOT NULL
+               AND ${where.getOrElse("TRUE=TRUE")}
               ) AS noNullValueTable,
             (SELECT
               COUNT ($firstColumn) AS count_all,
@@ -81,7 +88,10 @@ case class JdbcCorrelation(firstColumn: String,
             FROM
               (SELECT *
               FROM ${table.name}
-              WHERE $firstColumn IS NOT NULL AND $secondColumn IS NOT NULL AND ${where.getOrElse("TRUE=TRUE")}
+              WHERE
+               $firstColumn IS NOT NULL
+               AND $secondColumn IS NOT NULL
+               AND ${where.getOrElse("TRUE=TRUE")}
               ) AS noNullValueTable
             ) AS meanTable
           ) AS calculationTable
