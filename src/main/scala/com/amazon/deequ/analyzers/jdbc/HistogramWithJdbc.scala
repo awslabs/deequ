@@ -24,7 +24,7 @@ object HistogramWithJdbc extends App {
 
     val table = Table("food_des", connection)
 
-    val histogramOfComName = JdbcHistogram("comname").calculate(table)
+    val histogramOfComName = JdbcHistogram("fat_factor").calculate(table)
 
     println(histogramOfComName)
 

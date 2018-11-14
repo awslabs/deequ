@@ -37,43 +37,40 @@ case class JdbcHistogram(column: String)
 
     val connection = table.jdbcConnection
 
-    // TODO: resolve rounding error somehow
     val query =
       s"""
-         | SELECT $column AS name, c AS absolute, CAST(c AS float) / CAST(total AS float) AS ratio
-         | FROM
-         |   (SELECT $column, COUNT($column) AS c
+         | SELECT $column as name, COUNT(*) AS absolute
          |    FROM ${table.name}
-         |    GROUP BY $column)
-         |    AS aggregates
-         |
-         | CROSS JOIN
-         |
-         |   (SELECT COUNT($column) AS total
-         |   FROM ${table.name})
-         |   AS nr
-      """.stripMargin
+         |    GROUP BY $column
+        """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
       ResultSet.CONCUR_READ_ONLY)
 
     val result = statement.executeQuery()
 
-    // TODO: correct handling of NULL values?
-
     def convertResult(resultSet: ResultSet,
-                      map: Map[String, DistributionValue],
-                      total: Long): (Map[String, DistributionValue], Long) = {
+                      map: Map[String, Long],
+                      total: Long): (Map[String, Long], Long) = {
       if (result.next()) {
-        val columnName = result.getString("name")
-        println(columnName)
+        val columnName = result.getObject("name")
+        val discreteValue = columnName match {
+          case null => "NullValue"
+          case _ => columnName.toString
+        }
         val absolute = result.getLong("absolute")
-        val ratio = result.getDouble("ratio")
-        val entry = columnName -> DistributionValue(absolute, ratio)
-        return convertResult(result, map + entry, total + absolute)
+        val entry = discreteValue -> absolute
+        convertResult(result, map + entry, total + absolute)
+      } else {
+        (map, total)
       }
-      (map, total)
     }
+    val frequenciesAndNumRows = convertResult(result, Map[String, Long](), 0)
+    val frequencies = frequenciesAndNumRows._1
+    val numRows = frequenciesAndNumRows._2
+
+    Some(JdbcFrequenciesAndNumRows(frequencies, numRows))
+    
     val frequenciesAndNumRows = convertResult(result, Map[String, DistributionValue](), 0)
     val frequencies = frequenciesAndNumRows._1
 
@@ -87,7 +84,19 @@ case class JdbcHistogram(column: String)
       case Some(theState) =>
         val value: Try[Distribution] = Try {
           // TODO: think about sorting
-          theState.frequencies
+
+          // val topNRows = theState.frequencies.rdd.top(maxDetailBins)(OrderByAbsoluteCount)
+          val binCount = theState.frequencies.size
+
+          val histogramDetails = theState.frequencies.keys
+            .map { discreteValue: String =>
+              val absolute = theState.frequencies(discreteValue)
+              val ratio = absolute.toDouble / theState.numRows
+              discreteValue -> DistributionValue(absolute, ratio)
+            }
+            .toMap
+
+          Distribution(histogramDetails, binCount)
         }
 
         HistogramMetric(column, value)
