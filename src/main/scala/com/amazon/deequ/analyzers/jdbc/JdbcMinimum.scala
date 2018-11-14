@@ -30,7 +30,7 @@ case class JdbcMinimum(column: String)
   extends JdbcAnalyzer[MinState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MinState] = {
@@ -50,21 +50,14 @@ case class JdbcMinimum(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val col_min = result.getDouble("col_min")
 
-      Some(MinState(col_min))
+      if (!result.wasNull()) {
+        return Some(MinState(col_min))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[MinState]): DoubleMetric = {

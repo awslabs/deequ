@@ -20,6 +20,7 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
@@ -41,11 +42,14 @@ import org.postgresql.util.PSQLException
 case class JdbcCompliance(instance: String, predicate: String)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
+  override def preconditions: Seq[Table => Unit] = {
+    // TODO: validate params
+    Nil
+  }
+
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
 
     val connection = table.jdbcConnection
-
-    // TODO: validate params
 
     val query =
       s"""
@@ -61,22 +65,15 @@ case class JdbcCompliance(instance: String, predicate: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val num_matches = result.getLong("num_matches")
       val num_rows = result.getLong("num_rows")
 
-      Some(NumMatchesAndCount(num_matches, num_rows))
+      if (num_rows > 0) {
+        return Some(NumMatchesAndCount(num_matches, num_rows))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {

@@ -29,7 +29,7 @@ case class JdbcStandardDeviation(column: String)
   extends JdbcAnalyzer[StandardDeviationState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[StandardDeviationState] = {
@@ -61,23 +61,16 @@ case class JdbcStandardDeviation(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
-      val col_count = result.getDouble("col_count")
+    if (result.next()) {
       val col_avg = result.getDouble("col_avg")
       val col_m2 = result.getDouble("col_m2")
+      val col_count = result.getDouble("col_count")
 
-      Some(StandardDeviationState(col_count, col_avg, col_m2))
+      if (col_count > 0) {
+        return Some(StandardDeviationState(col_count, col_avg, col_m2))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[StandardDeviationState]): DoubleMetric = {

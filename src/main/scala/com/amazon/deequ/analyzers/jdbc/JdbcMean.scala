@@ -29,7 +29,7 @@ case class JdbcMean(column: String)
   extends JdbcAnalyzer[MeanState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MeanState] = {
@@ -50,22 +50,15 @@ case class JdbcMean(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
-      val col_sum = result.getDouble("col_sum")
+    if (result.next()) {
       val col_count = result.getLong("col_count")
+      val col_sum = result.getDouble("col_sum")
 
-      Some(MeanState(col_sum, col_count))
+      if (!result.wasNull()) {
+        return Some(MeanState(col_sum, col_count))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[MeanState]): DoubleMetric = {

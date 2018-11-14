@@ -23,13 +23,12 @@ import com.amazon.deequ.analyzers.NumMatchesAndCount
 import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
 
 case class JdbcDistinctness(column: String)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: Nil
+    hasTable() :: hasColumn(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
@@ -50,22 +49,15 @@ case class JdbcDistinctness(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val num_matches = result.getLong("num_matches")
       val num_rows = result.getLong("num_rows")
 
-      Some(NumMatchesAndCount(num_matches, num_rows))
+      if (num_matches > 0) {
+        return Some(NumMatchesAndCount(num_matches, num_rows))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {

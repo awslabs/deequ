@@ -29,7 +29,7 @@ case class JdbcCountDistinct(column: String)
   extends JdbcAnalyzer[NumMatches, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: Nil
+    hasTable() :: hasColumn(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatches] = {
@@ -42,6 +42,8 @@ case class JdbcCountDistinct(column: String)
          | COUNT(DISTINCT $column) AS count_distinct
          |FROM
          | ${table.name}
+         |WHERE
+         |  $column IS NOT NULL
       """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
@@ -49,21 +51,11 @@ case class JdbcCountDistinct(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val col_count_distinct = result.getLong("count_distinct")
-
-      Some(NumMatches(col_count_distinct))
+      return Some(NumMatches(col_count_distinct))
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {

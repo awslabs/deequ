@@ -106,7 +106,7 @@ object Preconditions {
   }
 
   /** Specified table exists in the data */
-  def hasTable(tableName: String): Table => Unit = { table =>
+  def hasTable(): Table => Unit = { table =>
 
     val connection = table.jdbcConnection
 

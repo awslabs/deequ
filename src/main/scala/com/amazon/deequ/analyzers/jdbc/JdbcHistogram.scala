@@ -30,7 +30,7 @@ case class JdbcHistogram(column: String)
   extends JdbcAnalyzer[JdbcFrequenciesAndNumRows, HistogramMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: Nil
+    hasTable() :: hasColumn(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[JdbcFrequenciesAndNumRows] = {
@@ -59,30 +59,26 @@ case class JdbcHistogram(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      def convertResult(resultSet: ResultSet,
-                        map: Map[String, DistributionValue],
-                        total: Long): (Map[String, DistributionValue], Long) = {
-        if (result.next()) {
-          val columnName = result.getString("name")
-          println(columnName)
-          val absolute = result.getLong("absolute")
-          val ratio = result.getDouble("ratio")
-          val entry = columnName -> DistributionValue(absolute, ratio)
-          convertResult(result, map + entry, totals + absolute)
-        } else {
-          (map, total)
-        }
-      }
-      val frequenciesAndNumRows = convertResult(result, Map[String, DistributionValue](), 0)
-      val frequencies = frequenciesAndNumRows._1
+    // TODO: correct handling of NULL values?
 
-      val distribution = Distribution(frequencies, frequencies.size)
-      Some(JdbcFrequenciesAndNumRows(distribution, frequenciesAndNumRows._2))
+    def convertResult(resultSet: ResultSet,
+                      map: Map[String, DistributionValue],
+                      total: Long): (Map[String, DistributionValue], Long) = {
+      if (result.next()) {
+        val columnName = result.getString("name")
+        println(columnName)
+        val absolute = result.getLong("absolute")
+        val ratio = result.getDouble("ratio")
+        val entry = columnName -> DistributionValue(absolute, ratio)
+        return convertResult(result, map + entry, total + absolute)
+      }
+      (map, total)
     }
-    catch {
-      case error: Exception => throw error
-    }
+    val frequenciesAndNumRows = convertResult(result, Map[String, DistributionValue](), 0)
+    val frequencies = frequenciesAndNumRows._1
+
+    val distribution = Distribution(frequencies, frequencies.size)
+    Some(JdbcFrequenciesAndNumRows(distribution, frequenciesAndNumRows._2))
   }
 
   override def computeMetricFrom(state: Option[JdbcFrequenciesAndNumRows]): HistogramMetric = {

@@ -29,7 +29,7 @@ case class JdbcUniqueness(column: String)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: Nil
+    hasTable() :: hasColumn(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
@@ -62,22 +62,15 @@ case class JdbcUniqueness(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val num_unique_values = result.getLong("num_unique_values")
       val num_rows = result.getLong("num_rows")
 
-      Some(NumMatchesAndCount(num_unique_values, num_rows))
+      if (num_rows > 0) {
+        return Some(NumMatchesAndCount(num_unique_values, num_rows))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {

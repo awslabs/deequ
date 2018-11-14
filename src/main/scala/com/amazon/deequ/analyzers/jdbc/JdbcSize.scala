@@ -31,7 +31,7 @@ case class JdbcSize()
   val column = "*"
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: Nil
+    hasTable() :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatches] = {
@@ -51,27 +51,18 @@ case class JdbcSize()
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val num_rows = result.getLong("num_rows")
 
-      Some(NumMatches(num_rows))
+      return Some(NumMatches(num_rows))
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {
     state match {
       case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Size", column, Entity.Column)
+        metricFromValue(theState.metricValue(), "Size", column, Entity.Dataset)
       case _ =>
         toFailureMetric(new EmptyStateException(
           s"Empty state for analyzer JdbcSize, all input values were NULL."))
@@ -79,6 +70,6 @@ case class JdbcSize()
   }
 
   override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Size", column, Entity.Column)
+    metricFromFailure(failure, "Size", column, Entity.Dataset)
   }
 }

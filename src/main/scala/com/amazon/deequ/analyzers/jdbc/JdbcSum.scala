@@ -29,7 +29,7 @@ case class JdbcSum(column: String)
   extends JdbcAnalyzer[SumState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[SumState] = {
@@ -49,21 +49,14 @@ case class JdbcSum(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val col_sum = result.getDouble("col_sum")
 
-      Some(SumState(col_sum))
+      if (!result.wasNull()) {
+        return Some(SumState(col_sum))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[SumState]): DoubleMetric = {

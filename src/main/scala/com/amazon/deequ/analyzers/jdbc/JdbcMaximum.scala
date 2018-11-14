@@ -29,7 +29,7 @@ case class JdbcMaximum(column: String)
   extends JdbcAnalyzer[MaxState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable(column) :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MaxState] = {
@@ -49,21 +49,14 @@ case class JdbcMaximum(column: String)
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val col_max = result.getDouble("col_max")
 
-      Some(MaxState(col_max))
+      if (!result.wasNull()) {
+        return Some(MaxState(col_max))
+      }
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[MaxState]): DoubleMetric = {
