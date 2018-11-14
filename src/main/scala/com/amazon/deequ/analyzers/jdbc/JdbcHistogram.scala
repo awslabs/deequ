@@ -70,12 +70,6 @@ case class JdbcHistogram(column: String)
     val numRows = frequenciesAndNumRows._2
 
     Some(JdbcFrequenciesAndNumRows(frequencies, numRows))
-    
-    val frequenciesAndNumRows = convertResult(result, Map[String, DistributionValue](), 0)
-    val frequencies = frequenciesAndNumRows._1
-
-    val distribution = Distribution(frequencies, frequencies.size)
-    Some(JdbcFrequenciesAndNumRows(distribution, frequenciesAndNumRows._2))
   }
 
   override def computeMetricFrom(state: Option[JdbcFrequenciesAndNumRows]): HistogramMetric = {
