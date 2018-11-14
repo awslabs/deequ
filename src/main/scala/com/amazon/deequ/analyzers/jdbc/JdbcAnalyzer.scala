@@ -19,7 +19,7 @@ package com.amazon.deequ.analyzers.jdbc
 import java.sql.{JDBCType, ResultSet}
 
 import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, NoSuchTableException, WrongColumnTypeException}
+import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, NoSuchTableException, WrongColumnTypeException, SQLInjectionException}
 import com.amazon.deequ.metrics.Metric
 import java.sql.Types._
 
@@ -191,6 +191,16 @@ object Preconditions {
       throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
         s"(${numericDataTypes.map(t => JDBCType.valueOf(t).getName).mkString(",")}), " +
         s"but found ${JDBCType.valueOf(columnDataType).getName} instead!")
+    }
+  }
+
+  /* Statement has no ; outside of quotation marks (SQL injections) */
+  def hasNoInjection(statement: Option[String]): Table => Unit = { _ =>
+    val pattern = """("[^"]*"|'[^']*'|[^;'"]*)*"""
+    val st = statement.get
+    if (!st.matches(pattern)) {
+      throw new SQLInjectionException(
+        s"In the statement semicolons outside of quotation marks are not allowed")
     }
   }
 }

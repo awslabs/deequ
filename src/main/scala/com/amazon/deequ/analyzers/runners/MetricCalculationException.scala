@@ -50,6 +50,9 @@ class NoColumnsSpecifiedException(message: String)
 class NumberOfSpecifiedColumnsException(message: String)
   extends MetricCalculationPreconditionException(message)
 
+class SQLInjectionException(message: String)
+  extends MetricCalculationPreconditionException(message)
+
 class IllegalAnalyzerParameterException(
     message: String)
   extends MetricCalculationPreconditionException(message)
