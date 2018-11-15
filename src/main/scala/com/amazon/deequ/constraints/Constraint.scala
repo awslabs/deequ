@@ -50,7 +50,8 @@ class ConstraintDecorator(protected val _inner: Constraint) extends Constraint {
       analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
     : ConstraintResult = {
 
-    _inner.evaluate(analysisResults)
+    // constraint = this to keep toString of NamedConstraint
+    _inner.evaluate(analysisResults).copy(constraint = this)
   }
 }
 

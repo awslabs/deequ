@@ -57,24 +57,24 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           CheckStatus.Success)
         assert(VerificationSuite().onData(df).addCheck(checkToErrorOut).run().status ==
           CheckStatus.Error)
-        assert(VerificationSuite().onData(df).addCheck(checkToWarn).run.status ==
+        assert(VerificationSuite().onData(df).addCheck(checkToWarn).run().status ==
           CheckStatus.Warning)
 
 
         Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Error)
+          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Warning)
+          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Warning)
         }
 
         Seq(checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Error)
+          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Error)
+          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
         }
       }
 
@@ -83,34 +83,37 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       import sparkSession.implicits._
       val df = getDfFull(sparkSession)
 
-      val checkToSucceed = Check(CheckLevel.Error, "group-1")
-        .isComplete("att1") // 1.0
-        .hasCompleteness("att1", _ == 1.0) // 1.0
+      val result = {
+        val checkToSucceed = Check(CheckLevel.Error, "group-1")
+          .isComplete("att1") // 1.0
+          .hasCompleteness("att1", _ == 1.0) // 1.0
 
-      val analyzers = Size() :: // Analyzer that works on overall document
-        Completeness("att2") ::
-        Uniqueness("att2") :: // Analyzer that works on single column
-        MutualInformation("att1", "att2") :: Nil // Analyzer that works on multi column
+        val analyzers = Size() :: // Analyzer that works on overall document
+          Completeness("att2") ::
+          Uniqueness("att2") :: // Analyzer that works on single column
+          MutualInformation("att1", "att2") :: Nil // Analyzer that works on multi column
 
-      VerificationSuite().onData(df).addCheck(checkToSucceed).addRequiredAnalyzers(analyzers)
-        .run match { case result =>
-          assert(result.status == CheckStatus.Success)
+        VerificationSuite().onData(df).addCheck(checkToSucceed)
+          .addRequiredAnalyzers(analyzers).run()
+      }
 
-          val analysisDf = AnalyzerContext.successMetricsAsDataFrame(sparkSession,
-            AnalyzerContext(result.metrics))
+      assert(result.status == CheckStatus.Success)
 
-          val expected = Seq(
-            ("Dataset", "*", "Size", 4.0),
-            ("Column", "att1", "Completeness", 1.0),
-            ("Column", "att2", "Completeness", 1.0),
-            ("Column", "att2", "Uniqueness", 0.25),
-            ("Mutlicolumn", "att1,att2", "MutualInformation",
-              -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
-            .toDF("entity", "instance", "name", "value")
+      val analysisDf = AnalyzerContext.successMetricsAsDataFrame(sparkSession,
+        AnalyzerContext(result.metrics))
+
+      val expected = Seq(
+        ("Dataset", "*", "Size", 4.0),
+        ("Column", "att1", "Completeness", 1.0),
+        ("Column", "att2", "Completeness", 1.0),
+        ("Column", "att2", "Uniqueness", 0.25),
+        ("Mutlicolumn", "att1,att2", "MutualInformation",
+          -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
+        .toDF("entity", "instance", "name", "value")
 
 
-          assertSameRows(analysisDf, expected)
-        }
+      assertSameRows(analysisDf, expected)
+
     }
 
     "should run the analysis even there are no constraints" in withSparkSession { sparkSession =>
