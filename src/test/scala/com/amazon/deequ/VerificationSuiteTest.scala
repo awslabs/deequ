@@ -30,8 +30,6 @@ import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.util.Try
-
 
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
@@ -232,7 +230,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val expectedAnalyzerContextOnLoadByKey = AnalyzerContext(actualResult.metrics)
 
         val resultWhichShouldBeOverwritten = AnalyzerContext(Map(Size() -> DoubleMetric(
-          Entity.Dataset, "", "", Try(100.0))))
+          Entity.Dataset, "", "", util.Try(100.0))))
 
         repository.save(resultKey, resultWhichShouldBeOverwritten)
 
@@ -347,14 +345,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     (1 to 2).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        Size() -> DoubleMetric(Entity.Column, "", "", Success(timeStamp))
+        Size() -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "EU")), analyzerContext)
     }
 
     (3 to 4).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        Size() -> DoubleMetric(Entity.Column, "", "", Success(timeStamp))
+        Size() -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "NA")), analyzerContext)
     }
