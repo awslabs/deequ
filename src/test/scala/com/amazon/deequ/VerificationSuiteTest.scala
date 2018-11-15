@@ -16,20 +16,21 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
+import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
+import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.{Matchers, WordSpec}
-import scala.util.{Success, Try}
+
+import scala.util.Try
 
 
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
@@ -116,7 +117,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     }
 
-    "should run the analysis even there are no constraints" in withSparkSession { sparkSession =>
+    "run the analysis even there are no constraints" in withSparkSession { sparkSession =>
 
       import sparkSession.implicits._
       val df = getDfFull(sparkSession)
@@ -280,7 +281,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       }
     }
 
-    "should write output files to specified locations" in withSparkSession { sparkSession =>
+    "write output files to specified locations" in withSparkSession { sparkSession =>
 
       val df = getDfWithNumericValues(sparkSession)
 
@@ -304,6 +305,37 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       }
       DfsUtils.readFromFileOnDfs(sparkSession, successMetricsPath) {
         inputStream => assert(inputStream.read() > 0)
+      }
+    }
+
+    "keep order of check constraints and their results" in withSparkSession { sparkSession =>
+
+      val df = getDfWithNumericValues(sparkSession)
+
+      val expectedConstraints = Seq(
+        Constraint.completenessConstraint("att1", _ == 1.0),
+        Constraint.complianceConstraint("att1 is positive", "att1", _ == 1.0)
+      )
+
+      val check = expectedConstraints.foldLeft(Check(CheckLevel.Error, "check")) {
+        case (currentCheck, constraint) => currentCheck.addConstraint(constraint)
+      }
+
+      // constraints are added in expected order to Check object
+      assert(check.constraints == expectedConstraints)
+      assert(check.constraints != expectedConstraints.reverse)
+
+      val results = VerificationSuite().onData(df)
+        .addCheck(check)
+        .useSparkSession(sparkSession)
+        .run()
+
+      val checkConstraintsWithResultConstraints = check.constraints.zip(
+        results.checkResults(check).constraintResults)
+
+      checkConstraintsWithResultConstraints.foreach {
+        case (checkConstraint, checkResultConstraint) =>
+          assert(checkConstraint == checkResultConstraint.constraint)
       }
     }
   }
