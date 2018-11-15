@@ -61,19 +61,23 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
 
         Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
+          assert(
+            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Warning)
+          assert(
+            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Warning)
         }
 
         Seq(checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
+          assert(
+            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
+          assert(
+            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
         }
       }
 

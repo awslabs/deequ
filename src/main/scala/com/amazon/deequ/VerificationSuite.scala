@@ -16,16 +16,15 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.analyzers.applicability.ApplicabilityResult
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerRepositoryOptions, AnalyzerContext}
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.applicability.Applicability
+import com.amazon.deequ.analyzers.applicability.{AnalyzersApplicability, Applicability, CheckApplicability}
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalysisRunnerRepositoryOptions, AnalyzerContext}
 import com.amazon.deequ.checks.{Check, CheckStatus}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[deequ] case class VerificationMetricsRepositoryOptions(
       metricsRepository: Option[MetricsRepository] = None,
@@ -240,7 +239,7 @@ class VerificationSuite {
       check: Check,
       schema: StructType,
       sparkSession: SparkSession)
-    : ApplicabilityResult = {
+    : CheckApplicability = {
 
     new Applicability(sparkSession).isApplicable(check, schema)
   }
@@ -256,7 +255,7 @@ class VerificationSuite {
       analyzers: Seq[Analyzer[_ <: State[_], Metric[_]]],
       schema: StructType,
       sparkSession: SparkSession)
-    : ApplicabilityResult = {
+    : AnalyzersApplicability = {
 
     new Applicability(sparkSession).isApplicable(analyzers, schema)
   }

@@ -46,7 +46,7 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
     private[deequ] val hint: Option[String] = None)
   extends Constraint {
 
-  private[constraints] def calculateAndEvaluate(data: DataFrame) = {
+  private[deequ] def calculateAndEvaluate(data: DataFrame) = {
     val metric = analyzer.calculate(data)
     evaluate(Map(analyzer -> metric))
   }

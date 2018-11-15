@@ -58,6 +58,10 @@ class ApplicabilityTest extends WordSpec with SparkContextSpec {
 
       assert(resultForValidCheck.isApplicable)
       assert(resultForValidCheck.failures.isEmpty)
+      assert(resultForValidCheck.constraintApplicabilities.size == validCheck.constraints.size)
+      resultForValidCheck.constraintApplicabilities.foreach { case (_, applicable) =>
+        assert(applicable)
+      }
     }
 
     "detect checks with non existing columns" in withSparkSession { session =>
@@ -72,6 +76,11 @@ class ApplicabilityTest extends WordSpec with SparkContextSpec {
 
       assert(!resultForCheckWithNonExistingColumn.isApplicable)
       assert(resultForCheckWithNonExistingColumn.failures.size == 1)
+      assert(resultForCheckWithNonExistingColumn.constraintApplicabilities.size ==
+        checkWithNonExistingColumn.constraints.size)
+      resultForCheckWithNonExistingColumn.constraintApplicabilities.foreach {
+        case (_, applicable) => assert(!applicable)
+      }
     }
 
     "detect checks with invalid sql expressions" in withSparkSession { session =>
@@ -96,6 +105,22 @@ class ApplicabilityTest extends WordSpec with SparkContextSpec {
 
       assert(!resultForCheckWithInvalidExpression2.isApplicable)
       assert(resultForCheckWithInvalidExpression2.failures.size == 1)
+    }
+
+    "report on all constraints of the Check" in withSparkSession { session =>
+      val applicability = new Applicability(session)
+
+      val check = Check(CheckLevel.Error, "")
+        .isComplete("stringCol")
+        .isUnique("stringCol")
+
+      val result = applicability.isApplicable(check, schema)
+
+      assert(result.constraintApplicabilities.size == check.constraints.size)
+
+      check.constraints.foreach { constraint =>
+        assert(result.constraintApplicabilities(constraint))
+      }
     }
   }
 
