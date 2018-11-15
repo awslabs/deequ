@@ -55,46 +55,45 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
       analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
     : ConstraintResult = {
 
-    val maybeValue: Option[Try[M]] = analysisResults
-      .get(analyzer)
-      .map { _.value.asInstanceOf[Try[M]] }
+    val metric = analysisResults.get(analyzer).map(_.asInstanceOf[Metric[M]])
 
-    maybeValue
-      .map {
-        // Analysis done successfully and result metric is there
-        case Success(metricValue) => pickValueAndAssert(metricValue)
-        // An exception occurred during analysis
-        case Failure(e) => ConstraintResult(this, ConstraintStatus.Failure, Option(e.getMessage))
-      }
-      .getOrElse(
-        // Analysis is missing
-        ConstraintResult(this, ConstraintStatus.Failure,
-          Some(AnalysisBasedConstraint.MissingAnalysis)))
+    metric.map(pickValueAndAssert).getOrElse(
+      // Analysis is missing
+      ConstraintResult(this, ConstraintStatus.Failure,
+        Some(AnalysisBasedConstraint.MissingAnalysis), metric)
+    )
   }
 
-  private[this] def pickValueAndAssert(metricValue: M): ConstraintResult = {
-    try {
-      val assertOn = runPickerOnMetric(metricValue)
-      val assertionOk = runAssertion(assertOn)
+  private[this] def pickValueAndAssert(metric: Metric[M]): ConstraintResult = {
 
-      if (assertionOk) {
-        ConstraintResult(this, ConstraintStatus.Success)
-      } else {
-        var errorMessage = s"Value: $assertOn does not meet the constraint requirement!"
+    metric.value match {
+      // Analysis done successfully and result metric is there
+      case Success(metricValue) =>
+        try {
+          val assertOn = runPickerOnMetric(metricValue)
+          val assertionOk = runAssertion(assertOn)
 
-        hint.foreach(hint => errorMessage += s" $hint")
+          if (assertionOk) {
+            ConstraintResult(this, ConstraintStatus.Success, metric = Some(metric))
+          } else {
+            var errorMessage = s"Value: $assertOn does not meet the constraint requirement!"
 
-        ConstraintResult(this, ConstraintStatus.Failure,
-          Some(errorMessage))
-      }
+            hint.foreach(hint => errorMessage += s" $hint")
 
-    } catch {
-      case AnalysisBasedConstraint.ConstraintAssertionException(msg) =>
-        ConstraintResult(this, ConstraintStatus.Failure,
-          Some(s"${AnalysisBasedConstraint.AssertionException}: $msg!"))
-      case AnalysisBasedConstraint.ValuePickerException(msg) =>
-        ConstraintResult(this, ConstraintStatus.Failure,
-          Some(s"${AnalysisBasedConstraint.ProblematicMetricPicker}: $msg!"))
+            ConstraintResult(this, ConstraintStatus.Failure, Some(errorMessage), Some(metric))
+          }
+
+        } catch {
+          case AnalysisBasedConstraint.ConstraintAssertionException(msg) =>
+            ConstraintResult(this, ConstraintStatus.Failure,
+              Some(s"${AnalysisBasedConstraint.AssertionException}: $msg!"), Some(metric))
+          case AnalysisBasedConstraint.ValuePickerException(msg) =>
+            ConstraintResult(this, ConstraintStatus.Failure,
+              Some(s"${AnalysisBasedConstraint.ProblematicMetricPicker}: $msg!"), Some(metric))
+        }
+      // An exception occurred during analysis
+      case Failure(e) => ConstraintResult(this,
+        ConstraintStatus.Failure, Some(e.getMessage), Some(metric))
     }
   }
 

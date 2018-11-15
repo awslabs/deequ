@@ -29,7 +29,8 @@ object ConstraintStatus extends Enumeration {
 case class ConstraintResult(
     constraint: Constraint,
     status: ConstraintStatus.Value,
-    message: Option[String] = None)
+    message: Option[String] = None,
+    metric: Option[Metric[_]] = None)
 
 /** Common trait for all data quality constraints */
 trait Constraint {
@@ -49,8 +50,7 @@ class ConstraintDecorator(protected val _inner: Constraint) extends Constraint {
       analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
     : ConstraintResult = {
 
-    val result = _inner.evaluate(analysisResults)
-    ConstraintResult(this, result.status, result.message)
+    _inner.evaluate(analysisResults)
   }
 }
 

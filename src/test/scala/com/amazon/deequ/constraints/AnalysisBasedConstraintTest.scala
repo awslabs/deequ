@@ -16,7 +16,10 @@
 
 package com.amazon.deequ.constraints
 
-import com.amazon.deequ.analyzers.{Analyzer, NumMatches, StateLoader, StatePersister}
+import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.analyzers._
+import com.amazon.deequ.analyzers.runners.MetricCalculationException
+import com.amazon.deequ.constraints.ConstraintUtils.calculate
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.DataFrame
@@ -24,9 +27,6 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
 
 import scala.util.{Failure, Try}
-import ConstraintUtils.calculate
-import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
 
 class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport with MockFactory with PrivateMethodTester {
@@ -42,8 +42,6 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
   /**
     * Sample analyzer that returns a 1.0 value if the given column exists and fails otherwise.
-    *
-    * @param column
     */
   case class SampleAnalyzer(column: String) extends Analyzer[NumMatches, DoubleMetric] {
     override def toFailureMetric(exception: Exception): DoubleMetric = {
@@ -86,6 +84,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
         assert(resultA.status == ConstraintStatus.Success)
         assert(resultA.message.isEmpty)
+        assert(resultA.metric.isDefined)
 
         // Analysis result should equal to 1.0 for an existing column
         val resultB = calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
@@ -93,13 +92,15 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
         assert(resultB.status == ConstraintStatus.Failure)
         assert(resultB.message.contains("Value: 1.0 does not meet the constraint requirement!"))
+        assert(resultB.metric.isDefined)
 
         // Analysis should fail for a non existing column
         val resultC = calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
           SampleAnalyzer("someMissingColumn"), _ == 1.0), df)
 
         assert(resultC.status == ConstraintStatus.Failure)
-        assert(resultC.message.get.equals("requirement failed: Missing column someMissingColumn"))
+        assert(resultC.message.contains("requirement failed: Missing column someMissingColumn"))
+        assert(resultC.metric.isDefined)
       }
 
     "execute value picker on the analysis result value, if provided" in
@@ -147,7 +148,8 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
         .evaluate(emptyResults) match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
-          assert(result.message.contains(AnalysisBasedConstraint.MissingAnalysis))
+          assert(result.message.contains("Missing Analysis, can't run the constraint!"))
+          assert(result.metric.isEmpty)
       }
     }
 
@@ -180,19 +182,23 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       calculate(constraint, df) match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
-          assert(result.message.get.startsWith(AnalysisBasedConstraint.ProblematicMetricPicker))
+          assert(result.message.get.contains("Can't retrieve the value to assert on"))
+          assert(result.metric.isDefined)
       }
 
       constraint.evaluate(validResults) match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
-          assert(result.message.get.startsWith(AnalysisBasedConstraint.ProblematicMetricPicker))
+          assert(result.message.isDefined)
+          assert(result.message.get.startsWith("Can't retrieve the value to assert on"))
+          assert(result.metric.isDefined)
       }
 
       constraint.evaluate(emptyResults) match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
-          assert(result.message.contains(AnalysisBasedConstraint.MissingAnalysis))
+          assert(result.message.contains("Missing Analysis, can't run the constraint!"))
+          assert(result.metric.isEmpty)
       }
 
     }
@@ -208,9 +214,28 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       calculate(failingConstraint, df) match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
+          assert(result.message.isDefined)
           assert(result.message.get == "Value: 1.0 does not meet the constraint requirement! " +
             "Value should be like ...!")
+          assert(result.metric.isDefined)
       }
+    }
+
+    "return failed constraint for a failing assertion" in withSparkSession { session =>
+      val msg = "-test-"
+      val exception = new RuntimeException(msg)
+      val df = getDfMissing(session)
+
+      def failingAssertion(value: Double): Boolean = throw exception
+
+      val constraintResult = calculate(
+        AnalysisBasedConstraint[NumMatches, Double, Double](
+          SampleAnalyzer("att1"), failingAssertion), df
+      )
+
+      assert(constraintResult.status == ConstraintStatus.Failure)
+      assert(constraintResult.metric.isDefined)
+      assert(constraintResult.message.contains(s"Can't execute the assertion: $msg!"))
     }
 
   }
