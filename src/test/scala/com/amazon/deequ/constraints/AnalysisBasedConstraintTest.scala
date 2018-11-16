@@ -74,7 +74,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
   "Analysis based constraint" should {
 
-    "should assert correctly on values if analysis is successful" in
+    "assert correctly on values if analysis is successful" in
       withSparkSession { sparkSession =>
         val df = getDfMissing(sparkSession)
 

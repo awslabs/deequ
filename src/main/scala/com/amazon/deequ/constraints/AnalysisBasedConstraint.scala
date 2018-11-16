@@ -77,7 +77,6 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
             ConstraintResult(this, ConstraintStatus.Success, metric = Some(metric))
           } else {
             var errorMessage = s"Value: $assertOn does not meet the constraint requirement!"
-
             hint.foreach(hint => errorMessage += s" $hint")
 
             ConstraintResult(this, ConstraintStatus.Failure, Some(errorMessage), Some(metric))

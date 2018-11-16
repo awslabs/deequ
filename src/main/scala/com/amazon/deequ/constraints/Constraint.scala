@@ -50,7 +50,9 @@ class ConstraintDecorator(protected val _inner: Constraint) extends Constraint {
       analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
     : ConstraintResult = {
 
-    // constraint = this to keep toString of NamedConstraint
+    // most of the constraints are of type NamedConstraint
+    // having `this` as the constraint of the result to
+    // keep the more informative .toString of NamedConstraint
     _inner.evaluate(analysisResults).copy(constraint = this)
   }
 }
@@ -71,10 +73,6 @@ class NamedConstraint(private[deequ] val constraint: Constraint, name: String)
   * These methods can be used from the unit tests or during creation of Check configuration
   */
 object Constraint {
-
-  def named(constraint: Constraint, name: String): NamedConstraint = {
-    new NamedConstraint(constraint, name)
-  }
 
   /**
     * Runs Size analysis on the given column and executes the assertion

@@ -157,13 +157,15 @@ private[deequ] class Applicability(session: SparkSession) {
         case (name, c: Constraint) => name -> c
       }
       .collect { case (name, constraint: AnalysisBasedConstraint[_, _, _]) =>
-        (name, constraint.analyzer.calculate(data).value)
+        val metric = constraint.analyzer.calculate(data).value
+        name -> metric
       }
 
     val constraintApplicabilities = check.constraints.zip(namedMetrics).map {
       case (constraint, (_, metric)) =>
         constraint -> metric.isSuccess
-    }.toMap
+    }
+    .toMap
 
     val failures = namedMetrics
       .flatMap { case (name, metric) =>
@@ -186,7 +188,9 @@ private[deequ] class Applicability(session: SparkSession) {
     * @param analyzers Analyzers that may be applicable to some data
     * @param schema The schema of the data the analyzers are for
     */
-  def isApplicable(analyzers: Seq[Analyzer[_ <: State[_], Metric[_]]], schema: StructType)
+  def isApplicable(
+      analyzers: Seq[Analyzer[_ <: State[_], Metric[_]]],
+      schema: StructType)
     : AnalyzersApplicability = {
 
     val data = generateRandomData(schema, 1000)

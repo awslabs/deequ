@@ -39,6 +39,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     "return the correct verification status regardless of the order of checks" in
       withSparkSession { sparkSession =>
 
+        def assertStatusFor(data: DataFrame, checks: Check*)
+                           (expectedStatus: CheckStatus.Value)
+          : Unit = {
+          val verificationSuiteStatus =
+            VerificationSuite().onData(data).addChecks(checks).run().status
+          assert(verificationSuiteStatus == expectedStatus)
+        }
+
         val df = getDfCompleteAndInCompleteColumns(sparkSession)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
@@ -52,32 +60,25 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .hasCompleteness("att2", _ > 0.8)
 
 
-        assert(VerificationSuite().onData(df).addCheck(checkToSucceed).run().status ==
-          CheckStatus.Success)
-        assert(VerificationSuite().onData(df).addCheck(checkToErrorOut).run().status ==
-          CheckStatus.Error)
-        assert(VerificationSuite().onData(df).addCheck(checkToWarn).run().status ==
-          CheckStatus.Warning)
+        assertStatusFor(df, checkToSucceed)(CheckStatus.Success)
+        assertStatusFor(df, checkToErrorOut)(CheckStatus.Error)
+        assertStatusFor(df, checkToWarn)(CheckStatus.Warning)
 
 
         Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
-          assert(
-            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn).forEachOrder { checks =>
-          assert(
-            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Warning)
+          assertStatusFor(df, checks: _*)(CheckStatus.Warning)
         }
 
         Seq(checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(
-            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(
-            VerificationSuite().onData(df).addChecks(checks).run().status == CheckStatus.Error)
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
       }
 
