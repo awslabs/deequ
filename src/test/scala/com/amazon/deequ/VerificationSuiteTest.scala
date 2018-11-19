@@ -330,7 +330,6 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val results = VerificationSuite().onData(df)
         .addCheck(check)
-        .useSparkSession(sparkSession)
         .run()
 
       val checkConstraintsWithResultConstraints = check.constraints.zip(
