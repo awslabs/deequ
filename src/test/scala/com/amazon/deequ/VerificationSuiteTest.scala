@@ -16,20 +16,19 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
+import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
+import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.{Matchers, WordSpec}
-import scala.util.{Success, Try}
 
 
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
@@ -39,6 +38,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     "return the correct verification status regardless of the order of checks" in
       withSparkSession { sparkSession =>
+
+        def assertStatusFor(data: DataFrame, checks: Check*)
+                           (expectedStatus: CheckStatus.Value)
+          : Unit = {
+          val verificationSuiteStatus =
+            VerificationSuite().onData(data).addChecks(checks).run().status
+          assert(verificationSuiteStatus == expectedStatus)
+        }
 
         val df = getDfCompleteAndInCompleteColumns(sparkSession)
 
@@ -53,28 +60,25 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .hasCompleteness("att2", _ > 0.8)
 
 
-        assert(VerificationSuite().onData(df).addCheck(checkToSucceed).run().status ==
-          CheckStatus.Success)
-        assert(VerificationSuite().onData(df).addCheck(checkToErrorOut).run().status ==
-          CheckStatus.Error)
-        assert(VerificationSuite().onData(df).addCheck(checkToWarn).run.status ==
-          CheckStatus.Warning)
+        assertStatusFor(df, checkToSucceed)(CheckStatus.Success)
+        assertStatusFor(df, checkToErrorOut)(CheckStatus.Error)
+        assertStatusFor(df, checkToWarn)(CheckStatus.Warning)
 
 
         Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Error)
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Warning)
+          assertStatusFor(df, checks: _*)(CheckStatus.Warning)
         }
 
         Seq(checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Error)
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
 
         Seq(checkToSucceed, checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assert(VerificationSuite().onData(df).addChecks(checks).run.status == CheckStatus.Error)
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
       }
 
@@ -83,37 +87,40 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       import sparkSession.implicits._
       val df = getDfFull(sparkSession)
 
-      val checkToSucceed = Check(CheckLevel.Error, "group-1")
-        .isComplete("att1") // 1.0
-        .hasCompleteness("att1", _ == 1.0) // 1.0
+      val result = {
+        val checkToSucceed = Check(CheckLevel.Error, "group-1")
+          .isComplete("att1") // 1.0
+          .hasCompleteness("att1", _ == 1.0) // 1.0
 
-      val analyzers = Size() :: // Analyzer that works on overall document
-        Completeness("att2") ::
-        Uniqueness("att2") :: // Analyzer that works on single column
-        MutualInformation("att1", "att2") :: Nil // Analyzer that works on multi column
+        val analyzers = Size() :: // Analyzer that works on overall document
+          Completeness("att2") ::
+          Uniqueness("att2") :: // Analyzer that works on single column
+          MutualInformation("att1", "att2") :: Nil // Analyzer that works on multi column
 
-      VerificationSuite().onData(df).addCheck(checkToSucceed).addRequiredAnalyzers(analyzers)
-        .run match { case result =>
-          assert(result.status == CheckStatus.Success)
+        VerificationSuite().onData(df).addCheck(checkToSucceed)
+          .addRequiredAnalyzers(analyzers).run()
+      }
 
-          val analysisDf = AnalyzerContext.successMetricsAsDataFrame(sparkSession,
-            AnalyzerContext(result.metrics))
+      assert(result.status == CheckStatus.Success)
 
-          val expected = Seq(
-            ("Dataset", "*", "Size", 4.0),
-            ("Column", "att1", "Completeness", 1.0),
-            ("Column", "att2", "Completeness", 1.0),
-            ("Column", "att2", "Uniqueness", 0.25),
-            ("Mutlicolumn", "att1,att2", "MutualInformation",
-              -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
-            .toDF("entity", "instance", "name", "value")
+      val analysisDf = AnalyzerContext.successMetricsAsDataFrame(sparkSession,
+        AnalyzerContext(result.metrics))
+
+      val expected = Seq(
+        ("Dataset", "*", "Size", 4.0),
+        ("Column", "att1", "Completeness", 1.0),
+        ("Column", "att2", "Completeness", 1.0),
+        ("Column", "att2", "Uniqueness", 0.25),
+        ("Mutlicolumn", "att1,att2", "MutualInformation",
+          -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
+        .toDF("entity", "instance", "name", "value")
 
 
-          assertSameRows(analysisDf, expected)
-        }
+      assertSameRows(analysisDf, expected)
+
     }
 
-    "should run the analysis even there are no constraints" in withSparkSession { sparkSession =>
+    "run the analysis even there are no constraints" in withSparkSession { sparkSession =>
 
       import sparkSession.implicits._
       val df = getDfFull(sparkSession)
@@ -228,7 +235,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val expectedAnalyzerContextOnLoadByKey = AnalyzerContext(actualResult.metrics)
 
         val resultWhichShouldBeOverwritten = AnalyzerContext(Map(Size() -> DoubleMetric(
-          Entity.Dataset, "", "", Try(100.0))))
+          Entity.Dataset, "", "", util.Try(100.0))))
 
         repository.save(resultKey, resultWhichShouldBeOverwritten)
 
@@ -277,7 +284,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       }
     }
 
-    "should write output files to specified locations" in withSparkSession { sparkSession =>
+    "write output files to specified locations" in withSparkSession { sparkSession =>
 
       val df = getDfWithNumericValues(sparkSession)
 
@@ -303,6 +310,36 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         inputStream => assert(inputStream.read() > 0)
       }
     }
+
+    "keep order of check constraints and their results" in withSparkSession { sparkSession =>
+
+      val df = getDfWithNumericValues(sparkSession)
+
+      val expectedConstraints = Seq(
+        Constraint.completenessConstraint("att1", _ == 1.0),
+        Constraint.complianceConstraint("att1 is positive", "att1", _ == 1.0)
+      )
+
+      val check = expectedConstraints.foldLeft(Check(CheckLevel.Error, "check")) {
+        case (currentCheck, constraint) => currentCheck.addConstraint(constraint)
+      }
+
+      // constraints are added in expected order to Check object
+      assert(check.constraints == expectedConstraints)
+      assert(check.constraints != expectedConstraints.reverse)
+
+      val results = VerificationSuite().onData(df)
+        .addCheck(check)
+        .run()
+
+      val checkConstraintsWithResultConstraints = check.constraints.zip(
+        results.checkResults(check).constraintResults)
+
+      checkConstraintsWithResultConstraints.foreach {
+        case (checkConstraint, checkResultConstraint) =>
+          assert(checkConstraint == checkResultConstraint.constraint)
+      }
+    }
   }
 
    /** Run anomaly detection using a repository with some previous analysis results for testing */
@@ -312,14 +349,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     (1 to 2).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        Size() -> DoubleMetric(Entity.Column, "", "", Success(timeStamp))
+        Size() -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "EU")), analyzerContext)
     }
 
     (3 to 4).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        Size() -> DoubleMetric(Entity.Column, "", "", Success(timeStamp))
+        Size() -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "NA")), analyzerContext)
     }
