@@ -16,19 +16,32 @@
 
 package com.amazon.deequ.analyzers.applicability
 
+import java.sql.Timestamp
+
 import com.amazon.deequ.analyzers.{Analyzer, State}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.{AnalysisBasedConstraint, Constraint, ConstraintDecorator}
 import com.amazon.deequ.metrics.Metric
-import java.sql.Timestamp
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+
 import scala.util.Failure
 
-private[deequ] case class ApplicabilityResult(
+private[deequ] sealed trait ApplicabilityResult {
+  def isApplicable: Boolean
+  def failures: Seq[(String, Exception)]
+}
+
+private[deequ] case class CheckApplicability(
   isApplicable: Boolean,
-  failures: Seq[(String, Throwable)]
-)
+  failures: Seq[(String, Exception)],
+  constraintApplicabilities: Map[Constraint, Boolean]
+) extends ApplicabilityResult
+
+private[deequ] case class AnalyzersApplicability(
+  isApplicable: Boolean,
+  failures: Seq[(String, Exception)]
+) extends ApplicabilityResult
 
 private[deequ] object Applicability {
 
@@ -133,34 +146,40 @@ private[deequ] class Applicability(session: SparkSession) {
     * @param check A check that may be applicable to some data
     * @param schema The schema of the data the checks are for
     */
-  def isApplicable(check: Check, schema: StructType): ApplicabilityResult = {
+  def isApplicable(check: Check, schema: StructType): CheckApplicability = {
 
     val data = generateRandomData(schema, 1000)
 
-    val constraintsByName = check.constraints
+    val namedMetrics = check.constraints
       .map { constraint => constraint.toString -> constraint }
       .map {
         case (name, nc: ConstraintDecorator) => name -> nc.inner
         case (name, c: Constraint) => name -> c
       }
       .collect { case (name, constraint: AnalysisBasedConstraint[_, _, _]) =>
-        (name, constraint)
+        val metric = constraint.analyzer.calculate(data).value
+        name -> metric
       }
 
+    val constraintApplicabilities = check.constraints.zip(namedMetrics).map {
+      case (constraint, (_, metric)) =>
+        constraint -> metric.isSuccess
+    }
+    .toMap
 
-    val failures = constraintsByName
-      .flatMap { case (name, constraint) =>
-        val maybeValue = constraint.analyzer.calculate(data).value
+    val failures = namedMetrics
+      .flatMap { case (name, metric) =>
 
-        maybeValue match {
+        metric match {
           // An exception occurred during analysis
-          case Failure(exception) => Some(name -> exception)
+          case Failure(exception: Exception) => Some(name -> exception)
           // Analysis done successfully and result metric is there
           case _ => None
         }
       }
 
-    ApplicabilityResult(failures.isEmpty, failures)
+
+    CheckApplicability(failures.isEmpty, failures, constraintApplicabilities)
   }
 
   /**
@@ -169,8 +188,10 @@ private[deequ] class Applicability(session: SparkSession) {
     * @param analyzers Analyzers that may be applicable to some data
     * @param schema The schema of the data the analyzers are for
     */
-  def isApplicable(analyzers: Seq[Analyzer[_ <: State[_], Metric[_]]], schema: StructType)
-    : ApplicabilityResult = {
+  def isApplicable(
+      analyzers: Seq[Analyzer[_ <: State[_], Metric[_]]],
+      schema: StructType)
+    : AnalyzersApplicability = {
 
     val data = generateRandomData(schema, 1000)
 
@@ -183,13 +204,13 @@ private[deequ] class Applicability(session: SparkSession) {
 
         maybeValue match {
           // An exception occurred during analysis
-          case Failure(exception) => Some(name -> exception)
+          case Failure(exception: Exception) => Some(name -> exception)
           // Analysis done successfully and result metric is there
           case _ => None
         }
       }
 
-    ApplicabilityResult(failures.isEmpty, failures)
+    AnalyzersApplicability(failures.isEmpty, failures)
   }
 
 

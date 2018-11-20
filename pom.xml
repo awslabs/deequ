@@ -60,6 +60,7 @@
         <encoding>UTF-8</encoding>
         <scala.major.version>2.11</scala.major.version>
         <scala.version>${scala.major.version}.5</scala.version>
+        <scala-maven-plugin.version>3.4.4</scala-maven-plugin.version>
     </properties>
 
     <dependencies>
@@ -118,7 +119,7 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>${scala-maven-plugin.version}</version>
                 <configuration>
                     <scalaCompatVersion>${scala.major.version}</scalaCompatVersion>
                     <scalaVersion>${scala.version}</scalaVersion>
@@ -240,6 +241,19 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- scoverage -->
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>1.3.0</version>
+                <configuration>
+                    <scalaCompatVersion>${scala.major.version}</scalaCompatVersion>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <!--<minimumCoverage>80</minimumCoverage>-->
+                    <!--<failOnMinimumCoverage>true</failOnMinimumCoverage>-->
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -251,7 +265,7 @@
                     <plugin>
                         <groupId>net.alchim31.maven</groupId>
                         <artifactId>scala-maven-plugin</artifactId>
-                        <version>3.2.0</version>
+                        <version>${scala-maven-plugin.version}</version>
                         <configuration>
                             <scalaCompatVersion>${scala.major.version}</scalaCompatVersion>
                             <scalaVersion>${scala.version}</scalaVersion>

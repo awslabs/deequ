@@ -59,6 +59,7 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
       metric match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
+          assert(result.message.isDefined)
           assert(result.message.get.startsWith(AnalysisBasedConstraint.AssertionException))
       }
     }
