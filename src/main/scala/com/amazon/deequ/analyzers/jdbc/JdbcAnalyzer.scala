@@ -19,9 +19,12 @@ package com.amazon.deequ.analyzers.jdbc
 import java.sql.{JDBCType, ResultSet}
 
 import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, NoSuchTableException, WrongColumnTypeException, SQLInjectionException}
-import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.analyzers.runners._
+import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
+
 import java.sql.Types._
+
+import scala.util.{Failure, Success}
 
 trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
@@ -126,6 +129,21 @@ object Preconditions {
     }
   }
 
+  /** At least one column is specified */
+  def atLeastOne(columns: Seq[String]): Table => Unit = { _ =>
+    if (columns.isEmpty) {
+      throw new NoColumnsSpecifiedException("At least one column needs to be specified!")
+    }
+  }
+
+  /** Exactly n columns are specified */
+  def exactlyNColumns(columns: Seq[String], n: Int): Table => Unit = { _ =>
+    if (columns.size != n) {
+      throw new NumberOfSpecifiedColumnsException(s"$n columns have to be specified! " +
+        s"Currently, columns contains only ${columns.size} column(s): ${columns.mkString(",")}!")
+    }
+  }
+
   /** Specified column exists in the table */
   def hasColumn(column: String): Table => Unit = { table =>
 
@@ -202,5 +220,46 @@ object Preconditions {
       throw new SQLInjectionException(
         s"In the statement semicolons outside of quotation marks are not allowed")
     }
+  }
+}
+
+private[deequ] object JdbcAnalyzers {
+
+  def entityFrom(columns: Seq[String]): Entity.Value = {
+    if (columns.size == 1) Entity.Column else Entity.Mutlicolumn
+  }
+
+  def metricFromValue(
+      value: Double,
+      name: String,
+      instance: String,
+      entity: Entity.Value = Entity.Column)
+    : DoubleMetric = {
+
+    DoubleMetric(entity, name, instance, Success(value))
+  }
+
+  def emptyStateException(analyzer: JdbcAnalyzer[_, _]): EmptyStateException = {
+    new EmptyStateException(s"Empty state for analyzer $analyzer, all input values were NULL.")
+  }
+
+  def metricFromEmpty(
+      analyzer: JdbcAnalyzer[_, _],
+      name: String,
+      instance: String,
+      entity: Entity.Value = Entity.Column)
+    : DoubleMetric = {
+    metricFromFailure(emptyStateException(analyzer), name, instance, entity)
+  }
+
+  def metricFromFailure(
+      exception: Throwable,
+      name: String,
+      instance: String,
+      entity: Entity.Value = Entity.Column)
+    : DoubleMetric = {
+
+    DoubleMetric(entity, name, instance, Failure(
+      MetricCalculationException.wrapIfNecessary(exception)))
   }
 }

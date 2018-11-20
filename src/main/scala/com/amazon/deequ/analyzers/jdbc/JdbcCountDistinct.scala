@@ -16,59 +16,19 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
+import com.amazon.deequ.metrics.DoubleMetric
 
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
-import com.amazon.deequ.analyzers.NumMatches
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasColumn}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
+case class JdbcCountDistinct(columns: Seq[String])
+  extends JdbcScanShareableFrequencyBasedAnalyzer("CountDistinct", columns) {
 
-case class JdbcCountDistinct(column: String)
-  extends JdbcAnalyzer[NumMatches, DoubleMetric] {
-
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: Nil
+  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
+    val numDistinctValues = state.frequencies.size
+    toSuccessMetric(numDistinctValues.toDouble)
   }
+}
 
-  override def computeStateFrom(table: Table): Option[NumMatches] = {
-
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | COUNT(DISTINCT $column) AS count_distinct
-         |FROM
-         | ${table.name}
-         |WHERE
-         |  $column IS NOT NULL
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val col_count_distinct = result.getLong("count_distinct")
-      return Some(NumMatches(col_count_distinct))
-    }
-    None
-  }
-
-  override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "CountDistinct", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcCountDistinct, all input values were NULL."))
-    }
-  }
-
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "CountDistinct", column, Entity.Column)
+object JdbcCountDistinct {
+  def apply(column: String): JdbcCountDistinct = {
+    new JdbcCountDistinct(column :: Nil)
   }
 }

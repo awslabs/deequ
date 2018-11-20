@@ -16,61 +16,24 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
-import com.amazon.deequ.analyzers.NumMatchesAndCount
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.metrics.DoubleMetric
 
-case class JdbcDistinctness(column: String)
-  extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
+case class JdbcDistinctness(columns: Seq[String])
+  extends JdbcScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: Nil
-  }
-
-  override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
-
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | COUNT(DISTINCT $column) AS num_matches,
-         | COUNT(*) AS num_rows
-         |FROM
-         | ${table.name}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val num_matches = result.getLong("num_matches")
-      val num_rows = result.getLong("num_rows")
-
-      if (num_matches > 0) {
-        return Some(NumMatchesAndCount(num_matches, num_rows))
-      }
+  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
+    if (state.frequencies.isEmpty) {
+      return toFailureMetric(new EmptyStateException(
+        s"Empty state for analyzer JdbcDistinctness, all input values were NULL."))
     }
-    None
+    val numDistinctValues = state.frequencies.size
+    toSuccessMetric(numDistinctValues.toDouble / state.numRows)
   }
+}
 
-  override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Distinctness", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcDistinctness, all input values were NULL."))
-    }
-  }
-
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Distinctness", column, Entity.Column)
+object JdbcDistinctness {
+  def apply(column: String): JdbcDistinctness = {
+    new JdbcDistinctness(column :: Nil)
   }
 }

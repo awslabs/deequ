@@ -38,52 +38,47 @@ case class JdbcUniqueness(column: String)
 
     val query =
       s"""
-       | SELECT *
-       | FROM
-       |   (SELECT SUM(number_values) AS num_unique_values
-       |    FROM
-       |      (SELECT $column,
-       |      COUNT(*) AS number_values
-       |      FROM ${table.name}
-       |      GROUP BY $column
-       |      HAVING COUNT($column) = 1)
-       |      AS uniqueValues
-       |    GROUP BY number_values) AS num_unique_values
-       |
-       |  CROSS JOIN
-       |
-       |  (SELECT COUNT(*) AS num_rows
-       |  FROM ${table.name}) AS _
+         | SELECT *
+         | FROM
+         |   (SELECT SUM(number_values) AS num_unique_values
+         |    FROM
+         |      (SELECT $column,
+         |      COUNT(*) AS number_values
+         |      FROM ${table.name}
+
+         |      GROUP BY $column
+
+         |      HAVING COUNT( $
+         column) = 1)
+
+          AS uniqueValues
+         |    GROUP BY number_valu
+         um_unique_values
+
+         |  CROSS JOIN
+         |
+       |  (SEL
+         T(*) AS num_rows
+         |  FROM ${table.name}) AS
+  _
       """.stripMargin
-
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val num_unique_values = result.getLong("num_unique_values")
-      val num_rows = result.getLong("num_rows")
-
-      if (num_rows > 0) {
-        return Some(NumMatchesAndCount(num_unique_values, num_rows))
-      }
-    }
-    None
   }
+}
+case class JdbcUniqueness(columns: Seq[String])
+  extends JdbcScanShareableFrequencyBasedAnalyzer("Uniqueness", columns) {
 
-  override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Uniqueness", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcUniqueness all input values were NULL."))
+  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
+    if (state.frequencies.isEmpty) {
+      return toFailureMetric(new EmptyStateException(
+        s"Empty state for analyzer JdbcDistinctness, all input values were NULL."))
     }
+    val numUniqueValues = state.frequencies.values.count(_ == 1)
+    toSuccessMetric(numUniqueValues.toDouble / state.numRows)
   }
+}
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Uniqueness", column, Entity.Column)
+object JdbcUniqueness {
+  def apply(column: String): JdbcUniqueness = {
+    new JdbcUniqueness(column :: Nil)
   }
 }
