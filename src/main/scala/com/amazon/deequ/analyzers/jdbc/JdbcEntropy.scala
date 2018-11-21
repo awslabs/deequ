@@ -1,11 +1,16 @@
 package com.amazon.deequ.analyzers.jdbc
 
+import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.DoubleMetric
 
 class JdbcEntropy(columns: Seq[String])
   extends JdbcScanShareableFrequencyBasedAnalyzer("Entropy", columns) {
 
   override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
+    if (state.frequencies.isEmpty) {
+      return toFailureMetric(new EmptyStateException(
+        s"Empty state for analyzer JdbcEntropy, all input values were NULL."))
+    }
     val numRows = state.numRows
     val entropy = state.frequencies.values.map {
       frequency => -(frequency.toDouble / numRows) * math.log(frequency.toDouble / numRows)

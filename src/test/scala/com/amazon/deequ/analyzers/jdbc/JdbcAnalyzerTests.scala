@@ -2,6 +2,7 @@ package com.amazon.deequ.analyzers.jdbc
 
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.{Distribution, DoubleMetric, Entity, HistogramMetric}
+import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.{Failure, Success}
@@ -31,14 +32,27 @@ class JdbcAnalyzerTests
 
   "Distinctness analyzer" should {
     "compute correct metrics" in withJdbc { connection =>
-      // TODO
+      val tableMissing = getTableMissing(connection)
+      val tableFull = getTableFull(connection)
+
+      assert(JdbcDistinctness("att1").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Distinctness", "att1", Success(1.0 / 6)))
+      assert(JdbcDistinctness("att2").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Distinctness", "att2", Success(1.0 / 6)))
+
+      assert(JdbcDistinctness("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "Distinctness", "att1", Success(0.5)))
+      assert(JdbcDistinctness("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "Distinctness", "att2", Success(0.5)))
+
     }
+
     "error handling" should {
-      "fail on emtpy column" in withJdbc { connection =>
+      "fail on empty column" in withJdbc { connection =>
         val table = getTableMissingColumn(connection)
         assert(JdbcDistinctness("att1").calculate(table).value.isFailure)
       }
-      "fail on emtpy table" in withJdbc { connection =>
+      "fail on empty table" in withJdbc { connection =>
         val table = getTableEmpty(connection)
         assert(JdbcDistinctness("att1").calculate(table).value.isFailure)
       }
@@ -84,9 +98,9 @@ class JdbcAnalyzerTests
 
     "error handling" should {
 
-      "fail on emtpy table" in withJdbc { connection =>
-        val tableEmtpy = getTableEmpty(connection)
-        assert(JdbcCompleteness("att1").calculate(tableEmtpy).value.isFailure)
+      "fail on empty table" in withJdbc { connection =>
+        val tableEmpty = getTableEmpty(connection)
+        assert(JdbcCompleteness("att1").calculate(tableEmpty).value.isFailure)
       }
 
       "fail on wrong column input" in withJdbc { connection =>
@@ -127,8 +141,7 @@ class JdbcAnalyzerTests
 
   }
 
-  "Uniqueness analyzer" should {
-    /*
+  "Uniqueness analyzers" should {
     "compute correct metrics" in withJdbc { connection =>
       val tableMissing = getTableMissing(connection)
       val tableFull = getTableFull(connection)
@@ -148,40 +161,26 @@ class JdbcAnalyzerTests
 
     "error handling" should {
 
-      "fail on emtpy table" in withJdbc { connection =>
+      "fail on empty table" in withJdbc { connection =>
         val table = getTableEmpty(connection)
         assert(JdbcUniqueness("att1").calculate(table).value.isFailure)
       }
-      "fail on emtpy column" in withJdbc { connection =>
+      "fail on empty column" in withJdbc { connection =>
         val table = getTableMissingColumn(connection)
         assert(JdbcUniqueness("att1").calculate(table).value.isFailure)
       }
 
     }
-    */
     "compute correct metrics on multi columns" in withJdbc { connection =>
-      /*
       val dfFull = getTableWithUniqueColumns(connection)
 
-      assert(JdbcUniqueness("unique").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "unique", Success(1.0)))
+      assert(JdbcUniqueness("uniqueValues").calculate(dfFull) ==
+        DoubleMetric(Entity.Column, "Uniqueness", "uniqueValues", Success(1.0)))
       assert(JdbcUniqueness("uniqueWithNulls").calculate(dfFull) ==
         DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(5 / 6.0)))
-      /*
-      assert(JdbcUniqueness(Seq("unique", "nonUnique")).calculate(dfFull) ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUnique", Success(1.0)))
-      assert(JdbcUniqueness(Seq("unique", "nonUniqueWithNulls")).calculate(dfFull) ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUniqueWithNulls",
-          Success(3 / 6.0)))
-      assert(JdbcUniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique")).calculate(dfFull) ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "nonUnique,onlyUniqueWithOtherNonUnique",
-          Success(1.0)))
-      */
-      */
     }
 
     "fail on wrong column input" in withJdbc { connection =>
-      /*
       val dfFull = getTableWithUniqueColumns(connection)
 
       JdbcUniqueness("nonExistingColumn").calculate(dfFull) match {
@@ -192,14 +191,13 @@ class JdbcAnalyzerTests
           assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
       }
 
-      JdbcUniqueness(Seq("nonExistingColumn", "unique")).calculate(dfFull) match {
+      JdbcUniqueness(Seq("nonExistingColumn", "uniqueValues")).calculate(dfFull) match {
         case metric =>
           assert(metric.entity == Entity.Mutlicolumn)
           assert(metric.name == "Uniqueness")
-          assert(metric.instance == "nonExistingColumn,unique")
+          assert(metric.instance == "nonExistingColumn,uniqueValues")
           assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
       }
-      */
     }
 
     "prevent sql injections" should {
@@ -214,6 +212,76 @@ class JdbcAnalyzerTests
         val table = getTableFull(connection)
         val columnWithInjection = s"nonExistingColumnName"
         assert(JdbcUniqueness(columnWithInjection).calculate(table).value.isFailure)
+      }
+
+    }
+
+    "UniqueValueRatio analyzer" should {
+
+      "compute correct metrics" in withJdbc { connection =>
+        val tableMissing = getTableMissing(connection)
+        val tableFull = getTableFull(connection)
+
+        assert(JdbcUniqueValueRatio("att1").calculate(tableMissing) ==
+          DoubleMetric(Entity.Column, "UniqueValueRatio", "att1", Success(0.0)))
+        assert(JdbcUniqueValueRatio("att2").calculate(tableMissing) ==
+          DoubleMetric(Entity.Column, "UniqueValueRatio", "att2", Success(0.0)))
+
+
+        assert(JdbcUniqueValueRatio("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
+          "UniqueValueRatio", "att1", Success(0.5)))
+        assert(JdbcUniqueValueRatio("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
+          "UniqueValueRatio", "att2", Success(0.5)))
+
+      }
+
+      "error handling" should {
+
+        "fail on empty table" in withJdbc { connection =>
+          val table = getTableEmpty(connection)
+          assert(JdbcUniqueValueRatio("att1").calculate(table).value.isFailure)
+        }
+        "fail on empty column" in withJdbc { connection =>
+          val table = getTableMissingColumn(connection)
+          assert(JdbcUniqueValueRatio("att1").calculate(table).value.isFailure)
+        }
+
+      }
+    }
+  }
+
+  "Entropy analyzer" should {
+    "compute correct metrics" in withJdbc { connection =>
+      val tableFull = getTableFull(connection)
+      val tableDistinct = getTableWithDistinctValues(connection)
+
+      assert(JdbcEntropy("att1").calculate(tableFull) ==
+        DoubleMetric(Entity.Column, "Entropy", "att1",
+          Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
+      assert(JdbcEntropy("att2").calculate(tableFull) ==
+        DoubleMetric(Entity.Column, "Entropy", "att2",
+          Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
+
+      assert(JdbcEntropy("att1").calculate(tableDistinct) ==
+        DoubleMetric(Entity.Column, "Entropy", "att1",
+          Success(
+            -((1.0 / 3) * math.log(1.0 / 3)
+            + (1.0 / 3) * math.log(1.0 / 3)
+            + (1.0 / 6) * math.log(1.0 / 6)))))
+      assert(JdbcEntropy("att2").calculate(tableDistinct) ==
+        DoubleMetric(Entity.Column, "Entropy", "att2",
+          Success(-(0.5 * math.log(0.5) + (1.0 / 6) * math.log(1.0 / 6)))))
+    }
+
+    "error handling" should {
+
+      "fail on empty table" in withJdbc { connection =>
+        val table = getTableEmpty(connection)
+        assert(JdbcEntropy("att1").calculate(table).value.isFailure)
+      }
+      "fail on empty column" in withJdbc { connection =>
+        val table = getTableMissingColumn(connection)
+        assert(JdbcEntropy("att1").calculate(table).value.isFailure)
       }
 
     }
@@ -484,13 +552,13 @@ class JdbcAnalyzerTests
             val result = JdbcCountDistinct("uniqueWithNulls").calculate(table).value
             result shouldBe Success(5.0)
         }
-        "compute exact distinct count of elements for emtpy table" in withJdbc {
+        "compute exact distinct count of elements for empty table" in withJdbc {
           connection =>
             val table = getTableEmpty(connection)
             val result = JdbcCountDistinct("att1").calculate(table).value
             result shouldBe Success(0.0)
         }
-        "compute exact distinct count of elements for emtpy column" in withJdbc {
+        "compute exact distinct count of elements for empty column" in withJdbc {
           connection =>
             val table = getTableMissingColumn(connection)
             val result = JdbcCountDistinct("att1").calculate(table).value

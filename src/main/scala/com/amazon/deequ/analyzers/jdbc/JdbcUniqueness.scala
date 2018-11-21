@@ -70,7 +70,7 @@ case class JdbcUniqueness(columns: Seq[String])
   override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
     if (state.frequencies.isEmpty) {
       return toFailureMetric(new EmptyStateException(
-        s"Empty state for analyzer JdbcDistinctness, all input values were NULL."))
+        s"Empty state for analyzer JdbcUniqueness, all input values were NULL."))
     }
     val numUniqueValues = state.frequencies.values.count(_ == 1)
     toSuccessMetric(numUniqueValues.toDouble / state.numRows)

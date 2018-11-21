@@ -242,8 +242,8 @@ trait JdbcFixtureSupport {
   def getTableWithUniqueColumns(conn: Connection): Table = {
 
     val columns = mutable.LinkedHashMap[String, String](
-      "[unique]" -> "TEXT",
-      "[nonUnique]" -> "TEXT", "nonUniqueWithNulls" -> "TEXT",
+      "uniqueValues" -> "TEXT",
+      "nonUniqueValues" -> "TEXT", "nonUniqueWithNulls" -> "TEXT",
       "uniqueWithNulls" -> "TEXT",
       "onlyUniqueWithOtherNonUnique" -> "TEXT",
       "halfUniqueCombinedWithNonUnique" -> "TEXT")
