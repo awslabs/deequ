@@ -141,7 +141,8 @@ class JdbcAnalyzerTests
       }
       "prevent sql injections in where clause for completeness" in withJdbc { connection =>
         val table = getTableWithNumericValues(connection)
-        assert(JdbcCompleteness("att1",Some (s"';DROP TABLE ${table.name};--")).calculate(table).value.isFailure)
+        assert(JdbcCompleteness("att1", Some (s"';DROP TABLE ${table.name};--"))
+          .calculate(table).value.isFailure)
         assert(hasTable(connection, table.name))
       }
     }
@@ -341,7 +342,8 @@ class JdbcAnalyzerTests
         }
         "prevent sql injections in where clause for mean" in withJdbc { connection =>
           val table = getTableWithNumericValues(connection)
-          assert(JdbcMean("att1", Some(s"';DROP TABLE ${table.name};--")).calculate(table).value.isFailure)
+          assert(JdbcMean("att1", Some(s"';DROP TABLE ${table.name};--"))
+            .calculate(table).value.isFailure)
           assert(hasTable(connection, table.name))
         }
       }
@@ -392,7 +394,8 @@ class JdbcAnalyzerTests
         }
         "prevent sql injections in where clause for standard deviation" in withJdbc { connection =>
           val table = getTableWithNumericValues(connection)
-          assert(JdbcStandardDeviation("att1",Some (s"';DROP TABLE ${table.name};--")).calculate(table).value.isFailure)
+          assert(JdbcStandardDeviation("att1", Some (s"';DROP TABLE ${table.name};--"))
+            .calculate(table).value.isFailure)
           assert(hasTable(connection, table.name))
         }
       }
@@ -441,7 +444,8 @@ class JdbcAnalyzerTests
         }
         "prevent sql injections in where clause for minimum" in withJdbc { connection =>
           val table = getTableWithNumericValues(connection)
-          assert(JdbcMinimum("att1",Some (s"';DROP TABLE ${table.name};--")).calculate(table).value.isFailure)
+          assert(JdbcMinimum("att1", Some (s"';DROP TABLE ${table.name};--"))
+            .calculate(table).value.isFailure)
           assert(hasTable(connection, table.name))
         }
       }
@@ -491,7 +495,8 @@ class JdbcAnalyzerTests
         }
         "prevent sql injections in where clause for maximum" in withJdbc { connection =>
           val table = getTableWithNumericValues(connection)
-          assert(JdbcMaximum("att1",Some (s"';DROP TABLE ${table.name};--")).calculate(table).value.isFailure)
+          assert(JdbcMaximum("att1", Some (s"';DROP TABLE ${table.name};--"))
+            .calculate(table).value.isFailure)
           assert(hasTable(connection, table.name))
         }
       }
@@ -558,7 +563,8 @@ class JdbcAnalyzerTests
         }
         "prevent sql injections in where clause for sum" in withJdbc { connection =>
           val table = getTableWithNumericValues(connection)
-          assert(JdbcSum("att1",Some (s"';DROP TABLE ${table.name};--")).calculate(table).value.isFailure)
+          assert(JdbcSum("att1", Some (s"';DROP TABLE ${table.name};--"))
+            .calculate(table).value.isFailure)
           assert(hasTable(connection, table.name))
         }
       }
