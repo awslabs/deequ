@@ -573,6 +573,60 @@ class JdbcAnalyzerTests
 
   }
 
+  "Correlation analyzer" should {
+    "yield NaN for conditionally uninformative columns" in withJdbc { connection =>
+      val table = getTableWithConditionallyUninformativeColumns(connection)
+      val corr = JdbcCorrelation("att1", "att2").calculate(table).value.get
+      assert(java.lang.Double.isNaN(corr))
+    }
+    "yield 1.0 for maximal conditionally informative columns" in withJdbc { connection =>
+      val table = getTableWithConditionallyInformativeColumns(connection)
+      val result = JdbcCorrelation("att1", "att2").calculate(table)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(1.0)
+      )
+    }
+    "be commutative" in withJdbc { connection =>
+      val table = getTableWithConditionallyInformativeColumns(connection)
+      JdbcCorrelation("att1", "att2").calculate(table).value shouldBe
+        JdbcCorrelation("att2", "att1").calculate(table).value
+    }
+    "work with filtering" in withJdbc { connection =>
+      val table = getTableWithNumericFractionalValues(connection)
+      val result = JdbcCorrelation("att1", "att2", Some("att2 > 0")).calculate(table)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(1.0)
+      )
+    }
+    "yield -1.0 for inversed columns" in withJdbc { connection =>
+      val table = getTableWithInverseNumberedColumns(connection)
+      val result = JdbcCorrelation("att1", "att2").calculate(table)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(-1.0)
+      )
+    }
+    "yield 0.5 for partly correlated columns" in withJdbc { connection =>
+      val table = getTableWithPartlyCorrelatedColumns(connection)
+      val result = JdbcCorrelation("att1", "att2").calculate(table)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(0.5)
+      )
+    }
+
+  }
+
   "Count distinct analyzers" should {
     "compute approximate distinct count for numeric data" in withJdbc { connection =>
       /*

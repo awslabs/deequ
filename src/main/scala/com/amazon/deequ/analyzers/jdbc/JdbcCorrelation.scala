@@ -70,19 +70,20 @@ case class JdbcCorrelation(firstColumn: String,
             count_all,
             avg_first,
             avg_second,
-            ($firstColumn-avg_first)*($secondColumn-avg_second) AS axb_val,
-            ($firstColumn-avg_first)*($firstColumn-avg_first) AS axa_val,
-            ($secondColumn-avg_second)*($secondColumn-avg_second)AS bxb_val
+            ((cleanTable.firstC - avg_first) * (cleanTable.secondC - avg_second)) AS axb_val,
+            ((cleanTable.firstC - avg_first) * (cleanTable.firstC - avg_first)) AS axa_val,
+            ((cleanTable.secondC - avg_second) * (cleanTable.secondC - avg_second)) AS bxb_val
           FROM
-            (SELECT CAST($firstColumn AS NUMERIC),
-              CAST($secondColumn AS NUMERIC)
+            (SELECT
+              CAST($firstColumn AS NUMERIC) AS firstC,
+              CAST($secondColumn AS NUMERIC) AS secondC
               FROM ${table.name}
               WHERE $firstColumn IS NOT NULL
                AND $secondColumn IS NOT NULL
                AND ${where.getOrElse("TRUE=TRUE")}
-              ) AS noNullValueTable,
+              ) AS cleanTable,
             (SELECT
-              COUNT ($firstColumn) AS count_all,
+              COUNT($firstColumn) AS count_all,
               AVG(CAST($firstColumn AS NUMERIC)) AS avg_first,
               AVG(CAST($secondColumn AS NUMERIC)) AS avg_second
             FROM
@@ -92,7 +93,7 @@ case class JdbcCorrelation(firstColumn: String,
                $firstColumn IS NOT NULL
                AND $secondColumn IS NOT NULL
                AND ${where.getOrElse("TRUE=TRUE")}
-              ) AS noNullValueTable
+              ) AS cleanTable
             ) AS meanTable
           ) AS calculationTable
           GROUP BY count_all, avg_first, avg_second
@@ -103,14 +104,7 @@ case class JdbcCorrelation(firstColumn: String,
 
     val result = statement.executeQuery()
 
-    try {
-      result.next()
-    }
-    catch {
-      case error: PSQLException => throw error
-    }
-
-    try {
+    if (result.next()) {
       val n = result.getDouble("n")
       val xAvg = result.getDouble("xAvg")
       val yAvg = result.getDouble("yAvg")
@@ -118,17 +112,19 @@ case class JdbcCorrelation(firstColumn: String,
       val xMk = result.getDouble("xMk")
       val yMk = result.getDouble("yMk")
 
-      Some(CorrelationState(n, xAvg, yAvg, ck, xMk, yMk))
+      return Some(CorrelationState(n, xAvg, yAvg, ck, xMk, yMk))
     }
-    catch {
-      case error: Exception => throw error
-    }
+    None
   }
 
   override def computeMetricFrom(state: Option[CorrelationState]): DoubleMetric = {
     state match {
       case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Correlation", firstColumn, Entity.Column)
+        metricFromValue(
+            theState.metricValue(),
+            "Correlation",
+            Seq(firstColumn, secondColumn).mkString(","),
+            Entity.Mutlicolumn)
       case _ =>
         toFailureMetric(new EmptyStateException(
           s"Empty state for analyzer JdbcCorrelation, all input values were NULL."))

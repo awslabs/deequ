@@ -320,4 +320,28 @@ trait JdbcFixtureSupport {
       )
     fillTableWithData(conn, "ConditionallyInformativeColumns", columns, data)
   }
+
+  def getTableWithInverseNumberedColumns(conn: Connection): Table = {
+
+    val columns = mutable.LinkedHashMap[String, String]("att1" -> "INTEGER", "att2" -> "INTEGER")
+    val data =
+      Seq(
+        Seq(1, 6),
+        Seq(2, 5),
+        Seq(3, 4)
+      )
+    fillTableWithData(conn, "ConditionallyInformativeColumns", columns, data)
+  }
+
+  def getTableWithPartlyCorrelatedColumns(conn: Connection): Table = {
+
+    val columns = mutable.LinkedHashMap[String, String]("att1" -> "INTEGER", "att2" -> "INTEGER")
+    val data =
+      Seq(
+        Seq(1, 4),
+        Seq(2, 2),
+        Seq(3, 6)
+      )
+    fillTableWithData(conn, "ConditionallyInformativeColumns", columns, data)
+  }
 }

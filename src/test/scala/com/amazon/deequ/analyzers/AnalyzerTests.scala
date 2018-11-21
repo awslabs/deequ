@@ -601,6 +601,16 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       Correlation("att1", "att2").calculate(df).value shouldBe
         Correlation("att2", "att1").calculate(df).value
     }
+    "yield -1.0 for inversed columns" in withSparkSession { sparkSession =>
+      val table = getTableWithInverseNumberedColumns(sparkSession)
+      val result = Correlation("att1", "att2").calculate(table)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(-1.0)
+      )
+    }
   }
 
 
