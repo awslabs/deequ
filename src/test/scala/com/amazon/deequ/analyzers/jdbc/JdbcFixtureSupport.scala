@@ -5,6 +5,28 @@ import scala.collection.mutable
 
 trait JdbcFixtureSupport {
 
+  def hasTable(conn: Connection, tableName: String): Boolean = {
+    val query =
+      s"""
+         |SELECT
+         |  name
+         |FROM
+         |  sqlite_master
+         |WHERE
+         |  type='table'
+         |  AND name='$tableName'
+       """.stripMargin
+
+    val stmt = conn.createStatement()
+    val result = stmt.executeQuery(query)
+
+    if (result.next()) {
+      true
+    } else {
+      false
+    }
+  }
+
   def fillTableWithData(conn: Connection, tableName: String,
                         columns: mutable.LinkedHashMap[String, String], values: Seq[Seq[Any]]
                        ): Table = {
