@@ -1,4 +1,4 @@
 .idea/
 *.iml
 **/*.iml
-target/
+target/.travis/public-signing-key.gpg
