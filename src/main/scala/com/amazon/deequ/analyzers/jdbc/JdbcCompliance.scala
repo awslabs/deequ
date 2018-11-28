@@ -70,9 +70,11 @@ case class JdbcCompliance(instance: String, predicate: String, where: Option[Str
       val num_rows = result.getLong("num_rows")
 
       if (num_rows > 0) {
+        result.close()
         return Some(NumMatchesAndCount(num_matches, num_rows))
       }
     }
+    result.close()
     None
   }
 

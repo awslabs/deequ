@@ -26,7 +26,7 @@ import org.sqlite.Function
   */
 trait JdbcContextSpec {
 
-  val jdbcUrl = "jdbc:sqlite:memory"
+  val jdbcUrl = "jdbc:sqlite:"
 
   def withJdbc(testFunc: Connection => Unit): Unit = {
     classOf[org.postgresql.Driver]

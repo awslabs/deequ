@@ -56,9 +56,11 @@ case class JdbcMean(column: String, where: Option[String] = None)
       val col_sum = result.getDouble("col_sum")
 
       if (!result.wasNull()) {
+        result.close()
         return Some(MeanState(col_sum, col_count))
       }
     }
+    result.close()
     None
   }
 

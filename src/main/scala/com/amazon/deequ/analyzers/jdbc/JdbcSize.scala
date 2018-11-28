@@ -54,9 +54,10 @@ case class JdbcSize(where: Option[String] = None)
 
     if (result.next()) {
       val num_rows = result.getLong("num_rows")
-
+      result.close()
       return Some(NumMatches(num_rows))
     }
+    result.close()
     None
   }
 

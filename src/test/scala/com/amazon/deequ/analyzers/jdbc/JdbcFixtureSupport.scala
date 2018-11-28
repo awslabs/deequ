@@ -391,4 +391,21 @@ trait JdbcFixtureSupport {
       )
     fillTableWithData(conn, "ConditionallyInformativeColumns", columns, data)
   }
+
+  def getTableWithPricedItems(conn: Connection): Table = {
+
+    val columns = mutable.LinkedHashMap[String, String](
+      "item" -> "TEXT", "att1" -> "TEXT", "count" -> "INTEGER", "price" -> "REAL")
+    val data =
+      Seq(
+        Seq("1", "a", 17, 1.3),
+        Seq("2", null, 12, 76.0),
+        Seq("3", "b", 15, 89.0),
+        Seq("4", "b", 12, 12.7),
+        Seq("5", null, 1, 1.0),
+        Seq("6", "a", 21, 78.0),
+        Seq("7", null, 12, 0.0)
+      )
+    fillTableWithData(conn, "PricedItems", columns, data)
+  }
 }

@@ -71,8 +71,10 @@ case class JdbcPatternMatch(column: String, pattern: Regex, where: Option[String
     if (result.next()) {
       val num_matches = result.getLong("num_matches")
       val num_rows = result.getLong("num_rows")
+      result.close()
       Some(NumMatchesAndCount(num_matches, num_rows))
     } else {
+      result.close()
       None
     }
   }

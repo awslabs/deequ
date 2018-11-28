@@ -123,6 +123,8 @@ case class JdbcDataType(column: String,
         val num_booleans = result.getLong("num_booleans")
         val num_nulls = result.getLong("num_nulls")
 
+        result.close()
+
         Some(DataTypeHistogram(
           numNull = num_nulls + (num_rows - num_not_nulls),
           numFractional = num_fractions,
@@ -132,6 +134,7 @@ case class JdbcDataType(column: String,
             num_fractions - num_nulls
         ))
       } else {
+        result.close()
         None
       }
     }

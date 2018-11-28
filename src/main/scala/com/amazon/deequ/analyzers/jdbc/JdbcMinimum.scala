@@ -55,9 +55,11 @@ case class JdbcMinimum(column: String, where: Option[String] = None)
       val col_min = result.getDouble("col_min")
 
       if (!result.wasNull()) {
+        result.close()
         return Some(MinState(col_min))
       }
     }
+    result.close()
     None
   }
 

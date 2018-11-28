@@ -113,8 +113,10 @@ case class JdbcCorrelation(firstColumn: String,
       val xMk = result.getDouble("xMk")
       val yMk = result.getDouble("yMk")
 
+      result.close()
       return Some(CorrelationState(n, xAvg, yAvg, ck, xMk, yMk))
     }
+    result.close()
     None
   }
 

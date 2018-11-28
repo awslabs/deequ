@@ -93,7 +93,7 @@ object JdbcFrequencyBasedAnalyzer {
     val frequenciesAndNumRows = convertResultSet(result, Map[String, Long](), 0)
     val frequencies = frequenciesAndNumRows._1
     val numRows = frequenciesAndNumRows._2
-
+    result.close()
     JdbcFrequenciesAndNumRows(frequencies, numRows)
   }
 }

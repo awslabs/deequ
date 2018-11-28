@@ -70,9 +70,11 @@ case class JdbcStandardDeviation(column: String, where: Option[String] = None)
       val col_count = result.getDouble("col_count")
 
       if (col_count > 0) {
+        result.close()
         return Some(StandardDeviationState(col_count, col_avg, col_m2))
       }
     }
+    result.close()
     None
   }
 

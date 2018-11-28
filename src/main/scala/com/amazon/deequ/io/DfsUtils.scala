@@ -55,7 +55,7 @@ private[deequ] object DfsUtils {
     }
   }
 
-  /* Helper function to write to a binary file on S3 */
+  /* Helper function to write to a text file on S3 */
   def writeToTextFileOnDfs(session: SparkSession, path: String, overwrite: Boolean = false)
     (writeFunc: BufferedWriter => Unit): Unit = {
 

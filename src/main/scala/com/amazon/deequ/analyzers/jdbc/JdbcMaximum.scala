@@ -54,9 +54,11 @@ case class JdbcMaximum(column: String, where: Option[String] = None)
       val col_max = result.getDouble("col_max")
 
       if (!result.wasNull()) {
+        result.close()
         return Some(MaxState(col_max))
       }
     }
+    result.close()
     None
   }
 

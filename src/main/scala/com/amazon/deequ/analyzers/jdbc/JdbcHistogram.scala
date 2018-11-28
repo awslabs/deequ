@@ -69,6 +69,7 @@ case class JdbcHistogram(column: String)
     val frequencies = frequenciesAndNumRows._1
     val numRows = frequenciesAndNumRows._2
 
+    result.close()
     Some(JdbcFrequenciesAndNumRows(frequencies, numRows))
   }
 

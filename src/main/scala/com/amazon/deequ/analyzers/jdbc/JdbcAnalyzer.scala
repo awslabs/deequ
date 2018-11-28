@@ -225,6 +225,28 @@ object Preconditions {
 
 private[deequ] object JdbcAnalyzers {
 
+  /** Merges a sequence of potentially empty states. */
+  def merge[S <: State[_]](
+                            state: Option[S],
+                            anotherState: Option[S],
+                            moreStates: Option[S]*)
+  : Option[S] = {
+
+    val statesToMerge = Seq(state, anotherState) ++ moreStates
+
+    statesToMerge.reduce { (stateA: Option[S], stateB: Option[S]) =>
+
+      (stateA, stateB) match {
+        case (Some(theStateA), Some(theStateB)) =>
+          Some(theStateA.sumUntyped(theStateB).asInstanceOf[S])
+
+        case (Some(_), None) => stateA
+        case (None, Some(_)) => stateB
+        case _ => None
+      }
+    }
+  }
+
   def entityFrom(columns: Seq[String]): Entity.Value = {
     if (columns.size == 1) Entity.Column else Entity.Mutlicolumn
   }

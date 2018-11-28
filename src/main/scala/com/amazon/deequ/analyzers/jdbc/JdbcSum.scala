@@ -54,9 +54,11 @@ case class JdbcSum(column: String, where: Option[String] = None)
       val col_sum = result.getDouble("col_sum")
 
       if (!result.wasNull()) {
+        result.close()
         return Some(SumState(col_sum))
       }
     }
+    result.close()
     None
   }
 
