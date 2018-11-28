@@ -297,6 +297,36 @@ trait JdbcFixtureSupport {
     fillTableWithData(conn, "DistinctValues", columns, data)
   }
 
+  def getTableWithEmptyStringValues(conn: Connection): Table = {
+
+    val columns = mutable.LinkedHashMap[String, String]("att1" -> "TEXT", "att2" -> "TEXT")
+    val data =
+      Seq(
+        Seq("1", ""),
+        Seq("2", ""),
+        Seq("3", "x"),
+        Seq("4", "x"),
+        Seq("5", "x"),
+        Seq("6", "")
+      )
+    fillTableWithData(conn, "EmptyStringValues", columns, data)
+  }
+
+  def getTableWithWhitespace(conn: Connection): Table = {
+
+    val columns = mutable.LinkedHashMap[String, String]("att1" -> "TEXT", "att2" -> "TEXT")
+    val data =
+      Seq(
+        Seq("1", "x"),
+        Seq("2", " "),
+        Seq("3", " "),
+        Seq("4", " "),
+        Seq("5", "x"),
+        Seq("6", "x")
+      )
+    fillTableWithData(conn, "Whitespace", columns, data)
+  }
+
   def getTableWithConditionallyUninformativeColumns(conn: Connection): Table = {
 
     val columns = mutable.LinkedHashMap[String, String]("att1" -> "INTEGER", "att2" -> "INTEGER")

@@ -20,16 +20,15 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.MaxState
+import com.amazon.deequ.analyzers.jdbc.Preconditions._
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
-import Preconditions._
 
 case class JdbcMaximum(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[MaxState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MaxState] = {

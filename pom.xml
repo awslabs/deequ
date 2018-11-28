@@ -200,6 +200,7 @@
                     <configLocation>${project.basedir}/deequ-scalastyle.xml</configLocation>
                     <outputFile>${project.basedir}/target/scalastyle-output.xml</outputFile>
                     <outputEncoding>UTF-8</outputEncoding>
+                    <inputEncoding>UTF-8</inputEncoding>
                 </configuration>
                 <executions>
                     <execution>

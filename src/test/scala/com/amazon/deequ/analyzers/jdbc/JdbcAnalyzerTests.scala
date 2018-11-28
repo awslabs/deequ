@@ -74,9 +74,101 @@ class JdbcAnalyzerTests
 
     "compute correct metrics" in withJdbc { connection =>
 
-      // TODO
+      val tableNumeric = getTableWithNumericValues(connection)
+      val tableMissing = getTableMissing(connection)
+      val tableWhitespace = getTableWithWhitespace(connection)
+
+      assert(JdbcCompliance("rule1", "att1 > 3").calculate(tableNumeric) ==
+        DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
+      assert(JdbcCompliance("rule2", "att1 > 2").calculate(tableNumeric) ==
+        DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
+      assert(JdbcCompliance("is item specified?", "item IS NOT NULL").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "is item specified?", Success(1.0)))
+
+      // test predicate with multiple columns
+      assert(JdbcCompliance("ratio of complete lines",
+        "item IS NOT NULL AND att1 IS NOT NULL AND att2 IS NOT NULL").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "ratio of complete lines", Success(4.0 / 12)))
+
+      // test predicate with value range
+      assert(JdbcCompliance("value range", "att2 IN ('d', 'f')").calculate(tableMissing) ==
+        DoubleMetric(
+          Entity.Column,
+          "Compliance",
+          "value range",
+          Success(9.0 / 12)))
+      assert(
+        JdbcCompliance(
+          "value range with white space",
+          "att2 IN ('x', ' ')"
+        ).calculate(tableWhitespace) ==
+          DoubleMetric(Entity.Column, "Compliance", "value range with white space", Success(1.0)))
+      assert(
+        JdbcCompliance(
+          "value range with empty string",
+          "att2 IN ('x', '')").calculate(tableWhitespace) ==
+        DoubleMetric(Entity.Column, "Compliance", "value range with empty string", Success(0.5)))
+
+      // test predicate with like
+      assert(JdbcCompliance("value format", "att1 LIKE '_'").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "value format", Success(6.0 / 12)))
+
+      // test wrong predicate
+      assert(JdbcCompliance("shenanigans", "att1 IN ('d', 'f')").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "shenanigans", Success(0)))
     }
 
+    "error handling" should {
+
+      "fail on emtpy table" in withJdbc { connection =>
+        val tableEmtpy = getTableEmpty(connection)
+        assert(JdbcCompliance("rule1", "att1 > 0").calculate(tableEmtpy).value.isFailure)
+      }
+
+      "fail on invalid predicate" in withJdbc { connection =>
+        val tableMissing = getTableMissing(connection)
+
+        JdbcCompliance("crazyRule", "att1 IS GREAT").calculate(tableMissing) match {
+          case metric =>
+            assert(metric.entity == Entity.Column)
+            assert(metric.name == "Compliance")
+            assert(metric.instance == "crazyRule")
+            assert(metric.value.isFailure)
+        }
+      }
+
+    }
+
+    "work with filtering" in withJdbc { connection =>
+      val tableMissing = getTableMissing(connection)
+
+      val result =
+        JdbcCompliance("att1 complete for first two items",
+                       "att1 IS NOT NULL",
+                       Some("item IN ('1', '2')")).calculate(tableMissing)
+      assert(result == DoubleMetric(
+        Entity.Column,
+        "Compliance",
+        "att1 complete for first two items",
+        Success(1.0))
+      )
+    }
+
+    "prevent sql injections" should {
+
+      "prevent sql injection in table name for compliance" in withJdbc { connection =>
+        val table = getTableMissing(connection)
+        val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
+        assert(JdbcCompliance("rule", "TRUE").calculate(tableWithInjection).value.isFailure)
+      }
+      "prevent sql injection in predicate for compliance" in withJdbc { connection =>
+        val table = getTableMissing(connection)
+        val predicateWithInjection = s"TRUE THEN 1 ELSE 0 END); DROP TABLE ${table.name}; --"
+        assert(
+          JdbcCompliance("dangerousRule", predicateWithInjection).calculate(table).value.isFailure)
+      }
+
+    }
   }
 
   "Completeness analyzer" should {
@@ -86,8 +178,6 @@ class JdbcAnalyzerTests
       val tableMissing = getTableMissing(connection)
       val tableMissingColumn = getTableMissingColumn(connection)
 
-      assert(JdbcCompleteness("someMissingColumn").preconditions.size == 2,
-        "should check column name availability")
       assert(JdbcCompleteness("att1").calculate(tableMissing) == DoubleMetric(Entity.Column,
         "Completeness", "att1", Success(0.5)))
       assert(JdbcCompleteness("att2").calculate(tableMissing) == DoubleMetric(Entity.Column,

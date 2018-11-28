@@ -20,7 +20,7 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.CorrelationState
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, isNumeric}
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, isNumeric, hasNoInjection}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.postgresql.util.PSQLException
@@ -33,7 +33,8 @@ case class JdbcCorrelation(firstColumn: String,
   override def preconditions: Seq[Table => Unit] = {
     hasTable() ::
       hasColumn(firstColumn) :: isNumeric(firstColumn) ::
-      hasColumn(secondColumn) :: isNumeric(secondColumn) :: Nil
+      hasColumn(secondColumn) :: isNumeric(secondColumn) ::
+      hasNoInjection(where) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[CorrelationState] = {

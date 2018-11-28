@@ -20,7 +20,7 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, hasNoInjection}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 
@@ -41,7 +41,7 @@ case class JdbcPatternMatch(column: String, pattern: Regex, where: Option[String
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: Nil
+    hasTable() :: hasColumn(column) :: hasNoInjection(where) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {

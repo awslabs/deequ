@@ -20,10 +20,9 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatches
-import com.amazon.deequ.analyzers.jdbc.Preconditions.hasTable
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasNoInjection}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
 
 case class JdbcSize(where: Option[String] = None)
   extends JdbcAnalyzer[NumMatches, DoubleMetric] {
@@ -31,7 +30,7 @@ case class JdbcSize(where: Option[String] = None)
   val column = "*"
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: Nil
+    hasTable() :: hasNoInjection(where):: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatches] = {

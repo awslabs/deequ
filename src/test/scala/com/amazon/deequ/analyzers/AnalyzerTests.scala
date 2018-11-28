@@ -17,13 +17,13 @@
 package com.amazon.deequ
 package analyzers
 
-import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.analyzers.DataType
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.{col, expr, udf}
+import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types._
 import org.scalatest.{Matchers, WordSpec}
 
@@ -171,12 +171,38 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
   "Compliance analyzer" should {
     "compute correct metrics " in withSparkSession { sparkSession =>
-      val df = getDfWithNumericValues(sparkSession)
-      assert(Compliance("rule1", "att1 > 3").calculate(df) ==
+      val dfNumeric = getDfWithNumericValues(sparkSession)
+      val dfMissing = getDfMissing(sparkSession)
+      val dfWhitespace = getDfWithWhitespace(sparkSession)
+      assert(Compliance("rule1", "att1 > 3").calculate(dfNumeric) ==
         DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
-      assert(Compliance("rule2", "att1 > 2").calculate(df) ==
+      assert(Compliance("rule2", "att1 > 2").calculate(dfNumeric) ==
         DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
-
+      assert(Compliance("is item specified?", "item IS NOT NULL").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "is item specified?", Success(1.0)))
+      // test predicate with multiple columns
+      assert(Compliance("ratio of complete lines",
+        "item IS NOT NULL AND att1 IS NOT NULL AND att2 IS NOT NULL").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "ratio of complete lines", Success(4.0 / 12)))
+      // test predicate with value range
+      assert(
+        Compliance("value range", "att2 IN ('d', 'f')").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column,
+        "Compliance", "value range", Success(9.0 / 12)))
+      assert(
+        Compliance("value range with white space", "att2 IN ('x', ' ')").calculate(dfWhitespace) ==
+          DoubleMetric(Entity.Column, "Compliance", "value range with white space", Success(1.0)))
+      assert(
+        Compliance("value range with empty string", "att2 IN ('x', '')").calculate(dfWhitespace) ==
+          DoubleMetric(Entity.Column, "Compliance", "value range with empty string", Success(0.5)))
+      // test predicate with like
+      assert(
+        Compliance("value format", "att1 LIKE '_'").calculate(dfMissing) ==
+          DoubleMetric(Entity.Column, "Compliance", "value format", Success(6.0 / 12)))
+      // test wrong predicate
+      assert(
+        Compliance("shenanigans", "att1 IN ('d', 'f')").calculate(dfMissing) ==
+          DoubleMetric(Entity.Column, "Compliance", "shenanigans", Success(0)))
     }
 
     "compute correct metrics with filtering" in withSparkSession { sparkSession =>
@@ -215,7 +241,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     }
     "compute correct metrics after binning if provided" in withSparkSession { sparkSession =>
       val customBinner = udf {
-        (cnt: String) =>
+        cnt: String =>
           cnt match {
             case "a" | "b" => "Value1"
             case _ => "Value2"

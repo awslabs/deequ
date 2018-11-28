@@ -16,20 +16,22 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{emptyStateException, metricFromFailure, metricFromValue}
-import com.amazon.deequ.analyzers.{DataTypeHistogram, DataTypeInstances, NumMatchesAndCount}
-import com.amazon.deequ.analyzers.runners.{EmptyStateException, MetricCalculationException}
-import com.amazon.deequ.metrics.{DoubleMetric, Entity, HistogramMetric}
-import org.postgresql.util.PSQLException
 import java.sql.Types._
+
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasColumn, hasNoInjection}
+import com.amazon.deequ.analyzers.runners.{EmptyStateException, MetricCalculationException}
+import com.amazon.deequ.analyzers.{DataTypeHistogram, DataTypeInstances}
+import com.amazon.deequ.metrics.HistogramMetric
 
 import scala.util.{Failure, Success}
 
 case class JdbcDataType(column: String,
                         where: Option[String] = None)
   extends JdbcAnalyzer[DataTypeHistogram, HistogramMetric] {
+
+  override def preconditions: Seq[Table => Unit] = {
+    hasTable() :: hasColumn(column) :: hasNoInjection(where) :: Nil
+  }
 
   override def computeStateFrom(table: Table): Option[DataTypeHistogram] = {
 

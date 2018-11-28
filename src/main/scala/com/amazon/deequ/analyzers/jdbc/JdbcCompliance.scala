@@ -20,10 +20,9 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasNoInjection}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
 
 /**
   * Compliance is a measure of the fraction of rows that complies with the given column constraint.
@@ -38,13 +37,12 @@ import org.postgresql.util.PSQLException
   * @param predicate        SQL-predicate to apply per row
   * @param where            Additional filter to apply before the analyzer is run.
   */
-  // TODO: add where parameter
-case class JdbcCompliance(instance: String, predicate: String)
+
+case class JdbcCompliance(instance: String, predicate: String, where: Option[String] = None)
   extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    // TODO: validate params
-    Nil
+    hasTable() :: hasNoInjection(Option(predicate)) :: hasNoInjection(where) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
@@ -58,6 +56,8 @@ case class JdbcCompliance(instance: String, predicate: String)
          | COUNT(*) AS num_rows
          |FROM
          | ${table.name}
+         |WHERE
+         |  ${where.getOrElse("TRUE=TRUE")}
        """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

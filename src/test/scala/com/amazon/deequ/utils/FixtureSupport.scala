@@ -187,6 +187,32 @@ trait FixtureSupport {
       .toDF("att1", "att2")
   }
 
+  def getDfWithEmptyStringValues(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", ""),
+      ("2", ""),
+      ("3", "x"),
+      ("4", "x"),
+      ("5", "x"),
+      ("6", ""))
+      .toDF("att1", "att2")
+  }
+
+  def getDfWithWhitespace(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", "x"),
+      ("2", " "),
+      ("3", " "),
+      ("4", " "),
+      ("5", "x"),
+      ("6", "x"))
+      .toDF("att1", "att2")
+  }
+
   def getDfWithConditionallyUninformativeColumns(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
     Seq(

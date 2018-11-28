@@ -20,16 +20,15 @@ import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.MeanState
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasNoInjection, hasTable, isNumeric}
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
-import Preconditions.{hasTable, hasColumn, isNumeric}
 
 case class JdbcMean(column: String, where: Option[String] = None)
   extends JdbcAnalyzer[MeanState, DoubleMetric] {
 
   override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: Nil
+    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[MeanState] = {

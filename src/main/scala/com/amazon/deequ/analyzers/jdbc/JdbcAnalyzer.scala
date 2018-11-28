@@ -215,7 +215,7 @@ object Preconditions {
   /** Statement has no ; outside of quotation marks (SQL injections) */
   def hasNoInjection(statement: Option[String]): Table => Unit = { _ =>
     val pattern = """("[^"]*"|'[^']*'|[^;'"]*)*"""
-    val st = statement.get
+    val st = statement.getOrElse("")
     if (!st.matches(pattern)) {
       throw new SQLInjectionException(
         s"In the statement semicolons outside of quotation marks are not allowed")
