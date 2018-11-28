@@ -418,6 +418,11 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val df = getDfFull(sparkSession)
       assert(Mean("att1").calculate(df).value.isFailure)
     }
+    "compute mean correctly for numeric data with filtering" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Mean("att1", where = Some("item != '6'")).calculate(df).value
+      result shouldBe Success(3.0)
+    }
 
     "compute standard deviation correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
