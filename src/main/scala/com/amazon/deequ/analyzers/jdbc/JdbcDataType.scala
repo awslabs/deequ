@@ -87,7 +87,7 @@ case class JdbcDataType(column: String,
         * false | t | f | y | n | yes | no | on | off.
         */
       val integerPattern =
-        """^\s*(?:-|\+)?(?:[2-9]|\d{2,})\s*$"""
+        """^\s*(?:-|\+)?(?:-1|[2-9]|\d{2,})\s*$"""
       val fractionPattern = """^\s*(?:-|\+)?\d+\.\d+\s*$"""
       val booleanPattern = """(?i)^\s*(?:1|0|true|false|t|f|y|n|yes|no|on|off)\s*$"""
       val nullPattern = """(?i)^\s*(?:null|N\/A|N\.?A\.?)\s*$"""

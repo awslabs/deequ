@@ -351,6 +351,23 @@ trait JdbcFixtureSupport {
     fillTableWithData(conn, "ConditionallyInformativeColumns", columns, data)
   }
 
+  def getTableWithImproperDataTypes(conn: Connection): Table = {
+
+    val columns = mutable.LinkedHashMap[String, String](
+      "mixed" -> "TEXT", "type_integer" -> "INTEGER", "type_fractional" -> "DOUBLE")
+
+    val data =
+      Seq(
+        Seq("\n\n-1  ", 1, 2.3),
+        Seq("\n+2.376  \n", 2, 5.6),
+        Seq("true", 3, null),
+        Seq("null", null, null),
+        Seq("string", 6, 3.3),
+        Seq("null", 6, 3.3)
+      )
+    fillTableWithData(conn, "MissingTypes", columns, data)
+  }
+
   def getTableWithInverseNumberedColumns(conn: Connection): Table = {
 
     val columns = mutable.LinkedHashMap[String, String]("att1" -> "INTEGER", "att2" -> "INTEGER")

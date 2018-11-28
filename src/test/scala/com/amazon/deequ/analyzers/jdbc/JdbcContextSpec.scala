@@ -18,6 +18,8 @@ package com.amazon.deequ.analyzers.jdbc
 
 import java.sql.{Connection, DriverManager}
 
+import org.sqlite.Function
+
 /**
   * TODO
   * To be mixed with Tests so they can use a default spark context suitable for testing
@@ -29,6 +31,20 @@ trait JdbcContextSpec {
   def withJdbc(testFunc: Connection => Unit): Unit = {
     classOf[org.postgresql.Driver]
     val connection = DriverManager.getConnection(jdbcUrl)
+
+    // Register user defined function for regular expression matching
+    Function.create(connection, "regexp_matches", new Function() {
+      protected def xFunc(): Unit = {
+        val textToMatch = value_text(0)
+        val pattern = value_text(1).r
+
+        pattern.findFirstMatchIn(textToMatch) match {
+          case Some(_) => result(1) // If a match is found, return any value other than NULL
+          case None => result() // If no match is found, return NULL
+        }
+      }
+    })
+
     try {
       testFunc(connection)
     } finally {

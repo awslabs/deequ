@@ -1,8 +1,9 @@
 package com.amazon.deequ.analyzers.jdbc
 
 import com.amazon.deequ.analyzers.jdbc
+import com.amazon.deequ.analyzers.DataTypeHistogram
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
-import com.amazon.deequ.metrics.{Distribution, DoubleMetric, Entity, HistogramMetric}
+import com.amazon.deequ.metrics.{Distribution, DoubleMetric, Entity, HistogramMetric, DistributionValue}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import org.scalatest.{Matchers, WordSpec}
 
@@ -10,6 +11,54 @@ import scala.util.{Failure, Success}
 
 class JdbcAnalyzerTests
   extends WordSpec with Matchers with JdbcContextSpec with JdbcFixtureSupport {
+
+  "DataType analyzer" should {
+    "compute correct metrics" in withJdbc { connection =>
+
+      val table = getTableWithImproperDataTypes(connection)
+
+      assert(JdbcDataType("mixed",
+        Some("type_integer IS NOT NULL")).calculate(table) == HistogramMetric("mixed",
+        Success(Distribution(Map(
+          "Boolean" -> DistributionValue(1, 0.2),
+          "Fractional" -> DistributionValue(1, 0.2),
+          "Integral" -> DistributionValue(1, 0.2),
+          "Unknown" -> DistributionValue(1, 0.2),
+          "String" -> DistributionValue(1, 0.2)), 5)))
+      )
+      assert(JdbcDataType("type_integer",
+        Some("type_integer IS NOT NULL")).calculate(table) == HistogramMetric("type_integer",
+        Success(Distribution(Map(
+          "Boolean" -> DistributionValue(0, 0.0),
+          "Fractional" -> DistributionValue(0, 0.0),
+          "Integral" -> DistributionValue(5, 1.0),
+          "Unknown" -> DistributionValue(0, 0.0),
+          "String" -> DistributionValue(0, 0.0)), 5)))
+      )
+      assert(JdbcDataType("type_fractional",
+        Some("type_integer IS NOT NULL")).calculate(table) == HistogramMetric("type_fractional",
+        Success(Distribution(Map(
+          "Boolean" -> DistributionValue(0, 0.0),
+          "Fractional" -> DistributionValue(4, 0.8),
+          "Integral" -> DistributionValue(0, 0.0),
+          "Unknown" -> DistributionValue(1, 0.2),
+          "String" -> DistributionValue(0, 0.0)), 5)))
+      )
+    }
+  }
+
+  "PatternMatch analyzer" should {
+    "compute correct metrics" in withJdbc { connection =>
+
+      val table = getTableWithImproperDataTypes(connection)
+
+      assert(JdbcPatternMatch("mixed",
+        """^\s*(?:-|\+)?\d+\.\d+\s*$""".r,
+        Some("type_integer IS NOT NULL")).calculate(table) == DoubleMetric(
+        Entity.Column, "PatternMatch", "mixed", Success(0.2))
+      )
+    }
+  }
 
   "Size analyzer" should {
     "compute correct metrics" in withJdbc { connection =>
