@@ -18,7 +18,7 @@ package com.amazon.deequ
 package checks
 
 import com.amazon.deequ.analyzers.applicability.Applicability
-import com.amazon.deequ.analyzers.{Completeness, Compliance}
+import com.amazon.deequ.analyzers.{Completeness, Compliance, Maximum, Minimum}
 import org.apache.spark.sql.types._
 import org.scalatest.WordSpec
 
@@ -38,6 +38,8 @@ class ApplicabilityTest extends WordSpec with SparkContextSpec {
       StructField("doubleCol2", DoubleType, nullable = true),
       StructField("decimalCol", DecimalType.SYSTEM_DEFAULT, nullable = true),
       StructField("decimalCol2", DecimalType.SYSTEM_DEFAULT, nullable = true),
+      StructField("decimalCol3", DecimalType(5, 2), nullable = true),
+      StructField("decimalCol4", DecimalType(8, 4), nullable = true),
       StructField("timestampCol", TimestampType, nullable = true),
       StructField("timestampCol2", TimestampType, nullable = true),
       StructField("booleanCol", BooleanType, nullable = true),
@@ -172,5 +174,28 @@ class ApplicabilityTest extends WordSpec with SparkContextSpec {
       assert(!resultForAnalyzerWithInvalidExpression2.isApplicable)
       assert(resultForAnalyzerWithInvalidExpression2.failures.size == 1)
     }
+
+    "handles min/max with decimal columns" in withSparkSession { session =>
+
+      val applicability = new Applicability(session)
+
+      val analyzers = Seq(
+        Minimum("decimalCol"),
+        Maximum("decimalCol"),
+        Minimum("decimalCol2"),
+        Maximum("decimalCol2"),
+        Minimum("decimalCol3"),
+        Maximum("decimalCol3"),
+        Minimum("decimalCol4"),
+        Maximum("decimalCol4")
+      )
+
+
+      val resultForValidAnalyzer = applicability.isApplicable(analyzers, schema)
+
+      assert(resultForValidAnalyzer.isApplicable)
+      assert(resultForValidAnalyzer.failures.isEmpty)
+    }
+
   }
 }
