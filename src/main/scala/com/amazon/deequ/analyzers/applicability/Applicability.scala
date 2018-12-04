@@ -218,8 +218,6 @@ private[deequ] class Applicability(session: SparkSession) {
 
     val data = generateRandomData(schema, 1000)
 
-    data.select("decimalCol3").head(10).foreach { println }
-
     val analyzersByName = analyzers
       .map { analyzer => analyzer.toString -> analyzer }
 
