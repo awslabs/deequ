@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
-import scala.util.Failure
+import scala.util.{Failure, Random}
 
 private[deequ] sealed trait ApplicabilityResult {
   def isApplicable: Boolean
@@ -45,6 +45,9 @@ private[deequ] case class AnalyzersApplicability(
 
 private[deequ] object Applicability {
 
+  private[this] val DIGITS = Array("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+  private[this] val NUM_DIGITS = DIGITS.length
+
   private def shouldBeNull(nullable: Boolean): Boolean = {
     nullable && math.random < 0.01
   }
@@ -53,7 +56,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextDouble() > 0.5
+      Random.nextDouble() > 0.5
     }
   }
 
@@ -61,7 +64,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextInt()
+      Random.nextInt()
     }
   }
 
@@ -69,7 +72,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextFloat()
+      Random.nextFloat()
     }
   }
 
@@ -77,7 +80,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextDouble()
+      Random.nextDouble()
     }
   }
 
@@ -85,7 +88,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextInt().toByte
+      Random.nextInt().toByte
     }
   }
 
@@ -93,7 +96,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextInt().toShort
+      Random.nextInt().toShort
     }
   }
 
@@ -101,15 +104,35 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      util.Random.nextLong()
+      Random.nextLong()
     }
   }
 
-  def randomDecimal(nullable: Boolean): java.math.BigDecimal = {
+  def randomDecimal(nullable: Boolean, precision: Int, scale: Int): java.math.BigDecimal = {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      BigDecimal(util.Random.nextLong()).bigDecimal
+
+      /* Generate a string representation of the numeric value of maximal length */
+      val number = new StringBuilder(precision + 1)
+
+      /* First digit should not be zero */
+      val firstDigit = Random.nextInt(NUM_DIGITS - 1) + 1
+      number.append(firstDigit)
+
+      for (_ <- 1 until precision - scale) {
+        number.append(DIGITS(Random.nextInt(NUM_DIGITS)))
+      }
+
+      if (scale > 0) {
+        number.append(".")
+
+        for (_ <- 0 until scale) {
+          number.append(DIGITS(Random.nextInt(NUM_DIGITS)))
+        }
+      }
+
+      BigDecimal(number.toString()).bigDecimal
     }
   }
 
@@ -117,7 +140,7 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      new Timestamp(util.Random.nextLong())
+      new Timestamp(Random.nextLong())
     }
   }
 
@@ -126,7 +149,7 @@ private[deequ] object Applicability {
       null
     } else {
       val length = util.Random.nextInt(20) + 1
-      util.Random.alphanumeric.take(length).mkString
+      Random.alphanumeric.take(length).mkString
     }
   }
 }
@@ -195,6 +218,8 @@ private[deequ] class Applicability(session: SparkSession) {
 
     val data = generateRandomData(schema, 1000)
 
+    data.select("decimalCol3").head(10).foreach { println }
+
     val analyzersByName = analyzers
       .map { analyzer => analyzer.toString -> analyzer }
 
@@ -228,7 +253,8 @@ private[deequ] class Applicability(session: SparkSession) {
           case ByteType => randomByte(field.nullable)
           case ShortType => randomShort(field.nullable)
           case LongType => randomLong(field.nullable)
-          case _ : DecimalType => randomDecimal(field.nullable)
+          case decimalType: DecimalType =>
+            randomDecimal(field.nullable, decimalType.precision, decimalType.scale)
           case TimestampType => randomTimestamp(field.nullable)
           case BooleanType => randomBoolean(field.nullable)
           case _ =>
