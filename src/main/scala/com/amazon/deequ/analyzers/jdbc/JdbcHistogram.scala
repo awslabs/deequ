@@ -14,23 +14,30 @@
  *
  */
 
-
-
 package com.amazon.deequ.analyzers.jdbc
 
 import java.sql.ResultSet
 
 import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable}
-import com.amazon.deequ.analyzers.runners.{EmptyStateException, MetricCalculationException}
+import com.amazon.deequ.analyzers.runners.{EmptyStateException, IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics._
 
 import scala.util.{Failure, Try}
 
-case class JdbcHistogram(column: String)
+case class JdbcHistogram(column: String,
+                         binningFunc: Option[Any => Any] = None,
+                         maxDetailBins: Integer = JdbcHistogram.MaximumAllowedDetailBins)
   extends JdbcAnalyzer[JdbcFrequenciesAndNumRows, HistogramMetric] {
 
+  private[this] val PARAM_CHECKS: Table => Unit = { _ =>
+    if (maxDetailBins > JdbcHistogram.MaximumAllowedDetailBins) {
+      throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
+        s"than ${JdbcHistogram.MaximumAllowedDetailBins} values")
+    }
+  }
+
   override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: Nil
+    PARAM_CHECKS :: hasTable() :: hasColumn(column) :: Nil
   }
 
   override def computeStateFrom(table: Table): Option[JdbcFrequenciesAndNumRows] = {
@@ -53,13 +60,22 @@ case class JdbcHistogram(column: String)
                       map: Map[String, Long],
                       total: Long): (Map[String, Long], Long) = {
       if (result.next()) {
-        val columnName = result.getObject("name")
-        val discreteValue = columnName match {
-          case null => "NullValue"
-          case _ => columnName.toString
+        val distinctName = result.getObject("name")
+
+        val modifiedName = binningFunc match {
+          case Some(bin) => bin(distinctName)
+          case _ => distinctName
         }
+
+        val discreteValue = modifiedName match {
+          case null => JdbcHistogram.NullFieldReplacement
+          case _ => modifiedName.toString
+        }
+
         val absolute = result.getLong("absolute")
-        val entry = discreteValue -> absolute
+
+        val frequency = map.getOrElse(discreteValue, 0L) + absolute
+        val entry = discreteValue -> frequency
         convertResult(result, map + entry, total + absolute)
       } else {
         (map, total)
@@ -78,12 +94,11 @@ case class JdbcHistogram(column: String)
 
       case Some(theState) =>
         val value: Try[Distribution] = Try {
-          // TODO: think about sorting
 
-          // val topNRows = theState.frequencies.rdd.top(maxDetailBins)(OrderByAbsoluteCount)
+          val topNFreq = topNFrequencies(theState.frequencies, maxDetailBins)
           val binCount = theState.frequencies.size
 
-          val histogramDetails = theState.frequencies.keys
+          val histogramDetails = topNFreq.keys
             .map { discreteValue: String =>
               val absolute = theState.frequencies(discreteValue)
               val ratio = absolute.toDouble / theState.numRows
@@ -105,4 +120,34 @@ case class JdbcHistogram(column: String)
   override private[deequ] def toFailureMetric(failure: Exception): HistogramMetric = {
     HistogramMetric(column, Failure(MetricCalculationException.wrapIfNecessary(failure)))
   }
+
+  /**
+    * Receive the top n key-value-pairs of a map with respect to the value.
+    *
+    * @param frequencies  Maps data to their occurrences.
+    * @param n            The number of maximal returned frequencies.
+    * @return             Biggest n key-value-pairs of frequencies with respect to the value.
+    */
+  def topNFrequencies(frequencies: Map[String, Long], n: Int) : Map[String, Long] = {
+    if (frequencies.size <= n) {
+      return frequencies
+    }
+
+    frequencies.foldLeft(Map[String, Long]()) {
+      (top, i) =>
+        if (top.size < n) {
+          top + i
+        } else if (top.minBy(_._2)._2 < i._2) {
+          top - top.minBy(_._2)._1 + i
+        } else {
+          top
+        }
+    }
+  }
+
+}
+
+object JdbcHistogram {
+  val NullFieldReplacement = "NullValue"
+  val MaximumAllowedDetailBins = 1000
 }

@@ -111,11 +111,66 @@ class JdbcAnalyzerTests
 
   "Histogram analyzer" should {
     "compute correct metrics" in withJdbc { connection =>
-      // TODO
       val tableEmpty = getTableEmpty(connection)
 
       assert(JdbcHistogram("att1").calculate(tableEmpty) == HistogramMetric("att1",
         Success(Distribution(Map(), 0))))
+
+      val dfFull = getTableMissing(connection)
+      val histogram = JdbcHistogram("att1").calculate(dfFull)
+      assert(histogram.value.isSuccess)
+
+      histogram.value.get match {
+        case hv =>
+          assert(hv.numberOfBins == 3)
+          assert(hv.values.size == 3)
+          assert(hv.values.keys == Set("a", "b", JdbcHistogram.NullFieldReplacement))
+
+      }
+    }
+
+    "compute correct metrics after binning if provided" in withJdbc { connection =>
+      val customBinner =
+        (cnt: Any) =>
+          cnt match {
+            case "a" | "b" => "Value1"
+            case _ => "Value2"
+          }
+      val dfFull = getTableMissing(connection)
+      val histogram = JdbcHistogram("att1", Some(customBinner)).calculate(dfFull)
+
+      assert(histogram.value.isSuccess)
+
+      histogram.value.get match {
+        case hv =>
+          assert(hv.numberOfBins == 2)
+          assert(hv.values.keys == Set("Value1", "Value2"))
+
+      }
+    }
+
+    "compute correct metrics should only get top N bins" in withJdbc { connection =>
+      val dfFull = getTableMissing(connection)
+      val histogram = JdbcHistogram("att1", None, 2).calculate(dfFull)
+
+      assert(histogram.value.isSuccess)
+
+      histogram.value.get match {
+        case hv =>
+          assert(hv.numberOfBins == 3)
+          assert(hv.values.size == 2)
+          assert(hv.values.keys == Set("a", JdbcHistogram.NullFieldReplacement))
+
+      }
+    }
+
+    "fail for max detail bins > 1000" in withJdbc { connection =>
+      val df = getTableFull(connection)
+      JdbcHistogram("att1", maxDetailBins = 1001).calculate(df).value match {
+        case Failure(t) => t.getMessage shouldBe "Cannot return " +
+          "histogram values for more than 1000 values"
+        case _ => fail("test was expected to fail due to parameter precondition")
+      }
     }
   }
 
