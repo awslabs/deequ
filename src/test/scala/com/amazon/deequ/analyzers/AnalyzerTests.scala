@@ -35,11 +35,20 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     "compute correct metrics" in withSparkSession { sparkSession =>
       val dfMissing = getDfMissing(sparkSession)
       val dfFull = getDfFull(sparkSession)
+      val dfEmpty = getDfEmpty(sparkSession)
 
       assert(Size().calculate(dfMissing) == DoubleMetric(Entity.Dataset, "Size", "*",
         Success(dfMissing.count())))
       assert(Size().calculate(dfFull) == DoubleMetric(Entity.Dataset, "Size", "*",
         Success(dfFull.count())))
+      assert(Size().calculate(dfEmpty) == DoubleMetric(Entity.Dataset, "Size", "*",
+        Success(dfEmpty.count())))
+    }
+    "compute correct metrics with filtering" in withSparkSession { sparkSession =>
+      val dfFull = getDfFull(sparkSession)
+
+      assert(Size(where = Some("item != 3")).calculate(dfFull) ==
+        DoubleMetric(Entity.Dataset, "Size", "*", Success(3.0)))
     }
   }
 
@@ -53,8 +62,8 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         "Completeness", "att1", Success(0.5)))
       assert(Completeness("att2").calculate(dfMissing) == DoubleMetric(Entity.Column,
         "Completeness", "att2", Success(0.75)))
-
     }
+
     "fail on wrong column input" in withSparkSession { sparkSession =>
       val dfMissing = getDfMissing(sparkSession)
 
@@ -67,13 +76,17 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       }
     }
 
+    "fail on empty table" in withSparkSession { sparkSession =>
+      val dfEmpty = getDfEmpty(sparkSession)
+      assert(Completeness("att1").calculate(dfEmpty).value.isFailure)
+    }
+
     "work with filtering" in withSparkSession { sparkSession =>
       val dfMissing = getDfMissing(sparkSession)
 
       val result = Completeness("att1", Some("item IN ('1', '2')")).calculate(dfMissing)
       assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0)))
     }
-
   }
 
   "Uniqueness analyzer" should {
@@ -129,11 +142,44 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
           assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
       }
     }
+    "fail on empty table" in withSparkSession { sparkSession =>
+      val dfEmpty = getDfEmpty(sparkSession)
+      assert(Uniqueness("att1").calculate(dfEmpty).value.isFailure)
+    }
+  }
+
+  "UniqueValueRatio analyzer" should {
+
+    "compute correct metrics" in withSparkSession { sparkSession =>
+      val dfMissing = getDfMissing(sparkSession)
+      val dfFull = getDfFull(sparkSession)
+
+      assert(UniqueValueRatio("att1").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column, "UniqueValueRatio", "att1", Success(0.0)))
+      assert(UniqueValueRatio("att2").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column, "UniqueValueRatio", "att2", Success(0.0)))
+
+
+      assert(UniqueValueRatio("att1").calculate(dfFull) == DoubleMetric(Entity.Column,
+        "UniqueValueRatio", "att1", Success(0.5)))
+      assert(UniqueValueRatio("att2").calculate(dfFull) == DoubleMetric(Entity.Column,
+        "UniqueValueRatio", "att2", Success(0.5)))
+
+    }
+
+    "error handling" should {
+
+      "fail on empty table" in withSparkSession { sparkSession =>
+        val dfEmpty = getDfEmpty(sparkSession)
+        assert(UniqueValueRatio("att1").calculate(dfEmpty).value.isFailure)
+      }
+    }
   }
 
   "Entropy analyzer" should {
     "compute correct metrics" in withSparkSession { sparkSession =>
       val dfFull = getDfFull(sparkSession)
+      val dfDistinct = getDfWithDistinctValues(sparkSession)
 
       assert(Entropy("att1").calculate(dfFull) ==
         DoubleMetric(Entity.Column, "Entropy", "att1",
@@ -142,6 +188,11 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         DoubleMetric(Entity.Column, "Entropy", "att2",
           Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
 
+        // TODO: Tests with distinct table, find out how to compare double
+    }
+    "fail on empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
+      assert(Entropy("att1").calculate(df).value.isFailure)
     }
   }
 
@@ -170,20 +221,25 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   }
 
   "Compliance analyzer" should {
+
     "compute correct metrics " in withSparkSession { sparkSession =>
+
       val dfNumeric = getDfWithNumericValues(sparkSession)
       val dfMissing = getDfMissing(sparkSession)
       val dfWhitespace = getDfWithWhitespace(sparkSession)
+
       assert(Compliance("rule1", "att1 > 3").calculate(dfNumeric) ==
         DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
       assert(Compliance("rule2", "att1 > 2").calculate(dfNumeric) ==
         DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
       assert(Compliance("is item specified?", "item IS NOT NULL").calculate(dfMissing) ==
         DoubleMetric(Entity.Column, "Compliance", "is item specified?", Success(1.0)))
+
       // test predicate with multiple columns
       assert(Compliance("ratio of complete lines",
         "item IS NOT NULL AND att1 IS NOT NULL AND att2 IS NOT NULL").calculate(dfMissing) ==
         DoubleMetric(Entity.Column, "Compliance", "ratio of complete lines", Success(4.0 / 12)))
+
       // test predicate with value range
       assert(
         Compliance("value range", "att2 IN ('d', 'f')").calculate(dfMissing) ==
@@ -195,10 +251,12 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       assert(
         Compliance("value range with empty string", "att2 IN ('x', '')").calculate(dfWhitespace) ==
           DoubleMetric(Entity.Column, "Compliance", "value range with empty string", Success(0.5)))
+
       // test predicate with like
       assert(
         Compliance("value format", "att1 LIKE '_'").calculate(dfMissing) ==
           DoubleMetric(Entity.Column, "Compliance", "value format", Success(6.0 / 12)))
+
       // test wrong predicate
       assert(
         Compliance("shenanigans", "att1 IN ('d', 'f')").calculate(dfMissing) ==
@@ -211,6 +269,11 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       assert(result == DoubleMetric(Entity.Column, "Compliance", "rule1", Success(1.0)))
     }
 
+    "fail on emtpy table" in withSparkSession { sparkSession =>
+      val dfEmtpy = getDfEmpty(sparkSession)
+      assert(Compliance("rule1", "att1 > 0").calculate(dfEmtpy).value.isFailure)
+    }
+
     "fail on wrong column input" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       Compliance("rule1", "attNoSuchColumn > 3").calculate(df) match {
@@ -221,6 +284,18 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
           assert(metric.value.isFailure)
       }
 
+    }
+
+    "fail on invalid predicate" in withSparkSession { sparkSession =>
+      val dfMissing = getDfMissing(sparkSession)
+
+      Compliance("crazyRule", "att1 IS GREAT").calculate(dfMissing) match {
+        case metric =>
+          assert(metric.entity == Entity.Column)
+          assert(metric.name == "Compliance")
+          assert(metric.instance == "crazyRule")
+          assert(metric.value.isFailure)
+      }
     }
   }
 
@@ -440,8 +515,17 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val result = Mean("att1").calculate(df).value
       result shouldBe Success(3.5)
     }
+    "compute mean correctly for numeric data with filtering" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Mean("att1", where = Some("item != '6'")).calculate(df).value
+      result shouldBe Success(3.0)
+    }
     "fail to compute mean for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
+      assert(Mean("att1").calculate(df).value.isFailure)
+    }
+    "fail to compute mean for empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
       assert(Mean("att1").calculate(df).value.isFailure)
     }
 
@@ -450,8 +534,20 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val result = StandardDeviation("att1").calculate(df).value
       result shouldBe Success(1.707825127659933)
     }
-    "fail to compute standard deviaton for non numeric type" in withSparkSession { sparkSession =>
-      val df = getDfFull(sparkSession)
+    "compute standard deviation correctly for numeric data with filtering" in
+      withSparkSession { sparkSession =>
+        val df = getDfWithNumericValues(sparkSession)
+        val result = StandardDeviation("att1", where =
+          Some("item != '6'")).calculate(df).value
+        result shouldBe Success(1.4142135623730951)
+    }
+    "fail to compute standard deviaton for non numeric type" in withSparkSession {
+      sparkSession =>
+        val df = getDfFull(sparkSession)
+        assert(StandardDeviation("att1").calculate(df).value.isFailure)
+    }
+    "fail to compute standard deviation for empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
       assert(StandardDeviation("att1").calculate(df).value.isFailure)
     }
 
@@ -460,8 +556,18 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val result = Minimum("att1").calculate(df).value
       result shouldBe Success(1.0)
     }
+    "compute minimum correctly for numeric data with filtering" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithNumericValues(sparkSession)
+        val result = Minimum("att1", where = Some("item != '6'")).calculate(df).value
+        result shouldBe Success(1.0)
+    }
     "fail to compute minimum for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
+      assert(Minimum("att1").calculate(df).value.isFailure)
+    }
+    "fail to compute minimum for empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
       assert(Minimum("att1").calculate(df).value.isFailure)
     }
 
@@ -483,13 +589,29 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       assert(Maximum("att1").calculate(df).value.isFailure)
     }
 
+    "fail to compute maximum for empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
+      assert(Maximum("att1").calculate(df).value.isFailure)
+    }
+
     "compute sum correctly for numeric data" in withSparkSession { session =>
       val df = getDfWithNumericValues(session)
       Sum("att1").calculate(df).value shouldBe Success(21)
     }
 
+    "compute sum correctly for numeric data with filtering" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Sum("att1", where = Some("item != '6'")).calculate(df).value
+      result shouldBe Success(15.0)
+    }
+
     "fail to compute sum for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
+      assert(Sum("att1").calculate(df).value.isFailure)
+    }
+
+    "fail to compute sum for empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
       assert(Sum("att1").calculate(df).value.isFailure)
     }
 
@@ -627,14 +749,34 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       Correlation("att1", "att2").calculate(df).value shouldBe
         Correlation("att2", "att1").calculate(df).value
     }
+    "work with filtering" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericFractionalValues(sparkSession)
+      val result = Correlation("att1", "att2", Some("att2 > 0")).calculate(df)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(1.0)
+      )
+    }
     "yield -1.0 for inversed columns" in withSparkSession { sparkSession =>
-      val table = getTableWithInverseNumberedColumns(sparkSession)
-      val result = Correlation("att1", "att2").calculate(table)
+      val df = getDfWithInverseNumberedColumns(sparkSession)
+      val result = Correlation("att1", "att2").calculate(df)
       result shouldBe DoubleMetric(
         Entity.Mutlicolumn,
         "Correlation",
         "att1,att2",
         Success(-1.0)
+      )
+    }
+    "yield 0.5 for partly correlated columns" in withSparkSession { sparkSession =>
+      val df = getDfWithPartlyCorrelatedColumns(sparkSession)
+      val result = Correlation("att1", "att2").calculate(df)
+      result shouldBe DoubleMetric(
+        Entity.Mutlicolumn,
+        "Correlation",
+        "att1,att2",
+        Success(0.5)
       )
     }
   }
@@ -732,6 +874,29 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         maybeSSN.map(Row(_)): _*)
       val analyzer = PatternMatch(someColumnName, Patterns.SOCIAL_SECURITY_NUMBER_US)
       analyzer.calculate(df).value shouldBe Success(2.0 / 8.0)
+    }
+  }
+
+  "Distinctness analyzer" should {
+    "compute correct metrics" in withSparkSession { sparkSession =>
+      val dfMissing = getDfMissing(sparkSession)
+      val dfFull = getDfFull(sparkSession)
+
+      assert(Distinctness("att1").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column, "Distinctness", "att1", Success(1.0 / 6)))
+      assert(Distinctness("att2").calculate(dfMissing) ==
+        DoubleMetric(Entity.Column, "Distinctness", "att2", Success(1.0 / 6)))
+
+      assert(Distinctness("att1").calculate(dfFull) == DoubleMetric(Entity.Column,
+        "Distinctness", "att1", Success(0.5)))
+      assert(Distinctness("att2").calculate(dfFull) == DoubleMetric(Entity.Column,
+        "Distinctness", "att2", Success(0.5)))
+
+    }
+
+    "fail on empty table" in withSparkSession { sparkSession =>
+      val df = getDfEmpty(sparkSession)
+      assert(Distinctness("att1").calculate(df).value.isFailure)
     }
   }
 }

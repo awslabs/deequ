@@ -231,13 +231,22 @@ trait FixtureSupport {
     ).toDF("att1", "att2")
   }
 
-  def getTableWithInverseNumberedColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfWithInverseNumberedColumns(sparkSession: SparkSession): DataFrame = {
 
     import sparkSession.implicits._
       Seq(
         (1, 6),
         (2, 5),
         (3, 4)
+      ).toDF("att1", "att2")
+  }
+
+  def getDfWithPartlyCorrelatedColumns(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+      Seq(
+        (1, 4),
+        (2, 2),
+        (3, 6)
       ).toDF("att1", "att2")
   }
 

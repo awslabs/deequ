@@ -80,32 +80,325 @@ class JdbcAnalyzerTests
     }
   }
 
-  "Distinctness analyzer" should {
+  "Completeness analyzer" should {
+
+    "compute correct metrics" in withJdbc { connection =>
+
+      val tableMissing = getTableMissing(connection)
+      val tableMissingColumn = getTableMissingColumn(connection)
+
+      assert(JdbcCompleteness("att1").calculate(tableMissing) == DoubleMetric(Entity.Column,
+        "Completeness", "att1", Success(0.5)))
+      assert(JdbcCompleteness("att2").calculate(tableMissing) == DoubleMetric(Entity.Column,
+        "Completeness", "att2", Success(0.75)))
+      assert(JdbcCompleteness("att1").calculate(tableMissingColumn) == DoubleMetric(Entity.Column,
+        "Completeness", "att1", Success(0.0)))
+    }
+
+    "error handling" should {
+
+      "fail on empty table" in withJdbc { connection =>
+        val tableEmpty = getTableEmpty(connection)
+        assert(JdbcCompleteness("att1").calculate(tableEmpty).value.isFailure)
+      }
+
+      "fail on wrong column input" in withJdbc { connection =>
+        val tableMissing = getTableMissing(connection)
+
+        JdbcCompleteness("someMissingColumn").calculate(tableMissing) match {
+          case metric =>
+            assert(metric.entity == Entity.Column)
+            assert(metric.name == "Completeness")
+            assert(metric.instance == "someMissingColumn")
+            assert(metric.value.isFailure)
+        }
+      }
+    }
+
+    "work with filtering" in withJdbc { connection =>
+      val tableMissing = getTableMissing(connection)
+
+      val result = JdbcCompleteness("att1", Some("item IN ('1', '2')")).calculate(tableMissing)
+      assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0)))
+    }
+
+    "prevent sql injections" should {
+
+      "prevent sql injection in table name for completeness" in withJdbc { connection =>
+        val table = getTableMissing(connection)
+        val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
+        assert(JdbcCompleteness("att1").calculate(tableWithInjection).value.isFailure)
+        assert(hasTable(connection, table.name))
+      }
+      "prevent sql injection in column name for completeness" in withJdbc { connection =>
+        val table = getTableMissing(connection)
+        val columnWithInjection = s"1 THEN 1 ELSE 0); DROP TABLE ${table.name};"
+        assert(JdbcCompleteness(columnWithInjection).calculate(table).value.isFailure)
+        assert(hasTable(connection, table.name))
+      }
+      "prevent sql injections in where clause for completeness" in withJdbc { connection =>
+        val table = getTableWithNumericValues(connection)
+        assert(JdbcCompleteness("att1", Some (s"';DROP TABLE ${table.name};--"))
+          .calculate(table).value.isFailure)
+        assert(hasTable(connection, table.name))
+      }
+    }
+  }
+
+  "Uniqueness analyzers" should {
     "compute correct metrics" in withJdbc { connection =>
       val tableMissing = getTableMissing(connection)
       val tableFull = getTableFull(connection)
 
-      assert(JdbcDistinctness("att1").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Distinctness", "att1", Success(1.0 / 6)))
-      assert(JdbcDistinctness("att2").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Distinctness", "att2", Success(1.0 / 6)))
+      assert(JdbcUniqueness("att1").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Uniqueness", "att1", Success(0.0)))
+      assert(JdbcUniqueness("att2").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Uniqueness", "att2", Success(0.0)))
 
-      assert(JdbcDistinctness("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
-        "Distinctness", "att1", Success(0.5)))
-      assert(JdbcDistinctness("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
-        "Distinctness", "att2", Success(0.5)))
+
+      assert(JdbcUniqueness("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "Uniqueness", "att1", Success(0.25)))
+      assert(JdbcUniqueness("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "Uniqueness", "att2", Success(0.25)))
 
     }
 
     "error handling" should {
-      "fail on empty column" in withJdbc { connection =>
-        val table = getTableMissingColumn(connection)
-        assert(JdbcDistinctness("att1").calculate(table).value.isFailure)
-      }
+
       "fail on empty table" in withJdbc { connection =>
         val table = getTableEmpty(connection)
-        assert(JdbcDistinctness("att1").calculate(table).value.isFailure)
+        assert(JdbcUniqueness("att1").calculate(table).value.isFailure)
       }
+      "fail on empty column" in withJdbc { connection =>
+        val table = getTableMissingColumn(connection)
+        assert(JdbcUniqueness("att1").calculate(table).value.isFailure)
+      }
+
+    }
+    "compute correct metrics on multi columns" in withJdbc { connection =>
+      val tableFull = getTableWithUniqueColumns(connection)
+
+      assert(JdbcUniqueness("uniqueValues").calculate(tableFull) ==
+        DoubleMetric(Entity.Column, "Uniqueness", "uniqueValues", Success(1.0)))
+      assert(JdbcUniqueness("uniqueWithNulls").calculate(tableFull) ==
+        DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(5 / 6.0)))
+    }
+
+    "fail on wrong column input" in withJdbc { connection =>
+      val tableFull = getTableWithUniqueColumns(connection)
+
+      JdbcUniqueness("nonExistingColumn").calculate(tableFull) match {
+        case metric =>
+          assert(metric.entity == Entity.Column)
+          assert(metric.name == "Uniqueness")
+          assert(metric.instance == "nonExistingColumn")
+          assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
+      }
+
+      JdbcUniqueness(Seq("nonExistingColumn", "uniqueValues")).calculate(tableFull) match {
+        case metric =>
+          assert(metric.entity == Entity.Mutlicolumn)
+          assert(metric.name == "Uniqueness")
+          assert(metric.instance == "nonExistingColumn,uniqueValues")
+          assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
+      }
+    }
+
+    "prevent sql injections" should {
+
+      "prevent sql injections in table name for uniqueness" in withJdbc { connection =>
+        val table = getTableFull(connection)
+        val tableWithInjection =
+          Table(s"${table.name}) AS num_rows; DROP TABLE ${table.name};", connection)
+        assert(JdbcUniqueness("att1").calculate(tableWithInjection).value.isFailure)
+        assert(hasTable(connection, table.name))
+      }
+      "prevent sql injections in column name for uniqueness" in withJdbc { connection =>
+        val table = getTableFull(connection)
+        val columnWithInjection = s"nonExistingColumnName"
+        assert(JdbcUniqueness(columnWithInjection).calculate(table).value.isFailure)
+        assert(hasTable(connection, table.name))
+      }
+    }
+  }
+
+  "UniqueValueRatio analyzer" should {
+
+    "compute correct metrics" in withJdbc { connection =>
+      val tableMissing = getTableMissing(connection)
+      val tableFull = getTableFull(connection)
+
+      assert(JdbcUniqueValueRatio("att1").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "UniqueValueRatio", "att1", Success(0.0)))
+      assert(JdbcUniqueValueRatio("att2").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "UniqueValueRatio", "att2", Success(0.0)))
+
+
+      assert(JdbcUniqueValueRatio("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "UniqueValueRatio", "att1", Success(0.5)))
+      assert(JdbcUniqueValueRatio("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "UniqueValueRatio", "att2", Success(0.5)))
+    }
+
+    "error handling" should {
+
+      "fail on empty table" in withJdbc { connection =>
+        val table = getTableEmpty(connection)
+        assert(JdbcUniqueValueRatio("att1").calculate(table).value.isFailure)
+      }
+      "fail on empty column" in withJdbc { connection =>
+        val table = getTableMissingColumn(connection)
+        assert(JdbcUniqueValueRatio("att1").calculate(table).value.isFailure)
+      }
+    }
+  }
+
+  "Entropy analyzer" should {
+    "compute correct metrics" in withJdbc { connection =>
+      val tableFull = getTableFull(connection)
+      val tableDistinct = getTableWithDistinctValues(connection)
+
+      assert(JdbcEntropy("att1").calculate(tableFull) ==
+        DoubleMetric(Entity.Column, "Entropy", "att1",
+          Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
+      assert(JdbcEntropy("att2").calculate(tableFull) ==
+        DoubleMetric(Entity.Column, "Entropy", "att2",
+          Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
+
+      assert(JdbcEntropy("att1").calculate(tableDistinct) ==
+        DoubleMetric(Entity.Column, "Entropy", "att1",
+          Success(
+            -((1.0 / 3) * math.log(1.0 / 3)
+              + (1.0 / 3) * math.log(1.0 / 3)
+              + (1.0 / 6) * math.log(1.0 / 6)))))
+      assert(JdbcEntropy("att2").calculate(tableDistinct) ==
+        DoubleMetric(Entity.Column, "Entropy", "att2",
+          Success(-(0.5 * math.log(0.5) + (1.0 / 6) * math.log(1.0 / 6)))))
+    }
+
+    "error handling" should {
+
+      "fail on empty table" in withJdbc { connection =>
+        val table = getTableEmpty(connection)
+        assert(JdbcEntropy("att1").calculate(table).value.isFailure)
+      }
+      "fail on empty column" in withJdbc { connection =>
+        val table = getTableMissingColumn(connection)
+        assert(JdbcEntropy("att1").calculate(table).value.isFailure)
+      }
+
+    }
+  }
+
+  "Compliance analyzer" should {
+
+    "compute correct metrics" in withJdbc { connection =>
+
+      val tableNumeric = getTableWithNumericValues(connection)
+      val tableMissing = getTableMissing(connection)
+      val tableWhitespace = getTableWithWhitespace(connection)
+
+      assert(JdbcCompliance("rule1", "att1 > 3").calculate(tableNumeric) ==
+        DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
+      assert(JdbcCompliance("rule2", "att1 > 2").calculate(tableNumeric) ==
+        DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
+      assert(JdbcCompliance("is item specified?", "item IS NOT NULL").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "is item specified?", Success(1.0)))
+
+      // test predicate with multiple columns
+      assert(JdbcCompliance("ratio of complete lines",
+        "item IS NOT NULL AND att1 IS NOT NULL AND att2 IS NOT NULL").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "ratio of complete lines", Success(4.0 / 12)))
+
+      // test predicate with value range
+      assert(JdbcCompliance("value range", "att2 IN ('d', 'f')").calculate(tableMissing) ==
+        DoubleMetric(
+          Entity.Column,
+          "Compliance",
+          "value range",
+          Success(9.0 / 12)))
+      assert(
+        JdbcCompliance(
+          "value range with white space",
+          "att2 IN ('x', ' ')"
+        ).calculate(tableWhitespace) ==
+          DoubleMetric(Entity.Column, "Compliance", "value range with white space", Success(1.0)))
+      assert(
+        JdbcCompliance(
+          "value range with empty string",
+          "att2 IN ('x', '')").calculate(tableWhitespace) ==
+          DoubleMetric(Entity.Column, "Compliance", "value range with empty string", Success(0.5)))
+
+      // test predicate with like
+      assert(JdbcCompliance("value format", "att1 LIKE '_'").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "value format", Success(6.0 / 12)))
+
+      // test wrong predicate
+      assert(JdbcCompliance("shenanigans", "att1 IN ('d', 'f')").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Compliance", "shenanigans", Success(0)))
+    }
+
+    "error handling" should {
+
+      "fail on emtpy table" in withJdbc { connection =>
+        val tableEmtpy = getTableEmpty(connection)
+        assert(JdbcCompliance("rule1", "att1 > 0").calculate(tableEmtpy).value.isFailure)
+      }
+
+      "fail on invalid predicate" in withJdbc { connection =>
+        val tableMissing = getTableMissing(connection)
+
+        JdbcCompliance("crazyRule", "att1 IS GREAT").calculate(tableMissing) match {
+          case metric =>
+            assert(metric.entity == Entity.Column)
+            assert(metric.name == "Compliance")
+            assert(metric.instance == "crazyRule")
+            assert(metric.value.isFailure)
+        }
+      }
+
+      "fail on wrong column input" in withJdbc { connection =>
+        val tableNumeric = getTableWithNumericValues(connection)
+        JdbcCompliance("rule1", "attNoSuchColumn > 3").calculate(tableNumeric) match {
+          case metric =>
+            assert(metric.entity == Entity.Column)
+            assert(metric.name == "Compliance")
+            assert(metric.instance == "rule1")
+            assert(metric.value.isFailure)
+        }
+      }
+
+    }
+
+    "work with filtering" in withJdbc { connection =>
+      val tableMissing = getTableMissing(connection)
+
+      val result =
+        JdbcCompliance("att1 complete for first two items",
+          "att1 IS NOT NULL",
+          Some("item IN ('1', '2')")).calculate(tableMissing)
+      assert(result == DoubleMetric(
+        Entity.Column,
+        "Compliance",
+        "att1 complete for first two items",
+        Success(1.0))
+      )
+    }
+
+    "prevent sql injections" should {
+
+      "prevent sql injection in table name for compliance" in withJdbc { connection =>
+        val table = getTableMissing(connection)
+        val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
+        assert(JdbcCompliance("rule", "TRUE").calculate(tableWithInjection).value.isFailure)
+      }
+      "prevent sql injection in predicate for compliance" in withJdbc { connection =>
+        val table = getTableMissing(connection)
+        val predicateWithInjection = s"TRUE THEN 1 ELSE 0 END); DROP TABLE ${table.name}; --"
+        assert(
+          JdbcCompliance("dangerousRule", predicateWithInjection).calculate(table).value.isFailure)
+      }
+
     }
   }
 
@@ -171,323 +464,6 @@ class JdbcAnalyzerTests
           "histogram values for more than 1000 values"
         case _ => fail("test was expected to fail due to parameter precondition")
       }
-    }
-  }
-
-  "Compliance analyzer" should {
-
-    "compute correct metrics" in withJdbc { connection =>
-
-      val tableNumeric = getTableWithNumericValues(connection)
-      val tableMissing = getTableMissing(connection)
-      val tableWhitespace = getTableWithWhitespace(connection)
-
-      assert(JdbcCompliance("rule1", "att1 > 3").calculate(tableNumeric) ==
-        DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
-      assert(JdbcCompliance("rule2", "att1 > 2").calculate(tableNumeric) ==
-        DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
-      assert(JdbcCompliance("is item specified?", "item IS NOT NULL").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Compliance", "is item specified?", Success(1.0)))
-
-      // test predicate with multiple columns
-      assert(JdbcCompliance("ratio of complete lines",
-        "item IS NOT NULL AND att1 IS NOT NULL AND att2 IS NOT NULL").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Compliance", "ratio of complete lines", Success(4.0 / 12)))
-
-      // test predicate with value range
-      assert(JdbcCompliance("value range", "att2 IN ('d', 'f')").calculate(tableMissing) ==
-        DoubleMetric(
-          Entity.Column,
-          "Compliance",
-          "value range",
-          Success(9.0 / 12)))
-      assert(
-        JdbcCompliance(
-          "value range with white space",
-          "att2 IN ('x', ' ')"
-        ).calculate(tableWhitespace) ==
-          DoubleMetric(Entity.Column, "Compliance", "value range with white space", Success(1.0)))
-      assert(
-        JdbcCompliance(
-          "value range with empty string",
-          "att2 IN ('x', '')").calculate(tableWhitespace) ==
-        DoubleMetric(Entity.Column, "Compliance", "value range with empty string", Success(0.5)))
-
-      // test predicate with like
-      assert(JdbcCompliance("value format", "att1 LIKE '_'").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Compliance", "value format", Success(6.0 / 12)))
-
-      // test wrong predicate
-      assert(JdbcCompliance("shenanigans", "att1 IN ('d', 'f')").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Compliance", "shenanigans", Success(0)))
-    }
-
-    "error handling" should {
-
-      "fail on emtpy table" in withJdbc { connection =>
-        val tableEmtpy = getTableEmpty(connection)
-        assert(JdbcCompliance("rule1", "att1 > 0").calculate(tableEmtpy).value.isFailure)
-      }
-
-      "fail on invalid predicate" in withJdbc { connection =>
-        val tableMissing = getTableMissing(connection)
-
-        JdbcCompliance("crazyRule", "att1 IS GREAT").calculate(tableMissing) match {
-          case metric =>
-            assert(metric.entity == Entity.Column)
-            assert(metric.name == "Compliance")
-            assert(metric.instance == "crazyRule")
-            assert(metric.value.isFailure)
-        }
-      }
-
-    }
-
-    "work with filtering" in withJdbc { connection =>
-      val tableMissing = getTableMissing(connection)
-
-      val result =
-        JdbcCompliance("att1 complete for first two items",
-                       "att1 IS NOT NULL",
-                       Some("item IN ('1', '2')")).calculate(tableMissing)
-      assert(result == DoubleMetric(
-        Entity.Column,
-        "Compliance",
-        "att1 complete for first two items",
-        Success(1.0))
-      )
-    }
-
-    "prevent sql injections" should {
-
-      "prevent sql injection in table name for compliance" in withJdbc { connection =>
-        val table = getTableMissing(connection)
-        val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
-        assert(JdbcCompliance("rule", "TRUE").calculate(tableWithInjection).value.isFailure)
-      }
-      "prevent sql injection in predicate for compliance" in withJdbc { connection =>
-        val table = getTableMissing(connection)
-        val predicateWithInjection = s"TRUE THEN 1 ELSE 0 END); DROP TABLE ${table.name}; --"
-        assert(
-          JdbcCompliance("dangerousRule", predicateWithInjection).calculate(table).value.isFailure)
-      }
-
-    }
-  }
-
-  "Completeness analyzer" should {
-
-    "compute correct metrics" in withJdbc { connection =>
-
-      val tableMissing = getTableMissing(connection)
-      val tableMissingColumn = getTableMissingColumn(connection)
-
-      assert(JdbcCompleteness("att1").calculate(tableMissing) == DoubleMetric(Entity.Column,
-        "Completeness", "att1", Success(0.5)))
-      assert(JdbcCompleteness("att2").calculate(tableMissing) == DoubleMetric(Entity.Column,
-        "Completeness", "att2", Success(0.75)))
-      assert(JdbcCompleteness("att1").calculate(tableMissingColumn) == DoubleMetric(Entity.Column,
-        "Completeness", "att1", Success(0.0)))
-
-    }
-
-    "error handling" should {
-
-      "fail on empty table" in withJdbc { connection =>
-        val tableEmpty = getTableEmpty(connection)
-        assert(JdbcCompleteness("att1").calculate(tableEmpty).value.isFailure)
-      }
-
-      "fail on wrong column input" in withJdbc { connection =>
-        val tableMissing = getTableMissing(connection)
-
-        JdbcCompleteness("someMissingColumn").calculate(tableMissing) match {
-          case metric =>
-            assert(metric.entity == Entity.Column)
-            assert(metric.name == "Completeness")
-            assert(metric.instance == "someMissingColumn")
-            assert(metric.value.isFailure)
-        }
-      }
-
-    }
-
-    "work with filtering" in withJdbc { connection =>
-      val dfMissing = getTableMissing(connection)
-
-      val result = JdbcCompleteness("att1", Some("item IN ('1', '2')")).calculate(dfMissing)
-      assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0)))
-    }
-
-    "prevent sql injections" should {
-
-      "prevent sql injection in table name for completeness" in withJdbc { connection =>
-        val table = getTableMissing(connection)
-        val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
-        assert(JdbcCompleteness("att1").calculate(tableWithInjection).value.isFailure)
-        assert(hasTable(connection, table.name))
-      }
-      "prevent sql injection in column name for completeness" in withJdbc { connection =>
-        val table = getTableMissing(connection)
-        val columnWithInjection = s"1 THEN 1 ELSE 0); DROP TABLE ${table.name};"
-        assert(JdbcCompleteness(columnWithInjection).calculate(table).value.isFailure)
-        assert(hasTable(connection, table.name))
-      }
-      "prevent sql injections in where clause for completeness" in withJdbc { connection =>
-        val table = getTableWithNumericValues(connection)
-        assert(JdbcCompleteness("att1", Some (s"';DROP TABLE ${table.name};--"))
-          .calculate(table).value.isFailure)
-        assert(hasTable(connection, table.name))
-      }
-    }
-
-  }
-
-  "Uniqueness analyzers" should {
-    "compute correct metrics" in withJdbc { connection =>
-      val tableMissing = getTableMissing(connection)
-      val tableFull = getTableFull(connection)
-
-      assert(JdbcUniqueness("att1").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "att1", Success(0.0)))
-      assert(JdbcUniqueness("att2").calculate(tableMissing) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "att2", Success(0.0)))
-
-
-      assert(JdbcUniqueness("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
-        "Uniqueness", "att1", Success(0.25)))
-      assert(JdbcUniqueness("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
-        "Uniqueness", "att2", Success(0.25)))
-
-    }
-
-    "error handling" should {
-
-      "fail on empty table" in withJdbc { connection =>
-        val table = getTableEmpty(connection)
-        assert(JdbcUniqueness("att1").calculate(table).value.isFailure)
-      }
-      "fail on empty column" in withJdbc { connection =>
-        val table = getTableMissingColumn(connection)
-        assert(JdbcUniqueness("att1").calculate(table).value.isFailure)
-      }
-
-    }
-    "compute correct metrics on multi columns" in withJdbc { connection =>
-      val dfFull = getTableWithUniqueColumns(connection)
-
-      assert(JdbcUniqueness("uniqueValues").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "uniqueValues", Success(1.0)))
-      assert(JdbcUniqueness("uniqueWithNulls").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(5 / 6.0)))
-    }
-
-    "fail on wrong column input" in withJdbc { connection =>
-      val dfFull = getTableWithUniqueColumns(connection)
-
-      JdbcUniqueness("nonExistingColumn").calculate(dfFull) match {
-        case metric =>
-          assert(metric.entity == Entity.Column)
-          assert(metric.name == "Uniqueness")
-          assert(metric.instance == "nonExistingColumn")
-          assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
-      }
-
-      JdbcUniqueness(Seq("nonExistingColumn", "uniqueValues")).calculate(dfFull) match {
-        case metric =>
-          assert(metric.entity == Entity.Mutlicolumn)
-          assert(metric.name == "Uniqueness")
-          assert(metric.instance == "nonExistingColumn,uniqueValues")
-          assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
-      }
-    }
-
-    "prevent sql injections" should {
-
-      "prevent sql injections in table name for uniqueness" in withJdbc { connection =>
-        val table = getTableFull(connection)
-        val tableWithInjection =
-          Table(s"${table.name}) AS num_rows; DROP TABLE ${table.name};", connection)
-        assert(JdbcUniqueness("att1").calculate(tableWithInjection).value.isFailure)
-        assert(hasTable(connection, table.name))
-      }
-      "prevent sql injections in column name for uniqueness" in withJdbc { connection =>
-        val table = getTableFull(connection)
-        val columnWithInjection = s"nonExistingColumnName"
-        assert(JdbcUniqueness(columnWithInjection).calculate(table).value.isFailure)
-        assert(hasTable(connection, table.name))
-      }
-
-    }
-
-    "UniqueValueRatio analyzer" should {
-
-      "compute correct metrics" in withJdbc { connection =>
-        val tableMissing = getTableMissing(connection)
-        val tableFull = getTableFull(connection)
-
-        assert(JdbcUniqueValueRatio("att1").calculate(tableMissing) ==
-          DoubleMetric(Entity.Column, "UniqueValueRatio", "att1", Success(0.0)))
-        assert(JdbcUniqueValueRatio("att2").calculate(tableMissing) ==
-          DoubleMetric(Entity.Column, "UniqueValueRatio", "att2", Success(0.0)))
-
-
-        assert(JdbcUniqueValueRatio("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
-          "UniqueValueRatio", "att1", Success(0.5)))
-        assert(JdbcUniqueValueRatio("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
-          "UniqueValueRatio", "att2", Success(0.5)))
-
-      }
-
-      "error handling" should {
-
-        "fail on empty table" in withJdbc { connection =>
-          val table = getTableEmpty(connection)
-          assert(JdbcUniqueValueRatio("att1").calculate(table).value.isFailure)
-        }
-        "fail on empty column" in withJdbc { connection =>
-          val table = getTableMissingColumn(connection)
-          assert(JdbcUniqueValueRatio("att1").calculate(table).value.isFailure)
-        }
-
-      }
-    }
-  }
-
-  "Entropy analyzer" should {
-    "compute correct metrics" in withJdbc { connection =>
-      val tableFull = getTableFull(connection)
-      val tableDistinct = getTableWithDistinctValues(connection)
-
-      assert(JdbcEntropy("att1").calculate(tableFull) ==
-        DoubleMetric(Entity.Column, "Entropy", "att1",
-          Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
-      assert(JdbcEntropy("att2").calculate(tableFull) ==
-        DoubleMetric(Entity.Column, "Entropy", "att2",
-          Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
-
-      assert(JdbcEntropy("att1").calculate(tableDistinct) ==
-        DoubleMetric(Entity.Column, "Entropy", "att1",
-          Success(
-            -((1.0 / 3) * math.log(1.0 / 3)
-              + (1.0 / 3) * math.log(1.0 / 3)
-              + (1.0 / 6) * math.log(1.0 / 6)))))
-      assert(JdbcEntropy("att2").calculate(tableDistinct) ==
-        DoubleMetric(Entity.Column, "Entropy", "att2",
-          Success(-(0.5 * math.log(0.5) + (1.0 / 6) * math.log(1.0 / 6)))))
-    }
-
-    "error handling" should {
-
-      "fail on empty table" in withJdbc { connection =>
-        val table = getTableEmpty(connection)
-        assert(JdbcEntropy("att1").calculate(table).value.isFailure)
-      }
-      "fail on empty column" in withJdbc { connection =>
-        val table = getTableMissingColumn(connection)
-        assert(JdbcEntropy("att1").calculate(table).value.isFailure)
-      }
-
     }
   }
 
@@ -601,7 +577,6 @@ class JdbcAnalyzerTests
         val result = JdbcMinimum("att1").calculate(table).value
         result shouldBe Success(1.0)
       }
-
       "compute minimum correctly for numeric data with filtering" in withJdbc { connection =>
         val table = getTableWithNumericValues(connection)
         val result = JdbcMinimum("att1", where = Some("item != '6'")).calculate(table).value
@@ -763,8 +738,65 @@ class JdbcAnalyzerTests
         }
       }
     }
+  }
 
+  "Count distinct analyzers" should {
+    // TODO
+    "compute approximate distinct count for numeric data" in withJdbc { connection =>
+      /*
+      val table = getTableWithUniqueColumns(connection)
+      val result = JdbcApproxCountDistinct("uniqueWithNulls").calculate(table).value
 
+      result shouldBe Success(5.0)
+      */
+    }
+
+    "compute approximate distinct count for numeric data with filtering" in
+      withJdbc { connection =>
+
+        /*
+        val table = getTableWithUniqueColumns(connection)
+        val result = JdbcApproxCountDistinct("uniqueWithNulls", where = Some("unique < 4"))
+          .calculate(table).value
+        result shouldBe Success(2.0)
+        */
+      }
+
+      "compute correct metrics for distinct count" should {
+        "compute exact distinct count of elements for numeric data" in withJdbc {
+          connection =>
+            val table = getTableWithUniqueColumns(connection)
+            val result = JdbcCountDistinct("uniqueWithNulls").calculate(table).value
+            result shouldBe Success(5.0)
+        }
+        "compute exact distinct count of elements for empty table" in withJdbc {
+          connection =>
+            val table = getTableEmpty(connection)
+            val result = JdbcCountDistinct("att1").calculate(table).value
+            result shouldBe Success(0.0)
+        }
+        "compute exact distinct count of elements for empty column" in withJdbc {
+          connection =>
+            val table = getTableMissingColumn(connection)
+            val result = JdbcCountDistinct("att1").calculate(table).value
+            result shouldBe Success(0.0)
+        }
+      }
+
+      "prevent sql injection for distinct count" should {
+        "prevent sql injections in table name for count distinct" in withJdbc { connection =>
+          val table = getTableWithNumericValues(connection)
+          val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
+          assert(JdbcCountDistinct("att1").calculate(tableWithInjection).value.isFailure)
+          assert(hasTable(connection, table.name))
+        }
+        "prevent sql injections in column name for count distinct" in withJdbc { connection =>
+          val table = getTableWithNumericValues(connection)
+          val columnWithInjection = s"1); DROP TABLE ${table.name};"
+          assert(JdbcCountDistinct(columnWithInjection).calculate(table).value.isFailure)
+          assert(hasTable(connection, table.name))
+        }
+      }
   }
 
   "Correlation analyzer" should {
@@ -818,65 +850,33 @@ class JdbcAnalyzerTests
         Success(0.5)
       )
     }
-
   }
 
-  "Count distinct analyzers" should {
-    "compute approximate distinct count for numeric data" in withJdbc { connection =>
-      /*
-      val table = getTableWithUniqueColumns(connection)
-      val result = JdbcApproxCountDistinct("uniqueWithNulls").calculate(table).value
+  "Distinctness analyzer" should {
+    "compute correct metrics" in withJdbc { connection =>
+      val tableMissing = getTableMissing(connection)
+      val tableFull = getTableFull(connection)
 
-      result shouldBe Success(5.0)
-      */
+      assert(JdbcDistinctness("att1").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Distinctness", "att1", Success(1.0 / 6)))
+      assert(JdbcDistinctness("att2").calculate(tableMissing) ==
+        DoubleMetric(Entity.Column, "Distinctness", "att2", Success(1.0 / 6)))
+
+      assert(JdbcDistinctness("att1").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "Distinctness", "att1", Success(0.5)))
+      assert(JdbcDistinctness("att2").calculate(tableFull) == DoubleMetric(Entity.Column,
+        "Distinctness", "att2", Success(0.5)))
+
     }
 
-    "compute approximate distinct count for numeric data with filtering" in
-      withJdbc { connection =>
-
-        /*
-        val table = getTableWithUniqueColumns(connection)
-        val result = JdbcApproxCountDistinct("uniqueWithNulls", where = Some("unique < 4"))
-          .calculate(table).value
-        result shouldBe Success(2.0)
-        */
+    "error handling" should {
+      "fail on empty column" in withJdbc { connection =>
+        val table = getTableMissingColumn(connection)
+        assert(JdbcDistinctness("att1").calculate(table).value.isFailure)
       }
-
-    "Count distinct analyzer" should {
-      "compute correct metrics for distinct count" should {
-        "compute exact distinct count of elements for numeric data" in withJdbc {
-          connection =>
-            val table = getTableWithUniqueColumns(connection)
-            val result = JdbcCountDistinct("uniqueWithNulls").calculate(table).value
-            result shouldBe Success(5.0)
-        }
-        "compute exact distinct count of elements for empty table" in withJdbc {
-          connection =>
-            val table = getTableEmpty(connection)
-            val result = JdbcCountDistinct("att1").calculate(table).value
-            result shouldBe Success(0.0)
-        }
-        "compute exact distinct count of elements for empty column" in withJdbc {
-          connection =>
-            val table = getTableMissingColumn(connection)
-            val result = JdbcCountDistinct("att1").calculate(table).value
-            result shouldBe Success(0.0)
-        }
-      }
-
-      "prevent sql injection for distinct count" should {
-        "prevent sql injections in table name for count distinct" in withJdbc { connection =>
-          val table = getTableWithNumericValues(connection)
-          val tableWithInjection = Table(s"${table.name}; DROP TABLE ${table.name};", connection)
-          assert(JdbcCountDistinct("att1").calculate(tableWithInjection).value.isFailure)
-          assert(hasTable(connection, table.name))
-        }
-        "prevent sql injections in column name for count distinct" in withJdbc { connection =>
-          val table = getTableWithNumericValues(connection)
-          val columnWithInjection = s"1); DROP TABLE ${table.name};"
-          assert(JdbcCountDistinct(columnWithInjection).calculate(table).value.isFailure)
-          assert(hasTable(connection, table.name))
-        }
+      "fail on empty table" in withJdbc { connection =>
+        val table = getTableEmpty(connection)
+        assert(JdbcDistinctness("att1").calculate(table).value.isFailure)
       }
     }
   }
