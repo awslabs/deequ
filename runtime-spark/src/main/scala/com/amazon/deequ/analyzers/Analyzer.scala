@@ -26,31 +26,7 @@ import com.amazon.deequ.analyzers.runners._
 import scala.language.existentials
 import scala.util.{Failure, Success}
 
-/**
-  * A state (sufficient statistic) computed from data, from which we can compute a metric.
-  * Must be combinable with other states of the same type
-  * (= algebraic properties of a commutative semi-group)
-  */
-trait State[S <: State[S]] {
 
-  // Unfortunately this is required due to type checking issues
-  private[analyzers] def sumUntyped(other: State[_]): S = {
-    sum(other.asInstanceOf[S])
-  }
-
-  /** Combine this with another state */
-  def sum(other: S): S
-
-  /** Same as sum, syntatic sugar */
-  def +(other: S): S = {
-    sum(other)
-  }
-}
-
-/** A state which produces a double valued metric  */
-trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
-  def metricValue(): Double
-}
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
 trait Analyzer[S <: State[_], +M <: Metric[_]] {
