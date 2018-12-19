@@ -198,6 +198,17 @@ class JdbcAnalyzerTests
         DoubleMetric(Entity.Column, "Uniqueness", "uniqueValues", Success(1.0)))
       assert(JdbcUniqueness("uniqueWithNulls").calculate(tableFull) ==
         DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(5 / 6.0)))
+
+      assert(JdbcUniqueness(Seq("uniqueValues", "nonUniqueValues")).calculate(tableFull) ==
+        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "uniqueValues,nonUniqueValues",
+          Success(1.0)))
+      assert(JdbcUniqueness(Seq("uniqueValues", "nonUniqueWithNulls")).calculate(tableFull) ==
+        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "uniqueValues,nonUniqueWithNulls",
+          Success(3 / 6.0)))
+      assert(JdbcUniqueness(Seq("nonUniqueValues", "onlyUniqueWithOtherNonUnique"))
+        .calculate(tableFull) ==
+        DoubleMetric(Entity.Mutlicolumn, "Uniqueness",
+          "nonUniqueValues,onlyUniqueWithOtherNonUnique", Success(1.0)))
     }
 
     "fail on wrong column input" in withJdbc { connection =>

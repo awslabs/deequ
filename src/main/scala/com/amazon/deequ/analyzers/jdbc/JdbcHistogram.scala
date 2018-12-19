@@ -57,8 +57,8 @@ case class JdbcHistogram(column: String,
     val result = statement.executeQuery()
 
     def convertResult(resultSet: ResultSet,
-                      map: Map[String, Long],
-                      total: Long): (Map[String, Long], Long) = {
+                      map: Map[Seq[String], Long],
+                      total: Long): (Map[Seq[String], Long], Long) = {
       if (result.next()) {
         val distinctName = result.getObject("name")
 
@@ -68,8 +68,8 @@ case class JdbcHistogram(column: String,
         }
 
         val discreteValue = modifiedName match {
-          case null => JdbcHistogram.NullFieldReplacement
-          case _ => modifiedName.toString
+          case null => Seq[String](JdbcHistogram.NullFieldReplacement)
+          case _ => Seq[String](modifiedName.toString)
         }
 
         val absolute = result.getLong("absolute")
@@ -81,7 +81,7 @@ case class JdbcHistogram(column: String,
         (map, total)
       }
     }
-    val frequenciesAndNumRows = convertResult(result, Map[String, Long](), 0)
+    val frequenciesAndNumRows = convertResult(result, Map[Seq[String], Long](), 0)
     val frequencies = frequenciesAndNumRows._1
     val numRows = frequenciesAndNumRows._2
 
@@ -99,10 +99,10 @@ case class JdbcHistogram(column: String,
           val binCount = theState.frequencies.size
 
           val histogramDetails = topNFreq.keys
-            .map { discreteValue: String =>
+            .map { discreteValue: Seq[String] =>
               val absolute = theState.frequencies(discreteValue)
               val ratio = absolute.toDouble / theState.numRows
-              discreteValue -> DistributionValue(absolute, ratio)
+              discreteValue.head -> DistributionValue(absolute, ratio)
             }
             .toMap
 
@@ -128,12 +128,12 @@ case class JdbcHistogram(column: String,
     * @param n            The number of maximal returned frequencies.
     * @return             Biggest n key-value-pairs of frequencies with respect to the value.
     */
-  def topNFrequencies(frequencies: Map[String, Long], n: Int) : Map[String, Long] = {
+  def topNFrequencies(frequencies: Map[Seq[String], Long], n: Int) : Map[Seq[String], Long] = {
     if (frequencies.size <= n) {
       return frequencies
     }
 
-    frequencies.foldLeft(Map[String, Long]()) {
+    frequencies.foldLeft(Map[Seq[String], Long]()) {
       (top, i) =>
         if (top.size < n) {
           top + i

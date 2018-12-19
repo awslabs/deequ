@@ -55,14 +55,13 @@ object JdbcFrequencyBasedAnalyzer {
   : JdbcFrequenciesAndNumRows = {
 
     val connection = table.jdbcConnection
-    // TODO: allow multi column
-    val column = groupingColumns.head
 
+    val columns = groupingColumns.mkString("", ", ", "")
     val query =
       s"""
-         | SELECT $column as name, COUNT(*) AS absolute
+         | SELECT $columns, COUNT(*) AS absolute
          |    FROM ${table.name}
-         |    GROUP BY $column
+         |    GROUP BY $columns
         """.stripMargin
 
     val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
@@ -71,29 +70,32 @@ object JdbcFrequencyBasedAnalyzer {
     val result = statement.executeQuery()
 
     def convertResultSet(resultSet: ResultSet,
-                      map: Map[String, Long],
-                      total: Long): (Map[String, Long], Long) = {
+                      map: Map[Seq[String], Long],
+                      total: Long): (Map[Seq[String], Long], Long) = {
       if (result.next()) {
-        val name = Option(result.getObject("name"))
+        var columnValues = Seq[String]()
         val absolute = result.getLong("absolute")
 
-        // only make a map entry if the value is defined
-        name match {
-          case Some(theName) =>
-            val discreteValue = theName.toString
-            val entry = discreteValue -> absolute
-            convertResultSet(result, map + entry, total + absolute)
-          case None =>
-            convertResultSet(result, map, total + absolute)
+        // only make a map entry if the value is defined for all columns
+        for ( i <- 1 to groupingColumns.size) {
+          val columnValue = Option(result.getObject(i))
+          columnValue match {
+            case Some(theColumnValue) =>
+              columnValues = columnValues :+ theColumnValue.toString
+            case None =>
+              return convertResultSet(result, map, total + absolute)
+          }
         }
+
+        val entry = columnValues -> absolute
+        convertResultSet(result, map + entry, total + absolute)
       } else {
         (map, total)
       }
     }
-    val frequenciesAndNumRows = convertResultSet(result, Map[String, Long](), 0)
-    val frequencies = frequenciesAndNumRows._1
-    val numRows = frequenciesAndNumRows._2
+    val (frequencies, numRows) = convertResultSet(result, Map[Seq[String], Long](), 0)
     result.close()
+
     JdbcFrequenciesAndNumRows(frequencies, numRows)
   }
 }

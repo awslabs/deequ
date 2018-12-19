@@ -198,9 +198,14 @@ case class JdbcFileSystemStateProvider(
 
     LocalDiskUtils.writeToFileOnDisk(s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeLong(state.frequencies.size)
-      for ((key: String, value: Long) <- state.frequencies) {
-        out.writeInt(key.length)
-        for (char <- key) out.writeChar(char)
+
+      for ((key: Seq[String], value: Long) <- state.frequencies) {
+        out.writeInt(key.size)
+        for (string <- key) {
+          out.writeInt(string.length)
+          for (char <- string)
+            out.writeChar(char)
+        }
         out.writeLong(value)
       }
       out.writeLong(state.numRows)
@@ -264,19 +269,24 @@ case class JdbcFileSystemStateProvider(
     LocalDiskUtils.readFromFileOnDisk(s"$locationPrefix-$identifier.bin") { in =>
       val numberOfBins = in.readLong()
 
-      def readKeyValuePair(map: Map[String, Long]): Map[String, Long] = {
+      def readKeyValuePair(map: Map[Seq[String], Long]): Map[Seq[String], Long] = {
         if (map.size < numberOfBins) {
-          val keyLength = in.readInt()
-          val key: String = (for (_ <- 0 until keyLength) yield in.readChar()).mkString
+          val columnsAmount = in.readInt
+          var columns = Seq[String]()
+          for (_ <- 1 to columnsAmount) {
+            val keyLength = in.readInt()
+            val key: String = (for (_ <- 1 to keyLength) yield in.readChar()).mkString
+            columns = columns :+ key
+          }
           val value: Long = in.readLong()
-          val pair = key -> value
+          val pair = columns -> value
           readKeyValuePair(map + pair)
         } else {
           map
         }
       }
 
-      val frequencies = readKeyValuePair(Map[String, Long]())
+      val frequencies = readKeyValuePair(Map[Seq[String], Long]())
       val numRows = in.readLong()
       JdbcFrequenciesAndNumRows(frequencies, numRows)
     }

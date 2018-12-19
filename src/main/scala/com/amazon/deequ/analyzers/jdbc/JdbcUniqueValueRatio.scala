@@ -19,7 +19,7 @@ package com.amazon.deequ.analyzers.jdbc
 import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.DoubleMetric
 
-class JdbcUniqueValueRatio(columns: Seq[String])
+case class JdbcUniqueValueRatio(columns: Seq[String])
   extends JdbcScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns) {
 
   override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
