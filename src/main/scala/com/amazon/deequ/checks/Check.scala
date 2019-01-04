@@ -596,7 +596,7 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def containsEmail(
+  def  containsEmail(
       column: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
