@@ -16,63 +16,25 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.SumState
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, isNumeric, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, isNumeric}
+
 
 case class JdbcSum(column: String, where: Option[String] = None)
-  extends JdbcAnalyzer[SumState, DoubleMetric] {
+  extends JdbcStandardScanShareableAnalyzer[SumState]("Sum", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
+  override def aggregationFunctions(): Seq[String] = {
+    s"SUM(${conditionalSelection(column, where)})" :: Nil
   }
 
-  override def computeStateFrom(table: Table): Option[SumState] = {
-
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | SUM($column) AS col_sum
-         |FROM
-         | ${table.name}
-         |WHERE
-         | ${where.getOrElse("TRUE=TRUE")}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val col_sum = result.getDouble("col_sum")
-
-      if (!result.wasNull()) {
-        result.close()
-        return Some(SumState(col_sum))
-      }
-    }
-    result.close()
-    None
-  }
-
-  override def computeMetricFrom(state: Option[SumState]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Sum", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcSum, all input values were NULL."))
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[SumState] = {
+    ifNoNullsIn(result, offset) { _ =>
+      SumState(result.getDouble(offset))
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Sum", column, Entity.Column)
+  override protected def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: isNumeric(column) :: Nil
   }
 }

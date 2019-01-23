@@ -16,19 +16,36 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import com.amazon.deequ.analyzers.runners.EmptyStateException
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
 import com.amazon.deequ.metrics.DoubleMetric
 
+/**
+  * Distinctness is the fraction of distinct values of a column(s).
+  *
+  * @param columns  the column(s) for which to compute distinctness
+  */
 case class JdbcDistinctness(columns: Seq[String])
   extends JdbcScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
 
-  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
-    if (state.frequencies.isEmpty) {
-      return toFailureMetric(new EmptyStateException(
-        s"Empty state for analyzer JdbcDistinctness, all input values were NULL."))
+  override def aggregationFunctions(numRows: Long): Seq[String] = {
+
+    val condition = Some(s"${columns.head} IS NOT NULL")
+    val count = s"SUM(${conditionalSelection("1", condition)})"
+
+    s"(${toDouble(count)} / $numRows)" :: Nil
+  }
+
+  override def computeMetricFrom(state: Option[JdbcFrequenciesAndNumRows]): DoubleMetric = {
+
+    state match {
+      case Some(theState) =>
+        if (theState.numNulls() == theState.numRows) {
+          return metricFromEmpty(this, "Uniqueness",
+            columns.mkString(","), entityFrom(columns))
+        }
+      case None =>
     }
-    val numDistinctValues = state.frequencies.size
-    toSuccessMetric(numDistinctValues.toDouble / state.numRows)
+    super.computeMetricFrom(state)
   }
 }
 

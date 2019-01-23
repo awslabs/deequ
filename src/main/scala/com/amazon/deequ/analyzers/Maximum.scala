@@ -16,11 +16,11 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
-import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.max
 import org.apache.spark.sql.types.{DoubleType, StructType}
-import Analyzers._
+import org.apache.spark.sql.{Column, Row}
 
 case class MaxState(maxValue: Double) extends DoubleValuedState[MaxState] {
 

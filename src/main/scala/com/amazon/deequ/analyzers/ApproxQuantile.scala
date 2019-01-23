@@ -19,11 +19,11 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
 import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics.DoubleMetric
-import org.apache.spark.sql.{DeequFunctions, Row}
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile.PercentileDigest
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DeequFunctions, Row}
 
 case class ApproxQuantileState(percentileDigest: PercentileDigest)
   extends State[ApproxQuantileState] {

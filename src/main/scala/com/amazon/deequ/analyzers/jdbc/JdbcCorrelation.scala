@@ -16,125 +16,76 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.CorrelationState
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, isNumeric, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.postgresql.util.PSQLException
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasNoInjection, isNumeric}
+import com.amazon.deequ.metrics.Entity
 
-case class JdbcCorrelation(firstColumn: String,
-                           secondColumn: String,
-                           where: Option[String] = None)
-  extends JdbcAnalyzer[CorrelationState, DoubleMetric] {
+/**
+  * Computes the pearson correlation coefficient between the two given columns
+  *
+  * @param firstColumn First input column for computation
+  * @param secondColumn Second input column for computation
+  */
+case class JdbcCorrelation(
+      firstColumn: String,
+      secondColumn: String,
+      where: Option[String] = None)
+  extends JdbcStandardScanShareableAnalyzer[CorrelationState]("Correlation",
+    s"$firstColumn,$secondColumn", Entity.Mutlicolumn) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() ::
-      hasColumn(firstColumn) :: isNumeric(firstColumn) ::
-      hasColumn(secondColumn) :: isNumeric(secondColumn) ::
-      hasNoInjection(where) :: Nil
+  override def aggregationFunctions(): Seq[String] = {
+
+    s"SUM(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$firstColumn * $secondColumn")})" ::
+    s"AVG(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$firstColumn")})" ::
+    s"SUM(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$secondColumn")})" ::
+    s"AVG(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$secondColumn")})" ::
+    s"SUM(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$firstColumn")})" ::
+    s"SUM(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"1")})" ::
+    s"SUM(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$firstColumn * $firstColumn")})" ::
+    s"SUM(${conditionalNotNull(firstColumn, secondColumn, where,
+      s"$secondColumn * $secondColumn")})" ::
+    Nil
+
   }
 
-  override def computeStateFrom(table: Table): Option[CorrelationState] = {
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[CorrelationState] = {
+    ifNoNullsIn(result, offset, 8) { _ =>
+      val numRows = result.getDouble(5)
+      val sumFirstTimesSecond = result.getDouble(0)
+      val averageFirst = result.getDouble(1)
+      val sumSecond = result.getDouble(2)
+      val averageSecond = result.getDouble(3)
+      val sumFirst = result.getDouble(4)
+      val sumFirstSquared = result.getDouble(6)
+      val sumSecondSquared = result.getDouble(7)
 
-    val connection = table.jdbcConnection
+      val ck = sumFirstTimesSecond - (averageSecond * sumFirst) - (averageFirst * sumSecond) +
+        (numRows * averageFirst * averageSecond)
+      val xmk = sumFirstSquared - (averageFirst * sumFirst) - (averageFirst * sumFirst) +
+        (numRows * averageFirst * averageFirst)
+      val ymk = sumSecondSquared - 2 * averageSecond * sumSecond +
+        (numRows * averageSecond * averageSecond)
 
-    /*
-    * How to calculate the Correlation:
-    * calculate the mean of firstColumn (called avg_first)
-    * calculate the mean of secondColumn (called avg_second)
-    * subtract avg_first of every value in firstColumn (column indirectly called a)
-    * subtract avg_second of every value in second Column (column indirectly called b)
-    * calculate the square of the values in a (column called axa)
-    *   and the square of the values in b (bxb) and the product of the values in a and b (axb)
-    * sum all the values in axb (called ck, same name as in CorrelationState)
-    * sum all the values in axa (called xMk, same name as in CorrelationState)
-    * sum all the values in bxb (called yMk, same name as in Correlation State)
-    * the result values (including the number of values (called n), avg_first (called xAvg)
-    *   and avg_second (called yAvg)) are given to CorrelationState
-    * Correlation State then calculates ck / math.sqrt(xMk * yMk)
-    * */
-
-    val query =
-      s"""
-        SELECT
-          count_all AS n,
-          avg_first AS xAvg,
-          avg_second AS yAvg,
-          SUM(axb_val) AS ck,
-          SUM(axa_val) AS xMk,
-          SUM(bxb_val) AS yMk
-        FROM (
-          SELECT
-            count_all,
-            avg_first,
-            avg_second,
-            ((cleanTable.firstC - avg_first) * (cleanTable.secondC - avg_second)) AS axb_val,
-            ((cleanTable.firstC - avg_first) * (cleanTable.firstC - avg_first)) AS axa_val,
-            ((cleanTable.secondC - avg_second) * (cleanTable.secondC - avg_second)) AS bxb_val
-          FROM
-            (SELECT
-              CAST($firstColumn AS NUMERIC) AS firstC,
-              CAST($secondColumn AS NUMERIC) AS secondC
-              FROM ${table.name}
-              WHERE $firstColumn IS NOT NULL
-               AND $secondColumn IS NOT NULL
-               AND ${where.getOrElse("TRUE=TRUE")}
-              ) AS cleanTable,
-            (SELECT
-              COUNT($firstColumn) AS count_all,
-              AVG(CAST($firstColumn AS NUMERIC)) AS avg_first,
-              AVG(CAST($secondColumn AS NUMERIC)) AS avg_second
-            FROM
-              (SELECT *
-              FROM ${table.name}
-              WHERE
-               $firstColumn IS NOT NULL
-               AND $secondColumn IS NOT NULL
-               AND ${where.getOrElse("TRUE=TRUE")}
-              ) AS cleanTable
-            ) AS meanTable
-          ) AS calculationTable
-          GROUP BY count_all, avg_first, avg_second
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val n = result.getDouble("n")
-      val xAvg = result.getDouble("xAvg")
-      val yAvg = result.getDouble("yAvg")
-      val ck = result.getDouble("ck")
-      val xMk = result.getDouble("xMk")
-      val yMk = result.getDouble("yMk")
-
-      result.close()
-      return Some(CorrelationState(n, xAvg, yAvg, ck, xMk, yMk))
-    }
-    result.close()
-    None
-  }
-
-  override def computeMetricFrom(state: Option[CorrelationState]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(
-            theState.metricValue(),
-            "Correlation",
-            Seq(firstColumn, secondColumn).mkString(","),
-            Entity.Mutlicolumn)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcCorrelation, all input values were NULL."))
+      CorrelationState(
+        numRows,
+        averageFirst,
+        averageSecond,
+        ck,
+        xmk,
+        ymk)
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Correlation", firstColumn, Entity.Column)
+  override protected def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(firstColumn) :: isNumeric(firstColumn) :: hasColumn(secondColumn) ::
+      isNumeric(secondColumn) :: hasNoInjection(where) :: Nil
   }
 }

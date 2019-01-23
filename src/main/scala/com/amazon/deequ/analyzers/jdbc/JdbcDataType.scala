@@ -18,124 +18,93 @@ package com.amazon.deequ.analyzers.jdbc
 
 import java.sql.Types._
 
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasColumn, hasNoInjection}
+import com.amazon.deequ.analyzers.Analyzers.emptyStateException
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasNoInjection}
 import com.amazon.deequ.analyzers.runners.{EmptyStateException, MetricCalculationException}
 import com.amazon.deequ.analyzers.{DataTypeHistogram, DataTypeInstances}
 import com.amazon.deequ.metrics.HistogramMetric
 
+import java.sql.ResultSet
+import JdbcAnalyzers._
 import scala.util.{Failure, Success}
 
-case class JdbcDataType(column: String,
-                        where: Option[String] = None)
-  extends JdbcAnalyzer[DataTypeHistogram, HistogramMetric] {
+case class JdbcDataType(
+       column: String,
+       where: Option[String] = None)
+  extends JdbcScanShareableAnalyzer[DataTypeHistogram, HistogramMetric] {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: hasNoInjection(where) :: Nil
-  }
+  override def aggregationFunctions(): Seq[String] = {
+    /*
+     * Scan the column and, for each supported data type (unknown, integral, fractional,
+     * boolean, string), aggregate the number of values that could be instances of the
+     * respective data type. Each value is assigned to exactly one data type (i.e., data
+     * types are mutually exclusive).
+     * A value's data type is assumed to be unknown, if it is a NULL-value or one of the
+     * following strings: n.a. | null | n/a.
+     * A value is integral if it contains only digits without any fractional part. If the
+     * value contains only a single digit, it must not be 0 or 1, because those two values
+     * are assigned to boolean.
+     * A value is fractional if it contains only digits and a fractional part separated by
+     * a decimal separator.
+     * A value is boolean if it is equal to one of the following constants: 1 | 0 | true |
+     * false | t | f | y | n | yes | no | on | off.
+    */
+    // use triple quotes to avoid special escaping
+    val integerPattern = """^\s*(?:-|\+)?(?:-1|[2-9]|\d{2,})\s*$"""
+    val fractionPattern = """^\s*(?:-|\+)?\d+\.\d+\s*$"""
+    val booleanPattern = """(?i)^\s*(?:1|0|true|false|t|f|y|n|yes|no|on|off)\s*$"""
+    val nullPattern = """(?i)^\s*(?:null|N\/A|N\.?A\.?)\s*$"""
 
-  override def computeStateFrom(table: Table): Option[DataTypeHistogram] = {
+    def countOccurrencesOf(pattern: String): String = {
+      val castColumnToString =
+        s"CAST(CASE WHEN $column IS NULL THEN 'null' ELSE $column END AS TEXT)"
 
-    val connection = table.jdbcConnection
-
-    val dataType = Preconditions.getColumnDataType(table, column) match {
-      case BIGINT | INTEGER | TINYINT | SMALLINT => DataTypeInstances.Integral
-      case BOOLEAN => DataTypeInstances.Boolean
-      case DECIMAL | DOUBLE | FLOAT | REAL | NUMERIC => DataTypeInstances.Fractional
-      case _ => DataTypeInstances.Unknown
+      s"COUNT(${conditionalSelection(column,
+        Some(s"(SELECT regexp_matches($castColumnToString, '$pattern', '')) IS NOT NULL") ::
+          where :: Nil)})"
     }
 
-    if (dataType != DataTypeInstances.Unknown) {
-      val query =
-        s"""
-           |SELECT
-           |  COUNT($column) AS num_not_nulls,
-           |  COUNT(*) as num_rows
-           |FROM
-           |  ${table.name}
-           |WHERE
-           | ${where.getOrElse("TRUE = TRUE")};
-         """.stripMargin
+    s"COUNT(${conditionalSelection(column, where)})" :: conditionalCount(where) ::
+    countOccurrencesOf(integerPattern) :: countOccurrencesOf(fractionPattern) ::
+    countOccurrencesOf(booleanPattern) :: countOccurrencesOf(nullPattern) :: s"MIN($column)" :: Nil
+  }
 
-      val result = connection.createStatement().executeQuery(query)
-      if (result.next()) {
-        val num_not_nulls = result.getLong("num_not_nulls")
-        val num_rows = result.getLong("num_rows")
-        Some(DataTypeHistogram(
-          numNull = num_rows - num_not_nulls,
-          numFractional = if (dataType == DataTypeInstances.Fractional) num_not_nulls else 0,
-          numIntegral = if (dataType == DataTypeInstances.Integral) num_not_nulls else 0,
-          numBoolean = if (dataType == DataTypeInstances.Boolean) num_not_nulls else 0,
-          numString = 0
-        ))
-      } else {
-        None
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[DataTypeHistogram] = {
+    ifNoNullsIn(result, offset, 7) { _ =>
+      // column at offset + 6 contains minimal value of the column
+      val dataType = result.row(offset + 6) match {
+        case _: Integer => DataTypeInstances.Integral
+        case _: Boolean => DataTypeInstances.Boolean
+        case _: Long | Float | Double | Numeric => DataTypeInstances.Fractional
+        case _ => DataTypeInstances.Unknown
       }
-    } else {
-       /*
-        * Scan the column and, for each supported data type (unknown, integral, fractional,
-        * boolean, string), aggregate the number of values that could be instances of the
-        * respective data type. Each value is assigned to exactly one data type (i.e., data
-        * types are mutually exclusive).
-        * A value's data type is assumed to be unknown, if it is a NULL-value or one of the
-        * following values: n.a. | null | n/a.
-        * A value is integral if it contains only digits without any fractional part. If the
-        * value contains only a single digit, it must not be 0 or 1, because those two values
-        * are assigned to boolean.
-        * A value is fractional if it contains only digits and a fractional part separated by
-        * a decimal separator.
-        * A value is boolean if it is equal to one of the following constants: 1 | 0 | true |
-        * false | t | f | y | n | yes | no | on | off.
-        */
-      val integerPattern =
-        """^\s*(?:-|\+)?(?:-1|[2-9]|\d{2,})\s*$"""
-      val fractionPattern = """^\s*(?:-|\+)?\d+\.\d+\s*$"""
-      val booleanPattern = """(?i)^\s*(?:1|0|true|false|t|f|y|n|yes|no|on|off)\s*$"""
-      val nullPattern = """(?i)^\s*(?:null|N\/A|N\.?A\.?)\s*$"""
-      val query =
-        s"""
-           |SELECT
-           | COUNT($column) AS num_not_nulls,
-           | COUNT(*) as num_rows,
-           | SUM(CASE WHEN
-           |  (SELECT regexp_matches(CAST($column AS text), '$integerPattern', '')) IS NOT NULL
-           |  THEN 1 ELSE 0 END) as num_integers,
-           | SUM(CASE WHEN
-           |  (SELECT regexp_matches(CAST($column AS text), '$fractionPattern', '')) IS NOT NULL
-           |  THEN 1 ELSE 0 END) as num_fractions,
-           | SUM(CASE WHEN
-           |  (SELECT regexp_matches(CAST($column AS text), '$booleanPattern', '')) IS NOT NULL
-           |  THEN 1 ELSE 0 END) as num_booleans,
-           | SUM(CASE WHEN
-           |  (SELECT regexp_matches(CAST($column AS text), '$nullPattern', '')) IS NOT NULL
-           |  THEN 1 ELSE 0 END) as num_nulls
-           |FROM
-           | ${table.name}
-           |WHERE
-           | ${where.getOrElse("TRUE = TRUE")};
-      """.stripMargin
 
-      val result = connection.createStatement().executeQuery(query)
-      if (result.next()) {
-        val num_not_nulls = result.getLong("num_not_nulls")
-        val num_rows = result.getLong("num_rows")
-        val num_integers = result.getLong("num_integers")
-        val num_fractions = result.getLong("num_fractions")
-        val num_booleans = result.getLong("num_booleans")
-        val num_nulls = result.getLong("num_nulls")
-
-        result.close()
-
-        Some(DataTypeHistogram(
-          numNull = num_nulls + (num_rows - num_not_nulls),
-          numFractional = num_fractions,
-          numIntegral = num_integers,
-          numBoolean = num_booleans,
-          numString = num_rows - (num_rows - num_not_nulls) - num_booleans - num_integers -
-            num_fractions - num_nulls
-        ))
+      if (dataType != DataTypeInstances.Unknown) {
+        val numNotNulls = result.getLong(offset)
+        val numRows = result.getLong(offset + 1)
+        DataTypeHistogram(
+          numNull = numRows - numNotNulls,
+          numFractional = if (dataType == DataTypeInstances.Fractional) numNotNulls else 0,
+          numIntegral = if (dataType == DataTypeInstances.Integral) numNotNulls else 0,
+          numBoolean = if (dataType == DataTypeInstances.Boolean) numNotNulls else 0,
+          numString = 0
+        )
       } else {
-        result.close()
-        None
+        val numNotNulls = result.getLong(offset)
+        val numRows = result.getLong(offset + 1)
+        val numIntegers = result.getLong(offset + 2)
+        val numFractions = result.getLong(offset + 3)
+        val numBooleans = result.getLong(offset + 4)
+        val numNulls = result.getLong(offset + 5)
+
+        DataTypeHistogram(
+          numNull = numNulls + (numRows - numNotNulls),
+          numFractional = numFractions,
+          numIntegral = numIntegers,
+          numBoolean = numBooleans,
+          numString = numRows - (numRows - numNotNulls) - numBooleans - numIntegers -
+            numFractions - numNulls
+        )
       }
     }
   }
@@ -150,7 +119,11 @@ case class JdbcDataType(column: String,
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    HistogramMetric(column, Failure(MetricCalculationException.wrapIfNecessary(failure)))
+  override def toFailureMetric(exception: Exception): HistogramMetric = {
+    HistogramMetric(column, Failure(MetricCalculationException.wrapIfNecessary(exception)))
+  }
+
+  override def additionalPreconditions: Seq[Table => Unit] = {
+    hasColumn(column) :: hasNoInjection(where) :: Nil
   }
 }

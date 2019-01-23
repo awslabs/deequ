@@ -16,16 +16,12 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import com.amazon.deequ.analyzers.jdbc.JdbcUtils.withJdbc
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object EntropyWithJdbc extends App {
-  withJdbc { connection =>
 
-    val table = Table("food_des", connection)
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val entropyOfFatFactor = JdbcEntropy("fat_factor").calculate(table)
 
-    val entropyOfFatFactor = JdbcEntropy("fat_factor").calculate(table)
-
-    println(entropyOfFatFactor)
-
-  }
+  println(entropyOfFatFactor)
 }

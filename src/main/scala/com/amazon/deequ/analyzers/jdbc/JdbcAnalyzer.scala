@@ -16,24 +16,24 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
+import java.sql.Types._
 import java.sql.{JDBCType, ResultSet}
 
-import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.analyzers.runners._
+import com.amazon.deequ.analyzers.{DoubleValuedState, State}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
-
-import java.sql.Types._
 
 import scala.util.{Failure, Success}
 
+/** Common trait for all analyzers which generates metrics from states computed on relations */
 trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
 
   /**
     * Compute the state (sufficient statistics) from the data
-    * @param table database table
+    * @param data database table
     * @return
     */
-  def computeStateFrom(table: Table): Option[S]
+  def computeStateFrom(data: Table): Option[S]
 
   /**
     * Compute the metric from the state (sufficient statistics)
@@ -43,36 +43,159 @@ trait JdbcAnalyzer[S <: State[_], +M <: Metric[_]] {
   def computeMetricFrom(state: Option[S]): M
 
   /**
-    * A set of assertions that must hold on the database table
+    * A set of assertions that must hold on the schema of the database table
     * @return
     */
   def preconditions: Seq[Table => Unit] = {
-    Seq.empty
+    Preconditions.hasTable() :: Nil
   }
 
-  def validatePreconditions(table: Table): Unit = {
-    val exceptionOption = Preconditions.findFirstFailing(table, this.preconditions)
+  // TODO: This function is not defined in Analyzer.scala
+  def validatePreconditions(data: Table): Unit = {
+    val exceptionOption = Preconditions.findFirstFailing(data, this.preconditions)
     if (exceptionOption.nonEmpty) {
       throw exceptionOption.get
     }
   }
 
-  def calculate(table: Table): M = {
+  /**
+    * Runs preconditions, calculates and returns the metric
+    *
+    * @param data Database table being analyzed
+    * @param aggregateWith loader for previous states to include in the computation (optional)
+    * @param saveStatesWith persist internal states using this (optional)
+    * @return Returns failure metric in case preconditions fail.
+    */
+  def calculate(
+      data: Table,
+      aggregateWith: Option[JdbcStateLoader] = None,
+      saveStatesWith: Option[JdbcStatePersister] = None)
+    : M = {
 
     try {
-      validatePreconditions(table)
-      val state = computeStateFrom(table)
-      computeMetricFrom(state)
+      validatePreconditions(data)
+      val state = computeStateFrom(data)
+      calculateMetric(state, aggregateWith, saveStatesWith)
     } catch {
       case error: Exception => toFailureMetric(error)
     }
   }
 
   private[deequ] def toFailureMetric(failure: Exception): M
+
+  protected def calculateMetric(
+      state: Option[S],
+      aggregateWith: Option[JdbcStateLoader] = None,
+      saveStatesWith: Option[JdbcStatePersister] = None)
+  : M = {
+
+    // Try to load the state
+    val loadedState: Option[S] = aggregateWith.flatMap { _.load[S](this) }
+
+    // Potentially merge existing and loaded state
+    val stateToComputeMetricFrom: Option[S] = JdbcAnalyzers.merge(state, loadedState)
+
+    // Persist the state if it is not empty and a persister was provided
+    stateToComputeMetricFrom
+      .foreach { state =>
+        saveStatesWith.foreach {
+          _.persist[S](this, state)
+        }
+      }
+
+    computeMetricFrom(stateToComputeMetricFrom)
+  }
+
+  private[deequ] def aggregateStateTo(
+      sourceA: JdbcStateLoader,
+      sourceB: JdbcStateLoader,
+      target: JdbcStatePersister)
+  : Unit = {
+
+    val maybeStateA = sourceA.load[S](this)
+    val maybeStateB = sourceB.load[S](this)
+
+    val aggregated = (maybeStateA, maybeStateB) match {
+      case (Some(stateA), Some(stateB)) => Some(stateA.sumUntyped(stateB).asInstanceOf[S])
+      case (Some(stateA), None) => Some(stateA)
+      case (None, Some(stateB)) => Some(stateB)
+      case _ => None
+    }
+
+    aggregated.foreach { state => target.persist[S](this, state) }
+  }
+
+  private[deequ] def loadStateAndComputeMetric(source: JdbcStateLoader): Option[M] = {
+    source.load[S](this).map { state =>
+      computeMetricFrom(Option(state))
+    }
+  }
+}
+
+/** An analyzer that runs a set of aggregation functions over the data,
+  * can share scans over the data */
+trait JdbcScanShareableAnalyzer[S <: State[_], +M <: Metric[_]] extends JdbcAnalyzer[S, M] {
+
+  /** Defines the aggregations to compute on the data */
+  private[deequ] def aggregationFunctions(): Seq[String]
+
+  /** Computes the state from the result of the aggregation functions */
+  private[deequ] def fromAggregationResult(result: JdbcRow, offset: Int): Option[S]
+
+  /** Runs aggregation functions directly, without scan sharing */
+  override def computeStateFrom(data: Table): Option[S] = {
+    val aggregations = aggregationFunctions()
+    val result = data.executeAggregations(aggregations)
+    val state = fromAggregationResult(result, 0)
+    state
+  }
+
+  /** Produces a metric from the aggregation result */
+  private[deequ] def metricFromAggregationResult(
+      result: JdbcRow,
+      offset: Int,
+      aggregateWith: Option[JdbcStateLoader] = None,
+      saveStatesWith: Option[JdbcStatePersister] = None)
+  : M = {
+
+    val state = fromAggregationResult(result, offset)
+
+    calculateMetric(state, aggregateWith, saveStatesWith)
+  }
+
+  override def preconditions: Seq[Table => Unit] = {
+    additionalPreconditions() ++ super.preconditions
+  }
+
+  protected def additionalPreconditions(): Seq[Table => Unit] = {
+    Seq.empty
+  }
+
+}
+
+/** A scan-shareable analyzer that produces a DoubleMetric */
+abstract class JdbcStandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
+     name: String,
+     instance: String,
+     entity: Entity.Value = Entity.Column)
+  extends JdbcScanShareableAnalyzer[S, DoubleMetric] {
+
+  override def computeMetricFrom(state: Option[S]): DoubleMetric = {
+    state match {
+      case Some(theState) =>
+        JdbcAnalyzers.metricFromValue(theState.metricValue(), name, instance, entity)
+      case _ =>
+        JdbcAnalyzers.metricFromEmpty(this, name, instance, entity)
+    }
+  }
+
+  override private[deequ] def toFailureMetric(exception: Exception): DoubleMetric = {
+    JdbcAnalyzers.metricFromFailure(exception, name, instance, entity)
+  }
 }
 
 /** Base class for analyzers that require to group the data by specific columns */
-abstract class GroupingAnalyzer[S <: State[_], +M <: Metric[_]] extends JdbcAnalyzer[S, M] {
+abstract class JdbcGroupingAnalyzer[S <: State[_], +M <: Metric[_]] extends JdbcAnalyzer[S, M] {
 
   /** The columns to group the data by */
   def groupingColumns(): Seq[String]
@@ -111,21 +234,22 @@ object Preconditions {
   /** Specified table exists in the data */
   def hasTable(): Table => Unit = { table =>
 
-    val connection = table.jdbcConnection
+    table.withJdbc { connection =>
 
-    val metaData = connection.getMetaData
-    val result = metaData.getTables(null, null, null, Array[String]("TABLE"))
+      val metaData = connection.getMetaData
+      val result = metaData.getTables(null, null, null, Array[String]("TABLE"))
 
-    var hasTable = false
+      var hasTable = false
 
-    while (result.next()) {
-      if (result.getString("TABLE_NAME") == table.name) {
-        hasTable = true
+      while (result.next()) {
+        if (result.getString("TABLE_NAME") == table.name) {
+          hasTable = true
+        }
       }
-    }
 
-    if (!hasTable) {
-      throw new NoSuchTableException(s"Input data does not include table ${table.name}!")
+      if (!hasTable) {
+        throw new NoSuchTableException(s"Input data does not include table ${table.name}!")
+      }
     }
   }
 
@@ -147,56 +271,61 @@ object Preconditions {
   /** Specified column exists in the table */
   def hasColumn(column: String): Table => Unit = { table =>
 
-    val connection = table.jdbcConnection
 
-    val query =
-      s"""
-         |SELECT
-         | *
-         |FROM
-         | ${table.name}
-         |LIMIT 0
-      """.stripMargin
+    table.withJdbc { connection =>
 
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
+      val query =
+        s"""
+           |SELECT
+           | *
+           |FROM
+           | ${table.name}
+           |LIMIT 0
+        """.stripMargin
 
-    val result = statement.executeQuery()
-    val metaData = result.getMetaData
+      val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
+        ResultSet.CONCUR_READ_ONLY)
 
-    var hasColumn = false
+      val result = statement.executeQuery()
+      val metaData = result.getMetaData
 
-    for (i <- 1 to metaData.getColumnCount) {
-      if (metaData.getColumnName(i) == column) {
-        hasColumn = true
+      var hasColumn = false
+
+      for (i <- 1 to metaData.getColumnCount) {
+        if (metaData.getColumnName(i) == column) {
+          hasColumn = true
+        }
       }
-    }
 
-    if (!hasColumn) {
-      throw new NoSuchColumnException(s"Input data does not include column $column!")
+      if (!hasColumn) {
+        throw new NoSuchColumnException(s"Input data does not include column $column!")
+      }
     }
   }
 
   /** data type of specified column */
   def getColumnDataType(table: Table, column: String): Int = {
-    val connection = table.jdbcConnection
 
-    val query =
-      s"""
-         |SELECT
-         | $column
-         |FROM
-         | ${table.name}
-         |LIMIT 0
-      """.stripMargin
 
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
+    table.withJdbc { connection =>
 
-    val result = statement.executeQuery()
+      val query =
+        s"""
+           |SELECT
+           | $column
+           |FROM
+           | ${table.name}
+           |LIMIT 0
+        """.stripMargin
 
-    val metaData = result.getMetaData
-    metaData.getColumnType(1)
+      val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
+        ResultSet.CONCUR_READ_ONLY)
+
+      val result = statement.executeQuery()
+
+      val metaData = result.getMetaData
+      metaData.getColumnType(1)
+    }
   }
 
   /** Specified column has a numeric type */
@@ -227,9 +356,9 @@ private[deequ] object JdbcAnalyzers {
 
   /** Merges a sequence of potentially empty states. */
   def merge[S <: State[_]](
-                            state: Option[S],
-                            anotherState: Option[S],
-                            moreStates: Option[S]*)
+      state: Option[S],
+      anotherState: Option[S],
+      moreStates: Option[S]*)
   : Option[S] = {
 
     val statesToMerge = Seq(state, anotherState) ++ moreStates
@@ -247,8 +376,69 @@ private[deequ] object JdbcAnalyzers {
     }
   }
 
+  /** Tests whether the result columns from offset to offset + howMany are non-null */
+  def ifNoNullsIn[S <: State[_]](
+      result: JdbcRow,
+      offset: Int,
+      howMany: Int = 1)
+      (func: Unit => S)
+  : Option[S] = {
+
+    val nullInResult = (offset until offset + howMany).exists { index =>
+      result.getObject(index) == null }
+
+    if (nullInResult) {
+      None
+    } else {
+      Option(func(Unit))
+    }
+  }
+
   def entityFrom(columns: Seq[String]): Entity.Value = {
     if (columns.size == 1) Entity.Column else Entity.Mutlicolumn
+  }
+
+  def conditionalSelection(column: String, where: Option[String]): String = {
+    where
+      .map { condition => s"CASE WHEN ($condition) THEN $column ELSE NULL END" }
+      .getOrElse(column)
+  }
+
+  def conditionalSelectionNotNull(column: String, where: Option[String]): String = {
+
+    conditionalSelection(column, where :: Some(s"$column IS NOT NULL") :: Nil)
+  }
+
+  def conditionalNotNull(firstColumn: String, secondColumn: String, where: Option[String],
+                         consequent: String): String = {
+    where
+      .map { filter =>
+        s"CASE WHEN ($firstColumn IS NOT NULL AND $secondColumn IS NOT NULL AND $filter) THEN " +
+          s"$consequent ELSE NULL END" }
+      .getOrElse(s"CASE WHEN ($firstColumn IS NOT NULL AND $secondColumn IS NOT NULL) THEN " +
+        s"$consequent ELSE NULL END")
+  }
+
+  def conditionalSelection(column: String, where: Seq[Option[String]]): String = {
+
+    val whereConcat = where
+      .map(whereOption => whereOption
+        .map(condition => condition)
+        .getOrElse("TRUE=TRUE"))
+
+    conditionalSelection(column, Some(whereConcat.mkString(" AND ")))
+  }
+
+  def conditionalCount(where: Option[String]): String = {
+    where
+      .map { filter => s"SUM(CASE WHEN ($filter) THEN 1 ELSE 0 END)" }
+      .getOrElse("COUNT(*)")
+  }
+
+  def conditionalCountNotNull(column : String, where: Option[String]): String = {
+    where
+      .map { filter => s"SUM(CASE WHEN ($filter) AND $column IS NOT NULL THEN 1 ELSE 0 END)" }
+      .getOrElse(s"COUNT($column)")
   }
 
   def metricFromValue(

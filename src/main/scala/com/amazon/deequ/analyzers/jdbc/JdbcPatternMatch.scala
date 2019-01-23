@@ -16,13 +16,9 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions._
 
 import scala.util.matching.Regex
 
@@ -38,58 +34,24 @@ import scala.util.matching.Regex
   * @param where      Additional filter to apply before the analyzer is run.
   */
 case class JdbcPatternMatch(column: String, pattern: Regex, where: Option[String] = None)
-  extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
+  extends JdbcStandardScanShareableAnalyzer[NumMatchesAndCount]("PatternMatch", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: hasNoInjection(where) :: Nil
-  }
-
-  override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
-
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | SUM(CASE WHEN
-         | (SELECT regexp_matches(CAST($column AS text), ?, '')) IS NOT NULL
-         | THEN 1 ELSE 0 END) as num_matches,
-         | COUNT(*) AS num_rows
-         |FROM
-         | ${table.name}
-         |WHERE
-         | ${where.getOrElse("TRUE = TRUE")};
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    statement.setString(1, pattern.toString())
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val num_matches = result.getLong("num_matches")
-      val num_rows = result.getLong("num_rows")
-      result.close()
-      Some(NumMatchesAndCount(num_matches, num_rows))
-    } else {
-      result.close()
-      None
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[NumMatchesAndCount] = {
+    ifNoNullsIn(result, offset, howMany = 2) { _ =>
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1))
     }
   }
 
-  override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "PatternMatch", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcPatternMatch, all input values were NULL."))
-    }
+  override def aggregationFunctions(): Seq[String] = {
+
+    val summation = s"COUNT(${conditionalSelection(column,
+      Some(s"(SELECT regexp_matches(CAST($column AS text), '$pattern', '')) IS NOT NULL")
+        :: where :: Nil)})"
+
+    summation :: conditionalCount(where) :: Nil
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "PatternMatch", column, Entity.Column)
+  override def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: hasNoInjection(where) :: hasNoInjection(Some(pattern.toString())) :: Nil
   }
 }

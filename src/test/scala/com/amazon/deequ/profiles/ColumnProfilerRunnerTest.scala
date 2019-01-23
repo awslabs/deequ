@@ -16,7 +16,6 @@
 
 package com.amazon.deequ.profiles
 
-import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.io.DfsUtils
@@ -24,7 +23,9 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
+import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import org.scalatest.{Matchers, WordSpec}
+
 import scala.util.Try
 
 class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextSpec

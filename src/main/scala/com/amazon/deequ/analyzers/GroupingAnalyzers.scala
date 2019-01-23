@@ -16,14 +16,12 @@
 
 package com.amazon.deequ.analyzers
 
-import org.apache.spark.sql.{Column, DataFrame, Row}
-import org.apache.spark.sql.functions.{coalesce, col, count, expr, lit}
-import Analyzers.COUNT_COL
+import com.amazon.deequ.analyzers.Analyzers.{COUNT_COL, _}
+import com.amazon.deequ.analyzers.Preconditions._
 import com.amazon.deequ.metrics.DoubleMetric
-import Analyzers._
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
-import Preconditions._
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
+import org.apache.spark.sql.{Column, DataFrame, Row}
 
 /** Base class for all analyzers that operate the frequencies of groups in the data */
 abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])

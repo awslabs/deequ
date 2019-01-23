@@ -16,20 +16,20 @@
 
 package com.amazon.deequ.repository
 
-import com.amazon.deequ.anomalydetection.{OnlineNormalStrategy, RateOfChangeStrategy}
+import java.time.{LocalDate, ZoneOffset}
+
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.anomalydetection.{OnlineNormalStrategy, RateOfChangeStrategy}
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.ConstraintStatus
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.fs.FileSystemMetricsRepository
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.{AnomalyCheckConfig, SparkContextSpec, VerificationResult, VerificationSuite}
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import java.time.{LocalDate, ZoneOffset}
-
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import com.amazon.deequ.{AnomalyCheckConfig, SparkContextSpec, VerificationResult, VerificationSuite}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.Success

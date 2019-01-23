@@ -16,10 +16,9 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
+import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey

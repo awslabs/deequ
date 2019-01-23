@@ -16,12 +16,12 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfilerRunner, ColumnProfiles}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.suggestions.rules._
+import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SparkSession}

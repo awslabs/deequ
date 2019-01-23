@@ -18,7 +18,6 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.{Matchers, WordSpec}
 

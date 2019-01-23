@@ -21,22 +21,19 @@ import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object IncrementalMaximumWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val analyzer = JdbcMaximum("fat_factor")
 
-    val table = Table("food_des", connection)
+  val maximum1 = analyzer.calculate(table)
 
-    val analyzer = JdbcMaximum("fat_factor")
+  val maxState = analyzer.computeStateFrom(table).getOrElse(MaxState(0))
 
-    val maximum1 = analyzer.calculate(table)
+  val stateProvider = JdbcFileSystemStateProvider("")// file system path to store at
+  stateProvider.persist[MaxState](analyzer, maxState)
 
-    val maxState = analyzer.computeStateFrom(table).getOrElse(MaxState(0))
+  val maximum2 = analyzer.computeMetricFrom(stateProvider.load[MaxState](analyzer))
 
-    val stateProvider = JdbcFileSystemStateProvider("")// file system path to store at
-    stateProvider.persist[MaxState](analyzer, maxState)
-
-    val maximum2 = analyzer.computeMetricFrom(stateProvider.load[MaxState](analyzer))
-    println(maximum1, maximum2)
-
-  }
+  println(maximum1)
+  println(maximum2)
 }
 

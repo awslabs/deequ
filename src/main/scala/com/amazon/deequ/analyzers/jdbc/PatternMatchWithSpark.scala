@@ -17,8 +17,7 @@
 package com.amazon.deequ.analyzers.jdbc
 
 import com.amazon.deequ.analyzers.PatternMatch
-
-import JdbcUtils._
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object PatternMatchWithSpark extends App {
 

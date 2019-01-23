@@ -17,8 +17,9 @@
 package com.amazon.deequ.analyzers.jdbc
 
 import java.sql.{Connection, DriverManager}
+import java.util.Properties
 
-import org.sqlite.Function
+import org.sqlite.{Function, SQLiteConfig}
 
 /**
   * TODO
@@ -26,10 +27,25 @@ import org.sqlite.Function
   */
 trait JdbcContextSpec {
 
-  val jdbcUrl = "jdbc:sqlite:"
+  val jdbcUrl = "jdbc:sqlite::memory:"
+
+  def onConnect(connection: Connection): Unit = {
+    Function.create(connection, "regexp_matches", new Function() {
+      protected def xFunc(): Unit = {
+        val textToMatch = value_text(0)
+        val pattern = value_text(1).r
+
+        pattern.findFirstMatchIn(textToMatch) match {
+          case Some(_) => result(1) // If a match is found, return any value other than NULL
+          case None => result() // If no match is found, return NULL
+        }
+      }
+    })
+  }
+
 
   def withJdbc(testFunc: Connection => Unit): Unit = {
-    classOf[org.postgresql.Driver]
+
     val connection = DriverManager.getConnection(jdbcUrl)
 
     // Register user defined function for regular expression matching
@@ -52,4 +68,30 @@ trait JdbcContextSpec {
     }
   }
 
+}
+
+object JdbcContextSpec {
+
+  val jdbcUrl = "jdbc:sqlite:analyzerTests.db?mode=memory&cache=shared"
+
+  def connectionProperties(): Properties = {
+    val sqLiteConfig = new SQLiteConfig()
+    sqLiteConfig.setSharedCache(true)
+
+    sqLiteConfig.toProperties
+  }
+
+  def onConnect(connection: Connection): Unit = {
+    Function.create(connection, "regexp_matches", new Function() {
+      protected def xFunc(): Unit = {
+        val textToMatch = value_text(0)
+        val pattern = value_text(1).r
+
+        pattern.findFirstMatchIn(textToMatch) match {
+          case Some(_) => result(1) // If a match is found, return any value other than NULL
+          case None => result() // If no match is found, return NULL
+        }
+      }
+    })
+  }
 }

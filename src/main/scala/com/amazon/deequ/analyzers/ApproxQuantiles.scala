@@ -23,6 +23,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DeequFunctions, Row}
+
 import scala.util.{Failure, Success}
 
 /**

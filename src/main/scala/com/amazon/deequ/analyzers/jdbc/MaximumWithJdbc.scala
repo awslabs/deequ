@@ -20,14 +20,9 @@ import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object MaximumWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val maximumOfFatFactor = JdbcMaximum("fat_factor", Some("fat_factor < 5.0")).calculate(table)
 
-    val table = Table("food_des", connection)
-
-    val maximumOfFatFactor = JdbcMaximum("fat_factor", Some("fat_factor < 5.0")).calculate(table)
-
-    println(maximumOfFatFactor)
-
-  }
+  println(maximumOfFatFactor)
 }
 

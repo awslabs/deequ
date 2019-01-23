@@ -15,15 +15,20 @@
   */
 
 package com.amazon.deequ.analyzers.jdbc
-
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers.conditionalSelection
 import com.amazon.deequ.metrics.DoubleMetric
 
 case class JdbcCountDistinct(columns: Seq[String])
   extends JdbcScanShareableFrequencyBasedAnalyzer("CountDistinct", columns) {
 
-  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
-    val numDistinctValues = state.frequencies.size
-    toSuccessMetric(numDistinctValues.toDouble)
+  override def aggregationFunctions(numRows: Long): Seq[String] = {
+
+    val condition = Some(s"${columns.head} IS NOT NULL")
+    s"COUNT(${conditionalSelection("1", condition)})" :: Nil
+  }
+
+  override def fromAggregationResult(result: JdbcRow, offset: Int): DoubleMetric = {
+    toSuccessMetric(result.getLong(offset).toDouble)
   }
 }
 

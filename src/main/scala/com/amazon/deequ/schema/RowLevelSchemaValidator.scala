@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.schema
 
-import org.apache.spark.sql.functions.{col, expr, length, not, unix_timestamp, regexp_extract}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DataTypes, DecimalType, IntegerType, TimestampType}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.storage.StorageLevel

@@ -16,64 +16,26 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.MinState
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, isNumeric, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasNoInjection, isNumeric}
 
 
 case class JdbcMinimum(column: String, where: Option[String] = None)
-  extends JdbcAnalyzer[MinState, DoubleMetric] {
+  extends JdbcStandardScanShareableAnalyzer[MinState]("Minimum", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
+  override def aggregationFunctions(): Seq[String] = {
+    s"MIN(${conditionalSelection(column, where)})" :: Nil
   }
 
-  override def computeStateFrom(table: Table): Option[MinState] = {
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[MinState] = {
 
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | MIN($column) AS col_min
-         |FROM
-         | ${table.name}
-         |WHERE
-         | ${where.getOrElse("TRUE=TRUE")}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val col_min = result.getDouble("col_min")
-
-      if (!result.wasNull()) {
-        result.close()
-        return Some(MinState(col_min))
-      }
-    }
-    result.close()
-    None
-  }
-
-  override def computeMetricFrom(state: Option[MinState]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Minimum", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcMinimum, all input values were NULL."))
+    ifNoNullsIn(result, offset) { _ =>
+      MinState(result.getDouble(offset))
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Minimum", column, Entity.Column)
+  override protected def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
   }
 }

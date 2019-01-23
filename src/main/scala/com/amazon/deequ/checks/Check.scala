@@ -16,15 +16,15 @@
 
 package com.amazon.deequ.checks
 
-import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State}
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint, HistoryUtils}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import com.amazon.deequ.anomalydetection.HistoryUtils
+
 import scala.util.matching.Regex
 
 object CheckLevel extends Enumeration {

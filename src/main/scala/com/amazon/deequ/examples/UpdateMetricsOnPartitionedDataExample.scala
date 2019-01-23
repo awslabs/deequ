@@ -16,10 +16,10 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.{manufacturersAsDataframe, withSpark}
-import com.amazon.deequ.analyzers.{Analysis, InMemoryStateProvider}
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
+import com.amazon.deequ.analyzers.{Analysis, InMemoryStateProvider}
 import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.examples.ExampleUtils.{manufacturersAsDataframe, withSpark}
 
 object UpdateMetricsOnPartitionedDataExample extends App {
 

@@ -16,21 +16,38 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import com.amazon.deequ.analyzers.runners.EmptyStateException
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
 import com.amazon.deequ.metrics.DoubleMetric
 
 case class JdbcUniqueValueRatio(columns: Seq[String])
   extends JdbcScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns) {
 
-  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
-    if (state.frequencies.isEmpty) {
-      return toFailureMetric(new EmptyStateException(
-        s"Empty state for analyzer JdbcUniqueValueRatio, all input values were NULL."))
-    }
+  override def aggregationFunctions(numRows: Long): Seq[String] = {
+    val noNullValue = Some(s"${columns.head} IS NOT NULL")
+    val conditions = noNullValue :: Some("absolute = 1") :: Nil
 
-    val numUniqueValues = state.frequencies.values.count(_ == 1)
-    val numDistinctValues = state.frequencies.size
-    toSuccessMetric(numUniqueValues.toDouble / numDistinctValues)
+    s"SUM(${conditionalSelection("1", conditions)})" ::
+      conditionalCount(noNullValue) :: Nil
+  }
+
+  override def fromAggregationResult(result: JdbcRow, offset: Int): DoubleMetric = {
+    val numUniqueValues = result.getDouble(offset)
+    val numDistinctValues = result.getLong(offset + 1).toDouble
+
+    toSuccessMetric(numUniqueValues / numDistinctValues)
+  }
+
+  override def computeMetricFrom(state: Option[JdbcFrequenciesAndNumRows]): DoubleMetric = {
+
+    state match {
+      case Some(theState) =>
+        if (theState.numRows == 0 || theState.numNulls() == theState.numRows) {
+          return metricFromEmpty(this, "UniqueValueRatio",
+            columns.mkString(","), entityFrom(columns))
+        }
+      case None =>
+    }
+    super.computeMetricFrom(state)
   }
 }
 

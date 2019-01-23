@@ -16,14 +16,14 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.utils.FixtureSupport
+import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.scalatest.{Matchers, WordSpec}
-import org.apache.spark.sql.functions.expr
 
 class StateAggregationIntegrationTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {

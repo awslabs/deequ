@@ -16,17 +16,12 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import com.amazon.deequ.analyzers.jdbc.JdbcUtils.withJdbc
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object DistinctnessWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val distinctnessOfFatFactor = JdbcDistinctness("fat_factor").calculate(table)
 
-    val table = Table("food_des", connection)
-
-    val distinctnessOfFatFactor = JdbcDistinctness("fat_factor").calculate(table)
-
-    println(distinctnessOfFatFactor)
-
-  }
+  println(distinctnessOfFatFactor)
 }

@@ -16,11 +16,11 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
 import breeze.stats.meanAndVariance
-import scala.util.Random
+import org.scalatest.{Matchers, WordSpec}
 
 import scala.math.abs
+import scala.util.Random
 
 class OnlineNormalStrategyTest extends WordSpec with Matchers {
 

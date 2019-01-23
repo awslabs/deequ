@@ -17,11 +17,11 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row}
-import com.amazon.deequ.analyzers.runners._
 
 import scala.language.existentials
 import scala.util.{Failure, Success}

@@ -16,18 +16,13 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import JdbcUtils._
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object PatternMatchWithJdbc extends App {
 
-  withJdbc { connection =>
-
-    val table = Table("data_src", connection)
-
-    val patternMatchOfAuthors = JdbcPatternMatch("authors",
+  val table = Table("data_src", jdbcUrl, connectionProperties())
+  val patternMatchOfAuthors = JdbcPatternMatch("authors",
       raw"(?i)association|administration|laboratory".r).calculate(table)
 
-    println(patternMatchOfAuthors)
-
-  }
+  println(patternMatchOfAuthors)
 }

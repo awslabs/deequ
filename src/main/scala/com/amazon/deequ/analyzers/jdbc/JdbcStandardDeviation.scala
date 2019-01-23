@@ -18,77 +18,32 @@ package com.amazon.deequ.analyzers.jdbc
 
 import java.sql.ResultSet
 
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.StandardDeviationState
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, isNumeric, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasNoInjection, isNumeric}
 
 case class JdbcStandardDeviation(column: String, where: Option[String] = None)
-  extends JdbcAnalyzer[StandardDeviationState, DoubleMetric] {
+  extends JdbcStandardScanShareableAnalyzer[StandardDeviationState](
+    "StandardDeviation", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
+  override def aggregationFunctions() : Seq[String] = {
+    conditionalCountNotNull(column, where) :: s"SUM(${conditionalSelection(column, where)})" ::
+      s"SUM(POWER(${conditionalSelection(column, where)}, 2))" :: Nil
   }
 
-  override def computeStateFrom(table: Table): Option[StandardDeviationState] = {
-
-    val connection = table.jdbcConnection
-    val query =
-      s"""
-         |SELECT
-         | col_count,
-         | col_avg,
-         | SUM(POWER($column - col_avg, 2)) AS col_m2
-         |FROM
-         | (SELECT
-         |  $column
-         | FROM
-         |  ${table.name}
-         | WHERE
-         |  ${where.getOrElse("TRUE=TRUE")}) AS A
-         |CROSS JOIN
-         | (SELECT
-         |   COUNT($column) AS col_count,
-         |   AVG($column) AS col_avg
-         |  FROM ${table.name}
-         |  WHERE
-         |   ${where.getOrElse("TRUE=TRUE")}) AS B
-         |GROUP BY
-         | col_count,
-         | col_avg
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val col_avg = result.getDouble("col_avg")
-      val col_m2 = result.getDouble("col_m2")
-      val col_count = result.getDouble("col_count")
-
-      if (col_count > 0) {
-        result.close()
-        return Some(StandardDeviationState(col_count, col_avg, col_m2))
-      }
-    }
-    result.close()
-    None
-  }
-
-  override def computeMetricFrom(state: Option[StandardDeviationState]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "StandardDeviation", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcStandardDeviation, all input values were NULL."))
+  override def fromAggregationResult(result: JdbcRow, offset: Int)
+    : Option[StandardDeviationState] = {
+      ifNoNullsIn(result, offset, 3) { _ =>
+        val num_rows = result.getDouble(offset)
+        val col_sum = result.getDouble(offset + 1)
+        val col_sum_squared = result.getDouble(offset + 2)
+        val col_avg : Double = col_sum / num_rows
+        val m2 : Double = col_sum_squared - col_sum * col_sum / num_rows
+        StandardDeviationState(num_rows, col_avg, m2)
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "StandardDeviation", column, Entity.Column)
+  override def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
   }
 }

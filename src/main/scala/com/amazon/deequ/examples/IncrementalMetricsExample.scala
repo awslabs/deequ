@@ -16,9 +16,9 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.{itemsAsDataframe, withSpark}
-import com.amazon.deequ.analyzers.{Analysis, ApproxCountDistinct, Completeness, InMemoryStateProvider, Size}
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
+import com.amazon.deequ.analyzers._
+import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 
 private[examples] object IncrementalMetricsExample extends App {
 

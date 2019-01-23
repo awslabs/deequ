@@ -17,15 +17,15 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.constraints.ConstraintStatus
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.fs.FileSystemMetricsRepository
 import com.amazon.deequ.utils.TempFileUtils
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.scalatest.WordSpec
-import TempFileUtils._
+import com.amazon.deequ.utils.TempFileUtils._
 import com.amazon.deequ.{SparkContextSpec, VerificationResult, VerificationSuite}
-import com.amazon.deequ.constraints.ConstraintStatus
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.scalatest.WordSpec
 
 class PartitionedTableIntegrationTest extends WordSpec with SparkContextSpec {
 

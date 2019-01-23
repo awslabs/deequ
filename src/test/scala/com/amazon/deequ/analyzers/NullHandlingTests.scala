@@ -16,13 +16,12 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
+import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.Success

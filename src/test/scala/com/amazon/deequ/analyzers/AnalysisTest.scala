@@ -19,8 +19,8 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
+import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.{Matchers, WordSpec}
 

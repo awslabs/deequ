@@ -16,63 +16,26 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.MaxState
-import com.amazon.deequ.analyzers.jdbc.Preconditions._
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, isNumeric}
+
 
 case class JdbcMaximum(column: String, where: Option[String] = None)
-  extends JdbcAnalyzer[MaxState, DoubleMetric] {
+  extends JdbcStandardScanShareableAnalyzer[MaxState]("Maximum", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
+  override def aggregationFunctions(): Seq[String] = {
+    s"MAX(${conditionalSelection(column, where)})" :: Nil
   }
 
-  override def computeStateFrom(table: Table): Option[MaxState] = {
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[MaxState] = {
 
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | MAX($column) AS col_max
-         |FROM
-         | ${table.name}
-         |WHERE
-         | ${where.getOrElse("TRUE=TRUE")}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val col_max = result.getDouble("col_max")
-
-      if (!result.wasNull()) {
-        result.close()
-        return Some(MaxState(col_max))
-      }
-    }
-    result.close()
-    None
-  }
-
-  override def computeMetricFrom(state: Option[MaxState]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Maximum", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcMaximum, all input values were NULL."))
+    ifNoNullsIn(result, offset) { _ =>
+      MaxState(result.getDouble(offset))
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Maximum", column, Entity.Column)
+  override protected def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: isNumeric(column) :: Nil
   }
 }

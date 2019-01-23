@@ -23,8 +23,9 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
 import org.apache.spark.sql.functions.udf
+import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
+
 import scala.util.Try
 
 class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec with FixtureSupport

@@ -16,10 +16,10 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
-import Analyzers._
 import org.apache.spark.sql.{Column, Row}
 
 /** Completeness is the fraction of non-null values in a column of a DataFrame. */

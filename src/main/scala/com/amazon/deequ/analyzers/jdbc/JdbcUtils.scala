@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.{Connection, DriverManager, ResultSet}
+import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import org.apache.spark.sql.SparkSession
@@ -24,8 +24,6 @@ import org.apache.spark.sql.SparkSession
 import scala.io.Source
 
 private[jdbc] object JdbcUtils {
-
-  classOf[org.postgresql.Driver]
 
   val jdbcUrl = "jdbc:postgresql://localhost:5432/food"
 
@@ -44,7 +42,6 @@ private[jdbc] object JdbcUtils {
   }
 
   def withJdbc(func: Connection => Unit): Unit = {
-    classOf[org.postgresql.Driver]
     val connection = DriverManager.getConnection(jdbcUrl, connectionProperties())
     try {
       func(connection)

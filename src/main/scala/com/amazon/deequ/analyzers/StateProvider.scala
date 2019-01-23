@@ -18,8 +18,6 @@ package com.amazon.deequ.analyzers
 
 import java.util.concurrent.ConcurrentHashMap
 
-import com.google.common.io.Closeables
-import org.apache.hadoop.fs.{FSDataInputStream, FSDataOutputStream, FileSystem, Path}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.aggregate.{ApproximatePercentile, DeequHyperLogLogPlusPlusUtils}
 

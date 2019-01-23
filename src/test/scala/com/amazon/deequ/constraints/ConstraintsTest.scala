@@ -17,14 +17,13 @@
 package com.amazon.deequ
 package constraints
 
-import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
-import ConstraintUtils.calculate
 import com.amazon.deequ.analyzers.{Completeness, NumMatchesAndCount}
+import com.amazon.deequ.constraints.Constraint._
+import com.amazon.deequ.constraints.ConstraintUtils.calculate
+import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DoubleType, StringType}
-import Constraint._
-import com.amazon.deequ.SparkContextSpec
+import org.scalatest.{Matchers, WordSpec}
 
 class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
 

@@ -16,9 +16,8 @@
 
 package com.amazon.deequ
 
+import com.amazon.deequ.analyzers.{Analyzer, State}
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
-import com.amazon.deequ.analyzers.Analyzer
-import com.amazon.deequ.analyzers.{State, _}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._

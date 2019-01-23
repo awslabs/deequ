@@ -18,6 +18,7 @@ package com.amazon.deequ.utils
 
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+
 import scala.util.Random
 
 

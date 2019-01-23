@@ -15,20 +15,33 @@
   */
 
 package com.amazon.deequ.analyzers.jdbc
-
-import com.amazon.deequ.analyzers.runners.EmptyStateException
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
 import com.amazon.deequ.metrics.DoubleMetric
 
+/** Uniqueness is the fraction of unique values of a column(s), i.e.,
+  * values that occur exactly once. */
 case class JdbcUniqueness(columns: Seq[String])
   extends JdbcScanShareableFrequencyBasedAnalyzer("Uniqueness", columns) {
 
-  override def calculateMetricValue(state: JdbcFrequenciesAndNumRows): DoubleMetric = {
-    if (state.frequencies.isEmpty) {
-      return toFailureMetric(new EmptyStateException(
-        s"Empty state for analyzer JdbcUniqueness, all input values were NULL."))
+  override def aggregationFunctions(numRows: Long): Seq[String] = {
+
+    val conditions = Some(s"${columns.head} IS NOT NULL") :: Some("absolute = 1") :: Nil
+    val count = s"COUNT(${conditionalSelection("1", conditions)})"
+
+    s"(${toDouble(count)} / $numRows)" :: Nil
+  }
+
+  override def computeMetricFrom(state: Option[JdbcFrequenciesAndNumRows]): DoubleMetric = {
+
+    state match {
+      case Some(theState) =>
+        if (theState.numNulls() == theState.numRows) {
+          return metricFromEmpty(this, "Uniqueness",
+            columns.mkString(","), entityFrom(columns))
+        }
+      case None =>
     }
-    val numUniqueValues = state.frequencies.values.count(_ == 1)
-    toSuccessMetric(numUniqueValues.toDouble / state.numRows)
+    super.computeMetricFrom(state)
   }
 }
 

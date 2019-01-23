@@ -16,7 +16,6 @@
 
 package com.amazon.deequ.metrics
 
-import com.amazon.deequ.analyzers.DataTypeInstances
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.{Failure, Success}

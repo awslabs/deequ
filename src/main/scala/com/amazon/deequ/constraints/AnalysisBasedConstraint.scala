@@ -19,7 +19,8 @@ package com.amazon.deequ.constraints
 import com.amazon.deequ.analyzers.{Analyzer, State}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
-import scala.util.{Failure, Success, Try}
+
+import scala.util.{Failure, Success}
 
 /**
   * Common trait for all analysis based constraints that provides unified way to access

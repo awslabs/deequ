@@ -23,6 +23,7 @@ import com.amazon.deequ.metrics._
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{BooleanType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType, DataType => SparkDataType}
+
 import scala.util.Success
 
 private[deequ] case class GenericColumnStatistics(

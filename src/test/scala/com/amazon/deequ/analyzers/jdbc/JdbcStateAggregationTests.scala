@@ -16,8 +16,7 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.Connection
-
+import breeze.numerics.abs
 import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.metrics.Metric
 import org.scalatest.{Matchers, WordSpec}
@@ -29,34 +28,31 @@ class JdbcStateAggregationTests extends WordSpec with Matchers with JdbcContextS
 
   "State aggregation outside" should {
 
-    "give correct results" in withJdbc { connection =>
+    "give correct results" in {
 
-      correctlyAggregatesStates(connection, JdbcSize())
-      correctlyAggregatesStates(connection, JdbcMaximum("marketplace_id"))
-      correctlyAggregatesStates(connection, JdbcMinimum("marketplace_id"))
-      correctlyAggregatesStates(connection, JdbcMean("marketplace_id"))
-      correctlyAggregatesStates(connection, JdbcStandardDeviation("marketplace_id"))
-      correctlyAggregatesStates(connection, JdbcUniqueness("attribute" :: "value" :: Nil))
-      correctlyAggregatesStates(connection, JdbcDistinctness("attribute" :: Nil))
-      correctlyAggregatesStates(connection, JdbcCountDistinct("value" :: Nil))
-      correctlyAggregatesStates(connection, JdbcUniqueValueRatio("value"))
-      correctlyAggregatesStates(connection, JdbcCompleteness("attribute"))
-      correctlyAggregatesStates(connection,
-        JdbcCompliance("attribute", "attribute like '%facets%'"))
-      correctlyAggregatesStates(connection, JdbcCorrelation("numbersA", "numbersB"))
-      correctlyAggregatesStates(connection, JdbcEntropy("attribute"))
-      correctlyAggregatesStates(connection, JdbcHistogram("value"))
+      correctlyAggregatesStates(JdbcSize())
+      correctlyAggregatesStates(JdbcMaximum("marketplace_id"))
+      correctlyAggregatesStates(JdbcMinimum("marketplace_id"))
+      correctlyAggregatesStates(JdbcMean("marketplace_id"))
+      correctlyAggregatesStates(JdbcStandardDeviation("marketplace_id"))
+      correctlyAggregatesStates(JdbcUniqueness("attribute" :: "value" :: Nil))
+      correctlyAggregatesStates(JdbcDistinctness("attribute" :: Nil))
+      correctlyAggregatesStates(JdbcCountDistinct("value" :: Nil))
+      correctlyAggregatesStates(JdbcUniqueValueRatio("value"))
+      correctlyAggregatesStates(JdbcCompleteness("attribute"))
+      correctlyAggregatesStates(JdbcCompliance("attribute", "attribute like '%facets%'"))
+      correctlyAggregatesStates(JdbcCorrelation("numbersA", "numbersB"))
+      correctlyAggregatesStates(JdbcEntropy("attribute"))
+      correctlyAggregatesStates(JdbcHistogram("value"))
     }
   }
 
-  def correctlyAggregatesStates[S <: State[S]](
-                                                connection: Connection,
-                                                analyzer: JdbcAnalyzer[S, Metric[_]])
+  def correctlyAggregatesStates[S <: State[S]](analyzer: JdbcAnalyzer[S, Metric[_]])
   : Unit = {
 
-    val dataA = initialData(connection)
-    val dataB = deltaData(connection)
-    val dataAB = completeData(connection)
+    val dataA = initialData()
+    val dataB = deltaData()
+    val dataAB = completeData()
 
     val stateA = analyzer.computeStateFrom(dataA)
     val stateB = analyzer.computeStateFrom(dataB)
@@ -66,10 +62,21 @@ class JdbcStateAggregationTests extends WordSpec with Matchers with JdbcContextS
 
     val metricFromAggregation = analyzer.computeMetricFrom(mergedState)
 
-    assert(metricFromAggregation == metricFromCalculate)
+    assert(metricFromAggregation.instance == metricFromCalculate.instance)
+    assert(metricFromAggregation.entity == metricFromCalculate.entity)
+    assert(metricFromAggregation.name == metricFromCalculate.name)
+
+    (metricFromAggregation.value.get, metricFromCalculate.value.get) match {
+      case (aggResult: Number, calcResult: Number) =>
+        assert(abs(aggResult.doubleValue() - calcResult.doubleValue()) <= 1e-15)
+      case _ =>
+        assert(metricFromAggregation.value == metricFromCalculate.value)
+    }
+
+    // assert(metricFromAggregation == metricFromCalculate)
   }
 
-  def initialData(conn: Connection): Table = {
+  def initialData(): Table = {
     val columns = mutable.LinkedHashMap[String, String](
       "marketplace_id" -> "INTEGER", "item" -> "TEXT", "attribute" -> "TEXT", "value" -> "TEXT",
     "numbersA" -> "INTEGER", "numbersB" -> "INTEGER")
@@ -96,10 +103,10 @@ class JdbcStateAggregationTests extends WordSpec with Matchers with JdbcContextS
       Seq(1, "B001RS3C2C", "CATEGORY-0-$ims_facets-0-", "extended", 55, 0),
       Seq(1, "B001RTDRO4", "CATEGORY-0-$ims_facets-0-", "extended", 83, 0))
 
-    fillTableWithData(conn: Connection, "initialData", columns, data)
+    fillTableWithData("initialData", columns, data)
   }
 
-  def deltaData(conn: Connection): Table = {
+  def deltaData(): Table = {
     val columns = mutable.LinkedHashMap[String, String](
       "marketplace_id" -> "INTEGER", "item" -> "TEXT", "attribute" -> "TEXT", "value" -> "TEXT",
       "numbersA" -> "INTEGER", "numbersB" -> "INTEGER")
@@ -125,10 +132,10 @@ class JdbcStateAggregationTests extends WordSpec with Matchers with JdbcContextS
       Seq(1, "B00C1DDNC6", "BroadITKitem_type_keyword-0-", "lighting-products", 82, 71),
       Seq(1, "B00CF0URZ6", "BroadITKitem_type_keyword-0-", "lighting-products", 81, 72))
 
-    fillTableWithData(conn: Connection, "deltaData", columns, data)
+    fillTableWithData("deltaData", columns, data)
   }
 
-  def completeData(conn: Connection): Table = {
+  def completeData(): Table = {
     val columns = mutable.LinkedHashMap[String, String](
       "marketplace_id" -> "INTEGER", "item" -> "TEXT", "attribute" -> "TEXT", "value" -> "TEXT",
       "numbersA" -> "INTEGER", "numbersB" -> "INTEGER")
@@ -175,6 +182,6 @@ class JdbcStateAggregationTests extends WordSpec with Matchers with JdbcContextS
       Seq(1, "B00C1DDNC6", "BroadITKitem_type_keyword-0-", "lighting-products", 82, 71),
       Seq(1, "B00CF0URZ6", "BroadITKitem_type_keyword-0-", "lighting-products", 81, 72))
 
-    fillTableWithData(conn: Connection, "completeData", columns, data)
+    fillTableWithData("completeData", columns, data)
   }
 }

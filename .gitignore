@@ -4,4 +4,7 @@
 target/
 bachelor-project/usda.sql
 **/jdbc.properties
+**/groupingAnalyzerStateStorage.properties
 /memory
+/analyzerTests.db?cache=shared&mode=memory
+/groupingAnalyzerTests.db?cache=shared&mode=memory

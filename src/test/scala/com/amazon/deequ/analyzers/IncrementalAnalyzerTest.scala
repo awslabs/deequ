@@ -19,7 +19,6 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.expr
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.Success

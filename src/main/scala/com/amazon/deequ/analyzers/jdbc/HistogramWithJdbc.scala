@@ -20,13 +20,8 @@ import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object HistogramWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val histogramOfComName = JdbcHistogram("fat_factor").calculate(table)
 
-    val table = Table("food_des", connection)
-
-    val histogramOfComName = JdbcHistogram("fat_factor").calculate(table)
-
-    println(histogramOfComName)
-
-  }
+  println(histogramOfComName)
 }

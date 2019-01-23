@@ -25,8 +25,7 @@ object StandardDeviationWithSpark extends App {
 
     val data = session.read.jdbc(jdbcUrl, "food_des", connectionProperties())
 
-    val standardDeviationOfFatFactor = StandardDeviation("fat_factor",
-      Some("fat_factor < 5.0")).calculate(data)
+    val standardDeviationOfFatFactor = StandardDeviation("fat_factor").calculate(data)
 
     println(standardDeviationOfFatFactor)
   }

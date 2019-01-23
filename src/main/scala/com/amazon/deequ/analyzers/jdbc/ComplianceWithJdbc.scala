@@ -16,18 +16,13 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import JdbcUtils._
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object ComplianceWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val complianceWithFatFactorRange =
+    JdbcCompliance(s"constraint name", s"fat_factor BETWEEN 0 AND 1").calculate(table)
 
-    val table = Table("food_des", connection)
-
-    val complianceWithFatFactorRange =
-      JdbcCompliance(s"constraint name", s"fat_factor BETWEEN 0 AND 1").calculate(table)
-
-    println(complianceWithFatFactorRange)
-
-  }
+  println(complianceWithFatFactorRange)
 }

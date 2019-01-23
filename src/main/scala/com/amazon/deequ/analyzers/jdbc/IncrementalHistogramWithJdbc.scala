@@ -20,21 +20,16 @@ import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object IncrementalHistogramWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val analyzer = JdbcHistogram("fat_factor")
 
-    val table = Table("food_des", connection)
+  println(analyzer.calculate(table))
 
-    val analyzer = JdbcHistogram("fat_factor")
+  val stateProvider = JdbcFileSystemStateProvider("") // file system path to store at
 
-    println(analyzer.calculate(table))
+  stateProvider.persist[JdbcFrequenciesAndNumRows](analyzer, analyzer.computeStateFrom(table).get)
+  val histogramOfComName =
+    analyzer.computeMetricFrom(stateProvider.load[JdbcFrequenciesAndNumRows](analyzer))
 
-    val stateProvider = JdbcFileSystemStateProvider("") // file system path to store at
-
-    stateProvider.persist[JdbcFrequenciesAndNumRows](analyzer, analyzer.computeStateFrom(table).get)
-    val histogramOfComName =
-      analyzer.computeMetricFrom(stateProvider.load[JdbcFrequenciesAndNumRows](analyzer))
-
-    println(histogramOfComName)
-
-  }
+  println(histogramOfComName)
 }

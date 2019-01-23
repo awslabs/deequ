@@ -17,8 +17,7 @@
 package com.amazon.deequ.analyzers.jdbc
 
 import com.amazon.deequ.analyzers.DataType
-
-import JdbcUtils._
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object DataTypeWithSpark extends App {
 

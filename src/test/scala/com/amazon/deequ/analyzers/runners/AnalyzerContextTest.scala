@@ -17,11 +17,11 @@
 package com.amazon.deequ.analyzers.runners
 
 import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.repository.SimpleResultSerde
+import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.scalatest.{Matchers, WordSpec}
 
 class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
 

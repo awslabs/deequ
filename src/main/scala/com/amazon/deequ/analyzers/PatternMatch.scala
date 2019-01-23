@@ -17,9 +17,9 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.{col, lit, regexp_extract, sum, when}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.{Column, Row}
 
 import scala.util.matching.Regex
 

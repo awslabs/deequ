@@ -20,13 +20,8 @@ import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object MinimumWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val minimumOfFatFactor = JdbcMinimum("fat_factor", Some("fat_factor > 5.0")).calculate(table)
 
-    val table = Table("food_des", connection)
-
-    val minimumOfFatFactor = JdbcMinimum("fat_factor", Some("fat_factor > 5.0")).calculate(table)
-
-    println(minimumOfFatFactor)
-
-  }
+  println(minimumOfFatFactor)
 }

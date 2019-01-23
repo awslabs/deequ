@@ -16,9 +16,9 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.metrics.Entity
 import org.apache.spark.sql.{Column, Row}
-import Analyzers._
 
 case class NumMatches(numMatches: Long) extends DoubleValuedState[NumMatches] {
 

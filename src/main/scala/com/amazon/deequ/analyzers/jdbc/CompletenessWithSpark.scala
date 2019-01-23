@@ -17,8 +17,7 @@
 package com.amazon.deequ.analyzers.jdbc
 
 import com.amazon.deequ.analyzers.Completeness
-
-import JdbcUtils._
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object CompletenessWithSpark extends App {
 

@@ -17,9 +17,9 @@
 package com.amazon.deequ.repository
 
 import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql._
-import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import org.apache.spark.sql.functions.lit
 
 private[deequ] case class AnalysisResult(

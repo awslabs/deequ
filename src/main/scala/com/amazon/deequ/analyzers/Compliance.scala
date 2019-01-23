@@ -16,10 +16,10 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers._
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions._
-import Analyzers._
 
 /**
   * Compliance is a measure of the fraction of rows that complies with the given column constraint.

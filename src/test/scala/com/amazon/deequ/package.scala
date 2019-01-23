@@ -16,9 +16,8 @@
 
 package com.amazon
 
+import org.apache.spark.sql.types.{StructField, StructType, DataType => SparkDT}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.apache.spark.sql.types.{StructField, StructType}
-import org.apache.spark.sql.types.{ DataType => SparkDT }
 
 package object deequ {
   def dataFrameWithColumn(

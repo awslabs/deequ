@@ -16,65 +16,33 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatchesAndCount
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasTable, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.hasColumn
 
-case class JdbcCompleteness(column: String, where: Option[String] = None)
-  extends JdbcAnalyzer[NumMatchesAndCount, DoubleMetric] {
+case class JdbcCompleteness(column: String, where: Option[String] = None) extends
+  JdbcStandardScanShareableAnalyzer[NumMatchesAndCount]("Completeness", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: hasNoInjection(where) :: Nil
-  }
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[NumMatchesAndCount] = {
 
-  override def computeStateFrom(table: Table): Option[NumMatchesAndCount] = {
-
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-        |SELECT
-        | SUM(CASE WHEN $column IS NULL THEN 0 ELSE 1 END) AS num_matches,
-        | COUNT(*) AS num_rows
-        |FROM
-        | ${table.name}
-        |WHERE
-        | ${where.getOrElse("TRUE=TRUE")}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val num_matches = result.getLong("num_matches")
-      val num_rows = result.getLong("num_rows")
-
-      if (num_rows > 0) {
-        result.close()
-        return Some(NumMatchesAndCount(num_matches, num_rows))
-      }
+    /** check whether the table was empty or not */
+    if (result.getLong(offset + 1) == 0) {
+      return None
     }
-    result.close()
-    None
-  }
 
-  override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Completeness", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcCompleteness, all input values were NULL."))
+    ifNoNullsIn(result, offset, howMany = 2) { _ =>
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1))
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Completeness", column, Entity.Column)
+  override def aggregationFunctions(): Seq[String] = {
+
+    val summation = s"COUNT(${conditionalSelectionNotNull(column, where)})"
+
+    summation :: conditionalCount(where) :: Nil
+  }
+
+  override protected def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: Nil
   }
 }

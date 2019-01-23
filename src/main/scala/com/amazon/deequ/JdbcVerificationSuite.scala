@@ -1,0 +1,264 @@
+/**
+ * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ */
+
+package com.amazon.deequ
+
+import com.amazon.deequ.analyzers._
+import com.amazon.deequ.analyzers.applicability.{AnalyzersApplicability, Applicability, CheckApplicability}
+import com.amazon.deequ.analyzers.jdbc.{JdbcAnalyzer, JdbcStateLoader, JdbcStatePersister, Table}
+import com.amazon.deequ.analyzers.runners._
+import com.amazon.deequ.checks.{Check, JdbcCheck, JdbcCheckStatus}
+import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.repository.{JdbcMetricsRepository, ResultKey}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.StructType
+
+private[deequ] case class JdbcVerificationMetricsRepositoryOptions(
+      metricsRepository: Option[JdbcMetricsRepository] = None,
+      reuseExistingResultsForKey: Option[ResultKey] = None,
+      failIfResultsForReusingMissing: Boolean = false,
+      saveOrAppendResultsWithKey: Option[ResultKey] = None)
+
+private[deequ] case class JdbcVerificationFileOutputOptions(
+      saveCheckResultsJsonToPath: Option[String] = None,
+      saveSuccessMetricsJsonToPath: Option[String] = None,
+      overwriteOutputFiles: Boolean = false)
+
+/** Responsible for running checks and required analysis and return the results */
+class JdbcVerificationSuite {
+
+  /**
+    * Starting point to construct a VerificationRun.
+    *
+    * @param data tabular data on which the checks should be verified
+    */
+  def onData(data: Table): JdbcVerificationRunBuilder = {
+    new JdbcVerificationRunBuilder(data)
+  }
+
+  /**
+    * Runs all check groups and returns the verification result.
+    * Verification result includes all the metrics computed during the run.
+    *
+    * @param data             tabular data on which the checks should be verified
+    * @param checks           A sequence of check objects to be executed
+    * @param requiredAnalyzers can be used to enforce the calculation of some some metrics
+    *                          regardless of if there are constraints on them (optional)
+    * @param aggregateWith    loader from which we retrieve initial states to aggregate (optional)
+    * @param saveStatesWith   persist resulting states for the configured analyzers (optional)
+    * @param metricsRepositoryOptions Options related to the MetricsRepository
+    * @param fileOutputOptions Options related to FileOuput using a SparkSession
+    * @return Result for every check including the overall status, detailed status for each
+    *         constraints and all metrics produced
+    */
+  private[deequ] def doVerificationRun(
+      data: Table,
+      checks: Seq[JdbcCheck],
+      requiredAnalyzers: Seq[JdbcAnalyzer[_, Metric[_]]],
+      aggregateWith: Option[JdbcStateLoader] = None,
+      saveStatesWith: Option[JdbcStatePersister] = None,
+      metricsRepositoryOptions: JdbcVerificationMetricsRepositoryOptions =
+        JdbcVerificationMetricsRepositoryOptions(),
+      fileOutputOptions: JdbcVerificationFileOutputOptions =
+        JdbcVerificationFileOutputOptions())
+    : JdbcVerificationResult = {
+
+    val analyzers = requiredAnalyzers ++ checks.flatMap { _.requiredAnalyzers() }
+
+    val analysisResults = JdbcAnalysisRunner.doAnalysisRun(
+      data,
+      analyzers,
+      aggregateWith,
+      saveStatesWith,
+      metricsRepositoryOptions = JdbcAnalysisRunnerRepositoryOptions(
+        metricsRepositoryOptions.metricsRepository,
+        metricsRepositoryOptions.reuseExistingResultsForKey,
+        metricsRepositoryOptions.failIfResultsForReusingMissing,
+        saveOrAppendResultsWithKey = None))
+
+    val verificationResult = evaluate(checks, analysisResults)
+
+    val analyzerContext = JdbcAnalyzerContext(verificationResult.metrics)
+
+    saveOrAppendResultsIfNecessary(
+      analyzerContext,
+      metricsRepositoryOptions.metricsRepository,
+      metricsRepositoryOptions.saveOrAppendResultsWithKey)
+
+    saveJsonOutputsToFilesystemIfNecessary(fileOutputOptions, verificationResult)
+
+    verificationResult
+  }
+
+  private[this] def saveJsonOutputsToFilesystemIfNecessary(
+    fileOutputOptions: JdbcVerificationFileOutputOptions,
+    verificationResult: JdbcVerificationResult)
+  : Unit = {
+
+    /* fileOutputOptions.sparkSession.foreach { session =>
+      fileOutputOptions.saveCheckResultsJsonToPath.foreach { profilesOutput =>
+
+        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
+          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
+            writer.append(JdbcVerificationResult.checkResultsAsJson(verificationResult))
+            writer.newLine()
+          }
+        }
+    }
+
+    fileOutputOptions.sparkSession.foreach { session =>
+      fileOutputOptions.saveSuccessMetricsJsonToPath.foreach { profilesOutput =>
+
+        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
+          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
+            writer.append(JdbcVerificationResult.successMetricsAsJson(verificationResult))
+            writer.newLine()
+          }
+        }
+    } */
+  }
+
+  private[this] def saveOrAppendResultsIfNecessary(
+      resultingAnalyzerContext: JdbcAnalyzerContext,
+      metricsRepository: Option[JdbcMetricsRepository],
+      saveOrAppendResultsWithKey: Option[ResultKey])
+    : Unit = {
+
+    metricsRepository.foreach{repository =>
+      saveOrAppendResultsWithKey.foreach { key =>
+
+        val currentValueForKey = repository.loadByKey(key)
+
+        // AnalyzerContext entries on the right side of ++ will overwrite the ones on the left
+        // if there are two different metric results for the same analyzer
+        val valueToSave = currentValueForKey.getOrElse(JdbcAnalyzerContext.empty) ++
+          resultingAnalyzerContext
+
+        repository.save(saveOrAppendResultsWithKey.get, valueToSave)
+      }
+    }
+  }
+
+  /**
+    * Runs all check groups and returns the verification result. Metrics are computed from
+    * aggregated states. Verification result includes all the metrics generated during the run.
+    *
+    * @param schema schema of the tabular data on which the checks should be verified
+    * @param checks           A sequence of check objects to be executed
+    * @param stateLoaders loaders from which we retrieve the states to aggregate
+    * @param requiredAnalysis can be used to enforce the some metrics regardless of if
+    *                         there are constraints on them (optional)
+    * @param saveStatesWith persist resulting states for the configured analyzers (optional)
+    * @return Result for every check including the overall status, detailed status for each
+    *         constraints and all metrics produced
+    */
+  def runOnAggregatedStates(
+      schema: Table,
+      checks: Seq[JdbcCheck],
+      stateLoaders: Seq[JdbcStateLoader],
+      requiredAnalysis: JdbcAnalysis = JdbcAnalysis(),
+      saveStatesWith: Option[JdbcStatePersister] = None,
+      metricsRepository: Option[JdbcMetricsRepository] = None,
+      saveOrAppendResultsWithKey: Option[ResultKey] = None)
+    : JdbcVerificationResult = {
+
+    val analysis = requiredAnalysis.addAnalyzers(checks.flatMap { _.requiredAnalyzers() })
+
+    val analysisResults = JdbcAnalysisRunner.runOnAggregatedStates(
+      schema,
+      analysis,
+      stateLoaders,
+      saveStatesWith,
+      metricsRepository = metricsRepository,
+      saveOrAppendResultsWithKey = saveOrAppendResultsWithKey)
+
+    evaluate(checks, analysisResults)
+  }
+
+  /**
+    * Check whether a check is applicable to some data using the schema of the data.
+    *
+    * @param check A check that may be applicable to some data
+    * @param schema The schema of the data the checks are for
+    * @param sparkSession The spark session in order to be able to create fake data
+    */
+  def isCheckApplicableToData(
+      check: Check,
+      schema: StructType,
+      sparkSession: SparkSession)
+    : CheckApplicability = {
+
+    new Applicability(sparkSession).isApplicable(check, schema)
+  }
+
+  /**
+    * Check whether analyzers are applicable to some data using the schema of the data.
+    *
+    * @param analyzers Analyzers that may be applicable to some data
+    * @param schema The schema of the data the analyzers are for
+    * @param sparkSession The spark session in order to be able to create fake data
+    */
+  def areAnalyzersApplicableToData(
+      analyzers: Seq[Analyzer[_ <: State[_], Metric[_]]],
+      schema: StructType,
+      sparkSession: SparkSession)
+    : AnalyzersApplicability = {
+
+    new Applicability(sparkSession).isApplicable(analyzers, schema)
+  }
+
+  private[this] def evaluate(
+      checks: Seq[JdbcCheck],
+      analysisContext: JdbcAnalyzerContext)
+    : JdbcVerificationResult = {
+
+    val checkResults = checks
+      .map { check => check -> check.evaluate(analysisContext) }
+      .toMap
+
+    val verificationStatus = if (checkResults.isEmpty) {
+      JdbcCheckStatus.Success
+    } else {
+      checkResults.values
+        .map { _.status }
+        .max
+    }
+
+    JdbcVerificationResult(verificationStatus, checkResults, analysisContext.metricMap)
+  }
+}
+
+/** Convenience functions for using the VerificationSuite */
+object JdbcVerificationSuite {
+
+  def apply(): JdbcVerificationSuite = {
+    new JdbcVerificationSuite()
+  }
+
+  def runOnAggregatedStates(
+      schema: Table,
+      checks: Seq[JdbcCheck],
+      stateLoaders: Seq[JdbcStateLoader],
+      requiredAnalysis: JdbcAnalysis = JdbcAnalysis(),
+      saveStatesWith: Option[JdbcStatePersister] = None,
+      metricsRepository: Option[JdbcMetricsRepository] = None,
+      saveOrAppendResultsWithKey: Option[ResultKey] = None                           )
+    : JdbcVerificationResult = {
+
+    JdbcVerificationSuite().runOnAggregatedStates(schema, checks, stateLoaders, requiredAnalysis,
+      saveStatesWith, metricsRepository, saveOrAppendResultsWithKey)
+  }
+}

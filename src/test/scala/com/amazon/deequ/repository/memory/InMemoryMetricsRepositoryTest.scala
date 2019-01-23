@@ -18,15 +18,15 @@ package com.amazon.deequ.repository.memory
 
 import java.time.{LocalDate, ZoneOffset}
 
+import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.AnalyzerContext._
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.WordSpec
-import AnalyzerContext._
-import com.amazon.deequ.SparkContextSpec
 
 import scala.util.{Failure, Success}
 

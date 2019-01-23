@@ -16,11 +16,11 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
-import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{count, sum}
-import org.apache.spark.sql.types.{DoubleType, StructType, LongType}
-import Analyzers._
+import org.apache.spark.sql.types.{DoubleType, LongType, StructType}
+import org.apache.spark.sql.{Column, Row}
 
 case class MeanState(sum: Double, count: Long) extends DoubleValuedState[MeanState] {
 

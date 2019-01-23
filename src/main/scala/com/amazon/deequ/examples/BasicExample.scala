@@ -16,11 +16,11 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.{withSpark, itemsAsDataframe}
 import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.checks.CheckStatus._
+import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.constraints.ConstraintStatus
+import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 
 private[examples] object BasicExample extends App {
 

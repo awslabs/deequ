@@ -16,12 +16,10 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.Analyzers.{COUNT_COL, _}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.apache.spark.sql.functions.{col, sum, udf}
 import org.apache.spark.sql.types.StructType
-import Analyzers.COUNT_COL
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
 
 /**
   * Mutual Information describes how much information about one column can be inferred from another

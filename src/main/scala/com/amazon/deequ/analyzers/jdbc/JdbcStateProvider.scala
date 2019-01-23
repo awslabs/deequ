@@ -19,11 +19,11 @@ package com.amazon.deequ.analyzers.jdbc
 import java.util.concurrent.ConcurrentHashMap
 
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.io.LocalDiskUtils
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
-
-import com.amazon.deequ.io.LocalDiskUtils
 
 private object StateInformation {
   // 4 byte for the id of an DataTypeInstances entry + 8 byte for the (Long) count of that data type
@@ -197,14 +197,36 @@ case class JdbcFileSystemStateProvider(
     : Unit = {
 
     LocalDiskUtils.writeToFileOnDisk(s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
-      out.writeLong(state.frequencies.size)
 
-      for ((key: Seq[String], value: Long) <- state.frequencies) {
+      val (cols, data) = state.frequencies()
+
+      out.writeInt(cols.size)
+
+      for ((colName: String, colDataType: String) <- cols) {
+        out.writeInt(colName.length)
+        for (char <- colName) {
+          out.writeChar(char)
+        }
+
+        out.writeInt(colDataType.length)
+        for (char <- colDataType) {
+          out.writeChar(char)
+        }
+      }
+
+      out.writeLong(data.size)
+
+      for ((key: Seq[String], value: Long) <- data) {
         out.writeInt(key.size)
-        for (string <- key) {
+        for (str <- key) {
+          val string = str match {
+            case null => "deequ__nullString"
+            case _ => str
+          }
           out.writeInt(string.length)
-          for (char <- string)
+          for (char <- string) {
             out.writeChar(char)
+          }
         }
         out.writeLong(value)
       }
@@ -267,6 +289,21 @@ case class JdbcFileSystemStateProvider(
 
   private[this] def loadFrequenciesLongState(identifier: String): JdbcFrequenciesAndNumRows = {
     LocalDiskUtils.readFromFileOnDisk(s"$locationPrefix-$identifier.bin") { in =>
+
+      val numberOfCols = in.readInt()
+
+      val columns = mutable.LinkedHashMap[String, String]()
+
+      for (_ <- 1 to numberOfCols) {
+        val colNameLength = in.readInt()
+        val colName: String = (for (_ <- 1 to colNameLength) yield in.readChar()).mkString
+
+        val colDataTypeLength = in.readInt()
+        val colDataType: String = (for (_ <- 1 to colDataTypeLength) yield in.readChar()).mkString
+
+        columns(colName) = colDataType
+      }
+
       val numberOfBins = in.readLong()
 
       def readKeyValuePair(map: Map[Seq[String], Long]): Map[Seq[String], Long] = {
@@ -275,7 +312,13 @@ case class JdbcFileSystemStateProvider(
           var columns = Seq[String]()
           for (_ <- 1 to columnsAmount) {
             val keyLength = in.readInt()
-            val key: String = (for (_ <- 1 to keyLength) yield in.readChar()).mkString
+            val str: String = (for (_ <- 1 to keyLength) yield in.readChar()).mkString
+
+            val key = str match {
+              case "deequ__nullString" => null
+              case _ => str
+            }
+
             columns = columns :+ key
           }
           val value: Long = in.readLong()
@@ -288,7 +331,7 @@ case class JdbcFileSystemStateProvider(
 
       val frequencies = readKeyValuePair(Map[Seq[String], Long]())
       val numRows = in.readLong()
-      JdbcFrequenciesAndNumRows(frequencies, numRows)
+      JdbcFrequenciesAndNumRows.from(columns, frequencies, numRows)
     }
   }
 

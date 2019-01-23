@@ -16,62 +16,24 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.NumMatches
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasTable, hasNoInjection}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasNoInjection, hasTable}
+import com.amazon.deequ.metrics.Entity
 
 case class JdbcSize(where: Option[String] = None)
-  extends JdbcAnalyzer[NumMatches, DoubleMetric] {
-
-  val column = "*"
+  extends JdbcStandardScanShareableAnalyzer[NumMatches]("Size", "*", Entity.Dataset) {
 
   override def preconditions: Seq[Table => Unit] = {
     hasTable() :: hasNoInjection(where):: Nil
   }
 
-  override def computeStateFrom(table: Table): Option[NumMatches] = {
-
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | COUNT (*) AS num_rows
-         |FROM
-         | ${table.name}
-         |WHERE
-         | ${where.getOrElse("TRUE=TRUE")}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val num_rows = result.getLong("num_rows")
-      result.close()
-      return Some(NumMatches(num_rows))
-    }
-    result.close()
-    None
+  override def aggregationFunctions(): Seq[String] = {
+    JdbcAnalyzers.conditionalCount(where) :: Nil
   }
 
-  override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Size", column, Entity.Dataset)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcSize, all input values were NULL."))
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[NumMatches] = {
+    JdbcAnalyzers.ifNoNullsIn(result, offset) { _ =>
+      NumMatches(result.getLong(offset))
     }
-  }
-
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Size", column, Entity.Dataset)
   }
 }

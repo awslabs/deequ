@@ -16,17 +16,12 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import JdbcUtils._
+import com.amazon.deequ.analyzers.jdbc.JdbcUtils._
 
 object DataTypeWithJdbc extends App {
 
-  withJdbc { connection =>
+  val table = Table("food_des", jdbcUrl, connectionProperties())
+  val dataTypeOfFatFactor = JdbcDataType("fat_factor", Some("fat_factor > 8.8")).calculate(table)
 
-    val table = Table("food_des", connection)
-
-    val dataTypeOfFatFactor = JdbcDataType("fat_factor", Some("fat_factor > 8.8")).calculate(table)
-
-    println(dataTypeOfFatFactor)
-
-  }
+  println(dataTypeOfFatFactor)
 }

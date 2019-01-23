@@ -16,65 +16,26 @@
 
 package com.amazon.deequ.analyzers.jdbc
 
-import java.sql.ResultSet
-
-import com.amazon.deequ.analyzers.Analyzers.{metricFromFailure, metricFromValue}
 import com.amazon.deequ.analyzers.MeanState
-import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, hasNoInjection, hasTable, isNumeric}
-import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.jdbc.JdbcAnalyzers._
+import com.amazon.deequ.analyzers.jdbc.Preconditions.{hasColumn, isNumeric}
 
 case class JdbcMean(column: String, where: Option[String] = None)
-  extends JdbcAnalyzer[MeanState, DoubleMetric] {
+  extends JdbcStandardScanShareableAnalyzer[MeanState]("Mean", column) {
 
-  override def preconditions: Seq[Table => Unit] = {
-    hasTable() :: hasColumn(column) :: isNumeric(column) :: hasNoInjection(where) :: Nil
+  override def aggregationFunctions(): Seq[String] = {
+    s"SUM(${conditionalSelection(column, where)})" ::
+      s"COUNT(${conditionalSelection(column, where)})" :: Nil
   }
 
-  override def computeStateFrom(table: Table): Option[MeanState] = {
+  override def fromAggregationResult(result: JdbcRow, offset: Int): Option[MeanState] = {
 
-    val connection = table.jdbcConnection
-
-    val query =
-      s"""
-         |SELECT
-         | SUM($column) AS col_sum,
-         | COUNT(*) AS col_count
-         |FROM
-         | ${table.name}
-         |WHERE
-         | ${where.getOrElse("TRUE=TRUE")}
-      """.stripMargin
-
-    val statement = connection.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-      ResultSet.CONCUR_READ_ONLY)
-
-    val result = statement.executeQuery()
-
-    if (result.next()) {
-      val col_count = result.getLong("col_count")
-      val col_sum = result.getDouble("col_sum")
-
-      if (!result.wasNull()) {
-        result.close()
-        return Some(MeanState(col_sum, col_count))
-      }
-    }
-    result.close()
-    None
-  }
-
-  override def computeMetricFrom(state: Option[MeanState]): DoubleMetric = {
-    state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), "Mean", column, Entity.Column)
-      case _ =>
-        toFailureMetric(new EmptyStateException(
-          s"Empty state for analyzer JdbcMean, all input values were NULL."))
+    ifNoNullsIn(result, offset, howMany = 2) { _ =>
+      MeanState(result.getDouble(offset), result.getLong(offset + 1))
     }
   }
 
-  override private[deequ] def toFailureMetric(failure: Exception) = {
-    metricFromFailure(failure, "Mean", column, Entity.Column)
+  override protected def additionalPreconditions(): Seq[Table => Unit] = {
+    hasColumn(column) :: isNumeric(column) :: Nil
   }
 }

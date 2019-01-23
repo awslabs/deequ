@@ -20,7 +20,6 @@ import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.{Matchers, WordSpec}
-import org.apache.spark.sql.functions.col
 
 class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {

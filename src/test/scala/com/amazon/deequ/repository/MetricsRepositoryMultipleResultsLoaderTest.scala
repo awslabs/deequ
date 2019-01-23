@@ -19,12 +19,12 @@ package com.amazon.deequ.repository
 import java.time.{LocalDate, ZoneOffset}
 
 import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
+import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.scalatest.{Matchers, WordSpec}
 
 class MetricsRepositoryMultipleResultsLoaderTest extends WordSpec with Matchers
   with SparkContextSpec with FixtureSupport {

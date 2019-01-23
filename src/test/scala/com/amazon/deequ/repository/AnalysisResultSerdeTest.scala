@@ -18,13 +18,13 @@ package com.amazon.deequ.repository
 
 import java.time.{LocalDate, ZoneOffset}
 
-import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, Maximum, Mean, Minimum, MutualInformation, StandardDeviation, Uniqueness, _}
+import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, Maximum, Mean, Minimum, MutualInformation, StandardDeviation, Uniqueness, _}
 import com.amazon.deequ.metrics._
+import com.amazon.deequ.repository.AnalysisResultSerde._
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest._
-import AnalysisResultSerde._
-import com.amazon.deequ.SparkContextSpec
 
 import scala.util.{Failure, Success}
 
