@@ -261,6 +261,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         numericRangeCheck2, numericRangeCheck3, numericRangeCheck4, numericRangeCheck5, numericRangeCheck6,
         numericRangeCheck7, numericRangeCheck8, numericRangeCheck9)
 
+
       assertEvaluatesTo(numericRangeCheck1, numericRangeResults, CheckStatus.Success)
       assertEvaluatesTo(numericRangeCheck2, numericRangeResults, CheckStatus.Error)
       assertEvaluatesTo(numericRangeCheck3, numericRangeResults, CheckStatus.Error)
