@@ -862,7 +862,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     val leftOperand = if (includeLowerBound) ">=" else ">"
-    val rightOperand = if (includeLowerBound) "<=" else "<"
+    val rightOperand = if (includeUpperBound) "<=" else "<"
 
     val predicate = s"$column IS NULL OR " +
       s"($column $leftOperand $lowerBound AND $column $rightOperand $upperBound)"
