@@ -25,11 +25,11 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.FixtureSupport
+import java.sql.Timestamp
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
-
 import scala.util.Success
 
 class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
@@ -271,7 +271,36 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(numericRangeCheck7, numericRangeResults, CheckStatus.Success)
       assertEvaluatesTo(numericRangeCheck8, numericRangeResults, CheckStatus.Error)
       assertEvaluatesTo(numericRangeCheck9, numericRangeResults, CheckStatus.Success)
+
+      
+      val timestampRangeCheck1 = Check(CheckLevel.Error, "tsr1")
+        .isContainedInTimeRange("att1", new Timestamp(1), new Timestamp(10))
+
+      val timestampRangeCheck2 = Check(CheckLevel.Error, "tsr2")
+        .isContainedInTimeRange("att1", new Timestamp(0), new Timestamp(11))
+
+      val timestampRangeCheck3 = Check(CheckLevel.Error, "tsr3")
+        .isContainedInTimeRange(
+          "att1", new Timestamp(1), new Timestamp(10), includeLowerBound = false)
+
+      val timestampRangeCheck4 = Check(CheckLevel.Error, "tsr4")
+        .isContainedInTimeRange(
+          "att1", new Timestamp(1), new Timestamp(10), includeUpperBound = false)
+
+      val timestampRangeCheck5 = Check(CheckLevel.Error, "tsr5")
+        .isContainedInTimeRange(
+          "att1", new Timestamp(4), new Timestamp(5))
+
+      val timestampRangeResults = runChecks(getDfWithTimestampColumn(sparkSession), timestampRangeCheck1,
+        timestampRangeCheck2, timestampRangeCheck3, timestampRangeCheck4, timestampRangeCheck5)
+
+      assertEvaluatesTo(timestampRangeCheck1, timestampRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(timestampRangeCheck2, timestampRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(timestampRangeCheck3, timestampRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(timestampRangeCheck4, timestampRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(timestampRangeCheck5, timestampRangeResults, CheckStatus.Error)
     }
+
 
     "return the correct check status for histogram constraints" in
       withSparkSession { sparkSession =>

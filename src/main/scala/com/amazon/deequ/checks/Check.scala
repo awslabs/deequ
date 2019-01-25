@@ -25,6 +25,7 @@ import com.amazon.deequ.metrics.{Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
+import java.sql.Timestamp
 import scala.util.matching.Regex
 
 object CheckLevel extends Enumeration {
@@ -866,6 +867,35 @@ case class Check(
 
     val predicate = s"$column IS NULL OR " +
       s"($column $leftOperand $lowerBound AND $column $rightOperand $upperBound)"
+
+    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
+  }
+
+
+  /**
+    * Asserts that the non-null values in a timestamp column fall into the predefined interval
+    *
+    * @param column column to run the assertion
+    * @param lowerBound lower bound of the interval
+    * @param upperBound upper bound of the interval
+    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeUpperBound is a value equal to the upper bound allowed?
+    * @param hint A hint to provide additional context why a constraint could have failed
+    */
+  def isContainedInTimeRange(
+      column: String,
+      lowerBound: Timestamp,
+      upperBound: Timestamp,
+      includeLowerBound: Boolean = true,
+      includeUpperBound: Boolean = true,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    val leftOperand = if (includeLowerBound) ">=" else ">"
+    val rightOperand = if (includeUpperBound) "<=" else "<"
+
+    val predicate = s"$column IS NULL OR " +
+      s"($column $leftOperand '$lowerBound' AND $column $rightOperand '$upperBound')"
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }
