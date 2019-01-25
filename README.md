@@ -43,14 +43,14 @@ case class Item(
 Our library is built on [Apache Spark](https://spark.apache.org/) and is designed to work with very large datasets (think billions of rows) that typically live in a distributed filesystem or a data warehouse. For the sake of simplicity in this example, we just generate a few toy records though.
 
 ```scala
-val rdd = sc.parallelize(Seq(
+val rdd = spark.sparkContext.parallelize(Seq(
   Item(1, "Thingy A", "awesome thing.", "high", 0),
   Item(2, "Thingy B", "available at http://thingb.com", null, 0),
   Item(3, null, null, "low", 5),
   Item(4, "Thingy D", "checkout https://thingd.ca", "low", 10),
   Item(5, "Thingy E", null, "high", 12)))
 
-val data = session.createDataFrame(rdd)
+val data = spark.createDataFrame(rdd)
 ```
 
 Most applications that work with data have implicit assumptions about that data, e.g., that attributes have certain types, do not contain NULL values, and so on. If these assumptions are violated, your application might crash or produce wrong outputs. The idea behind __deequ__ is to explicitly state these assumptions in the form of a "unit-test" for data, which can be verified on a piece of data at hand. If the data has errors, we can "quarantine" and fix it, before we feed to an application. 
@@ -68,6 +68,10 @@ The main entry point for defining how you expect your data to look is the [Verif
 In code this looks as follows:
 
 ```scala
+import com.amazon.deequ.VerificationSuite
+import com.amazon.deequ.checks.{Check, CheckLevel}
+
+
 val verificationResult = VerificationSuite()
   .onData(data)
   .addCheck(
@@ -89,7 +93,10 @@ val verificationResult = VerificationSuite()
 After calling `run`, __deequ__ translates your test to a series of Spark jobs, which it executes to compute metrics on the data. Afterwards it invokes your assertion functions (e.g., `_ == 5` for the size check) on these metrics to see if the constraints hold on the data. We can inspect the [VerificationResult](src/main/scala/com/amazon/deequ/VerificationResult.scala) to see if the test found errors:
 
 ```scala
-if (verificationResult.status == Success) {
+import com.amazon.deequ.constraints.ConstraintStatus
+
+
+if (verificationResult.status == ConstraintStatus.Success) {
   println("The data passed the test, everything is fine!")
 } else {
   println("We found errors in the data:\n")
