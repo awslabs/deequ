@@ -848,7 +848,7 @@ case class Check(
     * @param column column to run the assertion
     * @param lowerBound lower bound of the interval
     * @param upperBound upper bound of the interval
-    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeLowerBound is a value equal to the lower bound allowed?
     * @param includeUpperBound is a value equal to the upper bound allowed?
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
@@ -870,7 +870,7 @@ case class Check(
     * @param column column to run the assertion
     * @param lowerBound lower bound of the interval
     * @param upperBound upper bound of the interval
-    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeLowerBound is a value equal to the lower bound allowed?
     * @param includeUpperBound is a value equal to the upper bound allowed?
     * @param hint A hint to provide additional context why a constraint could have failed
     * @param quoteBounds should the bound values be quoted?
@@ -905,7 +905,7 @@ case class Check(
     * @param column column to run the assertion
     * @param lowerBound lower bound of the interval
     * @param upperBound upper bound of the interval
-    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeLowerBound is a value equal to the lower bound allowed?
     * @param includeUpperBound is a value equal to the upper bound allowed?
     * @param hint A hint to provide additional context why a constraint could have failed
     */
@@ -945,7 +945,7 @@ case class Check(
     * @param column column to run the assertion
     * @param lowerBound lower bound of the interval
     * @param upperBound upper bound of the interval
-    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeLowerBound is a value equal to the lower bound allowed?
     * @param includeUpperBound is a value equal to the upper bound allowed?
     */
   def isContainedIn(
