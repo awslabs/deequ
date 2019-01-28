@@ -30,6 +30,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
+
 import scala.util.Success
 
 class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
