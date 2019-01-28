@@ -774,6 +774,8 @@ case class Check(
       column: String,
       allowedValues: Array[String])
     : CheckWithLastConstraintFilterable = {
+
+
     isContainedIn(column, allowedValues, Check.IsOne, None)
   }
 
