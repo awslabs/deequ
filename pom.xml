@@ -48,6 +48,11 @@
             <name>Andrey Taptunov</name>
             <url>https://github.com/andrey-tpt</url>
         </developer>
+        <developer>
+            <id>iamsteps</id>
+            <name>Stephan Seufert</name>
+            <url>https://github.com/iamsteps</url>
+        </developer>
     </developers>
 
     <scm>

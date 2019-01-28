@@ -258,9 +258,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
           .isContainedIn("att2", -1, 7, includeLowerBound = false, includeUpperBound = true)
 
       val numericRangeResults = runChecks(getDfWithNumericValues(sparkSession), numericRangeCheck1,
-        numericRangeCheck2, numericRangeCheck3, numericRangeCheck4, numericRangeCheck5, numericRangeCheck6,
-        numericRangeCheck7, numericRangeCheck8, numericRangeCheck9)
-
+        numericRangeCheck2, numericRangeCheck3, numericRangeCheck4, numericRangeCheck5,
+        numericRangeCheck6, numericRangeCheck7, numericRangeCheck8, numericRangeCheck9)
 
       assertEvaluatesTo(numericRangeCheck1, numericRangeResults, CheckStatus.Success)
       assertEvaluatesTo(numericRangeCheck2, numericRangeResults, CheckStatus.Error)
@@ -272,33 +271,53 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(numericRangeCheck8, numericRangeResults, CheckStatus.Error)
       assertEvaluatesTo(numericRangeCheck9, numericRangeResults, CheckStatus.Success)
 
-      
       val timestampRangeCheck1 = Check(CheckLevel.Error, "tsr1")
-        .isContainedInTimeRange("att1", new Timestamp(1), new Timestamp(10))
+        .isContainedIn("att1", new Timestamp(1), new Timestamp(10))
 
       val timestampRangeCheck2 = Check(CheckLevel.Error, "tsr2")
-        .isContainedInTimeRange("att1", new Timestamp(0), new Timestamp(11))
+        .isContainedIn("att1", new Timestamp(1), new Timestamp(9))
 
       val timestampRangeCheck3 = Check(CheckLevel.Error, "tsr3")
-        .isContainedInTimeRange(
-          "att1", new Timestamp(1), new Timestamp(10), includeLowerBound = false)
+        .isContainedIn("att1", new Timestamp(2), new Timestamp(10))
 
       val timestampRangeCheck4 = Check(CheckLevel.Error, "tsr4")
-        .isContainedInTimeRange(
-          "att1", new Timestamp(1), new Timestamp(10), includeUpperBound = false)
+        .isContainedIn("att1", new Timestamp(1), new Timestamp(10), includeLowerBound = false,
+          includeUpperBound = true)
 
       val timestampRangeCheck5 = Check(CheckLevel.Error, "tsr5")
-        .isContainedInTimeRange(
-          "att1", new Timestamp(4), new Timestamp(5))
+        .isContainedIn("att1", new Timestamp(0), new Timestamp(10), includeLowerBound = false,
+          includeUpperBound = true)
 
-      val timestampRangeResults = runChecks(getDfWithTimestampColumn(sparkSession), timestampRangeCheck1,
-        timestampRangeCheck2, timestampRangeCheck3, timestampRangeCheck4, timestampRangeCheck5)
+      val timestampRangeCheck6 = Check(CheckLevel.Error, "tsr6")
+        .isContainedIn("att1", new Timestamp(0), new Timestamp(10), includeLowerBound = true,
+          includeUpperBound = false)
+
+      val timestampRangeCheck7 = Check(CheckLevel.Error, "tsr7")
+        .isContainedIn("att1", new Timestamp(1), new Timestamp(11), includeLowerBound = true,
+          includeUpperBound = false)
+
+      val timestampRangeCheck8 = Check(CheckLevel.Error, "tsr8")
+        .isContainedIn("att1", new Timestamp(1), new Timestamp(10), includeLowerBound = false,
+          includeUpperBound = false)
+
+      val timestampRangeCheck9 = Check(CheckLevel.Error, "tsr9")
+        .isContainedIn("att1", new Timestamp(0), new Timestamp(11), includeLowerBound = false,
+          includeUpperBound = false)
+
+      val timestampRangeResults = runChecks(getDfWithTimestampColumn(sparkSession),
+        timestampRangeCheck1, timestampRangeCheck2, timestampRangeCheck3, timestampRangeCheck4,
+        timestampRangeCheck5, timestampRangeCheck6, timestampRangeCheck7, timestampRangeCheck8,
+        timestampRangeCheck9)
 
       assertEvaluatesTo(timestampRangeCheck1, timestampRangeResults, CheckStatus.Success)
-      assertEvaluatesTo(timestampRangeCheck2, timestampRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(timestampRangeCheck2, timestampRangeResults, CheckStatus.Error)
       assertEvaluatesTo(timestampRangeCheck3, timestampRangeResults, CheckStatus.Error)
       assertEvaluatesTo(timestampRangeCheck4, timestampRangeResults, CheckStatus.Error)
-      assertEvaluatesTo(timestampRangeCheck5, timestampRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(timestampRangeCheck5, timestampRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(timestampRangeCheck6, timestampRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(timestampRangeCheck7, timestampRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(timestampRangeCheck8, timestampRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(timestampRangeCheck9, timestampRangeResults, CheckStatus.Success)
     }
 
 

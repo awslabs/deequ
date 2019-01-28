@@ -861,16 +861,43 @@ case class Check(
       includeUpperBound: Boolean = true,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
+      isContainedInRange(column, lowerBound, upperBound, includeLowerBound, includeUpperBound, hint)
+  }
 
+  /**
+    * Asserts that the non-null values in a column fall into the predefined interval
+    *
+    * @param column column to run the assertion
+    * @param lowerBound lower bound of the interval
+    * @param upperBound upper bound of the interval
+    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeUpperBound is a value equal to the upper bound allowed?
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @param quoteBounds should the bound values be quoted?
+    */
+  private def isContainedInRange[T](
+      column: String,
+      lowerBound: T,
+      upperBound: T,
+      includeLowerBound: Boolean,
+      includeUpperBound: Boolean,
+      hint: Option[String] = None,
+      quoteBounds: Boolean = false)
+  : CheckWithLastConstraintFilterable = {
     val leftOperand = if (includeLowerBound) ">=" else ">"
     val rightOperand = if (includeUpperBound) "<=" else "<"
 
-    val predicate = s"$column IS NULL OR " +
-      s"($column $leftOperand $lowerBound AND $column $rightOperand $upperBound)"
+    val predicate = s"$column IS NULL OR " + (
+      if (quoteBounds) {
+        s"($column $leftOperand '$lowerBound' AND $column $rightOperand '$upperBound')"
+      }
+      else {
+        s"($column $leftOperand $lowerBound AND $column $rightOperand $upperBound)"
+      }
+    )
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }
-
 
   /**
     * Asserts that the non-null values in a timestamp column fall into the predefined interval
@@ -882,22 +909,70 @@ case class Check(
     * @param includeUpperBound is a value equal to the upper bound allowed?
     * @param hint A hint to provide additional context why a constraint could have failed
     */
-  def isContainedInTimeRange(
+  def isContainedIn(
       column: String,
       lowerBound: Timestamp,
       upperBound: Timestamp,
-      includeLowerBound: Boolean = true,
-      includeUpperBound: Boolean = true,
-      hint: Option[String] = None)
+      includeLowerBound: Boolean,
+      includeUpperBound: Boolean,
+      hint: Option[String])
     : CheckWithLastConstraintFilterable = {
+      isContainedInRange(column, lowerBound, upperBound, includeLowerBound, includeUpperBound, hint,
+        quoteBounds = true)
+  }
 
-    val leftOperand = if (includeLowerBound) ">=" else ">"
-    val rightOperand = if (includeUpperBound) "<=" else "<"
+  /**
+    * Asserts that the non-null values in a timestamp column fall into the predefined interval
+    *
+    * @param column column to run the assertion
+    * @param lowerBound lower bound of the interval
+    * @param upperBound upper bound of the interval
+    * @param hint A hint to provide additional context why a constraint could have failed
+    */
+  def isContainedIn(
+      column: String,
+      lowerBound: Timestamp,
+      upperBound: Timestamp,
+      hint: Option[String])
+    : CheckWithLastConstraintFilterable = {
+      isContainedIn(column, lowerBound, upperBound, includeLowerBound = true,
+        includeUpperBound = true, hint = hint)
+  }
 
-    val predicate = s"$column IS NULL OR " +
-      s"($column $leftOperand '$lowerBound' AND $column $rightOperand '$upperBound')"
+  /**
+    * Asserts that the non-null values in a timestamp column fall into the predefined interval
+    *
+    * @param column column to run the assertion
+    * @param lowerBound lower bound of the interval
+    * @param upperBound upper bound of the interval
+    * @param includeLowerBound is a value equal to the lower bound allows?
+    * @param includeUpperBound is a value equal to the upper bound allowed?
+    */
+  def isContainedIn(
+      column: String,
+      lowerBound: Timestamp,
+      upperBound: Timestamp,
+      includeLowerBound: Boolean,
+      includeUpperBound: Boolean)
+    : CheckWithLastConstraintFilterable = {
+      isContainedIn(column, lowerBound, upperBound, includeLowerBound, includeUpperBound,
+        hint = None)
+  }
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
+  /**
+    * Asserts that the non-null values in a timestamp column fall into the predefined interval
+    *
+    * @param column column to run the assertion
+    * @param lowerBound lower bound of the interval
+    * @param upperBound upper bound of the interval
+    */
+  def isContainedIn(
+      column: String,
+      lowerBound: Timestamp,
+      upperBound: Timestamp)
+    : CheckWithLastConstraintFilterable = {
+      isContainedIn(column, lowerBound, upperBound, includeLowerBound = true,
+        includeUpperBound = true, hint = None)
   }
 
   /**
