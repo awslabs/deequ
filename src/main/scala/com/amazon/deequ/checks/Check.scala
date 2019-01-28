@@ -873,7 +873,8 @@ case class Check(
     * @param includeLowerBound is a value equal to the lower bound allowed?
     * @param includeUpperBound is a value equal to the upper bound allowed?
     * @param hint A hint to provide additional context why a constraint could have failed
-    * @param quoteBounds should the bound values be quoted?
+    * @param quoteBounds should the bound values be quoted? Quoting is required for data
+             types such as DateType, TimestampType, StringType.
     */
   private def isContainedInRange[T](
       column: String,
