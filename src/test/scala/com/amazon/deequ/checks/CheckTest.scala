@@ -242,13 +242,34 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val numericRangeCheck4 = Check(CheckLevel.Error, "nr4")
         .isContainedIn("att2", 0, 7, includeLowerBound = false, includeUpperBound = false)
 
+      val numericRangeCheck5 = Check(CheckLevel.Error, "nr5")
+          .isContainedIn("att2", -1, 8, includeLowerBound = false, includeUpperBound = false)
+
+      val numericRangeCheck6 = Check(CheckLevel.Error, "nr6")
+          .isContainedIn("att2", 0, 7, includeLowerBound = true, includeUpperBound = false)
+
+      val numericRangeCheck7 = Check(CheckLevel.Error, "nr7")
+          .isContainedIn("att2", 0, 8, includeLowerBound = true, includeUpperBound = false)
+
+      val numericRangeCheck8 = Check(CheckLevel.Error, "nr8")
+          .isContainedIn("att2", 0, 7, includeLowerBound = false, includeUpperBound = true)
+
+      val numericRangeCheck9 = Check(CheckLevel.Error, "nr9")
+          .isContainedIn("att2", -1, 7, includeLowerBound = false, includeUpperBound = true)
+
       val numericRangeResults = runChecks(getDfWithNumericValues(sparkSession), numericRangeCheck1,
-        numericRangeCheck2, numericRangeCheck3, numericRangeCheck4)
+        numericRangeCheck2, numericRangeCheck3, numericRangeCheck4, numericRangeCheck5,
+        numericRangeCheck6, numericRangeCheck7, numericRangeCheck8, numericRangeCheck9)
 
       assertEvaluatesTo(numericRangeCheck1, numericRangeResults, CheckStatus.Success)
       assertEvaluatesTo(numericRangeCheck2, numericRangeResults, CheckStatus.Error)
       assertEvaluatesTo(numericRangeCheck3, numericRangeResults, CheckStatus.Error)
       assertEvaluatesTo(numericRangeCheck4, numericRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(numericRangeCheck5, numericRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(numericRangeCheck6, numericRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(numericRangeCheck7, numericRangeResults, CheckStatus.Success)
+      assertEvaluatesTo(numericRangeCheck8, numericRangeResults, CheckStatus.Error)
+      assertEvaluatesTo(numericRangeCheck9, numericRangeResults, CheckStatus.Success)
     }
 
     "return the correct check status for histogram constraints" in
