@@ -30,7 +30,7 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.util.Success
+import scala.util.{Success, Try}
 
 class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
   with MockFactory {
@@ -488,6 +488,75 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     }
   }
 
+  "Check on column names with special characters" should {
+
+    def testWithExoticColumnName(df: DataFrame, c: Check): Unit = {
+      val r = VerificationSuite()
+        .onData(df)
+        .addCheck(c)
+        .run()
+      assert(r.status == CheckStatus.Success)
+    }
+
+    val valuesStr: Seq[ItemStr] = Seq(
+      ItemStr("NULL"),
+      ItemStr("NULL"),
+      ItemStr("-10.0"),
+      ItemStr("-10.0"),
+      ItemStr("-10.0"),
+      ItemStr("10.0"),
+      ItemStr("0.0"),
+      ItemStr("1.5245"),
+      ItemStr("1.5245"),
+      ItemStr("1.5245"),
+      ItemStr("-4.42"),
+      ItemStr("-4.42"),
+      ItemStr("6.78"),
+      ItemStr("6.78"),
+      ItemStr("6.78"),
+      ItemStr("6.78"),
+      ItemStr("6.78"),
+      ItemStr("6.78")
+    )
+    val valuesDbl: Seq[ItemDbl] = valuesStr.map {
+      case ItemStr(x) => ItemDbl(Try(x.toDouble).toOption)
+    }
+
+    val isContainedValues: Check = Check(CheckLevel.Error, badColumnName)
+      .isContainedIn(
+        badColumnName,
+        Array("NULL", "-10.0", "10.0", "0.0", "1.5245", "-4.42", "6.78"),
+        _ >= 1.0,
+        None
+      )
+
+    val isContainedBounds: Check = Check(CheckLevel.Error, badColumnName)
+      .isContainedIn(
+        badColumnName,
+        -10.0,
+        10.0,
+        includeLowerBound = true,
+        includeUpperBound = true,
+        None
+      )
+
+    "generate correct Spark SQL & work for isContainedIn value list variant" in
+      withSparkSession { sparkSession =>
+        testWithExoticColumnName(
+          sparkSession.createDataFrame(valuesStr),
+          isContainedValues
+        )
+      }
+
+    "generate correct Spark SQL & work for isContainedIn bounds variant" in
+      withSparkSession { sparkSession =>
+        testWithExoticColumnName(
+          sparkSession.createDataFrame(valuesDbl),
+          isContainedBounds
+        )
+      }
+  }
+
   "Check isNewestPointNonAnomalous" should {
 
     "return the correct check status for anomaly detection for different analyzers" in
@@ -731,4 +800,9 @@ object CheckTest extends WordSpec with Matchers {
     runAndAssertSuccessFor(Check(CheckLevel.Error, "some description").isPositive(_),
       dataType, sparkSession)
   }
+
+  val badColumnName: String = "[this column]:has a handful of problematic chars"
+
+  case class ItemStr(`[this column]:has a handful of problematic chars`: String)
+  case class ItemDbl(`[this column]:has a handful of problematic chars`: Option[Double])
 }
