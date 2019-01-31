@@ -2,3 +2,4 @@
 *.iml
 **/*.iml
 target/.travis/public-signing-key.gpg
+target/
