@@ -80,7 +80,7 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
 
     val description = s"'${profile.column}' has value range $categoriesSql for at least " +
       s"${targetCompliance * 100}% of values"
-    val columnCondition = s"${profile.column} IN ($categoriesSql)"
+    val columnCondition = s"`${profile.column}` IN ($categoriesSql)"
     val hint = s"It should be above $targetCompliance!"
     val constraint = complianceConstraint(description, columnCondition, _ >= targetCompliance,
       hint = Some(hint))

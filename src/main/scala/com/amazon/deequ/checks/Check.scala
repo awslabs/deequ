@@ -837,7 +837,7 @@ case class Check(
       .map { _.replaceAll("'", "''") }
       .mkString("'", "','", "'")
 
-    val predicate = s"$column IS NULL OR $column IN ($valueList)"
+    val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
   }
 
@@ -864,8 +864,8 @@ case class Check(
     val leftOperand = if (includeLowerBound) ">=" else ">"
     val rightOperand = if (includeUpperBound) "<=" else "<"
 
-    val predicate = s"$column IS NULL OR " +
-      s"($column $leftOperand $lowerBound AND $column $rightOperand $upperBound)"
+    val predicate = s"`$column` IS NULL OR " +
+      s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }

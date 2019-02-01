@@ -60,7 +60,7 @@ case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
       .mkString(""""""", """", """", """"""")
 
     val description = s"'${profile.column}' has value range $categoriesSql"
-    val columnCondition = s"${profile.column} IN ($categoriesSql)"
+    val columnCondition = s"`${profile.column}` IN ($categoriesSql)"
     val constraint = complianceConstraint(description, columnCondition, Check.IsOne)
 
     ConstraintSuggestion(
