@@ -272,7 +272,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val codeForConstraint = RetainTypeRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = """.hasDataType("item", ConstrainableDataTypes.Integral)"""
+      val expectedCodeForConstraint = """.hasDataType("item", ConstrainableDataTypes.Integral, _ >= 1.0)"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
@@ -704,6 +704,10 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .expects()
         .returns(dataType)
         .anyNumberOfTimes()
+      (fakeColumnProfile.completeness _)
+        .expects()
+        .returns(1.0)
+        .once()
     }
 
     fakeColumnProfile

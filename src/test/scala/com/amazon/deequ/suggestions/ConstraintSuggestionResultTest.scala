@@ -250,7 +250,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
               |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
-              |.Integral)"
+              |.Integral, _ >= 1.0)"
               |    },
               |    {
               |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
@@ -335,7 +335,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
               |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
-              |.Integral)",
+              |.Integral, _ >= 1.0)",
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
@@ -422,7 +422,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "rule_description": "If we detect a non-string type, we suggest a type
               | constraint",
               |      "code_for_constraint": ".hasDataType(\"item\", ConstrainableDataTypes
-              |.Integral)",
+              |.Integral, _ >= 1.0)",
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
