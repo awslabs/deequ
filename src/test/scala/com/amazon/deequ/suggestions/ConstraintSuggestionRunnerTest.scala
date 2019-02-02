@@ -242,7 +242,7 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
     assert(expectedConstraintSuggestionJson == actualConstraintSuggestionJson)
   }
 
-  private[this] def suggestHasDataTypeConstraintVerifyTest(data: DataFrame): Unit ={
+  private[this] def suggestHasDataTypeConstraintVerifyTest(data: DataFrame): Unit = {
 
     val constraints = ConstraintSuggestionRunner()
       .onData(data)
@@ -267,9 +267,9 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
 object ConstraintSuggestionRunnerTest {
 
-  case class Item(value:String)
+  case class Item(value: String)
 
-  def verificationFnFromConstraintSrc(constraint:String): DataFrame => VerificationResult = {
+  def verificationFnFromConstraintSrc(constraint: String): DataFrame => VerificationResult = {
       val source = s"""
            |(df: org.apache.spark.sql.DataFrame) => {
            |  import com.amazon.deequ.constraints._

@@ -52,7 +52,8 @@ case class RetainTypeRule() extends ConstraintRule[ColumnProfile] {
       "DataType: " + profile.dataType.toString,
       s"'${profile.column}' has type ${profile.dataType}",
       this,
-      s""".hasDataType("${profile.column}", ConstrainableDataTypes.${profile.dataType}, _ >= ${profile.completeness})"""
+      s""".hasDataType("${profile.column}", ConstrainableDataTypes.${profile.dataType},""" +
+        s""" _ >= ${profile.completeness})"""
     )
   }
 
