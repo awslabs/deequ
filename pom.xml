@@ -100,7 +100,14 @@
             <artifactId>scalamock-scalatest-support_${scala.major.version}</artifactId>
             <version>3.2.2</version>
             <scope>test</scope>
-        </dependency>
+         </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-compiler</artifactId>
+            <version>${scala.version}</version>
+            <scope>test</scope>
+         </dependency>
 
         <dependency>
             <groupId>org.mockito</groupId>
