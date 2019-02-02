@@ -16,19 +16,22 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.VerificationSuite
+import com.amazon.deequ.{SparkContextSpec, VerificationResult, VerificationSuite}
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.checks.{CheckLevel, CheckStatus}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
+import org.apache.spark.sql.DataFrame
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.Try
+import tools.reflect.ToolBox
+import scala.reflect.runtime.currentMirror
 
 class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
@@ -208,6 +211,19 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
           .run()
       )
     }
+
+    "suggest retain type rule with completeness information" in withSparkSession { session =>
+
+      import ConstraintSuggestionRunnerTest.Item
+
+      val complete = Seq("0", "1", "200", "40", "12002452").map{Item.apply}
+
+      suggestHasDataTypeConstraintVerifyTest(session.createDataFrame(complete))
+
+      val missingAtLeastOneVal = complete :+ Item(null)
+      suggestHasDataTypeConstraintVerifyTest(session.createDataFrame(missingAtLeastOneVal))
+    }
+
   }
 
   private[this] def assertConstraintSuggestionResultsEquals(
@@ -225,4 +241,52 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
     assert(expectedConstraintSuggestionJson == actualConstraintSuggestionJson)
   }
+
+  private[this] def suggestHasDataTypeConstraintVerifyTest(data: DataFrame): Unit ={
+
+    val constraints = ConstraintSuggestionRunner()
+      .onData(data)
+      .addConstraintRules(Rules.DEFAULT)
+      .run()
+      .constraintSuggestions
+
+    val hasDataTypeConstraint = constraints
+      .toSeq
+      .head
+      ._2
+      .filter { _.codeForConstraint.startsWith(".hasDataType(") }
+      .head
+
+    val verify = ConstraintSuggestionRunnerTest.verificationFnFromConstraintSrc(
+      hasDataTypeConstraint.codeForConstraint
+    )
+
+    assert(verify(data).status == CheckStatus.Success)
+  }
+}
+
+object ConstraintSuggestionRunnerTest {
+
+  case class Item(value:String)
+
+  def verificationFnFromConstraintSrc(constraint:String): DataFrame => VerificationResult = {
+      val source = s"""
+           |(df: org.apache.spark.sql.DataFrame) => {
+           |  import com.amazon.deequ.constraints._
+           |  com.amazon.deequ.VerificationSuite()
+           |    .onData(df)
+           |    .addCheck(
+           |      com.amazon.deequ.checks.Check(com.amazon.deequ.checks.CheckLevel.Error, "Test")
+           |        $constraint
+           |    )
+           |    .run()
+           |}
+         """.stripMargin.trim()
+      val toolbox = currentMirror.mkToolBox()
+      val tree = toolbox.parse(source)
+      val compiledCode = toolbox.compile(tree)
+      compiledCode().asInstanceOf[DataFrame => VerificationResult]
+    }
+
+
 }
