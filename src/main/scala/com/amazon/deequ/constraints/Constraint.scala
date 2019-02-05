@@ -554,10 +554,10 @@ object Constraint {
 
     /** Get the specified data type distribution ratio or maps to 0.0 */
     val valuePicker: Distribution => Double = {
-      val pure = ratioTypes(ignoreUnk = true) _
+      val pure = ratioTypes(ignoreUnknown = true) _
       import DataTypeInstances._
       dataType match {
-        case ConstrainableDataTypes.Null => ratioTypes(ignoreUnk = false)(Unknown)
+        case ConstrainableDataTypes.Null => ratioTypes(ignoreUnknown = false)(Unknown)
         case ConstrainableDataTypes.Fractional => pure(Fractional)
         case ConstrainableDataTypes.Integral => pure(Integral)
         case ConstrainableDataTypes.Boolean => pure(Boolean)
@@ -566,12 +566,8 @@ object Constraint {
       }
     }
 
-    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](
-        DataType(column),
-        assertion,
-        Some(valuePicker),
-        hint
-      )
+    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column), assertion,
+      Some(valuePicker), hint)
   }
 
   /**
@@ -585,35 +581,29 @@ object Constraint {
     * distribution or if there are no other values in the distribution (either before or after
     * discounting `Unknown` typed values).
     *
-    * @param ignoreUnk If `true`, then all Unknown values are ignored. O/w they are included.
+    * @param ignoreUnknown If `true`, then all Unknown values are ignored. O/w they are included.
     * @param keyType The column data type that we are analyzing.
     * @param distribution The distribution of values, by data type, in the column.
     * @return Ratio of key-typed values to rest of (potentially non-null) values.
     */
-  private[this] def ratioTypes(
-    ignoreUnk: Boolean
-  )(keyType: DataTypeInstances.Value)(distribution: Distribution): Double =
-    if (ignoreUnk) {
-      val keyTypeAbs = distribution.values
+  private[this] def ratioTypes(ignoreUnknown: Boolean)(keyType: DataTypeInstances.Value)(
+      distribution: Distribution)
+    : Double =
+    if (ignoreUnknown) {
+      val absoluteCount = distribution.values
         .get(keyType.toString)
         .map { _.absolute }
         .getOrElse(0L)
-      if (keyTypeAbs == 0L) {
+      if (absoluteCount == 0L) {
         0.0
       } else {
-        val denom = {
-          val allAbs = distribution.values.values.map { _.absolute }.sum
-          val nullAbs = distribution.values
-            .get(DataTypeInstances.Unknown.toString())
-            .map { _.absolute }
-            .getOrElse(0L)
-          allAbs - nullAbs
-        }
-        if (denom <= 0L) {
-          0.0
-        } else {
-          keyTypeAbs.toDouble / denom.toDouble
-        }
+        val numValues = distribution.values.values.map { _.absolute }.sum
+        val numUnknown = distribution.values
+          .get(DataTypeInstances.Unknown.toString())
+          .map { _.absolute }
+          .getOrElse(0L)
+        val sumOfNonNull = numValues - numUnknown
+        absoluteCount.toDouble / sumOfNonNull.toDouble
       }
     } else {
       distribution.values

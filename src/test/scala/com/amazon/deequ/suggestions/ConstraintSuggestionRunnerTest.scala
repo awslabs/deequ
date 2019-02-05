@@ -216,7 +216,7 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
       import ConstraintSuggestionRunnerTest.Item
 
-      val complete = Seq("0", "1", "200", "40", "12002452").map{Item.apply}
+      val complete = Seq(Item("0"), Item("1"), Item("200"), Item("40"), Item("12002452"))
 
       suggestHasDataTypeConstraintVerifyTest(session.createDataFrame(complete))
 
@@ -250,10 +250,8 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
       .run()
       .constraintSuggestions
 
-    val hasDataTypeConstraint = constraints
-      .toSeq
-      .head
-      ._2
+    val (_, onlyColumnConstraints) = constraints.toSeq.head
+    val hasDataTypeConstraint = onlyColumnConstraints
       .filter { _.codeForConstraint.startsWith(".hasDataType(") }
       .head
 
@@ -269,6 +267,14 @@ object ConstraintSuggestionRunnerTest {
 
   case class Item(value: String)
 
+  /**
+    * This function accepts an auto-generated constraint's scala code and uses it to construct
+    * a DataFrame validating function.
+    *
+    * Since the code is a `String`, this function takes this check code as-is and plops it into
+    * a function definition that, when compiled, produces a `DataFrame => VerificationResult`
+    * that uses this input check.
+    */
   def verificationFnFromConstraintSrc(constraint: String): DataFrame => VerificationResult = {
       val source = s"""
            |(df: org.apache.spark.sql.DataFrame) => {
