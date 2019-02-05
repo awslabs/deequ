@@ -578,42 +578,48 @@ object Constraint {
     * Calculates the ratio of the key type against the rest of the distribution's values.
     *
     * If `ignoreUnk` is `true`, then all null or otherwise unknown counting values are
-    * disregarded in the data type ratio calculation.
+    * disregarded in the data type ratio calculation. Otherwise these Unknown values are
+    * considered in the data type ratio calculation.
     *
-    * NOTE: This function evaluates to 0.0 iff there were 0 values of the given key type in the
+    * This function evaluates to 0.0 iff there were 0 values of the given key type in the
     * distribution or if there are no other values in the distribution (either before or after
     * discounting `Unknown` typed values).
     *
-    * @param distribution The distribution of values in the column.
     * @param ignoreUnk If `true`, then all Unknown values are ignored. O/w they are included.
-    * @param keyType The column's type.
-    * @return Ratio of key-typed values to rest of non-null values in the distribution.
+    * @param keyType The column data type that we are analyzing.
+    * @param distribution The distribution of values, by data type, in the column.
+    * @return Ratio of key-typed values to rest of (potentially non-null) values.
     */
-  private [this] def ratioTypes(ignoreUnk: Boolean)(keyType: DataTypeInstances.Value)(
-    distribution: Distribution): Double = {
-    val keyTypeAbs = distribution.values
-      .get(keyType.toString)
-      .map { _.absolute }
-      .getOrElse(0L)
-    if (keyTypeAbs == 0L)
-      0.0
-    else {
-      val denom = {
-        val allAbs = distribution.values.values.map { _.absolute }.sum
-        if (ignoreUnk) {
+  private[this] def ratioTypes(
+    ignoreUnk: Boolean
+  )(keyType: DataTypeInstances.Value)(distribution: Distribution): Double =
+    if (ignoreUnk) {
+      val keyTypeAbs = distribution.values
+        .get(keyType.toString)
+        .map { _.absolute }
+        .getOrElse(0L)
+      if (keyTypeAbs == 0L) {
+        0.0
+      } else {
+        val denom = {
+          val allAbs = distribution.values.values.map { _.absolute }.sum
           val nullAbs = distribution.values
             .get(DataTypeInstances.Unknown.toString())
             .map { _.absolute }
             .getOrElse(0L)
           allAbs - nullAbs
-        } else
-          allAbs
+        }
+        if (denom <= 0L) {
+          0.0
+        } else {
+          keyTypeAbs.toDouble / denom.toDouble
+        }
       }
-      if (denom <= 0L)
-        0.0
-      else
-        keyTypeAbs.toDouble / denom.toDouble
+    } else {
+      distribution.values
+        .get(keyType.toString)
+        .map { _.ratio }
+        .getOrElse(0.0)
     }
-  }
 
 }
