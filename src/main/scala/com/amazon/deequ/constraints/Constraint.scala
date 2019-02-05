@@ -553,28 +553,67 @@ object Constraint {
     : Constraint = {
 
     /** Get the specified data type distribution ratio or maps to 0.0 */
-    def valuePicker(distribution: Distribution): Double = {
-
+    val valuePicker: Distribution => Double = {
+      val pure = ratioTypes(ignoreUnk = true) _
+      import DataTypeInstances._
       dataType match {
-        case ConstrainableDataTypes.Null => ratio(DataTypeInstances.Unknown, distribution)
-        case ConstrainableDataTypes.Fractional => ratio(DataTypeInstances.Fractional, distribution)
-        case ConstrainableDataTypes.Integral => ratio(DataTypeInstances.Integral, distribution)
-        case ConstrainableDataTypes.Boolean => ratio(DataTypeInstances.Boolean, distribution)
-        case ConstrainableDataTypes.String => ratio(DataTypeInstances.String, distribution)
-        case ConstrainableDataTypes.Numeric =>
-          ratio(DataTypeInstances.Fractional, distribution) +
-            ratio(DataTypeInstances.Integral, distribution)
+        case ConstrainableDataTypes.Null => ratioTypes(ignoreUnk = false)(Unknown)
+        case ConstrainableDataTypes.Fractional => pure(Fractional)
+        case ConstrainableDataTypes.Integral => pure(Integral)
+        case ConstrainableDataTypes.Boolean => pure(Boolean)
+        case ConstrainableDataTypes.String => pure(String)
+        case ConstrainableDataTypes.Numeric => d => pure(Fractional)(d) + pure(Integral)(d)
       }
     }
 
-    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column), assertion,
-      Some(valuePicker), hint)
+    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](
+        DataType(column),
+        assertion,
+        Some(valuePicker),
+        hint
+      )
   }
 
-  private[this] def ratio(keyType: DataTypeInstances.Value, distribution: Distribution): Double = {
-    distribution.values.get(keyType.toString)
-      .map { _.ratio }
-      .getOrElse(0.0)
+  /**
+    * Calculates the ratio of the key type against the rest of the distribution's values.
+    *
+    * If `ignoreUnk` is `true`, then all null or otherwise unknown counting values are
+    * disregarded in the data type ratio calculation.
+    *
+    * NOTE: This function evaluates to 0.0 iff there were 0 values of the given key type in the
+    * distribution or if there are no other values in the distribution (either before or after
+    * discounting `Unknown` typed values).
+    *
+    * @param distribution The distribution of values in the column.
+    * @param ignoreUnk If `true`, then all Unknown values are ignored. O/w they are included.
+    * @param keyType The column's type.
+    * @return Ratio of key-typed values to rest of non-null values in the distribution.
+    */
+  private [this] def ratioTypes(ignoreUnk: Boolean)(keyType: DataTypeInstances.Value)(
+    distribution: Distribution): Double = {
+    val keyTypeAbs = distribution.values
+      .get(keyType.toString)
+      .map { _.absolute }
+      .getOrElse(0L)
+    if (keyTypeAbs == 0L)
+      0.0
+    else {
+      val denom = {
+        val allAbs = distribution.values.values.map { _.absolute }.sum
+        if (ignoreUnk) {
+          val nullAbs = distribution.values
+            .get(DataTypeInstances.Unknown.toString())
+            .map { _.absolute }
+            .getOrElse(0L)
+          allAbs - nullAbs
+        } else
+          allAbs
+      }
+      if (denom <= 0L)
+        0.0
+      else
+        keyTypeAbs.toDouble / denom.toDouble
+    }
   }
 
 }
