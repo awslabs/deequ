@@ -573,7 +573,7 @@ object Constraint {
   /**
     * Calculates the ratio of the key type against the rest of the distribution's values.
     *
-    * If `ignoreUnk` is `true`, then all null or otherwise unknown counting values are
+    * If `ignoreUnknown` is `true`, then all null or otherwise unknown counting values are
     * disregarded in the data type ratio calculation. Otherwise these Unknown values are
     * considered in the data type ratio calculation.
     *
