@@ -27,7 +27,9 @@
 ## Maximum
 ## Mean
 ## Median
+    Returns the value in the middle of the given column. This is more robust against outliers than the mean. It is equal to the 2-quantile.
 ## Minimum
+    Returns the smallest value in the given column.
 ## Mode
     This is the most common value in the given column.
 ## MutualInformation
