@@ -14,6 +14,8 @@
     E.g if the constraint is "att1>3" and data frame has 5 rows with att1 column value greater than
     3 and 10 rows under 3; a DoubleMetric would be returned with 0.33 value
 ## Correlation
+    Computes the [pearson correlation coefficient](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) between the two given columns.
+    It has a value between -1 and +1, where +1 is total positive linear correlation, 0 is no linear correlation, and −1 is total negative linear correlation.
 ## CountDistinct
 ## DataType
 ## Distinctness
