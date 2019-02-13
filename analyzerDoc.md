@@ -22,6 +22,7 @@
     Yields a distribution map, including the overall number of values of each datatype and the percentage of each datatype. 
     Possible datatypes are Boolean, Fractional, Integral, Unknown and String.
 ## Distinctness
+    Distinctness is the fraction of the number of distinct values devided by the number of all values of a column. Can be given a sequence of columns.
 ## Entropy
 ## Histogram
 ## Maximum
