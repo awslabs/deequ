@@ -17,8 +17,12 @@
     Computes the [pearson correlation coefficient](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) between the two given columns.
     It has a value between -1 and +1, where +1 is total positive linear correlation, 0 is no linear correlation, and −1 is total negative linear correlation.
 ## CountDistinct
+    Number of distinct values in the column.
 ## DataType
+    Yields a distribution map, including the overall number of values of each datatype and the percentage of each datatype. 
+    Possible datatypes are Boolean, Fractional, Integral, Unknown and String.
 ## Distinctness
+    Distinctness is the fraction of the number of distinct values devided by the number of all values of a column. Can be given a sequence of columns.
 ## Entropy
     [Entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) is a measure of the level of information contained in a message. Given the probability distribution over values in a column, it describes how many bits are required to identify a value.
 ## Histogram
