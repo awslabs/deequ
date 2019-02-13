@@ -10,6 +10,9 @@
 ## Completeness
     Completeness is the fraction of the number of non-null values devided by the number of all values in a column.
 ## Compliance
+    Compliance is a measure of the fraction of rows that complies with the given column constraint.
+    E.g if the constraint is "att1>3" and data frame has 5 rows with att1 column value greater than
+    3 and 10 rows under 3; a DoubleMetric would be returned with 0.33 value
 ## Correlation
 ## CountDistinct
 ## DataType
