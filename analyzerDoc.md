@@ -21,7 +21,9 @@
 ## Mode
 ## MutualInformation
 ## PatternMatch
+    Gives the fraction of values that match a certain regex constraint divided by all values in the given column.
 ## Size
+    Is the amount of values in the given column.
 ## StandardDeviation
     Quantifies the amount of variation of the values in the given column. A low standard deviation means that the values are close to the mean, while a high standard deviation means that they are spread out over a large value range. It is calculated by taking the square root of the variance.
 ## Sum
