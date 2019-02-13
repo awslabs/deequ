@@ -22,11 +22,13 @@
 ## Entropy
 ## Histogram
 ## Maximum
+    Returns the largest value in the given column. Works only for numerical columns. Only for numeric columns.
 ## Mean
+    This is the average over all values of the given column. Therefore it is the fraction of the Sum and the Size of the column. Only for numeric columns.
 ## Median
     Returns the value in the middle of the given column. This is more robust against outliers than the mean. It is equal to the 2-quantile.
 ## Minimum
-    Returns the smallest value in the given column.
+    Returns the smallest value in the given column. Only for numeric columns.
 ## Mode
     This is the most common value in the given column.
 ## MutualInformation
@@ -39,7 +41,7 @@
 ## StandardDeviation
     Quantifies the amount of variation of the values in the given column. A low standard deviation means that the values are close to the mean, while a high standard deviation means that they are spread out over a large value range. It is calculated by taking the square root of the variance.
 ## Sum
-    The sum of all values in the given column.
+    The sum of all values in the given column. Only for numeric columns.
 ## UniqueValueRatio
     The quotient of all unique values divided by all distinct columns of the given column. The unique values only appear once in the column. The distinct values are all different values in the column where every value is counted once.
 ## Uniqueness
