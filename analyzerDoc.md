@@ -26,7 +26,10 @@
 ## Median
 ## Minimum
 ## Mode
+    This is the most common value in the given column.
 ## MutualInformation
+    It measures how much having information about one column reveals about aonther. If both columns are independent, the mutual information is zero. If one of the columns determines all values of the other column and the other way around, there is a functional dependency between the columns. In that case, the mutual information is equal to either of both columns' Entropy.
+    Formally it is the nested sum of all values of both column and then for each pair: p(x,y)log(p(x,y)/p(x)p(y))
 ## PatternMatch
     Gives the fraction of values that match a certain regex constraint divided by all values in the given column.
 ## Size
