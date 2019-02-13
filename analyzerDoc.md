@@ -20,6 +20,7 @@
 ## DataType
 ## Distinctness
 ## Entropy
+    [Entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) is a measure of the level of information contained in a message. Given the probability distribution over values in a column, it describes how many bits are required to identify a value.
 ## Histogram
     Divides the columns of the values in the given column into buckets. The number of buckets has to be given by the user and has to be smaller than or euqal to 1000. Furthermore the user has to give a user defined function as an input parameter that is applied to the bins.
 ## Maximum
