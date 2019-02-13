@@ -8,6 +8,7 @@
 ## ApproxQuantiles
     The same as ApproxQuantile, can be given a sequence of quantiles.
 ## Completeness
+    Completeness is the fraction of the number of non-null values devided by the number of all values in a column.
 ## Compliance
 ## Correlation
 ## CountDistinct
