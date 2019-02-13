@@ -24,6 +24,7 @@
 ## Distinctness
     Distinctness is the fraction of the number of distinct values devided by the number of all values of a column. Can be given a sequence of columns.
 ## Entropy
+    [Entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)) is a measure of the level of information contained in a message. Given the probability distribution over values in a column, it describes how many bits are required to identify a value.
 ## Histogram
 ## Maximum
     Returns the largest value in the given column. Works only for numerical columns. Only for numeric columns.
