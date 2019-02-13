@@ -17,14 +17,11 @@
     Computes the [pearson correlation coefficient](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) between the two given columns.
     It has a value between -1 and +1, where +1 is total positive linear correlation, 0 is no linear correlation, and −1 is total negative linear correlation.
 ## CountDistinct
-    Number of distinct values in the column.
 ## DataType
-    Yields a distribution map, including the overall number of values of each datatype and the percentage of each datatype. 
-    Possible datatypes are Boolean, Fractional, Integral, Unknown and String.
 ## Distinctness
-    Distinctness is the fraction of the number of distinct values devided by the number of all values of a column. Can be given a sequence of columns.
 ## Entropy
 ## Histogram
+    Divides the columns of the values in the given column into buckets. The number of buckets has to be given by the user and has to be smaller than or euqal to 1000. Furthermore the user has to give a user defined function as an input parameter that is applied to the bins.
 ## Maximum
     Returns the largest value in the given column. Works only for numerical columns. Only for numeric columns.
 ## Mean
@@ -47,6 +44,6 @@
 ## Sum
     The sum of all values in the given column. Only for numeric columns.
 ## UniqueValueRatio
-    The quotient of all unique values divided by all distinct columns of the given column. The unique values only appear once in the column. The distinct values are all different values in the column where every value is counted once.
+    The quotient of all unique values divided by all distinct values of the given column. The unique values only appear once in the column. The distinct values are all different values in the column where every value is counted once.
 ## Uniqueness
     Gives the fraction of values of the given column that only appear once in the whole column divided by the Size of the column.
