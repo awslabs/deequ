@@ -48,6 +48,11 @@
             <name>Andrey Taptunov</name>
             <url>https://github.com/andrey-tpt</url>
         </developer>
+        <developer>
+            <id>malcolmgreaves</id>
+            <name>Malcolm Greaves</name>
+            <url>https://github.com/malcolmgreaves</url>
+        </developer>
     </developers>
 
     <scm>
