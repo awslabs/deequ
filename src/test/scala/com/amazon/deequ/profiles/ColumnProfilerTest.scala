@@ -117,11 +117,11 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
       val data = getDfWithNumericFractionalValues(session)
 
-      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att1")), false, 1)
-        .profiles("att1")
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("]att1[")), false, 1)
+        .profiles("]att1[")
 
       val expectedColumnProfile = NumericColumnProfile(
-        "att1",
+        "]att1[",
         1.0,
         6,
         DataTypeInstances.Fractional,

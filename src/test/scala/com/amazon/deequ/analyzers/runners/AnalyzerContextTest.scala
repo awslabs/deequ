@@ -17,10 +17,9 @@
 package com.amazon.deequ.analyzers.runners
 
 import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.utils.FixtureSupport
+import com.amazon.deequ.utils.{AssertionUtils, FixtureSupport}
 import org.scalatest.{Matchers, WordSpec}
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
@@ -36,8 +35,8 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
         val expected = Seq(
           ("Dataset", "*", "Size", 4.0),
           ("Column", "item", "Distinctness", 1.0),
-          ("Column", "att1", "Completeness", 1.0),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+          ("Column", "]att1[", "Completeness", 1.0),
+          ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25))
             .toDF("entity", "instance", "name", "value")
 
         assertSameRows(successMetricsAsDataFrame, expected)
@@ -49,15 +48,15 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
 
         evaluate(session) { results =>
 
-          val metricsForAnalyzers = Seq(Completeness("att1"), Uniqueness(Seq("att1", "att2")))
+          val metricsForAnalyzers = Seq(Completeness("]att1["), Uniqueness(Seq("]att1[", "att2")))
 
           val successMetricsAsDataFrame = AnalyzerContext
               .successMetricsAsDataFrame(session, results, metricsForAnalyzers)
 
           import session.implicits._
           val expected = Seq(
-            ("Column", "att1", "Completeness", 1.0),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+            ("Column", "]att1[", "Completeness", 1.0),
+            ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25))
             .toDF("entity", "instance", "name", "value")
 
           assertSameRows(successMetricsAsDataFrame, expected)
@@ -73,9 +72,9 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
 
           val expectedJson =
             """[{"entity":"Dataset","instance":"*","name":"Size","value":4.0},
-              |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
+              |{"entity":"Column","instance":"]att1[","name":"Completeness","value":1.0},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Mutlicolumn","instance":"]att1[,att2",
               |"name":"Uniqueness","value":0.25}]"""
               .stripMargin.replaceAll("\n", "")
 
@@ -88,14 +87,14 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
 
         evaluate(session) { results =>
 
-          val metricsForAnalyzers = Seq(Completeness("att1"), Uniqueness(Seq("att1", "att2")))
+          val metricsForAnalyzers = Seq(Completeness("]att1["), Uniqueness(Seq("]att1[", "att2")))
 
           val successMetricsResultsJson =
             AnalyzerContext.successMetricsAsJson(results, metricsForAnalyzers)
 
           val expectedJson =
-            """[{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+            """[{"entity":"Column","instance":"]att1[","name":"Completeness","value":1.0},
+              |{"entity":"Mutlicolumn","instance":"]att1[,att2",
               |"name":"Uniqueness","value":0.25}]"""
             .stripMargin.replaceAll("\n", "")
 
@@ -117,16 +116,11 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
     Analysis()
       .addAnalyzer(Size())
       .addAnalyzer(Distinctness("item"))
-      .addAnalyzer(Completeness("att1"))
-      .addAnalyzer(Uniqueness(Seq("att1", "att2")))
+      .addAnalyzer(Completeness("]att1["))
+      .addAnalyzer(Uniqueness(Seq("]att1[", "att2")))
   }
 
   private[this] def assertSameRows(dataframeA: DataFrame, dataframeB: DataFrame): Unit = {
     assert(dataframeA.collect().toSet == dataframeB.collect().toSet)
-  }
-
-  private[this] def assertSameJson(jsonA: String, jsonB: String): Unit = {
-    assert(SimpleResultSerde.deserialize(jsonA) ==
-      SimpleResultSerde.deserialize(jsonB))
   }
 }

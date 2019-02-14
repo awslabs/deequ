@@ -50,8 +50,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val df = getDfCompleteAndInCompleteColumns(sparkSession)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
-          .isComplete("att1")
-          .hasCompleteness("att1", _ == 1.0)
+          .isComplete("]att1[")
+          .hasCompleteness("]att1[", _ == 1.0)
 
         val checkToErrorOut = Check(CheckLevel.Error, "group-2-E")
           .hasCompleteness("att2", _ > 0.8)
@@ -89,13 +89,13 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val result = {
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
-          .isComplete("att1") // 1.0
-          .hasCompleteness("att1", _ == 1.0) // 1.0
+          .isComplete("]att1[") // 1.0
+          .hasCompleteness("]att1[", _ == 1.0) // 1.0
 
         val analyzers = Size() :: // Analyzer that works on overall document
           Completeness("att2") ::
           Uniqueness("att2") :: // Analyzer that works on single column
-          MutualInformation("att1", "att2") :: Nil // Analyzer that works on multi column
+          MutualInformation("]att1[", "att2") :: Nil // Analyzer that works on multi column
 
         VerificationSuite().onData(df).addCheck(checkToSucceed)
           .addRequiredAnalyzers(analyzers).run()
@@ -108,10 +108,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val expected = Seq(
         ("Dataset", "*", "Size", 4.0),
-        ("Column", "att1", "Completeness", 1.0),
+        ("Column", "]att1[", "Completeness", 1.0),
         ("Column", "att2", "Completeness", 1.0),
         ("Column", "att2", "Uniqueness", 0.25),
-        ("Mutlicolumn", "att1,att2", "MutualInformation",
+        ("Mutlicolumn", "]att1[,att2", "MutualInformation",
           -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
         .toDF("entity", "instance", "name", "value")
 
@@ -145,7 +145,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val df = getDfWithNumericValues(sparkSession)
 
-        val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
+        val analyzerToTestReusingResults = Distinctness(Seq("]att1[", "att2"))
 
         val verificationResult = VerificationSuite().onData(df)
           .addRequiredAnalyzer(analyzerToTestReusingResults).run()
@@ -289,8 +289,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val df = getDfWithNumericValues(sparkSession)
 
       val checkToSucceed = Check(CheckLevel.Error, "group-1")
-        .isComplete("att1") // 1.0
-        .hasCompleteness("att1", _ == 1.0) // 1.0
+        .isComplete("]att1[") // 1.0
+        .hasCompleteness("]att1[", _ == 1.0) // 1.0
 
       val tempDir = TempFileUtils.tempDir("verificationOuput")
       val checkResultsPath = tempDir + "/check-result.json"
@@ -316,8 +316,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val df = getDfWithNumericValues(sparkSession)
 
       val expectedConstraints = Seq(
-        Constraint.completenessConstraint("att1", _ == 1.0),
-        Constraint.complianceConstraint("att1 is positive", "att1", _ == 1.0)
+        Constraint.completenessConstraint("]att1[", _ == 1.0),
+        Constraint.complianceConstraint("]att1[ is positive", "]att1[", _ == 1.0)
       )
 
       val check = expectedConstraints.foldLeft(Check(CheckLevel.Error, "check")) {

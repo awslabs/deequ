@@ -55,7 +55,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
   "ComplianceAnalyzer" should {
     "compute correct metrics" in withSparkSession { session =>
 
-      val analyzer = Compliance("att1", "att1 = 'b'")
+      val analyzer = Compliance("]att1[", "`]att1[` = 'b'")
 
       val initial = initialData(session)
       val delta = deltaData(session)
@@ -79,7 +79,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
   "CompletenessAnalyzer" should {
     "compute correct metrics" in withSparkSession { session =>
 
-      val analyzer = Completeness("att1")
+      val analyzer = Completeness("]att1[")
 
       val initial = initialData(session)
       val delta = deltaData(session)
@@ -103,7 +103,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
   "UniquenessAnalyzer" should {
     "compute correct metrics for a single column" in withSparkSession { session =>
 
-      val analyzer = Uniqueness("att1")
+      val analyzer = Uniqueness("]att1[")
 
       val initial = initialData(session)
       val delta = deltaData(session)
@@ -125,7 +125,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
 
     "compute correct metrics for column combinations" in withSparkSession { session =>
 
-      val analyzer = Uniqueness(Seq("att1", "count"))
+      val analyzer = Uniqueness(Seq("]att1[", "count"))
 
       val initial = initialData(session)
       val delta = deltaData(session)
@@ -149,7 +149,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
   "EntropyAnalyzer" should {
     "compute correct metrics" in withSparkSession { session =>
 
-      val analyzer = Entropy("att1")
+      val analyzer = Entropy("]att1[")
 
       val initial = initialData(session)
       val delta = deltaData(session)
@@ -177,7 +177,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
     "compute correct metrics for the whole and partial data-sets" in withSparkSession { session =>
       import session.implicits._
 
-      val attribute = "att1"
+      val attribute = "]att1["
       val first = Seq(("1", 0.0), ("2", 1.0), ("3", 2.0)).toDF("item", attribute)
       val second = Seq(("1", -2.0), ("2", -1.0)).toDF("item", attribute)
       val firstAndSecond = first.union(second)
@@ -202,7 +202,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
   "EntropyAnalyzer" should {
     "compute correct metrics for three snapshots" in withSparkSession { session =>
 
-      val analyzer = Entropy("att1")
+      val analyzer = Entropy("]att1[")
 
       val delta1 = initialData(session)
       val delta2 = deltaData(session)
@@ -247,7 +247,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
       ("1", "a", 12),
       ("2", null, 12),
       ("3", "b", 12))
-      .toDF("item", "att1", "count")
+      .toDF("item", "]att1[", "count")
   }
 
   def deltaData(session: SparkSession): DataFrame = {
@@ -256,7 +256,7 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
     Seq(
       ("4", "b", 12),
       ("5", null, 12))
-      .toDF("item", "att1", "count")
+      .toDF("item", "]att1[", "count")
   }
 
   def moreDeltaData(session: SparkSession): DataFrame = {
@@ -265,6 +265,6 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
     Seq(
       ("6", "a", 12),
       ("7", null, 12))
-      .toDF("item", "att1", "count")
+      .toDF("item", "]att1[", "count")
   }
 }

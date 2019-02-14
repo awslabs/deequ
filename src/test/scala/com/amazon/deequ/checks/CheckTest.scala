@@ -24,6 +24,7 @@ import com.amazon.deequ.constraints.{ConstrainableDataTypes, ConstraintStatus}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.suggestions.ConstraintSuggestionRunnerTest.Item
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -42,8 +43,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     "return the correct check status for completeness" in withSparkSession { sparkSession =>
 
       val check1 = Check(CheckLevel.Error, "group-1")
-        .isComplete("att1") // 1.0
-        .hasCompleteness("att1", _ == 1.0) // 1.0
+        .isComplete("]att1[") // 1.0
+        .hasCompleteness("]att1[", _ == 1.0) // 1.0
 
       val check2 = Check(CheckLevel.Error, "group-2-E")
         .hasCompleteness("att2", _ > 0.8) // 0.75
@@ -83,8 +84,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     "return the correct check status for distinctness" in withSparkSession { sparkSession =>
 
       val check = Check(CheckLevel.Error, "distinctness-check")
-        .hasDistinctness(Seq("att1"), _ == 0.5)
-        .hasDistinctness(Seq("att1", "att2"), _ == 1.0 / 3)
+        .hasDistinctness(Seq("]att1["), _ == 0.5)
+        .hasDistinctness(Seq("]att1[", "att2"), _ == 1.0 / 3)
         .hasDistinctness(Seq("att2"), _ == 1.0)
 
       val context = runChecks(getDfWithDistinctValues(sparkSession), check)
@@ -156,13 +157,13 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     "return the correct check status for columns constraints" in withSparkSession { sparkSession =>
 
       val check1 = Check(CheckLevel.Error, "group-1")
-        .satisfies("att1 > 0", "rule1")
+        .satisfies("`]att1[` > 0", "rule1")
 
       val check2 = Check(CheckLevel.Error, "group-2-to-fail")
-        .satisfies("att1 > 3", "rule2")
+        .satisfies("`]att1[` > 3", "rule2")
 
       val check3 = Check(CheckLevel.Error, "group-2-to-succeed")
-        .satisfies("att1 > 3", "rule3", _ == 0.5)
+        .satisfies("`]att1[` > 3", "rule3", _ == 0.5)
 
       val context = runChecks(getDfWithNumericValues(sparkSession), check1, check2, check3)
 
@@ -175,13 +176,13 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       withSparkSession { sparkSession =>
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
-          .satisfies("att1 < att2", "rule1").where("att1 > 3")
+          .satisfies("`]att1[` < att2", "rule1").where("`]att1[` > 3")
 
         val checkToFail = Check(CheckLevel.Error, "group-1")
-          .satisfies("att2 > 0", "rule2").where("att1 > 0")
+          .satisfies("att2 > 0", "rule2").where("`]att1[` > 0")
 
         val checkPartiallyGetsSatisfied = Check(CheckLevel.Error, "group-1")
-          .satisfies("att2 > 0", "rule3", _ == 0.5).where("att1 > 0")
+          .satisfies("att2 > 0", "rule3", _ == 0.5).where("`]att1[` > 0")
 
         val context = runChecks(getDfWithNumericValues(sparkSession), checkToSucceed, checkToFail,
           checkPartiallyGetsSatisfied)
@@ -194,10 +195,10 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     "correctly evaluate convenience constraints" in withSparkSession { sparkSession =>
 
       val lessThanCheck = Check(CheckLevel.Error, "a")
-        .isLessThan("att1", "att2").where("item > 3")
+        .isLessThan("]att1[", "att2").where("item > 3")
 
       val incorrectLessThanCheck = Check(CheckLevel.Error, "a")
-        .isLessThan("att1", "att2")
+        .isLessThan("]att1[", "att2")
 
       val nonNegativeCheck = Check(CheckLevel.Error, "a")
         .isNonNegative("item")
@@ -214,13 +215,13 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(isPositiveCheck, results, CheckStatus.Success)
 
       val rangeCheck = Check(CheckLevel.Error, "a")
-        .isContainedIn("att1", Array("a", "b", "c"))
+        .isContainedIn("]att1[", Array("a", "b", "c"))
 
       val inCorrectRangeCheck = Check(CheckLevel.Error, "a")
-        .isContainedIn("att1", Array("a", "b"))
+        .isContainedIn("]att1[", Array("a", "b"))
 
       val inCorrectRangeCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
-        .isContainedIn("att1", Array("a"), _ == 0.5)
+        .isContainedIn("]att1[", Array("a"), _ == 0.5)
 
       val rangeResults = runChecks(getDfWithDistinctValues(sparkSession), rangeCheck,
         inCorrectRangeCheck, inCorrectRangeCheckWithCustomAssertionFunction)
@@ -276,11 +277,11 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       withSparkSession { sparkSession =>
 
         val check1 = Check(CheckLevel.Error, "group-1")
-          .hasNumberOfDistinctValues("att1", _ < 10)
-          .hasHistogramValues("att1", _ ("a").absolute == 4)
-          .hasHistogramValues("att1", _ ("b").absolute == 2)
-          .hasHistogramValues("att1", _ ("a").ratio > 0.6)
-          .hasHistogramValues("att1", _ ("b").ratio < 0.4)
+          .hasNumberOfDistinctValues("]att1[", _ < 10)
+          .hasHistogramValues("]att1[", _ ("a").absolute == 4)
+          .hasHistogramValues("]att1[", _ ("b").absolute == 2)
+          .hasHistogramValues("]att1[", _ ("a").ratio > 0.6)
+          .hasHistogramValues("]att1[", _ ("b").ratio < 0.4)
 
         val check2 = Check(CheckLevel.Error, "group-1")
           .hasNumberOfDistinctValues("att2", _ == 3)
@@ -307,10 +308,10 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val expectedValue = -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))
 
       val check1 = Check(CheckLevel.Error, "group-1")
-        .hasEntropy("att1", _ == expectedValue)
+        .hasEntropy("]att1[", _ == expectedValue)
 
       val check2 = Check(CheckLevel.Error, "group-1")
-        .hasEntropy("att1", _ != expectedValue)
+        .hasEntropy("]att1[", _ != expectedValue)
 
       val context = runChecks(getDfFull(sparkSession), check1, check2)
 
@@ -325,27 +326,29 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val dfUninformative = getDfWithConditionallyUninformativeColumns(sparkSession)
 
       val numericAnalysis = Analysis().addAnalyzers(Seq(
-        Minimum("att1"), Maximum("att1"), Mean("att1"), Sum("att1"),
-        StandardDeviation("att1"), ApproxCountDistinct("att1"),
-        ApproxQuantile("att1", quantile = 0.5)))
+        Minimum("]att1["), Maximum("]att1["), Mean("]att1["), Sum("]att1["),
+        StandardDeviation("]att1["), ApproxCountDistinct("]att1["),
+        ApproxQuantile("]att1[", quantile = 0.5)))
 
       val contextNumeric = numericAnalysis.run(dfNumeric)
 
-      assertSuccess(baseCheck.hasMin("att1", _ == 1.0), contextNumeric)
-      assertSuccess(baseCheck.hasMax("att1", _ == 6.0), contextNumeric)
-      assertSuccess(baseCheck.hasMean("att1", _ == 3.5), contextNumeric)
-      assertSuccess(baseCheck.hasSum("att1", _ == 21.0), contextNumeric)
-      assertSuccess(baseCheck.hasStandardDeviation("att1", _ == 1.707825127659933), contextNumeric)
-      assertSuccess(baseCheck.hasApproxCountDistinct("att1", _ == 6.0), contextNumeric)
-      assertSuccess(baseCheck.hasApproxQuantile("att1", quantile = 0.5, _ == 3.0), contextNumeric)
+      assertSuccess(baseCheck.hasMin("]att1[", _ == 1.0), contextNumeric)
+      assertSuccess(baseCheck.hasMax("]att1[", _ == 6.0), contextNumeric)
+      assertSuccess(baseCheck.hasMean("]att1[", _ == 3.5), contextNumeric)
+      assertSuccess(baseCheck.hasSum("]att1[", _ == 21.0), contextNumeric)
+      assertSuccess(baseCheck.hasStandardDeviation("]att1[", _ == 1.707825127659933),
+        contextNumeric)
+      assertSuccess(baseCheck.hasApproxCountDistinct("]att1[", _ == 6.0), contextNumeric)
+      assertSuccess(baseCheck.hasApproxQuantile("]att1[", quantile = 0.5, _ == 3.0),
+        contextNumeric)
 
-      val correlationAnalysis = Analysis().addAnalyzer(Correlation("att1", "att2"))
+      val correlationAnalysis = Analysis().addAnalyzer(Correlation("]att1[", "att2"))
 
       val contextInformative = correlationAnalysis.run(dfInformative)
       val contextUninformative = correlationAnalysis.run(dfUninformative)
 
-      assertSuccess(baseCheck.hasCorrelation("att1", "att2", _ == 1.0), contextInformative)
-      assertSuccess(baseCheck.hasCorrelation("att1", "att2", java.lang.Double.isNaN),
+      assertSuccess(baseCheck.hasCorrelation("]att1[", "att2", _ == 1.0), contextInformative)
+      assertSuccess(baseCheck.hasCorrelation("]att1[", "att2", java.lang.Double.isNaN),
         contextUninformative)
     }
 
@@ -490,14 +493,6 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
   "Check on column names with special characters" should {
 
-    def testWithExoticColumnName(df: DataFrame, c: Check): Unit = {
-      val r = VerificationSuite()
-        .onData(df)
-        .addCheck(c)
-        .run()
-      assert(r.status == CheckStatus.Success)
-    }
-
     val valuesStr: Seq[ItemStr] = Seq(
       ItemStr("NULL"),
       ItemStr("NULL"),
@@ -542,7 +537,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
     "generate correct Spark SQL & work for isContainedIn value list variant" in
       withSparkSession { sparkSession =>
-        testWithExoticColumnName(
+        testCheckOnData(
           sparkSession.createDataFrame(valuesStr),
           isContainedValues
         )
@@ -550,11 +545,92 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
     "generate correct Spark SQL & work for isContainedIn bounds variant" in
       withSparkSession { sparkSession =>
-        testWithExoticColumnName(
+        testCheckOnData(
           sparkSession.createDataFrame(valuesDbl),
           isContainedBounds
         )
       }
+
+    val positiveValuesDbl = valuesDbl.filter {
+      case ItemDbl(Some(x)) => x > 0.0
+      case _ => false
+    }
+
+    "work for isPositive" in withSparkSession { sparkSession =>
+      testCheckOnData(
+        sparkSession.createDataFrame(positiveValuesDbl),
+        Check(CheckLevel.Error, s"isPositive on $badColumnName").isPositive(badColumnName)
+      )
+    }
+
+    "work for isNonNegative" in withSparkSession { sparkSession =>
+      testCheckOnData(
+        sparkSession.createDataFrame(positiveValuesDbl),
+        Check(CheckLevel.Error, s"isNonNegative on $badColumnName").isNonNegative(badColumnName)
+      )
+    }
+  }
+
+  "Checks for two-columned DataFrames" should {
+
+    val valuesGoodColumnNames =
+      Seq((1.0, 10.0), (2.0, 20.0), (3.0, 30.0), (4.0, 40.0), (5.0, 50.0))
+
+    val valuesBadColumnNames = Seq(
+      ItemPair(1.0, 10.0),
+      ItemPair(2.0, 20.0),
+      ItemPair(3.0, 30.0),
+      ItemPair(4.0, 40.0),
+      ItemPair(5.0, 50.0)
+    )
+
+    "check greater than" in withSparkSession { sparkSession =>
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesGoodColumnNames),
+        Check(CheckLevel.Error, "good >").isGreaterThan("_2", "_1")
+      )
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesBadColumnNames),
+        Check(CheckLevel.Error, "bad >")
+          .isGreaterThan(badColumnName2, badColumnName1)
+      )
+    }
+
+    "check less than" in withSparkSession { sparkSession =>
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesGoodColumnNames),
+        Check(CheckLevel.Error, "good <").isLessThan("_1", "_2")
+      )
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesBadColumnNames),
+        Check(CheckLevel.Error, "bad <")
+          .isLessThan(badColumnName1, badColumnName2)
+      )
+    }
+
+    "check greater than or equal to" in withSparkSession { sparkSession =>
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesGoodColumnNames),
+        Check(CheckLevel.Error, "good >=").isGreaterThanOrEqualTo("_2", "_1")
+      )
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesBadColumnNames),
+        Check(CheckLevel.Error, "bad >=")
+          .isGreaterThanOrEqualTo(badColumnName2, badColumnName1)
+      )
+    }
+
+    "check less than or equal to" in withSparkSession { sparkSession =>
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesGoodColumnNames),
+        Check(CheckLevel.Error, "good <=").isLessThanOrEqualTo("_1", "_2")
+      )
+      testCheckOnData(
+        sparkSession.createDataFrame(valuesBadColumnNames),
+        Check(CheckLevel.Error, "bad <=")
+          .isLessThanOrEqualTo(badColumnName1, badColumnName2)
+      )
+    }
   }
 
   "Check isNewestPointNonAnomalous" should {
@@ -801,8 +877,20 @@ object CheckTest extends WordSpec with Matchers {
       dataType, sparkSession)
   }
 
-  val badColumnName: String = "[this column]:has a handful of problematic chars"
+  def testCheckOnData(df: DataFrame, c: Check): Unit = {
+    val r = VerificationSuite()
+      .onData(df)
+      .addCheck(c)
+      .run()
+    assert(r.status == CheckStatus.Success)
+  }
 
+  val badColumnName: String = "[this column]:has a handful of problematic chars"
   case class ItemStr(`[this column]:has a handful of problematic chars`: String)
   case class ItemDbl(`[this column]:has a handful of problematic chars`: Option[Double])
+
+  val badColumnName1 = "][ bad column 1"
+  val badColumnName2 = "][ bad column 2"
+  case class ItemPair(`][ bad column 1`: Double, `][ bad column 2`: Double)
+
 }

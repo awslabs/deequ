@@ -27,11 +27,11 @@ class StatesTest extends WordSpec with Matchers with SparkContextSpec with Fixtu
 
       import session.implicits._
 
-      val dataA = Seq("A", "A", "B").toDF("att1")
-      val dataB = Seq("A", "C", "C").toDF("att1")
+      val dataA = Seq("A", "A", "B").toDF("]att1[")
+      val dataB = Seq("A", "C", "C").toDF("]att1[")
 
-      val stateA = FrequencyBasedAnalyzer.computeFrequencies(dataA, "att1" :: Nil)
-      val stateB = FrequencyBasedAnalyzer.computeFrequencies(dataB, "att1" :: Nil)
+      val stateA = FrequencyBasedAnalyzer.computeFrequencies(dataA, "]att1[" :: Nil)
+      val stateB = FrequencyBasedAnalyzer.computeFrequencies(dataB, "]att1[" :: Nil)
 
       val stateAB = stateA.sum(stateB)
 

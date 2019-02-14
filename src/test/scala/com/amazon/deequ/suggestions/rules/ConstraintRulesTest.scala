@@ -46,7 +46,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val dfWithColumnCandidate = getDfFull(session)
 
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("]att1[", 1)
 
       val check = Check(CheckLevel.Warning, "some")
         .addConstraint(CompleteIfCompleteRule().candidate(fakeColumnProfile, 100).constraint)
@@ -66,16 +66,16 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val dfWithColumnCandidate = getDfFull(session)
 
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("]att1[", 1)
 
       val codeForConstraint = CompleteIfCompleteRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
-      val expectedCodeForConstraint = """.isComplete("att1")"""
+      val expectedCodeForConstraint = """.isComplete("]att1[")"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .isComplete("att1")
+        .isComplete("]att1[")
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -103,7 +103,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val dfWithColumnCandidate = getDfFull(session)
 
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("]att1[", 0.5)
 
       val check = Check(CheckLevel.Warning, "some")
         .addConstraint(RetainCompletenessRule().candidate(fakeColumnProfile, 100).constraint)
@@ -123,18 +123,18 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val dfWithColumnCandidate = getDfFull(session)
 
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("]att1[", 0.5)
 
       val codeForConstraint = RetainCompletenessRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = """.hasCompleteness("att1", _ >= 0.4,
+      val expectedCodeForConstraint = """.hasCompleteness("]att1[", _ >= 0.4,
           | Some("It should be above 0.4!"))""".stripMargin.replaceAll("\n", "")
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .hasCompleteness("att1", _ >= 0.4, Some("It should be above 0.4!"))
+        .hasCompleteness("]att1[", _ >= 0.4, Some("It should be above 0.4!"))
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)

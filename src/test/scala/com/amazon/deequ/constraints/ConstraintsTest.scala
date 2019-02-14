@@ -31,9 +31,9 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
   "Completeness constraint" should {
     "assert on wrong completeness" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
-      assert(calculate(Constraint.completenessConstraint("att1", _ == 0.5), df).status ==
+      assert(calculate(Constraint.completenessConstraint("]att1[", _ == 0.5), df).status ==
         ConstraintStatus.Success)
-      assert(calculate(Constraint.completenessConstraint("att1", _ != 0.5), df).status ==
+      assert(calculate(Constraint.completenessConstraint("]att1[", _ != 0.5), df).status ==
         ConstraintStatus.Failure)
       assert(calculate(Constraint.completenessConstraint("att2", _ == 0.75), df).status ==
         ConstraintStatus.Success)
@@ -45,15 +45,15 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
   "Histogram constraints" should {
     "assert on bin number" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
-      assert(calculate(Constraint.histogramBinConstraint("att1", _ == 3), df).status ==
+      assert(calculate(Constraint.histogramBinConstraint("]att1[", _ == 3), df).status ==
         ConstraintStatus.Success)
-      assert(calculate(Constraint.histogramBinConstraint("att1", _ != 3), df).status ==
+      assert(calculate(Constraint.histogramBinConstraint("]att1[", _ != 3), df).status ==
         ConstraintStatus.Failure)
     }
     "assert on ratios for a column value which does not exist" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
 
-      val metric = calculate(Constraint.histogramConstraint("att1",
+      val metric = calculate(Constraint.histogramConstraint("]att1[",
         _("non-existent-column-value").ratio == 3), df)
 
       metric match {
@@ -69,45 +69,45 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
     "yield a mutual information of 0 for conditionally uninformative columns" in
       withSparkSession { sparkSession =>
         val df = getDfWithConditionallyUninformativeColumns(sparkSession)
-        calculate(Constraint.mutualInformationConstraint("att1", "att2", _ == 0), df)
-          .status shouldBe ConstraintStatus.Success
+        calculate(Constraint.mutualInformationConstraint("]att1[", "att2", _ == 0), df)
+         .status shouldBe ConstraintStatus.Success
       }
   }
 
   "Basic stats constraints" should {
     "assert on approximate quantile" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.approxQuantileConstraint("att1", quantile = 0.5, _ == 3.0), df)
+      calculate(Constraint.approxQuantileConstraint("]att1[", quantile = 0.5, _ == 3.0), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on minimum" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.minConstraint("att1", _ == 1.0), df)
+      calculate(Constraint.minConstraint("]att1[", _ == 1.0), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on maximum" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.maxConstraint("att1", _ == 6.0), df)
+      calculate(Constraint.maxConstraint("]att1[", _ == 6.0), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on mean" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.meanConstraint("att1", _ == 3.5), df)
+      calculate(Constraint.meanConstraint("]att1[", _ == 3.5), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on sum" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.sumConstraint("att1", _ == 21), df)
+      calculate(Constraint.sumConstraint("]att1[", _ == 21), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on standard deviation" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.standardDeviationConstraint("att1", _ == 1.707825127659933), df)
+      calculate(Constraint.standardDeviationConstraint("]att1[", _ == 1.707825127659933), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on approximate count distinct" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      calculate(Constraint.approxCountDistinctConstraint("att1", _ == 6.0), df)
+      calculate(Constraint.approxCountDistinctConstraint("]att1[", _ == 6.0), df)
         .status shouldBe ConstraintStatus.Success
     }
   }
@@ -115,12 +115,12 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
   "Correlation constraint" should {
     "assert maximal correlation" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyInformativeColumns(sparkSession)
-      calculate(Constraint.correlationConstraint("att1", "att2", _ == 1.0), df)
+      calculate(Constraint.correlationConstraint("]att1[", "att2", _ == 1.0), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert no correlation" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyUninformativeColumns(sparkSession)
-      calculate(Constraint.correlationConstraint("att1", "att2", java.lang.Double.isNaN), df)
+      calculate(Constraint.correlationConstraint("]att1[", "att2", java.lang.Double.isNaN), df)
         .status shouldBe ConstraintStatus.Success
     }
   }
@@ -151,9 +151,9 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
     "assert on anomaly analyzer values" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
       assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
-        Completeness("att1"), _ > 0.4), df).status == ConstraintStatus.Success)
+        Completeness("]att1["), _ > 0.4), df).status == ConstraintStatus.Success)
       assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
-        Completeness("att1"), _ < 0.4), df).status == ConstraintStatus.Failure)
+        Completeness("]att1["), _ < 0.4), df).status == ConstraintStatus.Failure)
 
       assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
         Completeness("att2"), _ > 0.7), df).status == ConstraintStatus.Success)

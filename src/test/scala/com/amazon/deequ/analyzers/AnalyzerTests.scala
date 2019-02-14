@@ -17,13 +17,12 @@
 package com.amazon.deequ
 package analyzers
 
-import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.{col, expr, udf}
+import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types._
 import org.scalatest.{Matchers, WordSpec}
 
@@ -49,8 +48,8 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
       assert(Completeness("someMissingColumn").preconditions.size == 1,
         "should check column name availability")
-      assert(Completeness("att1").calculate(dfMissing) == DoubleMetric(Entity.Column,
-        "Completeness", "att1", Success(0.5)))
+      assert(Completeness("]att1[").calculate(dfMissing) == DoubleMetric(Entity.Column,
+        "Completeness", "]att1[", Success(0.5)))
       assert(Completeness("att2").calculate(dfMissing) == DoubleMetric(Entity.Column,
         "Completeness", "att2", Success(0.75)))
 
@@ -70,8 +69,8 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     "work with filtering" in withSparkSession { sparkSession =>
       val dfMissing = getDfMissing(sparkSession)
 
-      val result = Completeness("att1", Some("item IN ('1', '2')")).calculate(dfMissing)
-      assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0)))
+      val result = Completeness("]att1[", Some("item IN ('1', '2')")).calculate(dfMissing)
+      assert(result == DoubleMetric(Entity.Column, "Completeness", "]att1[", Success(1.0)))
     }
 
   }
@@ -81,14 +80,14 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val dfMissing = getDfMissing(sparkSession)
       val dfFull = getDfFull(sparkSession)
 
-      assert(Uniqueness("att1").calculate(dfMissing) == DoubleMetric(Entity.Column, "Uniqueness",
-        "att1", Success(0.0)))
+      assert(Uniqueness("]att1[").calculate(dfMissing) == DoubleMetric(Entity.Column, "Uniqueness",
+        "]att1[", Success(0.0)))
       assert(Uniqueness("att2").calculate(dfMissing) == DoubleMetric(Entity.Column, "Uniqueness",
         "att2", Success(0.0)))
 
 
-      assert(Uniqueness("att1").calculate(dfFull) == DoubleMetric(Entity.Column, "Uniqueness",
-        "att1", Success(0.25)))
+      assert(Uniqueness("]att1[").calculate(dfFull) == DoubleMetric(Entity.Column, "Uniqueness",
+        "]att1[", Success(0.25)))
       assert(Uniqueness("att2").calculate(dfFull) == DoubleMetric(Entity.Column, "Uniqueness",
         "att2", Success(0.25)))
 
@@ -135,8 +134,8 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     "compute correct metrics" in withSparkSession { sparkSession =>
       val dfFull = getDfFull(sparkSession)
 
-      assert(Entropy("att1").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Entropy", "att1",
+      assert(Entropy("]att1[").calculate(dfFull) ==
+        DoubleMetric(Entity.Column, "Entropy", "]att1[",
           Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
       assert(Entropy("att2").calculate(dfFull) ==
         DoubleMetric(Entity.Column, "Entropy", "att2",
@@ -148,19 +147,19 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   "MutualInformation analyzer" should {
     "compute correct metrics " in withSparkSession { sparkSession =>
       val dfFull = getDfFull(sparkSession)
-      assert(MutualInformation("att1", "att2").calculate(dfFull) ==
-        DoubleMetric(Entity.Mutlicolumn, "MutualInformation", "att1,att2",
+      assert(MutualInformation("]att1[", "att2").calculate(dfFull) ==
+        DoubleMetric(Entity.Mutlicolumn, "MutualInformation", "]att1[,att2",
           Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
     }
     "yields 0 for conditionally uninformative columns" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyUninformativeColumns(sparkSession)
-      assert(MutualInformation("att1", "att2").calculate(df).value == Success(0.0))
+      assert(MutualInformation("]att1[", "att2").calculate(df).value == Success(0.0))
     }
     "compute entropy for same column" in withSparkSession { session =>
       val data = getDfFull(session)
 
-      val entropyViaMI = MutualInformation("att1", "att1").calculate(data)
-      val entropy = Entropy("att1").calculate(data)
+      val entropyViaMI = MutualInformation("]att1[", "]att1[").calculate(data)
+      val entropy = Entropy("]att1[").calculate(data)
 
       assert(entropyViaMI.value.isSuccess)
       assert(entropy.value.isSuccess)
@@ -172,16 +171,16 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   "Compliance analyzer" should {
     "compute correct metrics " in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      assert(Compliance("rule1", "att1 > 3").calculate(df) ==
+      assert(Compliance("rule1", "`]att1[` > 3").calculate(df) ==
         DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
-      assert(Compliance("rule2", "att1 > 2").calculate(df) ==
+      assert(Compliance("rule2", "`]att1[` > 2").calculate(df) ==
         DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
 
     }
 
     "compute correct metrics with filtering" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Compliance("rule1", "att2 = 0", Some("att1 < 4")).calculate(df)
+      val result = Compliance("rule1", "att2 = 0", Some("`]att1[` < 4")).calculate(df)
       assert(result == DoubleMetric(Entity.Column, "Compliance", "rule1", Success(1.0)))
     }
 
@@ -202,7 +201,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   "Histogram analyzer" should {
     "compute correct metrics " in withSparkSession { sparkSession =>
       val dfFull = getDfMissing(sparkSession)
-      val histogram = Histogram("att1").calculate(dfFull)
+      val histogram = Histogram("]att1[").calculate(dfFull)
       assert(histogram.value.isSuccess)
 
       histogram.value.get match {
@@ -222,7 +221,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
           }
       }
       val dfFull = getDfMissing(sparkSession)
-      val histogram = Histogram("att1", Some(customBinner)).calculate(dfFull)
+      val histogram = Histogram("]att1[", Some(customBinner)).calculate(dfFull)
 
       assert(histogram.value.isSuccess)
 
@@ -235,7 +234,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     }
     "compute correct metrics should only get top N bins" in withSparkSession { sparkSession =>
       val dfFull = getDfMissing(sparkSession)
-      val histogram = Histogram("att1", None, 2).calculate(dfFull)
+      val histogram = Histogram("]att1[", None, 2).calculate(dfFull)
 
       assert(histogram.value.isSuccess)
 
@@ -250,7 +249,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
     "fail for max detail bins > 1000" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
-      Histogram("att1", binningUdf = None, maxDetailBins = 1001).calculate(df).value match {
+      Histogram("]att1[", binningUdf = None, maxDetailBins = 1001).calculate(df).value match {
         case Failure(t) => t.getMessage shouldBe "Cannot return " +
           "histogram values for more than 1000 values"
         case _ => fail("test was expected to fail due to parameter precondition")
@@ -282,20 +281,20 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     "fall back to String in case no known data type matched" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
 
-      DataType("att1").calculate(df).value shouldBe
+      DataType("]att1[").calculate(df).value shouldBe
         Success(distributionFrom(DataTypeInstances.String -> DistributionValue(4, 1.0)))
     }
 
     "detect integral type correctly" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       val expectedResult = distributionFrom(DataTypeInstances.Integral -> DistributionValue(6, 1.0))
-      DataType("att1").calculate(df).value shouldBe Success(expectedResult)
+      DataType("]att1[").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "detect integral type correctly for negative numbers" in withSparkSession { sparkSession =>
       val df = getDfWithNegativeNumbers(sparkSession)
       val expectedResult = distributionFrom(DataTypeInstances.Integral -> DistributionValue(4, 1.0))
-      DataType("att1").calculate(df).value shouldBe Success(expectedResult)
+      DataType("]att1[").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "detect fractional type correctly for negative numbers" in withSparkSession { sparkSession =>
@@ -308,38 +307,38 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
     "detect fractional type correctly" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-        .withColumn("att1_float", col("att1").cast(FloatType))
+        .withColumn("]att1[_float", col("]att1[").cast(FloatType))
       val expectedResult =
         distributionFrom(DataTypeInstances.Fractional -> DistributionValue(6, 1.0))
-        DataType("att1_float").calculate(df).value shouldBe Success(expectedResult)
+        DataType("]att1[_float").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "detect integral type in string column" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-        .withColumn("att1_str", col("att1").cast(StringType))
+        .withColumn("]att1[_str", col("]att1[").cast(StringType))
       val expectedResult = distributionFrom(DataTypeInstances.Integral -> DistributionValue(6, 1.0))
-      DataType("att1_str").calculate(df).value shouldBe Success(expectedResult)
+      DataType("]att1[_str").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "detect fractional type in string column" in withSparkSession { sparkSession =>
       val df = getDfWithNumericFractionalValues(sparkSession)
-        .withColumn("att1_str", col("att1").cast(StringType))
+        .withColumn("]att1[_str", col("]att1[").cast(StringType))
 
       val expectedResult =
         distributionFrom(DataTypeInstances.Fractional -> DistributionValue(6, 1.0))
-      DataType("att1_str").calculate(df).value shouldBe Success(expectedResult)
+      DataType("]att1[_str").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "fall back to string in case the string column didn't match " +
       " any known other data type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
       val expectedResult = distributionFrom(DataTypeInstances.String -> DistributionValue(4, 1.0))
-      DataType("att1").calculate(df).value shouldBe Success(expectedResult)
+      DataType("]att1[").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "detect fractional for mixed fractional and integral" in withSparkSession { sparkSession =>
       val df = getDfFractionalIntegralTypes(sparkSession)
-      DataType("att1").calculate(df).value shouldBe Success(
+      DataType("]att1[").calculate(df).value shouldBe Success(
         distributionFrom(
           DataTypeInstances.Fractional -> DistributionValue(1, 0.5),
           DataTypeInstances.Integral -> DistributionValue(1, 0.5)
@@ -349,7 +348,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
     "fall back to string for mixed fractional and string" in withSparkSession { sparkSession =>
       val df = getDfFractionalStringTypes(sparkSession)
-      DataType("att1").calculate(df).value shouldBe Success(
+      DataType("]att1[").calculate(df).value shouldBe Success(
         distributionFrom(
           DataTypeInstances.Fractional -> DistributionValue(1, 0.5),
           DataTypeInstances.String -> DistributionValue(1, 0.5)
@@ -359,7 +358,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
     "fall back to string for mixed integral and string" in withSparkSession { sparkSession =>
       val df = getDfIntegralStringTypes(sparkSession)
-      DataType("att1").calculate(df).value shouldBe Success(
+      DataType("]att1[").calculate(df).value shouldBe Success(
         distributionFrom(
           DataTypeInstances.Integral -> DistributionValue(1, 0.5),
           DataTypeInstances.String -> DistributionValue(1, 0.5)
@@ -382,11 +381,11 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val df = Seq(
         ("1", "true"),
         ("2", "false"))
-        .toDF("item", "att1")
+        .toDF("item", "]att1[")
 
       val expectedResult = distributionFrom(DataTypeInstances.Boolean -> DistributionValue(2, 1.0))
 
-      DataType("att1").calculate(df).value shouldBe Success(expectedResult)
+      DataType("]att1[").calculate(df).value shouldBe Success(expectedResult)
     }
 
     "fall back to string for boolean and null" in withSparkSession { sparkSession =>
@@ -396,9 +395,9 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         ("2", "false"),
         ("3", null),
         ("4", "2.0")
-      ).toDF("item", "att1")
+      ).toDF("item", "]att1[")
 
-      DataType("att1").calculate(df).value shouldBe Success(
+      DataType("]att1[").calculate(df).value shouldBe Success(
         distributionFrom(
           DataTypeInstances.Fractional -> DistributionValue(1, 0.25),
           DataTypeInstances.Unknown -> DistributionValue(1, 0.25),
@@ -411,66 +410,66 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   "Basic statistics" should {
     "compute mean correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Mean("att1").calculate(df).value
+      val result = Mean("]att1[").calculate(df).value
       result shouldBe Success(3.5)
     }
     "fail to compute mean for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
-      assert(Mean("att1").calculate(df).value.isFailure)
+      assert(Mean("]att1[").calculate(df).value.isFailure)
     }
     "compute mean correctly for numeric data with where predicate" in
       withSparkSession { sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
-        val result = Mean("att1", where = Some("item != '6'")).calculate(df).value
+        val result = Mean("]att1[", where = Some("item != '6'")).calculate(df).value
         result shouldBe Success(3.0)
       }
 
     "compute standard deviation correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = StandardDeviation("att1").calculate(df).value
+      val result = StandardDeviation("]att1[").calculate(df).value
       result shouldBe Success(1.707825127659933)
     }
     "fail to compute standard deviaton for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
-      assert(StandardDeviation("att1").calculate(df).value.isFailure)
+      assert(StandardDeviation("]att1[").calculate(df).value.isFailure)
     }
 
     "compute minimum correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Minimum("att1").calculate(df).value
+      val result = Minimum("]att1[").calculate(df).value
       result shouldBe Success(1.0)
     }
     "fail to compute minimum for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
-      assert(Minimum("att1").calculate(df).value.isFailure)
+      assert(Minimum("]att1[").calculate(df).value.isFailure)
     }
 
     "compute maximum correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Maximum("att1").calculate(df).value
+      val result = Maximum("]att1[").calculate(df).value
       result shouldBe Success(6.0)
     }
 
     "compute maximum correctly for numeric data with filtering" in
       withSparkSession { sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
-        val result = Maximum("att1", where = Some("item != '6'")).calculate(df).value
+        val result = Maximum("]att1[", where = Some("item != '6'")).calculate(df).value
         result shouldBe Success(5.0)
       }
 
     "fail to compute maximum for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
-      assert(Maximum("att1").calculate(df).value.isFailure)
+      assert(Maximum("]att1[").calculate(df).value.isFailure)
     }
 
     "compute sum correctly for numeric data" in withSparkSession { session =>
       val df = getDfWithNumericValues(session)
-      Sum("att1").calculate(df).value shouldBe Success(21)
+      Sum("]att1[").calculate(df).value shouldBe Success(21)
     }
 
     "fail to compute sum for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
-      assert(Sum("att1").calculate(df).value.isFailure)
+      assert(Sum("]att1[").calculate(df).value.isFailure)
     }
 
     "should work correctly on decimal columns" in withSparkSession { session =>
@@ -523,9 +522,9 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       withSparkSession { sparkSession =>
 
         import sparkSession.implicits._
-        val df = sparkSession.sparkContext.range(-1000L, 1000L).toDF("att1")
+        val df = sparkSession.sparkContext.range(-1000L, 1000L).toDF("]att1[")
 
-        val result = ApproxQuantile("att1", 0.5).calculate(df).value.get
+        val result = ApproxQuantile("]att1[", 0.5).calculate(df).value.get
 
         assert(result > -20 && result < 20)
       }
@@ -534,9 +533,9 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       withSparkSession { sparkSession =>
 
         import sparkSession.implicits._
-        val df = sparkSession.sparkContext.range(-1000L, 1000L).toDF("att1")
+        val df = sparkSession.sparkContext.range(-1000L, 1000L).toDF("]att1[")
 
-        val result = ApproxQuantile("att1", 0.25).calculate(df).value.get
+        val result = ApproxQuantile("]att1[", 0.25).calculate(df).value.get
 
         assert(result > -520 && result < -480)
       }
@@ -545,16 +544,16 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       withSparkSession { sparkSession =>
 
         import sparkSession.implicits._
-        val df = sparkSession.sparkContext.range(-1000L, 1000L).toDF("att1")
+        val df = sparkSession.sparkContext.range(-1000L, 1000L).toDF("]att1[")
 
-        val result = ApproxQuantile("att1", 0.75).calculate(df).value.get
+        val result = ApproxQuantile("]att1[", 0.75).calculate(df).value.get
 
         assert(result > 480 && result < 520)
       }
 
     "fail for relative error > 1.0" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      ApproxQuantile("att1", quantile = 0.5, relativeError = 1.1).calculate(df).value match {
+      ApproxQuantile("]att1[", quantile = 0.5, relativeError = 1.1).calculate(df).value match {
         case Failure(t) => t.getMessage shouldBe "Relative error parameter must " +
           "be in the closed interval [0, 1]. Currently, the value is: 1.1!"
         case _ => fail(AnalyzerTests.expectedPreconditionViolation)
@@ -562,7 +561,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     }
     "fail for relative error < 0.0" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      ApproxQuantile("att1", quantile = 0.5, relativeError = -0.1).calculate(df).value match {
+      ApproxQuantile("]att1[", quantile = 0.5, relativeError = -0.1).calculate(df).value match {
         case Failure(t) => t.getMessage shouldBe "Relative error parameter must " +
           "be in the closed interval [0, 1]. Currently, the value is: -0.1!"
         case _ => fail(AnalyzerTests.expectedPreconditionViolation)
@@ -570,7 +569,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     }
     "fail for quantile < 0.0" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      ApproxQuantile("att1", quantile = -0.1).calculate(df).value match {
+      ApproxQuantile("]att1[", quantile = -0.1).calculate(df).value match {
         case Failure(t) => t.getMessage shouldBe "Quantile parameter must " +
           "be in the closed interval [0, 1]. Currently, the value is: -0.1!"
         case _ => fail(AnalyzerTests.expectedPreconditionViolation)
@@ -579,7 +578,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     }
     "fail for quantile > 1.0" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      ApproxQuantile("att1", quantile = 1.1).calculate(df).value match {
+      ApproxQuantile("]att1[", quantile = 1.1).calculate(df).value match {
         case Failure(t) => t.getMessage shouldBe "Quantile parameter must be " +
           "in the closed interval [0, 1]. Currently, the value is: 1.1!"
         case _ => fail(AnalyzerTests.expectedPreconditionViolation)
@@ -590,22 +589,22 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   "Pearson correlation" should {
     "yield NaN for conditionally uninformative columns" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyUninformativeColumns(sparkSession)
-      val corr = Correlation("att1", "att2").calculate(df).value.get
+      val corr = Correlation("]att1[", "att2").calculate(df).value.get
       assert(java.lang.Double.isNaN(corr))
     }
     "yield 1.0 for maximal conditionally informative columns" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyInformativeColumns(sparkSession)
-      Correlation("att1", "att2").calculate(df) shouldBe DoubleMetric(
+      Correlation("]att1[", "att2").calculate(df) shouldBe DoubleMetric(
         Entity.Mutlicolumn,
         "Correlation",
-        "att1,att2",
+        "]att1[,att2",
         Success(1.0)
       )
     }
     "is commutative" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyInformativeColumns(sparkSession)
-      Correlation("att1", "att2").calculate(df).value shouldBe
-        Correlation("att2", "att1").calculate(df).value
+      Correlation("]att1[", "att2").calculate(df).value shouldBe
+        Correlation("att2", "]att1[").calculate(df).value
     }
   }
 

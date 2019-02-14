@@ -36,8 +36,8 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
       val analysisResult = Analysis()
         .addAnalyzer(Size())
         .addAnalyzer(Distinctness("item"))
-        .addAnalyzer(Completeness("att1"))
-        .addAnalyzer(Uniqueness(Seq("att1", "att2")))
+        .addAnalyzer(Completeness("]att1["))
+        .addAnalyzer(Uniqueness(Seq("]att1[", "att2")))
         .run(df)
 
       val successMetricsAsDataFrame = AnalyzerContext
@@ -47,8 +47,8 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
       val expected = Seq(
         ("Dataset", "*", "Size", 4.0),
         ("Column", "item", "Distinctness", 1.0),
-        ("Column", "att1", "Completeness", 1.0),
-        ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+        ("Column", "]att1[", "Completeness", 1.0),
+        ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25))
         .toDF("entity", "instance", "name", "value")
 
       assertSameRows(successMetricsAsDataFrame, expected)
@@ -71,28 +71,28 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
       val df = getDfWithNumericValues(sparkSession)
 
       val analysis = Analysis()
-        .addAnalyzer(Mean("att1"))
-        .addAnalyzer(StandardDeviation("att1"))
-        .addAnalyzer(Minimum("att1"))
-        .addAnalyzer(Maximum("att1"))
-        .addAnalyzer(ApproxQuantile("att1", 0.5))
-        .addAnalyzer(ApproxCountDistinct("att1"))
-        .addAnalyzer(CountDistinct("att1"))
+        .addAnalyzer(Mean("]att1["))
+        .addAnalyzer(StandardDeviation("]att1["))
+        .addAnalyzer(Minimum("]att1["))
+        .addAnalyzer(Maximum("]att1["))
+        .addAnalyzer(ApproxQuantile("]att1[", 0.5))
+        .addAnalyzer(ApproxCountDistinct("]att1["))
+        .addAnalyzer(CountDistinct("]att1["))
 
       val resultMetrics = analysis.run(df).allMetrics
 
       assert(resultMetrics.size == analysis.analyzers.size)
 
-      resultMetrics should contain(DoubleMetric(Entity.Column, "Mean", "att1", Success(3.5)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "StandardDeviation", "att1",
+      resultMetrics should contain(DoubleMetric(Entity.Column, "Mean", "]att1[", Success(3.5)))
+      resultMetrics should contain(DoubleMetric(Entity.Column, "StandardDeviation", "]att1[",
         Success(1.707825127659933)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "Minimum", "att1", Success(1.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "Maximum", "att1", Success(6.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxCountDistinct", "att1",
+      resultMetrics should contain(DoubleMetric(Entity.Column, "Minimum", "]att1[", Success(1.0)))
+      resultMetrics should contain(DoubleMetric(Entity.Column, "Maximum", "]att1[", Success(6.0)))
+      resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxCountDistinct", "]att1[",
         Success(6.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "CountDistinct", "att1",
+      resultMetrics should contain(DoubleMetric(Entity.Column, "CountDistinct", "]att1[",
         Success(6.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxQuantile", "att1",
+      resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxQuantile", "]att1[",
         Success(3.0)))
     }
 
@@ -191,7 +191,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         val df = getDfWithNumericValues(sparkSession)
 
         val meanException = new IllegalArgumentException("-test-mean-failing-")
-        val failingMean = new Mean("att1") {
+        val failingMean = new Mean("]att1[") {
           override def fromAggregationResult(result: Row, offset: Int): Option[MeanState] = {
             throw meanException
           }
@@ -213,7 +213,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         val df = getDfWithNumericValues(sparkSession)
 
         val meanException = new IllegalArgumentException("-test-mean-failing-")
-        val failingMean = new Mean("att1") {
+        val failingMean = new Mean("]att1[") {
           override def fromAggregationResult(result: Row, offset: Int): Option[MeanState] = {
             throw meanException
           }
@@ -221,19 +221,19 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analysis = Analysis()
           .addAnalyzer(failingMean)
-          .addAnalyzer(Minimum("att1"))
-          .addAnalyzer(Maximum("att1"))
+          .addAnalyzer(Minimum("]att1["))
+          .addAnalyzer(Maximum("]att1["))
 
         val analyzerContext = analysis.run(df)
 
         assert(analyzerContext.metricMap(failingMean).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(meanException))))
 
-        analyzerContext.metricMap(Minimum("att1")).value should be
-          DoubleMetric(Entity.Column, "Minimum", "att1", Success(1.0))
+        analyzerContext.metricMap(Minimum("]att1[")).value should be
+          DoubleMetric(Entity.Column, "Minimum", "]att1[", Success(1.0))
 
-        analyzerContext.metricMap(Maximum("att1")).value should be
-          DoubleMetric(Entity.Column, "Maximum", "att1", Success(6.0))
+        analyzerContext.metricMap(Maximum("]att1[")).value should be
+          DoubleMetric(Entity.Column, "Maximum", "]att1[", Success(6.0))
     }
 
     "fail all analyzers in case of aggregation computation failure" in
@@ -241,24 +241,24 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         val df = getDfWithNumericValues(sparkSession)
 
         val aggregationException = new IllegalArgumentException("-test-agg-failing-")
-        val aggFailingMean = new Mean("att1") {
+        val aggFailingMean = new Mean("]att1[") {
           override def aggregationFunctions() = throw aggregationException
         }
 
         val analysis = Analysis()
           .addAnalyzer(aggFailingMean)
-          .addAnalyzer(Minimum("att1"))
-          .addAnalyzer(Maximum("att1"))
+          .addAnalyzer(Minimum("]att1["))
+          .addAnalyzer(Maximum("]att1["))
 
         val analyzerContext = analysis.run(df)
 
         assert(analyzerContext.metricMap(aggFailingMean).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(Minimum("att1")).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(Minimum("]att1[")).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(Maximum("att1")).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(Maximum("]att1[")).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
       }
@@ -271,7 +271,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         val df = getDfWithNumericValues(sparkSession)
 
         val distinctnessException = new IllegalArgumentException("-test-distinctness-failing-")
-        val failingDistinctness = new Distinctness("att1" :: Nil) {
+        val failingDistinctness = new Distinctness("]att1[" :: Nil) {
           override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
             throw distinctnessException
           }
@@ -279,8 +279,8 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analysis = Analysis()
           .addAnalyzer(failingDistinctness)
-          .addAnalyzer(Entropy("att1"))
-          .addAnalyzer(Uniqueness("att1"))
+          .addAnalyzer(Entropy("]att1["))
+          .addAnalyzer(Uniqueness("]att1["))
 
         val analyzerContext = analysis.run(df)
 
@@ -288,11 +288,11 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
           .compareOuterAndInnerFailureTypes(Failure(
             new MetricCalculationRuntimeException(distinctnessException))))
 
-        analyzerContext.metricMap(Entropy("att1")).value should be
-          DoubleMetric(Entity.Column, "Uniqueness", "att1", Success(1.0))
+        analyzerContext.metricMap(Entropy("]att1[")).value should be
+          DoubleMetric(Entity.Column, "Uniqueness", "]att1[", Success(1.0))
 
-        analyzerContext.metricMap(Uniqueness("att1")).value should be
-          DoubleMetric(Entity.Column, "Maximum", "att1", Success(6.0))
+        analyzerContext.metricMap(Uniqueness("]att1[")).value should be
+          DoubleMetric(Entity.Column, "Maximum", "]att1[", Success(6.0))
       }
 
     "fail all analyzers in case of aggregation computation failure" in
@@ -300,14 +300,14 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         val df = getDfWithNumericValues(sparkSession)
 
         val aggregationException = new IllegalArgumentException("-test-agg-failing-")
-        val failingDistinctness = new Distinctness("att1" :: Nil) {
+        val failingDistinctness = new Distinctness("]att1[" :: Nil) {
           override def aggregationFunctions(numRows: Long) = throw aggregationException
         }
 
         val analysis = Analysis()
           .addAnalyzer(failingDistinctness)
-          .addAnalyzer(Entropy("att1"))
-          .addAnalyzer(Uniqueness("att1"))
+          .addAnalyzer(Entropy("]att1["))
+          .addAnalyzer(Uniqueness("]att1["))
 
         val analyzerContext = analysis.run(df)
 
@@ -315,11 +315,12 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
           .compareOuterAndInnerFailureTypes(Failure(
             new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(Entropy("att1")).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(Entropy("]att1[")).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(Uniqueness("att1")).value.compareOuterAndInnerFailureTypes(
-          Failure(new MetricCalculationRuntimeException(aggregationException))))
+        assert(analyzerContext.metricMap(Uniqueness("]att1[")).value
+          .compareOuterAndInnerFailureTypes(
+            Failure(new MetricCalculationRuntimeException(aggregationException))))
       }
   }
 

@@ -21,7 +21,7 @@ import java.time.{LocalDate, ZoneOffset}
 import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, Maximum, Mean, Minimum, MutualInformation, StandardDeviation, Uniqueness, _}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics._
-import com.amazon.deequ.utils.FixtureSupport
+import com.amazon.deequ.utils.{AssertionUtils, FixtureSupport}
 import org.scalatest._
 import AnalysisResultSerde._
 import com.amazon.deequ.SparkContextSpec
@@ -36,7 +36,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
       Completeness("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      Compliance("rule1", "att1 > 3") ->
+      Compliance("rule1", "`]att1[` > 3") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       ApproxCountDistinct("columnA", Some("test")) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
@@ -197,12 +197,12 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
       val analysis = Analysis()
         .addAnalyzer(Size())
         .addAnalyzer(Distinctness("item"))
-        .addAnalyzer(Completeness("att1"))
-        .addAnalyzer(Uniqueness("att1"))
-        .addAnalyzer(Distinctness("att1"))
+        .addAnalyzer(Completeness("]att1["))
+        .addAnalyzer(Uniqueness("]att1["))
+        .addAnalyzer(Distinctness("]att1["))
         .addAnalyzer(Completeness("att2"))
         .addAnalyzer(Uniqueness("att2"))
-        .addAnalyzer(MutualInformation("att1", "att2"))
+        .addAnalyzer(MutualInformation("]att1[", "att2"))
 
       val analysisContext = analysis.run(df)
 
@@ -218,7 +218,7 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
         """[{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att2","name":"Completeness","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
-          |"instance":"att1","name":"Completeness","value":1.0},
+          |"instance":"]att1[","name":"Completeness","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att2","name":"Uniqueness","value":0.25},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
@@ -226,15 +226,13 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
           |{"dataset_date":1507975810,"entity":"Dataset","region":"EU",
           |"instance":"*","name":"Size","value":4.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
-          |"instance":"att1","name":"Uniqueness","value":0.25},
+          |"instance":"]att1[","name":"Uniqueness","value":0.25},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
-          |"instance":"att1","name":"Distinctness","value":0.5},
+          |"instance":"]att1[","name":"Distinctness","value":0.5},
           |{"dataset_date":1507975810,"entity":"Mutlicolumn","region":"EU",
-          |"instance":"att1,att2","name":"MutualInformation","value":0.5623351446188083}]"""
+          |"instance":"]att1[,att2","name":"MutualInformation","value":0.5623351446188083}]"""
             .stripMargin.replaceAll("\n", "")
 
-      // ordering of map entries is not guaranteed, so comparing strings is not an option
-      assert(SimpleResultSerde.deserialize(sucessMetricsResultJson) ==
-        SimpleResultSerde.deserialize(expected))
+      assertSameJson(sucessMetricsResultJson, expected)
     }
 }

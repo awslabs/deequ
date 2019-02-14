@@ -99,13 +99,13 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
           // First analysisResult
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
-          ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
+          ("Column", "]att1[", "Completeness", 1.0, DATE_ONE, "EU"),
+          ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
           // Second analysisResult
           ("Dataset", "*", "Size", 4.0, DATE_TWO, "NA"),
           ("Column", "item", "Distinctness", 1.0, DATE_TWO, "NA"),
-          ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+          ("Column", "]att1[", "Completeness", 1.0, DATE_TWO, "NA"),
+          ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -131,8 +131,8 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
             // Second analysisResult
             ("Dataset", "*", "Size", 4.0, DATE_TWO, "NA"),
             ("Column", "item", "Distinctness", 1.0, DATE_TWO, "NA"),
-            ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+            ("Column", "]att1[", "Completeness", 1.0, DATE_TWO, "NA"),
+            ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
             .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
           assertSameRows(analysisResultsAsDataFrame, expected)
@@ -156,8 +156,8 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
           // First analysisResult
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
-          ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+          ("Column", "]att1[", "Completeness", 1.0, DATE_ONE, "EU"),
+          ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataframe, expected)
@@ -174,17 +174,17 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
 
           val analysisResultsAsDataFrame = repository.load()
             .after(DATE_ONE)
-            .forAnalyzers(Seq(Completeness("att1"), Uniqueness(Seq("att1", "att2"))))
+            .forAnalyzers(Seq(Completeness("]att1["), Uniqueness(Seq("]att1[", "att2"))))
             .getSuccessMetricsAsDataFrame(sparkSession)
 
           import sparkSession.implicits._
           val expected = Seq(
             // First analysisResult
-            ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
+            ("Column", "]att1[", "Completeness", 1.0, DATE_ONE, "EU"),
+            ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
             // Second analysisResult
-            ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+            ("Column", "]att1[", "Completeness", 1.0, DATE_TWO, "NA"),
+            ("Mutlicolumn", "]att1[,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
             .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
           assertSameRows(analysisResultsAsDataFrame, expected)
@@ -244,8 +244,8 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
     Analysis()
       .addAnalyzer(Size())
       .addAnalyzer(Distinctness("item"))
-      .addAnalyzer(Completeness("att1"))
-      .addAnalyzer(Uniqueness(Seq("att1", "att2")))
+      .addAnalyzer(Completeness("]att1["))
+      .addAnalyzer(Uniqueness(Seq("]att1[", "att2")))
   }
 
   private[this] def createDate(year: Int, month: Int, day: Int): Long = {

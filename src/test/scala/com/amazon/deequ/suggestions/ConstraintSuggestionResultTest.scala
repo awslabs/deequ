@@ -19,7 +19,7 @@ package com.amazon.deequ.suggestions
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.FixtureSupport
-import com.google.gson.JsonParser
+import com.google.gson.{JsonElement, JsonParser}
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{Matchers, WordSpec}
 
@@ -154,7 +154,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
 //              |      ]
 //              |    },
 //              |    {
-//              |      "column": "att1",
+//              |      "column": "]att1[",
 //              |      "dataType": "String",
 //              |      "isDataTypeInferred": "true",
 //              |      "completeness": 1.0,
@@ -221,14 +221,14 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "code_for_constraint": ".isComplete(\"att2\")"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
-              |      "column_name": "att1",
+              |      "constraint_name": "CompletenessConstraint(Completeness(]att1[,None))",
+              |      "column_name": "]att1[",
               |      "current_value": "Completeness: 1.0",
-              |      "description": "'att1' is not null",
+              |      "description": "']att1[' is not null",
               |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
-              |      "code_for_constraint": ".isComplete(\"att1\")"
+              |      "code_for_constraint": ".isComplete(\"]att1[\")"
               |    },
               |    {
               |      "constraint_name": "CompletenessConstraint(Completeness(item,None))",
@@ -304,14 +304,14 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
-              |      "column_name": "att1",
+              |      "constraint_name": "CompletenessConstraint(Completeness(]att1[,None))",
+              |      "column_name": "]att1[",
               |      "current_value": "Completeness: 1.0",
-              |      "description": "\u0027att1\u0027 is not null",
+              |      "description": "\u0027]att1[\u0027 is not null",
               |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
-              |      "code_for_constraint": ".isComplete(\"att1\")",
+              |      "code_for_constraint": ".isComplete(\"]att1[\")",
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
@@ -391,14 +391,14 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
-              |      "column_name": "att1",
+              |      "constraint_name": "CompletenessConstraint(Completeness(]att1[,None))",
+              |      "column_name": "]att1[",
               |      "current_value": "Completeness: 1.0",
-              |      "description": "\u0027att1\u0027 is not null",
+              |      "description": "\u0027]att1[\u0027 is not null",
               |      "suggesting_rule": "CompleteIfCompleteRule()",
               |      "rule_description": "If a column is complete in the sample, we suggest a NOT
               | NULL constraint",
-              |      "code_for_constraint": ".isComplete(\"att1\")",
+              |      "code_for_constraint": ".isComplete(\"]att1[\")",
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
@@ -490,9 +490,20 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
 
   private[this] def assertJsonStringsAreEqual(jsonA: String, jsonB: String): Unit = {
 
-    val parser = new JsonParser()
-
-    assert(parser.parse(jsonA) == parser.parse(jsonB))
+    val (a, b) = {
+      import scala.collection.JavaConverters._
+      val get: JsonElement => Seq[Map[String, Any]] = _
+        .getAsJsonObject.get("constraint_suggestions").getAsJsonArray.asScala.toSeq
+        .map { _
+          .getAsJsonObject.entrySet.asScala
+          .map { e => (e.getKey, e.getValue.getAsString) }
+          .toMap[String, Any]
+        }
+      val parser = new JsonParser()
+      (get(parser.parse(jsonA)), get(parser.parse(jsonB)))
+    }
+    // implicit `Ordering[Map[String,Any]]` comes from parent type for class: `FixtureSupport`
+    assert(a.sorted == b.sorted)
   }
 
 }

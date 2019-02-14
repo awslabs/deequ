@@ -34,11 +34,11 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        Completeness("att1"), data)
+        Completeness("]att1["), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        Compliance("att1", "att1 = 'b'"), data)
+        Compliance("]att1[", "`]att1[` = 'b'"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        PatternMatch("att1", Patterns.EMAIL), data)
+        PatternMatch("]att1[", Patterns.EMAIL), data)
 
       assertCorrectlyRestoresState[SumState](provider, provider, Sum("price"), data)
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
@@ -48,14 +48,14 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
         StandardDeviation("price"), data)
 
       assertCorrectlyRestoresState[DataTypeHistogram](provider, provider, DataType("item"), data)
-      assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("att1"), data)
+      assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("]att1["), data)
       assertCorrectlyRestoresState[CorrelationState](provider, provider,
         Correlation("count", "price"), data)
 
-      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Uniqueness("att1"), data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Uniqueness("]att1["), data)
       assertCorrectlyRestoresFrequencyBasedState(provider, provider,
-        Uniqueness(Seq("att1", "count")), data)
-      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("att1"), data)
+        Uniqueness(Seq("]att1[", "count")), data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("]att1["), data)
 
       assertCorrectlyApproxQuantileState(provider, provider, ApproxQuantile("price", 0.5), data)
     }
@@ -70,12 +70,12 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        Completeness("att1"), data)
+        Completeness("]att1["), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        Compliance("att1", "att1 = 'b'"), data)
+        Compliance("]att1[", "`]att1[` = 'b'"), data)
 
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        PatternMatch("att1", Patterns.EMAIL), data)
+        PatternMatch("]att1[", Patterns.EMAIL), data)
 
       assertCorrectlyRestoresState[SumState](provider, provider, Sum("price"), data)
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
@@ -85,14 +85,14 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
         StandardDeviation("price"), data)
 
       assertCorrectlyRestoresState[DataTypeHistogram](provider, provider, DataType("item"), data)
-      assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("att1"), data)
+      assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("]att1["), data)
       assertCorrectlyRestoresState[CorrelationState](provider, provider,
         Correlation("count", "price"), data)
 
-      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Uniqueness("att1"), data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Uniqueness("]att1["), data)
       assertCorrectlyRestoresFrequencyBasedState(provider, provider,
-        Uniqueness(Seq("att1", "count")), data)
-      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("att1"), data)
+        Uniqueness(Seq("]att1[", "count")), data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("]att1["), data)
 
       assertCorrectlyApproxQuantileState(provider, provider, ApproxQuantile("price", 0.5), data)
     }
@@ -185,7 +185,7 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
       ("5", null, 1, 1.0),
       ("6", "a", 21, 78.0),
       ("7", null, 12, 0.0))
-    .toDF("item", "att1", "count", "price")
+    .toDF("item", "]att1[", "count", "price")
   }
 
 }

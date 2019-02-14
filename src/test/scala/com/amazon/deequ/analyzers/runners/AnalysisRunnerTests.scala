@@ -38,7 +38,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
       val binning = udf { value: Int => value > 2 }
 
-      val analyzer = Histogram("att1", Some(binning))
+      val analyzer = Histogram("]att1[", Some(binning))
 
       val directlyCalculated = analyzer.calculate(data)
 
@@ -53,8 +53,8 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         val df = getDfWithNumericValues(sparkSession)
 
         val analyzers =
-          Completeness("att1") :: Compliance("rule1", "att1 > 3") ::
-          Completeness("att2") :: Compliance("rule1", "att1 > 2") ::
+          Completeness("]att1[") :: Compliance("rule1", "`]att1[` > 3") ::
+          Completeness("att2") :: Compliance("rule1", "`]att1[` > 2") ::
           Compliance("rule1", "att2 > 2") ::
           ApproxQuantile("att2", 0.5) :: Nil
 
@@ -78,7 +78,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
           val df = getDfWithNumericValues(sparkSession)
 
-          val analyzers = Entropy("att1") :: Uniqueness("att1") :: Nil
+          val analyzers = Entropy("]att1[") :: Uniqueness("]att1[") :: Nil
 
           val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
             val results = analyzers.map { _.calculate(df) }.toSet
@@ -100,7 +100,8 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
         val df = getDfWithNumericValues(sparkSession)
 
-        val analyzers = Distinctness(Seq("att1", "att2")) :: Uniqueness(Seq("att1", "att2")) :: Nil
+        val analyzers = Distinctness(Seq("]att1[", "att2")) :: Uniqueness(Seq("]att1[", "att2")) ::
+          Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
           val results = analyzers.map { _.calculate(df) }.toSet
@@ -122,7 +123,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
         val df = getDfWithNumericValues(sparkSession)
 
-        val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
+        val analyzerToTestReusingResults = Distinctness(Seq("]att1[", "att2"))
 
         val analysisResult = Analysis().addAnalyzer(analyzerToTestReusingResults).run(df)
         val repository = new InMemoryMetricsRepository
@@ -154,7 +155,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
         val df = getDfWithNumericValues(sparkSession)
 
-        val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
+        val analyzerToTestReusingResults = Distinctness(Seq("]att1[", "att2"))
 
         val analysisResult = Analysis().addAnalyzer(analyzerToTestReusingResults).run(df)
         val repository = new InMemoryMetricsRepository
