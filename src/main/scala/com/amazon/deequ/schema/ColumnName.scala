@@ -54,9 +54,7 @@ object ColumnName {
       }
     }
 
-  /**
-    * Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`.
-    **/
+  /** Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`. */
   def getOrThrow(x: Sanitized): String = x match {
     case Left(e) => throw e
     case Right(str) => str
@@ -68,7 +66,7 @@ object ColumnName {
     * If only one of the sanitizations failed, then a `SanitizeError` type is thrown.
     * If both fail, then an `IllegalArgumentException` is thrown and its message contains
     * both of the `SanitizeError` messages.
-    * */
+    */
   def getOrThrow(x: (Sanitized, Sanitized)): (String, String) = x match {
     case (Right(cA), Right(cB)) => (cA, cB)
     case (Left(eA), Left(eB)) => throw new IllegalArgumentException(
@@ -78,7 +76,7 @@ object ColumnName {
     case (_, Left(e)) => throw e
   }
 
-  /** Alias for `sanitizeForSql ` */
+  /** Alias for `sanitizeForSql | getOrThrow`. */
   def sanitize(columnName: String): String =
     getOrThrow(sanitizeForSql(columnName))
 
