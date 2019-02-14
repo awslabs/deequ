@@ -17,6 +17,7 @@
 package org.apache.spark.sql
 
 
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateFunction, StatefulApproxQuantile, StatefulHyperloglogPlus}
 import org.apache.spark.sql.catalyst.expressions.Literal
 
@@ -32,7 +33,7 @@ object DeequFunctions {
 
   /** Pearson correlation with state */
   def stateful_corr(columnA: String, columnB: String): Column = {
-    stateful_corr(Column(columnA), Column(columnB))
+    stateful_corr(Column(ColumnName.sanitize(columnA)), Column(ColumnName.sanitize(columnB)))
   }
 
   /** Pearson correlation with state */
@@ -42,7 +43,7 @@ object DeequFunctions {
 
   /** Standard deviation with state */
   def stateful_stddev_pop(column: String): Column = {
-    stateful_stddev_pop(Column(column))
+    stateful_stddev_pop(Column(ColumnName.sanitize(column)))
   }
 
   /** Standard deviation with state */
@@ -52,7 +53,7 @@ object DeequFunctions {
 
   /** Approximate number of distinct values with state via HLL's */
   def stateful_approx_count_distinct(column: String): Column = {
-    stateful_approx_count_distinct(Column(column))
+    stateful_approx_count_distinct(Column(ColumnName.sanitize(column)))
   }
 
   /** Approximate number of distinct values with state via HLL's */

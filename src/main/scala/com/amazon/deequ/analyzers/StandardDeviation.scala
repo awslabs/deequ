@@ -21,6 +21,7 @@ import org.apache.spark.sql.DeequFunctions.stateful_stddev_pop
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.types.StructType
 import Analyzers._
+import com.amazon.deequ.schema.ColumnName
 
 case class StandardDeviationState(
     n: Double,
@@ -48,7 +49,7 @@ case class StandardDeviation(column: String, where: Option[String] = None)
   extends StandardScanShareableAnalyzer[StandardDeviationState]("StandardDeviation", column) {
 
   override def aggregationFunctions(): Seq[Column] = {
-    stateful_stddev_pop(conditionalSelection(column, where)) :: Nil
+    stateful_stddev_pop(conditionalSelection(ColumnName.sanitize(column), where)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[StandardDeviationState] = {

@@ -22,6 +22,7 @@ import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.runners.MetricCalculationException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.DeequFunctions.stateful_datatype
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, Row}
@@ -155,7 +156,7 @@ case class DataType(
   extends ScanShareableAnalyzer[DataTypeHistogram, HistogramMetric] {
 
   override def aggregationFunctions(): Seq[Column] = {
-    stateful_datatype(conditionalSelection(column, where)) :: Nil
+    stateful_datatype(conditionalSelection(ColumnName.sanitize(column), where)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[DataTypeHistogram] = {

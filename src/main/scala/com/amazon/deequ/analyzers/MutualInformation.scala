@@ -21,7 +21,7 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import org.apache.spark.sql.functions.{col, sum, udf}
 import org.apache.spark.sql.types.StructType
 import Analyzers.COUNT_COL
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
+import com.amazon.deequ.schema.ColumnName
 
 /**
   * Mutual Information describes how much information about one column can be inferred from another
@@ -41,22 +41,25 @@ case class MutualInformation(columns: Seq[String])
 
       case Some(theState) =>
         val total = theState.numRows
-        val Seq(col1, col2) = columns
+        val Seq(unsafeCol1, unsafeCol2) = columns
+        val Seq(safeCol1, safeCol2) = columns.map { ColumnName.sanitize }
 
-        val freqCol1 = s"__deequ_f1_$col1"
-        val freqCol2 = s"__deequ_f2_$col2"
+        val unsafeFreqCol1 = s"__deequ_f1_$unsafeCol1"
+        val unsafeFreqCol2 = s"__deequ_f2_$unsafeCol2"
 
         val jointStats = theState.frequencies
 
+        // NOTE: `.as(...)` will properly escape its input column name alias
+
         val marginalStats1 = jointStats
-          .select(col1, COUNT_COL)
-          .groupBy(col1)
-          .agg(sum(COUNT_COL).as(freqCol1))
+          .select(safeCol1, COUNT_COL)
+          .groupBy(safeCol1)
+          .agg(sum(COUNT_COL).as(unsafeFreqCol1))
 
         val marginalStats2 = jointStats
-          .select(col2, COUNT_COL)
-          .groupBy(col2)
-          .agg(sum(COUNT_COL).as(freqCol2))
+          .select(safeCol2, COUNT_COL)
+          .groupBy(safeCol2)
+          .agg(sum(COUNT_COL).as(unsafeFreqCol2))
 
 
         val miUdf = udf {
@@ -64,12 +67,20 @@ case class MutualInformation(columns: Seq[String])
             (pxy / total) * math.log((pxy / total) / ((px / total) * (py / total)))
         }
 
-        val miCol = s"__deequ_mi_${col1}_$col2"
+        val unsafeMiCol = s"__deequ_mi_${unsafeCol1}_$unsafeCol2"
+        // NOTE: join(..., usingColumn = ...) will properly escape the "usingColumn" value
         val value = jointStats
-          .join(marginalStats1, usingColumn = col1)
-          .join(marginalStats2, usingColumn = col2)
-          .withColumn(miCol, miUdf(col(freqCol1), col(freqCol2), col(COUNT_COL)))
-          .agg(sum(miCol))
+          .join(marginalStats1, usingColumn = unsafeCol1)
+          .join(marginalStats2, usingColumn = unsafeCol2)
+          .withColumn(
+            unsafeMiCol,
+            miUdf(
+              col(ColumnName.sanitize(unsafeFreqCol1)),
+              col(ColumnName.sanitize(unsafeFreqCol2)),
+              col(COUNT_COL)
+            )
+          )
+          .agg(sum(col(ColumnName.sanitize(unsafeMiCol))))
 
         val resultRow = value.head()
 

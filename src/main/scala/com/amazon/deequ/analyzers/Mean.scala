@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{count, sum}
 import org.apache.spark.sql.types.{DoubleType, StructType, LongType}
@@ -37,8 +38,9 @@ case class Mean(column: String, where: Option[String] = None)
   extends StandardScanShareableAnalyzer[MeanState]("Mean", column) {
 
   override def aggregationFunctions(): Seq[Column] = {
-    sum(conditionalSelection(column, where)).cast(DoubleType) ::
-      count(conditionalSelection(column, where)).cast(LongType) :: Nil
+    val columnSafeForSql = ColumnName.sanitize(column)
+    sum(conditionalSelection(columnSafeForSql, where)).cast(DoubleType) ::
+      count(conditionalSelection(columnSafeForSql, where)).cast(LongType) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MeanState] = {

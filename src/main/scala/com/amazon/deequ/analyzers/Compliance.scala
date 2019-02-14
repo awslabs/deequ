@@ -18,7 +18,7 @@ package com.amazon.deequ.analyzers
 
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions.{ sum, expr }
 import Analyzers._
 
 /**
@@ -31,7 +31,7 @@ import Analyzers._
   *                         Also the constraint given here can be referring to multiple columns,
   *                         so metric instance name should be provided,
   *                         describing what the analysis being done for.
-  * @param predicate SQL-predicate to apply per row
+  * @param predicate SQL-predicate to apply per row (MUST be valid Spark SQL syntax)
   * @param where Additional filter to apply before the analyzer is run.
   */
 case class Compliance(instance: String, predicate: String, where: Option[String] = None)

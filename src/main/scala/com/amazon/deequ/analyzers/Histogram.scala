@@ -18,6 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.{StringType, StructType}
@@ -56,13 +57,15 @@ case class Histogram(
     // TODO figure out a way to pass this in if its known before hand
     val totalCount = data.count()
 
+    val columnSafeForSql = ColumnName.sanitize(column)
+
     val frequencies = (binningUdf match {
-      case Some(bin) => data.withColumn(column, bin(col(column)))
+      case Some(bin) => data.withColumn(column, bin(col(columnSafeForSql)))
       case _ => data
     })
-    .select(col(column).cast(StringType))
+    .select(col(columnSafeForSql).cast(StringType))
     .na.fill(Histogram.NullFieldReplacement)
-    .groupBy(column)
+    .groupBy(columnSafeForSql)
     .count()
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))

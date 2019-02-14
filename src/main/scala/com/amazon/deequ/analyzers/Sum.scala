@@ -18,6 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
 import org.apache.spark.sql.functions.sum
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.apache.spark.sql.{Column, Row}
 import Analyzers._
@@ -37,7 +38,7 @@ case class Sum(column: String, where: Option[String] = None)
   extends StandardScanShareableAnalyzer[SumState]("Sum", column) {
 
   override def aggregationFunctions(): Seq[Column] = {
-    sum(conditionalSelection(column, where)).cast(DoubleType) :: Nil
+    sum(conditionalSelection(ColumnName.sanitize(column), where)).cast(DoubleType) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[SumState] = {

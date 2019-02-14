@@ -18,6 +18,7 @@ package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.metrics.{Distribution, Metric}
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
 import scala.util.matching.Regex

@@ -22,6 +22,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.DeequHyperLogLogPlusP
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, Row}
 import Analyzers._
+import com.amazon.deequ.schema.ColumnName
 
 case class ApproxCountDistinctState(words: Array[Long])
   extends DoubleValuedState[ApproxCountDistinctState] {
@@ -48,7 +49,7 @@ case class ApproxCountDistinct(column: String, where: Option[String] = None)
   extends StandardScanShareableAnalyzer[ApproxCountDistinctState]("ApproxCountDistinct", column) {
 
   override def aggregationFunctions(): Seq[Column] = {
-    stateful_approx_count_distinct(conditionalSelection(column, where)) :: Nil
+    stateful_approx_count_distinct(conditionalSelection(ColumnName.sanitize(column), where)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[ApproxCountDistinctState] = {

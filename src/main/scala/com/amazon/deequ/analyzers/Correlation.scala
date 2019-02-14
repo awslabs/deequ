@@ -22,6 +22,7 @@ import org.apache.spark.sql.DeequFunctions.stateful_corr
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.types.StructType
 import Analyzers._
+import com.amazon.deequ.schema.ColumnName
 
 case class CorrelationState(
     n: Double,
@@ -71,8 +72,8 @@ case class Correlation(
 
   override def aggregationFunctions(): Seq[Column] = {
 
-    val firstSelection = conditionalSelection(firstColumn, where)
-    val secondSelection = conditionalSelection(secondColumn, where)
+    val firstSelection = conditionalSelection(ColumnName.sanitize(firstColumn), where)
+    val secondSelection = conditionalSelection(ColumnName.sanitize(secondColumn), where)
 
     stateful_corr(firstSelection, secondSelection) :: Nil
   }

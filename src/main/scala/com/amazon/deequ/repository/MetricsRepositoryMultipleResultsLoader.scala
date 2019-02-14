@@ -20,7 +20,8 @@ import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import org.apache.spark.sql.functions._
+import com.amazon.deequ.schema.ColumnName
+import org.apache.spark.sql.functions.{ col, lit }
 import org.apache.spark.sql.Column
 
 trait MetricsRepositoryMultipleResultsLoader {
@@ -132,8 +133,8 @@ private[repository] object MetricsRepositoryMultipleResultsLoader {
 
   def withAllColumns(myCols: Seq[String], allCols: Seq[String]): List[Column] = {
     allCols.toList.map {
-      case colName if myCols.contains(colName) => col(colName)
-      case colName => lit(null).as(colName)
+      case colName if myCols.contains(colName) => col(ColumnName.sanitize(colName))
+      case colName => lit(null).as(ColumnName.sanitize(colName))
     }
   }
 }

@@ -19,6 +19,7 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
 import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.{DeequFunctions, Row}
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile.PercentileDigest
@@ -61,7 +62,7 @@ case class ApproxQuantile(column: String, quantile: Double, relativeError: Doubl
   }
 
   override private[deequ] def aggregationFunctions() = {
-    DeequFunctions.stateful_approx_quantile(col(column), relativeError) :: Nil
+    DeequFunctions.stateful_approx_quantile(col(ColumnName.sanitize(column)), relativeError) :: Nil
   }
 
   override private[deequ] def fromAggregationResult(

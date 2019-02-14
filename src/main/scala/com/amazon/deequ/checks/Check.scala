@@ -25,6 +25,8 @@ import com.amazon.deequ.metrics.{Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
+import com.amazon.deequ.schema.ColumnName
+
 import scala.util.matching.Regex
 
 object CheckLevel extends Enumeration {
@@ -672,8 +674,9 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
+    val c = ColumnName.sanitize(column)
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($column, 0.0) >= 0", s"$column is non-negative", hint = hint)
+    satisfies(s"COALESCE($c, 0.0) >= 0", s"$column is non-negative", hint = hint)
   }
 
   /**
@@ -683,8 +686,9 @@ case class Check(
     * @return
     */
   def isPositive(column: String): CheckWithLastConstraintFilterable = {
+    val c = ColumnName.sanitize(column)
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($column, 1.0) > 0", s"$column is positive")
+    satisfies(s"COALESCE($c, 1.0) > 0", s"$column is positive")
   }
 
   /**
@@ -702,8 +706,10 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB",
-      hint = hint)
+    val (cA, cB) = ColumnName.getOrThrow(
+      (ColumnName.sanitizeForSql(columnA), ColumnName.sanitizeForSql(columnB))
+    )
+    satisfies(s"$cA < $cB", s"$columnA is less than $columnB", hint = hint)
   }
 
   /**
@@ -720,8 +726,10 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
-      hint = hint)
+    val (cA, cB) = ColumnName.getOrThrow(
+      (ColumnName.sanitizeForSql(columnA), ColumnName.sanitizeForSql(columnB))
+    )
+    satisfies(s"$cA <= $cB", s"$columnA is less than or equal to $columnB", hint = hint)
   }
 
   /**
@@ -738,8 +746,10 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
-      hint = hint)
+    val (cA, cB) = ColumnName.getOrThrow(
+      (ColumnName.sanitizeForSql(columnA), ColumnName.sanitizeForSql(columnB))
+    )
+    satisfies(s"$cA > $cB", s"$columnA is greater than $columnB", hint = hint)
   }
 
   /**
@@ -757,8 +767,10 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
-      hint = hint)
+    val (cA, cB) = ColumnName.getOrThrow(
+      (ColumnName.sanitizeForSql(columnA), ColumnName.sanitizeForSql(columnB))
+    )
+    satisfies(s"$cA >= $cB", s"$columnA is greater than or equal to $columnB", hint = hint)
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -832,12 +844,13 @@ case class Check(
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
 
+    val c = ColumnName.sanitize(column)
 
     val valueList = allowedValues
       .map { _.replaceAll("'", "''") }
       .mkString("'", "','", "'")
 
-    val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
+    val predicate = s"$c IS NULL OR $c IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
   }
 
@@ -861,11 +874,13 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
+    val c = ColumnName.sanitize(column)
+
     val leftOperand = if (includeLowerBound) ">=" else ">"
     val rightOperand = if (includeUpperBound) "<=" else "<"
 
-    val predicate = s"`$column` IS NULL OR " +
-      s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
+    val predicate =
+      s"$c IS NULL OR ($c $leftOperand $lowerBound AND $c $rightOperand $upperBound)"
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }
@@ -981,4 +996,5 @@ object Check {
 
     detectedAnomalies.anomalies.isEmpty
   }
+
 }

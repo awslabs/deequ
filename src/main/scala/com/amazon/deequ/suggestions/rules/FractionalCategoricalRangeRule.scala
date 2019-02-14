@@ -20,8 +20,10 @@ import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.schema.ColumnName
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import org.apache.commons.lang3.StringEscapeUtils
+
 import scala.math.BigDecimal.RoundingMode
 
 /** If we see a categorical range for most values in a column, we suggest an IS IN (...)
@@ -52,6 +54,8 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
 
+    val c = ColumnName.sanitize(profile.column)
+
     val topCategories = getTopCategoriesForFractionalDataCoverage(profile,
       targetDataCoverageFraction)
     val ratioSums = topCategories.map { case (_, categoryValue) => categoryValue.ratio }.sum
@@ -80,7 +84,7 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
 
     val description = s"'${profile.column}' has value range $categoriesSql for at least " +
       s"${targetCompliance * 100}% of values"
-    val columnCondition = s"`${profile.column}` IN ($categoriesSql)"
+    val columnCondition = s"$c IN ($categoriesSql)"
     val hint = s"It should be above $targetCompliance!"
     val constraint = complianceConstraint(description, columnCondition, _ >= targetCompliance,
       hint = Some(hint))

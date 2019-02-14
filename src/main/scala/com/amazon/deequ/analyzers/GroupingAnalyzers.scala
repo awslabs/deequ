@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.schema.ColumnName
 import org.apache.spark.sql.{Column, DataFrame, Row}
 import org.apache.spark.sql.functions.{coalesce, col, count, expr, lit}
 import Analyzers.COUNT_COL
@@ -23,7 +24,6 @@ import com.amazon.deequ.metrics.DoubleMetric
 import Analyzers._
 import org.apache.spark.sql.types.StructType
 import Preconditions._
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
 
 /** Base class for all analyzers that operate the frequencies of groups in the data */
 abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
@@ -56,13 +56,17 @@ object FrequencyBasedAnalyzer {
       numRows: Option[Long] = None)
     : FrequenciesAndNumRows = {
 
-    val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
+    val columnsToGroupBy = groupingColumns.map { unsafeColumnName =>
+      col(ColumnName.sanitize(unsafeColumnName))
+    }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
 
     val noGroupingColumnIsNull = groupingColumns
-      .foldLeft(expr(true.toString)) { case (condition, name) =>
-        condition.and(col(name).isNotNull)
+      .foldLeft(expr(true.toString)) { case (condition, unsafeColumnName) =>
+        condition.and(col(ColumnName.sanitize(unsafeColumnName)).isNotNull)
       }
+
+
 
     val frequencies = data
       .select(columnsToGroupBy: _*)
@@ -132,12 +136,18 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
       .filterNot { _ == COUNT_COL }
 
     val projectionAfterMerge =
-      columns.map { column => coalesce(col(s"this.$column"), col(s"other.$column")).as(column) } ++
+      columns.map { unsanitizedColumn =>
+        val column = ColumnName.sanitize(unsanitizedColumn)
+        // `.as(...)` will properly escape its input column name alias
+        coalesce(col(s"this.$column"), col(s"other.$column")).as(unsanitizedColumn)
+      } ++
         Seq((zeroIfNull(s"this.$COUNT_COL") + zeroIfNull(s"other.$COUNT_COL")).as(COUNT_COL))
 
     /* Null-safe join condition over equality on grouping columns */
     val joinCondition = columns.tail
-      .foldLeft(nullSafeEq(columns.head)) { case (expr, column) => expr.and(nullSafeEq(column)) }
+      .foldLeft(nullSafeEq(ColumnName.sanitize(columns.head))) {
+        case (expr, column) => expr.and(nullSafeEq(ColumnName.sanitize(column)))
+      }
 
     /* Null-safe outer join to merge histograms */
     val frequenciesSum = frequencies.alias("this")
@@ -147,10 +157,12 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
     FrequenciesAndNumRows(frequenciesSum, numRows + other.numRows)
   }
 
+  /* NOTE: Caller is responsible for ensuring that `column` is sanitized & safe for Spark SQL. */
   private[analyzers] def nullSafeEq(column: String): Column = {
     col(s"this.$column") <=> col(s"other.$column")
   }
 
+  /* NOTE: Caller is responsible for ensuring that `column` is sanitized & safe for Spark SQL. */
   private[analyzers] def zeroIfNull(column: String): Column = {
     coalesce(col(column), lit(0))
   }

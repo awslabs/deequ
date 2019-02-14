@@ -20,6 +20,7 @@ import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.schema.ColumnName
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import org.apache.commons.lang3.StringEscapeUtils
 
@@ -45,6 +46,8 @@ case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
 
+    val c = ColumnName.sanitize(profile.column)
+
     val valuesByPopularity = profile.histogram.get.values.toArray
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
       .sortBy { case (_, value) => value.absolute }
@@ -60,7 +63,7 @@ case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
       .mkString(""""""", """", """", """"""")
 
     val description = s"'${profile.column}' has value range $categoriesSql"
-    val columnCondition = s"`${profile.column}` IN ($categoriesSql)"
+    val columnCondition = s"$c IN ($categoriesSql)"
     val constraint = complianceConstraint(description, columnCondition, Check.IsOne)
 
     ConstraintSuggestion(

@@ -35,7 +35,8 @@ case class Completeness(column: String, where: Option[String] = None) extends
 
   override def aggregationFunctions(): Seq[Column] = {
 
-    val summation = sum(conditionalSelection(column, where).isNotNull.cast(IntegerType))
+    val summation = sum(conditionalSelection(column, where)
+      .isNotNull.cast(IntegerType))
 
     summation :: conditionalCount(where) :: Nil
   }
