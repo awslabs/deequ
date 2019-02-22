@@ -18,7 +18,7 @@ package com.amazon.deequ.analyzers
 
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.{ sum, expr }
+import org.apache.spark.sql.functions.{sum, expr}
 import Analyzers._
 
 /**

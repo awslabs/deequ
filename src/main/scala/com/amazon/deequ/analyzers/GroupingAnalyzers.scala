@@ -56,9 +56,11 @@ object FrequencyBasedAnalyzer {
       numRows: Option[Long] = None)
     : FrequenciesAndNumRows = {
 
-    val columnsToGroupBy = groupingColumns.map { unsafeColumnName =>
-      col(ColumnName.sanitize(unsafeColumnName))
-    }.toArray
+    val columnsToGroupBy = groupingColumns
+      .map { unsafeColumnName =>
+        col(ColumnName.sanitize(unsafeColumnName))
+      }
+      .toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
 
     val noGroupingColumnIsNull = groupingColumns
