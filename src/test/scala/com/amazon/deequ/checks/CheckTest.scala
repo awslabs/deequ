@@ -878,11 +878,11 @@ object CheckTest extends WordSpec with Matchers {
   }
 
   def testCheckOnData(df: DataFrame, c: Check): Unit = {
-    val r = VerificationSuite()
+    val checkResult = VerificationSuite()
       .onData(df)
       .addCheck(c)
       .run()
-    assert(r.status == CheckStatus.Success)
+    assert(checkResult.status == CheckStatus.Success)
   }
 
   val badColumnName: String = "[this column]:has a handful of problematic chars"

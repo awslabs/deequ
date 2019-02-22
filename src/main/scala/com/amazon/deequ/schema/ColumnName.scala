@@ -68,17 +68,19 @@ object ColumnName {
     * both of the `SanitizeError` messages.
     */
   def getOrThrow(x: (Sanitized, Sanitized)): (String, String) = x match {
-    case (Right(cA), Right(cB)) => (cA, cB)
-    case (Left(eA), Left(eB)) => throw new IllegalArgumentException(
-      s"Cannot sanitize two column names:\n$eA\n$eB"
+    case (Right(sanitizedColumn1), Right(sanitizedColumn2)) =>
+      (sanitizedColumn1, sanitizedColumn2)
+    case (Left(error1), Left(error2)) => throw new IllegalArgumentException(
+      s"Cannot sanitize two column names:\n$error1\n$error2"
     )
-    case (Left(e), _) => throw e
-    case (_, Left(e)) => throw e
+    case (Left(error), _) => throw error
+    case (_, Left(error)) => throw error
   }
 
   /** Alias for `sanitizeForSql | getOrThrow`. */
-  def sanitize(columnName: String): String =
+  def sanitize(columnName: String): String = {
     getOrThrow(sanitizeForSql(columnName))
+  }
 
   /** Inverse of `sanitize`: removes surrounding backticks, if present. */
   def desanitize(maybeSanitizedName: String): String =
