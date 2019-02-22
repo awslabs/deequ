@@ -674,9 +674,9 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    val c = ColumnName.sanitize(column)
+    val sanitizedColumn = ColumnName.sanitize(column)
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($c, 0.0) >= 0", s"$column is non-negative", hint = hint)
+    satisfies(s"COALESCE($sanitizedColumn, 0.0) >= 0", s"$column is non-negative", hint = hint)
   }
 
   /**
@@ -686,9 +686,9 @@ case class Check(
     * @return
     */
   def isPositive(column: String): CheckWithLastConstraintFilterable = {
-    val c = ColumnName.sanitize(column)
+    val sanitizedColumn = ColumnName.sanitize(column)
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($c, 1.0) > 0", s"$column is positive")
+    satisfies(s"COALESCE($sanitizedColumn, 1.0) > 0", s"$column is positive")
   }
 
   /**
@@ -844,13 +844,13 @@ case class Check(
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
 
-    val c = ColumnName.sanitize(column)
+    val sanitizedColumn = ColumnName.sanitize(column)
 
     val valueList = allowedValues
       .map { _.replaceAll("'", "''") }
       .mkString("'", "','", "'")
 
-    val predicate = s"$c IS NULL OR $c IN ($valueList)"
+    val predicate = s"$sanitizedColumn IS NULL OR $sanitizedColumn IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
   }
 
@@ -874,13 +874,13 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    val c = ColumnName.sanitize(column)
+    val sanitizedColumn = ColumnName.sanitize(column)
 
     val leftOperand = if (includeLowerBound) ">=" else ">"
     val rightOperand = if (includeUpperBound) "<=" else "<"
 
     val predicate =
-      s"$c IS NULL OR ($c $leftOperand $lowerBound AND $c $rightOperand $upperBound)"
+      s"$sanitizedColumn IS NULL OR ($sanitizedColumn $leftOperand $lowerBound AND $sanitizedColumn $rightOperand $upperBound)"
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }

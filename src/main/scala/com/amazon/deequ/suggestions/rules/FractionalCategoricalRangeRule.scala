@@ -54,7 +54,7 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
 
-    val c = ColumnName.sanitize(profile.column)
+    val sanitizedColumn = ColumnName.sanitize(profile.column)
 
     val topCategories = getTopCategoriesForFractionalDataCoverage(profile,
       targetDataCoverageFraction)
@@ -84,7 +84,7 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
 
     val description = s"'${profile.column}' has value range $categoriesSql for at least " +
       s"${targetCompliance * 100}% of values"
-    val columnCondition = s"$c IN ($categoriesSql)"
+    val columnCondition = s"$sanitizedColumn IN ($categoriesSql)"
     val hint = s"It should be above $targetCompliance!"
     val constraint = complianceConstraint(description, columnCondition, _ >= targetCompliance,
       hint = Some(hint))

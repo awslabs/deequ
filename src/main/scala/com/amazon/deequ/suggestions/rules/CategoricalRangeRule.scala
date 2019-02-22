@@ -46,7 +46,7 @@ case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
 
-    val c = ColumnName.sanitize(profile.column)
+    val sanitizedColumn = ColumnName.sanitize(profile.column)
 
     val valuesByPopularity = profile.histogram.get.values.toArray
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
@@ -63,7 +63,7 @@ case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
       .mkString(""""""", """", """", """"""")
 
     val description = s"'${profile.column}' has value range $categoriesSql"
-    val columnCondition = s"$c IN ($categoriesSql)"
+    val columnCondition = s"$sanitizedColumn IN ($categoriesSql)"
     val constraint = complianceConstraint(description, columnCondition, Check.IsOne)
 
     ConstraintSuggestion(

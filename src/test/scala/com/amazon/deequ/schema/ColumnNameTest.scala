@@ -33,7 +33,7 @@ class ColumnNameTest extends WordSpec with Matchers {
     "add leading ` if necessary" in {
       val c = "almost_escaped_column_name`"
       ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(x == s"`$c")
+        case Right(x) => assert(x == s"`$sanitizedColumn")
         case Left(x) => fail(x.getMessage)
       }
     }
@@ -41,7 +41,7 @@ class ColumnNameTest extends WordSpec with Matchers {
     "add trailing ` if necessary" in {
       val c = "`almost_escaped_column_name"
       ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(x == s"$c`")
+        case Right(x) => assert(x == s"$sanitizedColumn`")
         case Left(x) => fail(x.getMessage)
       }
     }
@@ -49,7 +49,7 @@ class ColumnNameTest extends WordSpec with Matchers {
     "surround column with `` when not escaped" in {
       val c = "]not escaped na[m]e[ "
       ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(x == s"`$c`")
+        case Right(x) => assert(x == s"`$sanitizedColumn`")
         case Left(x) => fail(x.getMessage)
       }
     }
