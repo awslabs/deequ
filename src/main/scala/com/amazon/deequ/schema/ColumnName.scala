@@ -29,19 +29,31 @@ object ColumnName {
   def sanitizeForSql(columnName: String): Sanitized =
     if (columnName == null) {
       Left(NullColumn)
+
     } else {
-      val rawColumnName = columnName.slice(
-        if (columnName.startsWith("`")) 1 else 0,
-        columnName.length - { if (columnName.endsWith("`")) 0 else 1 }
-      )
-      if(rawColumnName.contains("`")) {
+      val (prefix, suffix, rawColumnName) = {
+        val prefix = if (!columnName.startsWith("`")) "`" else ""
+        val suffix = if (!columnName.endsWith("`")) "`" else ""
+        val nameWoPrefix = if (prefix.isEmpty) {
+          columnName.slice(1, columnName.length)
+        } else {
+          columnName
+        }
+        val nameAlsoWoSuffix = if (suffix.isEmpty) {
+          nameWoPrefix.slice(0, nameWoPrefix.length - 1)
+        } else {
+          nameWoPrefix
+        }
+        (prefix, suffix, nameAlsoWoSuffix)
+      }
+
+      if (rawColumnName.contains("`")) {
         Left(ColumnNameHasBackticks(columnName))
       } else {
-        Right(s"`$rawColumnName`")
+        Right(s"$prefix$columnName$suffix")
       }
     }
-
-
+  
   /** Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`. */
   def getOrThrow(x: Sanitized): String = x match {
     case Left(error) => throw error
@@ -75,10 +87,19 @@ object ColumnName {
     if (maybeSanitizedName == null) {
       ""
     } else {
-      maybeSanitizedName.slice(
-        if (maybeSanitizedName.startsWith("`")) 1 else 0,
-        maybeSanitizedName.length - { if (maybeSanitizedName.endsWith("`")) 1 else 0 }
-      )
+      val nameWoPrefix =
+        if (maybeSanitizedName.startsWith("`")) {
+          maybeSanitizedName.slice(1, maybeSanitizedName.length)
+        } else {
+          maybeSanitizedName
+        }
+      val nameAlsoWoSuffix =
+        if (nameWoPrefix.endsWith("`")) {
+          nameWoPrefix.slice(0, nameWoPrefix.length - 1)
+        } else {
+          nameWoPrefix
+        }
+      nameAlsoWoSuffix
     }
 }
 
