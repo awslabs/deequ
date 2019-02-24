@@ -879,8 +879,9 @@ case class Check(
     val leftOperand = if (includeLowerBound) ">=" else ">"
     val rightOperand = if (includeUpperBound) "<=" else "<"
 
-    val predicate =
-      s"$sanitizedColumn IS NULL OR ($sanitizedColumn $leftOperand $lowerBound AND $sanitizedColumn $rightOperand $upperBound)"
+    val predicate = s"$sanitizedColumn IS NULL OR " +
+      s"($sanitizedColumn $leftOperand $lowerBound AND " +
+        s"$sanitizedColumn $rightOperand $upperBound)"
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
   }

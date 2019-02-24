@@ -31,8 +31,8 @@ object ColumnName {
       Left(NullColumn)
     } else {
       val rawColumnName = columnName.slice(
-        if(columnName.startsWith("`")) 0 else 1,
-        columnName.length - { if(columnName.endsWith("`")) 0 else 1 }
+        if (columnName.startsWith("`")) 0 else 1,
+        columnName.length - { if (columnName.endsWith("`")) 0 else 1 }
       )
       if(rawColumnName.contains("`")) {
         Left(ColumnNameHasBackticks(columnName))
@@ -76,8 +76,8 @@ object ColumnName {
       ""
     } else {
       maybeSanitizedName.slice(
-        if(maybeSanitizedName.startsWith("`")) 1 else 0,
-        maybeSanitizedName.length - { if(maybeSanitizedName.endsWith("`")) 1 else 0 }
+        if (maybeSanitizedName.startsWith("`")) 1 else 0,
+        maybeSanitizedName.length - { if (maybeSanitizedName.endsWith("`")) 1 else 0 }
       )
     }
 }
