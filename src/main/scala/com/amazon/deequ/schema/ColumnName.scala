@@ -29,34 +29,22 @@ object ColumnName {
   def sanitizeForSql(columnName: String): Sanitized =
     if (columnName == null) {
       Left(NullColumn)
-
     } else {
-      val (prefix, suffix, insideColumnName) = {
-        val prefix = if (!columnName.startsWith("`")) "`" else ""
-        val suffix = if (!columnName.endsWith("`")) "`" else ""
-        val inside1 = if (prefix.isEmpty) {
-          columnName.slice(1, columnName.length)
-        } else {
-          columnName
-        }
-        val inside2 = if (suffix.isEmpty) {
-          inside1.slice(0, inside1.length - 1)
-        } else {
-          inside1
-        }
-        (prefix, suffix, inside2)
-      }
-
-      if (insideColumnName.contains("`")) {
+      val rawColumnName = columnName.slice(
+        if(columnName.startsWith("`")) 0 else 1,
+        columnName.length - { if(columnName.endsWith("`")) 0 else 1 }
+      )
+      if(rawColumnName.contains("`")) {
         Left(ColumnNameHasBackticks(columnName))
       } else {
-        Right(s"$prefix$columnName$suffix")
+        Right(s"`$rawColumnName`")
       }
     }
 
+
   /** Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`. */
   def getOrThrow(x: Sanitized): String = x match {
-    case Left(e) => throw e
+    case Left(error) => throw error
     case Right(str) => str
   }
 
@@ -77,7 +65,7 @@ object ColumnName {
     case (_, Left(error)) => throw error
   }
 
-  /** Alias for `sanitizeForSql | getOrThrow`. */
+  /** Alias for `sanitizeForSql andThen getOrThrow`. */
   def sanitize(columnName: String): String = {
     getOrThrow(sanitizeForSql(columnName))
   }
@@ -87,21 +75,11 @@ object ColumnName {
     if (maybeSanitizedName == null) {
       ""
     } else {
-      val woPrefix =
-        if (maybeSanitizedName.startsWith("`")) {
-          maybeSanitizedName.slice(1, maybeSanitizedName.length)
-        } else {
-          maybeSanitizedName
-        }
-      val woSuffix =
-        if (woPrefix.endsWith("`")) {
-          woPrefix.slice(0, woPrefix.length - 1)
-        } else {
-          woPrefix
-        }
-      woSuffix
+      maybeSanitizedName.slice(
+        if(maybeSanitizedName.startsWith("`")) 1 else 0,
+        maybeSanitizedName.length - { if(maybeSanitizedName.endsWith("`")) 1 else 0 }
+      )
     }
-
 }
 
 sealed abstract class SanitizeError(message: String) extends Exception(message)
