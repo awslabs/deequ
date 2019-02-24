@@ -223,18 +223,36 @@ trait FixtureSupport extends Assertions {
       .toDF("]att1[", "categoricalColumn")
   }
 
+  /**
+    * A map ordering to ensure that JSON array deserialization results are
+    * checked in a consistent manner.
+    *
+    * In general, an `Ordering[Map[String,Any]]` is not a great pattern: here,
+    * however, we have a need to check that various JSON deserialization-based
+    * tests correctly parse & handle arrays of objects. Instead of ensuring
+    * that the ordering inherint in the element processing of the various bits
+    * of code under test do not permute their outputs (something that _is not_
+    * a part of any of the code's stated contracts), the idea here is to re-use
+    * _this_ ordering definition.
+    *
+    * This JSON map ordering definiton is specific to the deequ tests: the calls
+    * insde the over-loaded `compare` method have a specific, deterministic
+    * order of hard-coded keys to check when determining which of two JSON
+    * deserialized objects is before another in a sorted collection.
+    */
   implicit object OrderingTestMap extends Ordering[Map[String, Any]] {
 
     type T = Map[String, Any]
 
-    def get(key: String)(x: T): String =
+    @inline
+    private[this] def get(key: String)(x: T): String =
       x.get(key).fold("")(_.asInstanceOf[String])
 
-    override def compare(x: T, y: T): Int = {
-      val instance = get("instance") _
-      val name = get("name") _
-      val columnName = get("column_name") _
+    private[this] val instance = get("instance") _
+    private[this] val name = get("name") _
+    private[this] val columnName = get("column_name") _
 
+    override def compare(x: T, y: T): Int = {
       val cmp1 = instance(x).compareTo(instance(y))
       if (cmp1 == 0) {
         val cmp2 = name(x).compareTo(name(y))
@@ -249,6 +267,10 @@ trait FixtureSupport extends Assertions {
     }
   }
 
+  /**
+    * Asserts that the deserialization of two JSON strings results in
+    * equivalent arrays of objects.
+    * */
   def assertSameJson(jsonA: String, jsonB: String): Unit = {
     val a = SimpleResultSerde.deserialize(jsonA)
     val b = SimpleResultSerde.deserialize(jsonB)
