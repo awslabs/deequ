@@ -31,7 +31,7 @@ object ColumnName {
       Left(NullColumn)
     } else {
       val rawColumnName = columnName.slice(
-        if (columnName.startsWith("`")) 0 else 1,
+        if (columnName.startsWith("`")) 1 else 0,
         columnName.length - { if (columnName.endsWith("`")) 0 else 1 }
       )
       if(rawColumnName.contains("`")) {
