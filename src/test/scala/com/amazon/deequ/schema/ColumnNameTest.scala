@@ -23,41 +23,41 @@ class ColumnNameTest extends WordSpec with Matchers {
   "ColumnName's sanitizeForSql function" should {
 
     "leave escaped column name unchanged" in {
-      val columnName"`escaped_column_name`"
-      ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(c == x)
+      val column = "`escaped_column_name`"
+      ColumnName.sanitizeForSql(column) match {
+        case Right(x) => assert(x == column)
         case Left(x) => fail(x.getMessage)
       }
     }
 
     "add leading ` if necessary" in {
-      val columnName"almost_escaped_column_name`"
-      ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(x == s"`$sanitizedColumn")
+      val column = "almost_escaped_column_name`"
+      ColumnName.sanitizeForSql(column) match {
+        case Right(x) => assert(x == s"`$column")
         case Left(x) => fail(x.getMessage)
       }
     }
 
     "add trailing ` if necessary" in {
-      val columnName"`almost_escaped_column_name"
-      ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(x == s"$sanitizedColumn`")
+      val column = "`almost_escaped_column_name"
+      ColumnName.sanitizeForSql(column) match {
+        case Right(x) => assert(x == s"$column`")
         case Left(x) => fail(x.getMessage)
       }
     }
 
     "surround column with `` when not escaped" in {
-      val columnName"]not escaped na[m]e[ "
-      ColumnName.sanitizeForSql(c) match {
-        case Right(x) => assert(x == s"`$sanitizedColumn`")
+      val column = "]not escaped na[m]e[ "
+      ColumnName.sanitizeForSql(column) match {
+        case Right(x) => assert(x == s"`$column`")
         case Left(x) => fail(x.getMessage)
       }
     }
 
     "fail to sanitize a column with a ` in the name" in {
-      val columnName"cannot_`_sanitize"
-      ColumnName.sanitizeForSql(c) match {
-        case Left(ColumnNameHasBackticks(column)) => assert(column == c)
+      val column = "cannot_`_sanitize"
+      ColumnName.sanitizeForSql(column) match {
+        case Left(ColumnNameHasBackticks(c)) => assert(column == c)
         case x => fail(s"Expecting ColumnNameHasBackticks, not: $x")
       }
     }
