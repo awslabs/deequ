@@ -53,7 +53,7 @@ object ColumnName {
         Right(s"$prefix$columnName$suffix")
       }
     }
-  
+
   /** Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`. */
   def getOrThrow(x: Sanitized): String = x match {
     case Left(error) => throw error
