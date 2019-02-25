@@ -46,9 +46,8 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
   override def aggregationFunctions(): Seq[Column] = {
     val sanitizedColumn = col(ColumnName.sanitize(column))
-    val expression = when(
-        regexp_extract(sanitizedColumn, pattern.toString(), 0) =!= lit(""), 1
-    ).otherwise(0)
+    val expression = when(regexp_extract(sanitizedColumn, pattern.toString(), 0) =!= lit(""), 1)
+      .otherwise(0)
 
     val summation = sum(conditionalSelection(expression, where).cast(IntegerType))
 
