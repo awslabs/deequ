@@ -81,9 +81,8 @@ object ColumnName {
   }
 
   /** Alias for `sanitizeForSql andThen getOrThrow`. */
-  def sanitize(columnName: String): String = {
+  def sanitize(columnName: String): String =
     getOrThrow(sanitizeForSql(columnName))
-  }
 
   /** Inverse of `sanitize`: removes surrounding backticks, if present. */
   def desanitize(maybeSanitizedName: String): String =
