@@ -31,28 +31,31 @@ object ColumnName {
       Left(NullColumn)
 
     } else {
-      val (prefix, suffix, rawColumnName) = {
-        val prefix = if (!columnName.startsWith("`")) "`" else ""
-        val suffix = if (!columnName.endsWith("`")) "`" else ""
-        val nameWoPrefix = if (prefix.isEmpty) {
-          columnName.slice(1, columnName.length)
-        } else {
-          columnName
-        }
-        val nameAlsoWoSuffix = if (suffix.isEmpty) {
-          nameWoPrefix.slice(0, nameWoPrefix.length - 1)
-        } else {
-          nameWoPrefix
-        }
-        (prefix, suffix, nameAlsoWoSuffix)
-      }
-
+      val rawColumnName = extractColumnName(columnName)
       if (rawColumnName.contains("`")) {
         Left(ColumnNameHasBackticks(columnName))
       } else {
-        Right(s"$prefix$columnName$suffix")
+        Right(s"`$rawColumnName`")
       }
     }
+
+  /** Extracts the original column name from a possibly sanitized column name. */
+  @inline
+  private[this] def extractColumnName(name: String): String =
+    name.slice(
+      if (hasStartingTick(name)) 1 else 0,
+      name.length - (if (hasEndingTick(name)) 1 else 0)
+    )
+
+  /** True iff the input string starts with a backtick. False otherwise. */
+  @inline
+  private[this] def hasStartingTick(s: String): Boolean =
+    s.startsWith("`")
+
+  /** True iff the input string ends with a backtick. False otherwise. */
+  @inline
+  private[this] def hasEndingTick(s: String): Boolean =
+    s.endsWith("`")
 
   /** Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`. */
   def getOrThrow(x: Sanitized): String = x match {
@@ -87,19 +90,7 @@ object ColumnName {
     if (maybeSanitizedName == null) {
       ""
     } else {
-      val nameWoPrefix =
-        if (maybeSanitizedName.startsWith("`")) {
-          maybeSanitizedName.slice(1, maybeSanitizedName.length)
-        } else {
-          maybeSanitizedName
-        }
-      val nameAlsoWoSuffix =
-        if (nameWoPrefix.endsWith("`")) {
-          nameWoPrefix.slice(0, nameWoPrefix.length - 1)
-        } else {
-          nameWoPrefix
-        }
-      nameAlsoWoSuffix
+      extractColumnName(maybeSanitizedName)
     }
 }
 
