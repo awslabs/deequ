@@ -29,7 +29,6 @@ object ColumnName {
   def sanitizeForSql(columnName: String): Sanitized =
     if (columnName == null) {
       Left(NullColumn)
-
     } else {
       val rawColumnName = extractColumnName(columnName)
       if (rawColumnName.contains("`")) {
@@ -40,22 +39,21 @@ object ColumnName {
     }
 
   /** Extracts the original column name from a possibly sanitized column name. */
-  @inline
-  private[this] def extractColumnName(name: String): String =
-    name.slice(
-      if (hasStartingTick(name)) 1 else 0,
-      name.length - (if (hasEndingTick(name)) 1 else 0)
-    )
+  private[this] def extractColumnName(name: String): String = {
+    val startIndex = if (hasStartingTick(name)) 1 else 0
+    val endIndex = name.length - (if (hasEndingTick(name)) 1 else 0)
+    name.slice(startIndex, endIndex)
+  }
 
   /** True iff the input string starts with a backtick. False otherwise. */
-  @inline
-  private[this] def hasStartingTick(s: String): Boolean =
+  private[this] def hasStartingTick(s: String): Boolean = {
     s.startsWith("`")
+  }
 
   /** True iff the input string ends with a backtick. False otherwise. */
-  @inline
-  private[this] def hasEndingTick(s: String): Boolean =
+  private[this] def hasEndingTick(s: String): Boolean = {
     s.endsWith("`")
+  }
 
   /** Obtains the `String` value if `Right` or throws the `SanitizeError` if `Left`. */
   def getOrThrow(x: Sanitized): String = x match {
@@ -81,8 +79,9 @@ object ColumnName {
   }
 
   /** Alias for `sanitizeForSql andThen getOrThrow`. */
-  def sanitize(columnName: String): String =
+  def sanitize(columnName: String): String = {
     getOrThrow(sanitizeForSql(columnName))
+  }
 
   /** Inverse of `sanitize`: removes surrounding backticks, if present. */
   def desanitize(maybeSanitizedName: String): String =

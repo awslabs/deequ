@@ -244,7 +244,6 @@ trait FixtureSupport extends Assertions {
 
     type T = Map[String, Any]
 
-    @inline
     private[this] def get(key: String)(x: T): String =
       x.get(key).fold("")(_.asInstanceOf[String])
 
