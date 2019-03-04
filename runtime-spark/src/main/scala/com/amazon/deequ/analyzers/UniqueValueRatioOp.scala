@@ -17,25 +17,28 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
-import org.apache.spark.sql.functions.{col, sum}
+import com.amazon.deequ.metrics.DoubleMetric
+import org.apache.spark.sql.{Column, Row}
+import org.apache.spark.sql.functions.{col, count, lit, sum}
 import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.Column
 
-/**
-  * Distinctness is the fraction of distinct values of a column(s).
-  *
-  * @param columns  the column(s) for which to compute distinctness
-  */
-case class DistinctnessOp(columns: Seq[String])
-  extends ScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
+case class UniqueValueRatioOp(columns: Seq[String])
+  extends ScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns) {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
-    (sum(col(COUNT_COL).geq(1).cast(DoubleType)) / numRows) :: Nil
+    sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) :: count("*") :: Nil
+  }
+
+  override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
+    val numUniqueValues = result.getDouble(offset)
+    val numDistinctValues = result.getLong(offset + 1).toDouble
+
+    toSuccessMetric(numUniqueValues / numDistinctValues)
   }
 }
 
-object Distinctness {
-  def apply(column: String): DistinctnessOp = {
-    new DistinctnessOp(column :: Nil)
+object UniqueValueRatio {
+  def apply(column: String): UniqueValueRatioOp = {
+    new UniqueValueRatioOp(column :: Nil)
   }
 }

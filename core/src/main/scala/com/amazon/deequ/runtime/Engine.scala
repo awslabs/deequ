@@ -17,7 +17,6 @@
 package com.amazon.deequ.runtime
 
 import com.amazon.deequ.ComputedStatistics
-import com.amazon.deequ.analyzers.{StateLoader, StatePersister}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.statistics.Statistic
 
@@ -25,9 +24,9 @@ trait Engine {
 
   def compute(
       data: Dataset,
-      analyzers: Seq[Statistic],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None,
+      statistics: Seq[Statistic],
+      //aggregateWith: Option[StateLoader] = None,
+      //saveStatesWith: Option[StatePersister] = None,
       engineRepositoryOptions: EngineRepositoryOptions = EngineRepositoryOptions())
 //                                    fileOutputOptions: AnalysisRunnerFileOutputOptions =
 //                                    AnalysisRunnerFileOutputOptions())

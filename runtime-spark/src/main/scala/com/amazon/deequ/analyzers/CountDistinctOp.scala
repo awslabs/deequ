@@ -16,26 +16,25 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
-import org.apache.spark.sql.functions.{col, sum}
-import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.Column
+import com.amazon.deequ.metrics.DoubleMetric
+import org.apache.spark.sql.{Column, Row}
+import org.apache.spark.sql.functions.count
+import Analyzers._
 
-/**
-  * Distinctness is the fraction of distinct values of a column(s).
-  *
-  * @param columns  the column(s) for which to compute distinctness
-  */
-case class DistinctnessOp(columns: Seq[String])
-  extends ScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
+case class CountDistinctOp(columns: Seq[String])
+  extends ScanShareableFrequencyBasedAnalyzer("CountDistinct", columns) {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
-    (sum(col(COUNT_COL).geq(1).cast(DoubleType)) / numRows) :: Nil
+    count("*") :: Nil
+  }
+
+  override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
+    toSuccessMetric(result.getLong(offset).toDouble)
   }
 }
 
-object Distinctness {
-  def apply(column: String): DistinctnessOp = {
-    new DistinctnessOp(column :: Nil)
+object CountDistinctOp {
+  def apply(column: String): CountDistinctOp = {
+    new CountDistinctOp(column :: Nil)
   }
 }

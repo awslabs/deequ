@@ -114,14 +114,16 @@ object AnalysisRunner {
     val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
-    val resultsComputedPreviously: AnalyzerContext =
-      (metricsRepositoryOptions.metricsRepository,
-        metricsRepositoryOptions.reuseExistingResultsForKey)
-        match {
-          case (Some(metricsRepository: MetricsRepository), Some(resultKey: ResultKey)) =>
-            metricsRepository.loadByKey(resultKey).getOrElse(AnalyzerContext.empty)
-          case _ => AnalyzerContext.empty
-        }
+//FIXLATER
+val resultsComputedPreviously = AnalyzerContext.empty
+//    val resultsComputedPreviously: AnalyzerContext =
+//      (metricsRepositoryOptions.metricsRepository,
+//        metricsRepositoryOptions.reuseExistingResultsForKey)
+//        match {
+//          case (Some(metricsRepository: MetricsRepository), Some(resultKey: ResultKey)) =>
+//            metricsRepository.loadByKey(resultKey).getOrElse(AnalyzerContext.empty)
+//          case _ => AnalyzerContext.empty
+//        }
 
     val analyzersAlreadyRan = resultsComputedPreviously.metricMap.keys.toSet
 
@@ -155,7 +157,7 @@ object AnalysisRunner {
 
     // TODO this can be further improved, we can get the number of rows from other metrics as well
     // TODO we could also insert an extra Size() computation if we have to scan the data anyways
-    var numRowsOfData = nonGroupedMetrics.metric(Size()).collect {
+    var numRowsOfData = nonGroupedMetrics.metric(SizeOp()).collect {
       case DoubleMetric(_, _, _, Success(value: Double)) => value.toLong
     }
 
@@ -198,18 +200,19 @@ object AnalysisRunner {
       saveOrAppendResultsWithKey: Option[ResultKey])
     : Unit = {
 
-    metricsRepository.foreach { repository =>
-      saveOrAppendResultsWithKey.foreach { key =>
-
-        val currentValueForKey = repository.loadByKey(key).getOrElse(AnalyzerContext.empty)
-
-        // AnalyzerContext entries on the right side of ++ will overwrite the ones on the left
-        // if there are two different metric results for the same analyzer
-        val valueToSave = currentValueForKey ++ resultingAnalyzerContext
-
-        repository.save(saveOrAppendResultsWithKey.get, valueToSave)
-      }
-    }
+//FIXLATER
+//    metricsRepository.foreach { repository =>
+//      saveOrAppendResultsWithKey.foreach { key =>
+//
+//        val currentValueForKey = repository.loadByKey(key).getOrElse(AnalyzerContext.empty)
+//
+//        // AnalyzerContext entries on the right side of ++ will overwrite the ones on the left
+//        // if there are two different metric results for the same analyzer
+//        val valueToSave = currentValueForKey ++ resultingAnalyzerContext
+//
+//        repository.save(saveOrAppendResultsWithKey.get, valueToSave)
+//      }
+//    }
   }
 
   private[this] def saveJsonOutputsToFilesystemIfNecessary(
@@ -217,16 +220,17 @@ object AnalysisRunner {
     analyzerContext: AnalyzerContext)
   : Unit = {
 
-    fileOutputOptions.sparkSession.foreach { session =>
-      fileOutputOptions.saveSuccessMetricsJsonToPath.foreach { profilesOutput =>
-
-        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
-          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
-            writer.append(AnalyzerContext.successMetricsAsJson(analyzerContext))
-            writer.newLine()
-          }
-        }
-    }
+//FIXLATER
+//    fileOutputOptions.sparkSession.foreach { session =>
+//      fileOutputOptions.saveSuccessMetricsJsonToPath.foreach { profilesOutput =>
+//
+//        DfsUtils.writeToTextFileOnDfs(session, profilesOutput,
+//          overwrite = fileOutputOptions.overwriteOutputFiles) { writer =>
+//            writer.append(AnalyzerContext.successMetricsAsJson(analyzerContext))
+//            writer.newLine()
+//          }
+//        }
+//    }
   }
 
   private[this] def computePreconditionFailureMetrics(

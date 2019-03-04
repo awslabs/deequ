@@ -70,8 +70,8 @@ class VerificationSuite {
       engine: Engine,
       checks: Seq[Check],
       requiredAnalyzers: Seq[Statistic],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None,
+      //aggregateWith: Option[StateLoader] = None,
+      //saveStatesWith: Option[StatePersister] = None,
       metricsRepositoryOptions: VerificationMetricsRepositoryOptions =
       VerificationMetricsRepositoryOptions())
 //                                        fileOutputOptions: VerificationFileOutputOptions =
@@ -83,8 +83,8 @@ class VerificationSuite {
     val analysisResults = engine.compute(
       data,
       analyzers,
-      aggregateWith,
-      saveStatesWith,
+      //aggregateWith,
+      //saveStatesWith,
       engineRepositoryOptions = EngineRepositoryOptions(
         metricsRepositoryOptions.metricsRepository,
         metricsRepositoryOptions.reuseExistingResultsForKey,

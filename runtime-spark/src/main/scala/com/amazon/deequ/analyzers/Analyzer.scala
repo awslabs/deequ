@@ -27,7 +27,7 @@ import scala.language.existentials
 import scala.util.{Failure, Success}
 
 
-
+//TODO make this inaccessible
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
 trait Analyzer[S <: State[_], +M <: Metric[_]] {
 

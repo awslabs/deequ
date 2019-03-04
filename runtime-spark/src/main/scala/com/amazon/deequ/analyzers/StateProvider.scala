@@ -87,43 +87,43 @@ case class HdfsStateProvider(
     val identifier = toIdentifier(analyzer)
 
     analyzer match {
-      case _: Size =>
+      case _: SizeOp =>
         persistLongState(state.asInstanceOf[NumMatches].numMatches, identifier)
 
-      case _ : Completeness | _ : Compliance | _ : PatternMatch =>
+      case _ : CompletenessOp | _ : ComplianceOp | _ : PatternMatchOp =>
         persistLongLongState(state.asInstanceOf[NumMatchesAndCount], identifier)
 
-      case _: Sum =>
+      case _: SumOp =>
         persistDoubleState(state.asInstanceOf[SumState].sum, identifier)
 
-      case _: Mean =>
+      case _: MeanOp =>
         persistDoubleLongState(state.asInstanceOf[MeanState], identifier)
 
-      case _: Minimum =>
+      case _: MinimumOp =>
         persistDoubleState(state.asInstanceOf[MinState].minValue, identifier)
 
-      case _: Maximum =>
+      case _: MaximumOp =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
 
-      case _ : FrequencyBasedAnalyzer | _ : Histogram =>
+      case _ : FrequencyBasedAnalyzer | _ : HistogramOp =>
         persistDataframeLongState(state.asInstanceOf[FrequenciesAndNumRows], identifier)
 
-      case _: DataType =>
+      case _: DataTypeOp =>
         val histogram = state.asInstanceOf[DataTypeHistogram]
         persistBytes(DataTypeHistogram.toBytes(histogram.numNull, histogram.numFractional,
           histogram.numIntegral, histogram.numBoolean, histogram.numString), identifier)
 
-      case _: ApproxCountDistinct =>
+      case _: ApproxCountDistinctOp =>
         val counters = state.asInstanceOf[ApproxCountDistinctState]
         persistBytes(DeequHyperLogLogPlusPlusUtils.wordsToBytes(counters.words), identifier)
 
-      case _ : Correlation =>
+      case _ : CorrelationOp =>
         persistCorrelationState(state.asInstanceOf[CorrelationState], identifier)
 
-      case _ : StandardDeviation =>
+      case _ : StandardDeviationOp =>
         persistStandardDeviationState(state.asInstanceOf[StandardDeviationState], identifier)
 
-      case _: ApproxQuantile =>
+      case _: ApproxQuantileOp =>
         val percentileDigest = state.asInstanceOf[ApproxQuantileState].percentileDigest
         val serializedDigest = ApproximatePercentile.serializer.serialize(percentileDigest)
         persistBytes(serializedDigest, identifier)
@@ -139,30 +139,30 @@ case class HdfsStateProvider(
 
     val state: Any = analyzer match {
 
-      case _ : Size => NumMatches(loadLongState(identifier))
+      case _ : SizeOp => NumMatches(loadLongState(identifier))
 
-      case _ : Completeness | _ : Compliance | _ : PatternMatch => loadLongLongState(identifier)
+      case _ : CompletenessOp | _ : ComplianceOp | _ : PatternMatchOp => loadLongLongState(identifier)
 
-      case _ : Sum => SumState(loadDoubleState(identifier))
+      case _ : SumOp => SumState(loadDoubleState(identifier))
 
-      case _ : Mean => loadDoubleLongState(identifier)
+      case _ : MeanOp => loadDoubleLongState(identifier)
 
-      case _ : Minimum => MinState(loadDoubleState(identifier))
+      case _ : MinimumOp => MinState(loadDoubleState(identifier))
 
-      case _ : Maximum => MaxState(loadDoubleState(identifier))
+      case _ : MaximumOp => MaxState(loadDoubleState(identifier))
 
-      case _ : FrequencyBasedAnalyzer | _ : Histogram => loadDataframeLongState(identifier)
+      case _ : FrequencyBasedAnalyzer | _ : HistogramOp => loadDataframeLongState(identifier)
 
-      case _ : DataType => DataTypeHistogram.fromBytes(loadBytes(identifier))
+      case _ : DataTypeOp => DataTypeHistogram.fromBytes(loadBytes(identifier))
 
-      case _ : ApproxCountDistinct =>
+      case _ : ApproxCountDistinctOp =>
         DeequHyperLogLogPlusPlusUtils.wordsFromBytes(loadBytes(identifier))
 
-      case _ : Correlation => loadCorrelationState(identifier)
+      case _ : CorrelationOp => loadCorrelationState(identifier)
 
-      case _ : StandardDeviation => loadStandardDeviationState(identifier)
+      case _ : StandardDeviationOp => loadStandardDeviationState(identifier)
 
-       case _: ApproxQuantile =>
+       case _: ApproxQuantileOp =>
          val percentileDigest = ApproximatePercentile.serializer.deserialize(loadBytes(identifier))
          ApproxQuantileState(percentileDigest)
 

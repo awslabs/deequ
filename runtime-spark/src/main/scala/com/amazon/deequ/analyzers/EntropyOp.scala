@@ -17,25 +17,26 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
-import org.apache.spark.sql.functions.{col, sum}
-import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.functions.{col, sum, udf}
 
 /**
-  * Distinctness is the fraction of distinct values of a column(s).
-  *
-  * @param columns  the column(s) for which to compute distinctness
+  * Entropy is a measure of the level of information contained in a message. Given the probability
+  * distribution over values in a column, it describes how many bits are required to identify a
+  * value.
   */
-case class DistinctnessOp(columns: Seq[String])
-  extends ScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
+case class EntropyOp(column: String)
+  extends ScanShareableFrequencyBasedAnalyzer("Entropy", column :: Nil) {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
-    (sum(col(COUNT_COL).geq(1).cast(DoubleType)) / numRows) :: Nil
-  }
-}
+    val summands = udf { (count: Double) =>
+      if (count == 0.0) {
+        0.0
+      } else {
+        -(count / numRows) * math.log(count / numRows)
+      }
+    }
 
-object Distinctness {
-  def apply(column: String): DistinctnessOp = {
-    new DistinctnessOp(column :: Nil)
+    sum(summands(col(COUNT_COL))) :: Nil
   }
 }

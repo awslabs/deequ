@@ -17,25 +17,22 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
-import org.apache.spark.sql.functions.{col, sum}
-import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.functions.{col, lit, sum}
+import org.apache.spark.sql.types.DoubleType
 
-/**
-  * Distinctness is the fraction of distinct values of a column(s).
-  *
-  * @param columns  the column(s) for which to compute distinctness
-  */
-case class DistinctnessOp(columns: Seq[String])
-  extends ScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
+/** Uniqueness is the fraction of unique values of a column(s), i.e.,
+  * values that occur exactly once. */
+case class UniquenessOp(columns: Seq[String])
+  extends ScanShareableFrequencyBasedAnalyzer("Uniqueness", columns) {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
-    (sum(col(COUNT_COL).geq(1).cast(DoubleType)) / numRows) :: Nil
+    (sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) / numRows) :: Nil
   }
 }
 
-object Distinctness {
-  def apply(column: String): DistinctnessOp = {
-    new DistinctnessOp(column :: Nil)
+object UniquenessOp {
+  def apply(column: String): UniquenessOp = {
+    new UniquenessOp(column :: Nil)
   }
 }

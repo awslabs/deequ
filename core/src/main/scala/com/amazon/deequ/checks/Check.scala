@@ -441,7 +441,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Min(column, filter), assertion, hint = hint)
+      StatisticConstraint[Double, Double](Minimum(column, filter), assertion, hint = hint)
     }
   }
 
@@ -460,7 +460,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Max(column, filter), assertion, hint = hint)
+      StatisticConstraint[Double, Double](Maximum(column, filter), assertion, hint = hint)
     }
   }
 

@@ -16,15 +16,18 @@
 
 package com.amazon.deequ.examples
 
-import ExampleUtils.{withSpark, itemsAsDataframe}
+import ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.checks.CheckStatus._
 import com.amazon.deequ.constraints.ConstraintStatus
+import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
 
 private[examples] object BasicExample extends App {
 
   withSpark { session =>
+
+    val engine = SparkEngine(session)
 
     val data = itemsAsDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
@@ -34,7 +37,7 @@ private[examples] object BasicExample extends App {
       Item(5, "Thingy E", null, "high", 12))
 
     val verificationResult = VerificationSuite()
-      .onData(data)
+      .onData(SparkDataset(data), engine)
       .addCheck(
         Check(CheckLevel.Error, "integrity checks")
           // we expect 5 records
