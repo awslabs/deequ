@@ -16,4 +16,8 @@
 
 package com.amazon.deequ.runtime
 
-trait Dataset
+trait Dataset {
+
+  def columns(): Seq[String]
+
+}

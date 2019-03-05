@@ -517,7 +517,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](StdDev(column, filter), assertion, hint = hint)
+      StatisticConstraint[Double, Double](StandardDeviation(column, filter), assertion, hint = hint)
     }
   }
 

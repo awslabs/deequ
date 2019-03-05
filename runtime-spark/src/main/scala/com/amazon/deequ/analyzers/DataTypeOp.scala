@@ -22,20 +22,12 @@ import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.runners.MetricCalculationException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
+import com.amazon.deequ.statistics.DataTypeInstances
 import org.apache.spark.sql.DeequFunctions.stateful_datatype
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, Row}
 
 import scala.util.{Failure, Success}
-
-/** Data type instances */
-private[deequ] object DataTypeInstances extends Enumeration {
-  val Unknown: Value = Value(0)
-  val Fractional: Value = Value(1)
-  val Integral: Value = Value(2)
-  val Boolean: Value = Value(3)
-  val String: Value = Value(4)
-}
 
 case class DataTypeHistogram(
     numNull: Long,

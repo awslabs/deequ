@@ -17,6 +17,7 @@
 package com.amazon.deequ.runtime
 
 import com.amazon.deequ.ComputedStatistics
+import com.amazon.deequ.profiles.ColumnProfiles
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.statistics.Statistic
 
@@ -30,7 +31,20 @@ trait Engine {
       engineRepositoryOptions: EngineRepositoryOptions = EngineRepositoryOptions())
 //                                    fileOutputOptions: AnalysisRunnerFileOutputOptions =
 //                                    AnalysisRunnerFileOutputOptions())
-  : ComputedStatistics
+    : ComputedStatistics
+
+  def profile(
+      dataset: Dataset,
+      restrictToColumns: Option[Seq[String]] = None,
+      lowCardinalityHistogramThreshold: Int = 1200, //TODO we need a constant here
+      printStatusUpdates: Boolean = true)
+    : ColumnProfiles
+
+  def splitTrainTestSets(
+      data: Dataset,
+      testsetRatio: Option[Double],
+      testsetSplitRandomSeed: Option[Long])
+    : (Dataset, Option[Dataset])
 
 }
 

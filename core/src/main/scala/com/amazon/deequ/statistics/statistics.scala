@@ -26,7 +26,7 @@ case class Mean(column: String, where: Option[String] = None) extends Statistic
 case class ApproxQuantile(column: String, quantile: Double) extends Statistic
 case class Minimum(column: String, where: Option[String] = None) extends Statistic
 case class Maximum(column: String, where: Option[String] = None) extends Statistic
-case class StdDev(column: String, where: Option[String] = None) extends Statistic
+case class StandardDeviation(column: String, where: Option[String] = None) extends Statistic
 case class Sum(column: String, where: Option[String] = None) extends Statistic
 case class ApproxCountDistinct(column: String, where: Option[String] = None) extends Statistic
 case class Correlation(columnA: String, columnB: String, where: Option[String] = None) extends Statistic
