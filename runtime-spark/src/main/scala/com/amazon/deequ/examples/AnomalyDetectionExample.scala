@@ -21,7 +21,7 @@ package com.amazon.deequ.examples
 //import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
 //import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 //import com.amazon.deequ.repository.ResultKey
-//import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
+//import com.amazon.deequ.repository.InMemoryMetricsRepository
 //import com.amazon.deequ.checks.CheckStatus._
 //import com.amazon.deequ.runtime.{SparkDataset, SparkEngine}
 //import com.amazon.deequ.statistics.Size

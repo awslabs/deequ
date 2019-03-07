@@ -24,12 +24,13 @@ case class Size(where: Option[String] = None) extends Statistic
 case class Completeness(column: String, where: Option[String] = None) extends Statistic
 case class Mean(column: String, where: Option[String] = None) extends Statistic
 case class ApproxQuantile(column: String, quantile: Double) extends Statistic
+case class ApproxQuantiles(column: String, quantiles: Seq[Double]) extends Statistic
 case class Minimum(column: String, where: Option[String] = None) extends Statistic
 case class Maximum(column: String, where: Option[String] = None) extends Statistic
 case class StandardDeviation(column: String, where: Option[String] = None) extends Statistic
 case class Sum(column: String, where: Option[String] = None) extends Statistic
 case class ApproxCountDistinct(column: String, where: Option[String] = None) extends Statistic
-case class Correlation(columnA: String, columnB: String, where: Option[String] = None) extends Statistic
+case class Correlation(firstColumn: String, secondColumn: String, where: Option[String] = None) extends Statistic
 case class Compliance(instance: String, predicate: String, where: Option[String] = None) extends Statistic
 case class PatternMatch(column: String, pattern: Regex, where: Option[String] = None) extends Statistic
 case class DataType(column: String, where: Option[String] = None) extends Statistic
@@ -39,7 +40,7 @@ case class Uniqueness(columns: Seq[String]) extends Statistic
 case class Distinctness(columns: Seq[String]) extends Statistic
 case class UniqueValueRatio(columns: Seq[String]) extends Statistic
 case class Entropy(column: String) extends Statistic
-case class MutualInformation(columnA: String, columnB: String) extends Statistic
+case class MutualInformation(columns: Seq[String]) extends Statistic
 
 
 case class Histogram(

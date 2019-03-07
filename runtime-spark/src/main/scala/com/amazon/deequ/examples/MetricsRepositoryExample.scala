@@ -22,7 +22,7 @@ package com.amazon.deequ.examples
 //import com.amazon.deequ.analyzers.Completeness
 //import com.amazon.deequ.checks.{Check, CheckLevel}
 //import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
-//import com.amazon.deequ.repository.fs.FileSystemMetricsRepository
+//import com.amazon.deequ.repository.FileSystemMetricsRepository
 //import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 //import com.google.common.io.Files
 //

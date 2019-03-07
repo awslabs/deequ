@@ -400,7 +400,7 @@ case class Check(
     : Check = {
 
     addConstraint(
-      StatisticConstraint[Double, Double](MutualInformation(columnA, columnB), assertion, hint = hint)
+      StatisticConstraint[Double, Double](MutualInformation(Seq(columnA, columnB)), assertion, hint = hint)
     )
   }
 

@@ -137,7 +137,7 @@ object SparkEngine {
         ApproxCountDistinctOp(approxCountDistinct.column, approxCountDistinct.where)
 
       case correlation: Correlation =>
-        CorrelationOp(correlation.columnA, correlation.columnB, correlation.where)
+        CorrelationOp(correlation.firstColumn, correlation.secondColumn, correlation.where)
 
       case stdDev: StandardDeviation =>
         StandardDeviationOp(stdDev.column, stdDev.where)
