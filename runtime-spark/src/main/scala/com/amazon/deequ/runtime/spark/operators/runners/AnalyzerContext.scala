@@ -14,47 +14,53 @@
   *
   */
 
-package com.amazon.deequ
+package com.amazon.deequ.runtime.spark.operators.runners
 
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
-import com.amazon.deequ.statistics.Statistic
+import com.amazon.deequ.runtime.spark.operators.Operator
+//import com.amazon.deequ.repository.SimpleResultSerde
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-case class ComputedStatistics(metricMap: Map[Statistic, Metric[_]]) {
+/**
+  * The result returned from AnalysisRunner and Analysis
+  *
+  * @param metricMap Analyzers and their Metric results
+  */
+case class AnalyzerContext(metricMap: Map[Operator[_, Metric[_]], Metric[_]]) {
 
   def allMetrics: Seq[Metric[_]] = {
     metricMap.values.toSeq
   }
 
-  def ++(other: ComputedStatistics): ComputedStatistics = {
-    ComputedStatistics(metricMap ++ other.metricMap)
+  def ++(other: AnalyzerContext): AnalyzerContext = {
+    AnalyzerContext(metricMap ++ other.metricMap)
   }
 
-  def metric(statistic: Statistic): Option[Metric[_]] = {
-    metricMap.get(statistic)
+  def metric(analyzer: Operator[_, Metric[_]]): Option[Metric[_]] = {
+    metricMap.get(analyzer)
   }
 }
 
-object ComputedStatistics {
+object AnalyzerContext {
 
-  def empty: ComputedStatistics = ComputedStatistics(Map.empty)
+  def empty: AnalyzerContext = AnalyzerContext(Map.empty)
 
-//FIXLATER
-//  def successMetricsAsDataFrame(
-//                                 sparkSession: SparkSession,
-//                                 analyzerContext: AnalyzerContext,
-//                                 forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty)
-//  : DataFrame = {
-//
-//    val metricsList = getSimplifiedMetricOutputForSelectedAnalyzers(analyzerContext, forAnalyzers)
-//
-//    import sparkSession.implicits._
-//
-//    metricsList.toDF("entity", "instance", "name", "value")
-//  }
-//
-  def successMetricsAsJson(analyzerContext: ComputedStatistics,
-                           forAnalyzers: Seq[Statistic] = Seq.empty): String = {
+  def successMetricsAsDataFrame(
+    sparkSession: SparkSession,
+    analyzerContext: AnalyzerContext,
+    forAnalyzers: Seq[Operator[_, Metric[_]]] = Seq.empty)
+  : DataFrame = {
+
+    val metricsList = getSimplifiedMetricOutputForSelectedAnalyzers(analyzerContext, forAnalyzers)
+
+    import sparkSession.implicits._
+
+    metricsList.toDF("entity", "instance", "name", "value")
+  }
+
+  def successMetricsAsJson(analyzerContext: AnalyzerContext,
+                           forAnalyzers: Seq[Operator[_, Metric[_]]] = Seq.empty): String = {
 
     val metricsList = getSimplifiedMetricOutputForSelectedAnalyzers(analyzerContext, forAnalyzers)
 
@@ -71,9 +77,9 @@ object ComputedStatistics {
   }
 
   private[this] def getSimplifiedMetricOutputForSelectedAnalyzers(
-      analyzerContext: ComputedStatistics,
-      forAnalyzers: Seq[Statistic])
-    : Seq[SimpleMetricOutput] = {
+    analyzerContext: AnalyzerContext,
+    forAnalyzers: Seq[Operator[_, Metric[_]]])
+  : Seq[SimpleMetricOutput] = {
 
     val selectedMetrics = analyzerContext.metricMap
       .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))

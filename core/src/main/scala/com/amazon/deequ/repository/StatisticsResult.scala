@@ -22,8 +22,7 @@ import com.amazon.deequ.metrics.Metric
 
 private[deequ] case class StatisticsResult(resultKey: ResultKey, analyzerContext: ComputedStatistics)
 
-//FIXLATER
-//private[repository] object AnalysisResult {
+//private[repository] object StatisticsResult {
 //
 //  private val DATASET_DATE_FIELD = "dataset_date"
 //

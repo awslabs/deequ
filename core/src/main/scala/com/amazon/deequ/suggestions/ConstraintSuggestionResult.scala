@@ -32,28 +32,25 @@ case class ConstraintSuggestionResult(
   constraintSuggestions: Map[String, Seq[ConstraintSuggestion]],
   verificationResult: Option[VerificationResult] = None)
 
-//FIXLATER
-//object ConstraintSuggestionResult {
-//
-//  def getColumnProfilesAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
-//
-//    ColumnProfiles
-//      .toJson(constraintSuggestionResult.columnProfiles.values.toSeq)
-//  }
-//
-//  def getConstraintSuggestionsAsJson(constraintSuggestionResult: ConstraintSuggestionResult)
-//    : String = {
-//    ConstraintSuggestions
-//      .toJson(constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _))
-//  }
-//
-//  def getEvaluationResultsAsJson(constraintSuggestionResult: ConstraintSuggestionResult)
-//    : String = {
-//
-//    ConstraintSuggestions
-//      .evaluationResultsToJson(
-//        constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _),
-//        constraintSuggestionResult.verificationResult.getOrElse(
-//          VerificationResult(CheckStatus.Warning, Map.empty, Map.empty)))
-//  }
-//}
+
+object ConstraintSuggestionResult {
+
+  def getColumnProfilesAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
+
+    ColumnProfiles.toJson(constraintSuggestionResult.columnProfiles.values.toSeq)
+  }
+
+  def getConstraintSuggestionsAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
+    ConstraintSuggestions
+      .toJson(constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _))
+  }
+
+  def getEvaluationResultsAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
+
+    ConstraintSuggestions
+      .evaluationResultsToJson(
+        constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _),
+        constraintSuggestionResult.verificationResult.getOrElse(
+          VerificationResult(CheckStatus.Warning, Map.empty, Map.empty)))
+  }
+}

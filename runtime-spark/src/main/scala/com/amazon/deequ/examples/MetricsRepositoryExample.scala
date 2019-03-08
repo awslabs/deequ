@@ -16,17 +16,15 @@
 
 package com.amazon.deequ.examples
 
-//import java.io.File
-//
-//import com.amazon.deequ.VerificationSuite
-//import com.amazon.deequ.analyzers.Completeness
-//import com.amazon.deequ.checks.{Check, CheckLevel}
-//import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
-//import com.amazon.deequ.repository.FileSystemMetricsRepository
-//import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-//import com.google.common.io.Files
-//
-//object MetricsRepositoryExample extends App {
+import java.io.File
+
+import com.amazon.deequ.VerificationSuite
+import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
+import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.google.common.io.Files
+
+object MetricsRepositoryExample extends App {
 //
 //  withSpark { session =>
 //
@@ -87,4 +85,4 @@ package com.amazon.deequ.examples
 //      .getSuccessMetricsAsDataFrame(session)
 //      .show()
 //  }
-//}
+}

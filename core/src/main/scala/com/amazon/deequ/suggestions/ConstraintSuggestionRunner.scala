@@ -18,6 +18,8 @@ package com.amazon.deequ.suggestions
 
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.profiles.ColumnProfilerRunner
+import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 //import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
 //import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
@@ -33,12 +35,12 @@ object Rules {
       NonNegativeNumbersRule())
 }
 
-//private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
-//      metricsRepository: Option[MetricsRepository],
-//      reuseExistingResultsKey: Option[ResultKey],
-//      failIfResultsForReusingMissing: Boolean,
-//      saveOrAppendResultsKey: Option[ResultKey])
-//
+private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
+      metricsRepository: Option[MetricsRepository],
+      reuseExistingResultsKey: Option[ResultKey],
+      failIfResultsForReusingMissing: Boolean,
+      saveOrAppendResultsKey: Option[ResultKey])
+
 //private[suggestions] case class ConstraintSuggestionFileOutputOptions(
 //      session: Option[SparkSession],
 //      saveColumnProfilesJsonToPath: Option[String],
@@ -54,9 +56,9 @@ object Rules {
 //@Experimental
 class ConstraintSuggestionRunner {
 
-//  def onData(data: DataFrame): ConstraintSuggestionRunBuilder = {
-//    new ConstraintSuggestionRunBuilder(data)
-//  }
+  def onData(data: Dataset, engine: Engine): ConstraintSuggestionRunBuilder = {
+    new ConstraintSuggestionRunBuilder(data, engine)
+  }
 
 //  private[suggestions] def run(
   private[suggestions] def run(
@@ -67,10 +69,10 @@ class ConstraintSuggestionRunner {
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       testsetRatio: Option[Double],
-      testsetSplitRandomSeed: Option[Long])//,
+      testsetSplitRandomSeed: Option[Long],
       //cacheInputs: Boolean,
       //fileOutputOptions: ConstraintSuggestionFileOutputOptions,
-      //metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
+      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
     : ConstraintSuggestionResult = {
 
     testsetRatio.foreach { testsetRatio =>
@@ -90,8 +92,8 @@ class ConstraintSuggestionRunner {
         constraintRules,
         restrictToColumns,
         lowCardinalityHistogramThreshold,
-        printStatusUpdates
-//        metricsRepositoryOptions
+        printStatusUpdates,
+        metricsRepositoryOptions
       )
 
 //    saveColumnProfilesJsonToFileSystemIfNecessary(
@@ -134,33 +136,37 @@ class ConstraintSuggestionRunner {
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
-      printStatusUpdates: Boolean
-      //metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions
+      printStatusUpdates: Boolean,
+      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions
     ): (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
-//    metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
-//      var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)
-//
-//      metricsRepositoryOptions.reuseExistingResultsKey.foreach { reuseExistingResultsKey =>
-//        columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
-//          .reuseExistingResultsForKey(reuseExistingResultsKey,
-//            metricsRepositoryOptions.failIfResultsForReusingMissing)
-//      }
-//
-//      metricsRepositoryOptions.saveOrAppendResultsKey.foreach { saveOrAppendResultsKey =>
-//        columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
-//          .saveOrAppendResult(saveOrAppendResultsKey)
-//      }
-//
-//      columnProfilerRunner = columnProfilerRunnerWithRepository
-//    }
+    var columnProfilerRunner = ColumnProfilerRunner()
+      .onData(trainingData, engine)
+      .printStatusUpdates(printStatusUpdates)
+      .withLowCardinalityHistogramThreshold(lowCardinalityHistogramThreshold)
 
-    val profiles = engine.profile(
-      trainingData,
-      restrictToColumns,
-      lowCardinalityHistogramThreshold,
-      printStatusUpdates
-    )
+    restrictToColumns.foreach { restrictToColumns =>
+      columnProfilerRunner = columnProfilerRunner.restrictToColumns(restrictToColumns)
+    }
+
+    metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
+      var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)
+
+      metricsRepositoryOptions.reuseExistingResultsKey.foreach { reuseExistingResultsKey =>
+        columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
+          .reuseExistingResultsForKey(reuseExistingResultsKey,
+            metricsRepositoryOptions.failIfResultsForReusingMissing)
+      }
+
+      metricsRepositoryOptions.saveOrAppendResultsKey.foreach { saveOrAppendResultsKey =>
+        columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
+          .saveOrAppendResult(saveOrAppendResultsKey)
+      }
+
+      columnProfilerRunner = columnProfilerRunnerWithRepository
+    }
+
+    val profiles = columnProfilerRunner.run()
 
     val relevantColumns = getRelevantColumns(trainingData.columns(), restrictToColumns)
     val suggestions = applyRules(constraintRules, profiles, relevantColumns)

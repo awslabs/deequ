@@ -35,9 +35,13 @@ trait Engine {
 
   def profile(
       dataset: Dataset,
-      restrictToColumns: Option[Seq[String]] = None,
-      lowCardinalityHistogramThreshold: Int = 1200, //TODO we need a constant here
-      printStatusUpdates: Boolean = true)
+      restrictToColumns: Option[Seq[String]],
+      lowCardinalityHistogramThreshold: Int,
+      printStatusUpdates: Boolean,
+      metricsRepository: Option[MetricsRepository],
+      reuseExistingResultsUsingKey: Option[ResultKey],
+      failIfResultsForReusingMissing: Boolean,
+      saveInMetricsRepositoryUsingKey: Option[ResultKey])
     : ColumnProfiles
 
   def splitTrainTestSets(

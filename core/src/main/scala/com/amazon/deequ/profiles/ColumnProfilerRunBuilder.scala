@@ -14,20 +14,15 @@
  *
  */
 
-package com.amazon.deequ.suggestions
+package com.amazon.deequ.profiles
 
-import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.runtime.{Dataset, Engine}
-import com.amazon.deequ.suggestions.rules.ConstraintRule
 
 /** A class to build a Constraint Suggestion run using a fluent API */
-class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
+class ColumnProfilerRunBuilder(val dataset: Dataset, val engine: Engine) {
 
-  protected var constraintRules: Seq[ConstraintRule[ColumnProfile]] = Seq.empty
   protected var printStatusUpdates: Boolean = false
-  protected var testsetRatio: Option[Double] = None
-  protected var testsetSplitRandomSeed: Option[Long] = None
   protected var cacheInputs: Boolean = false
   protected var lowCardinalityHistogramThreshold: Int = ColumnProfiles.DEFAULT_CARDINALITY_THRESHOLD
   protected var restrictToColumns: Option[Seq[String]] = None
@@ -42,49 +37,24 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
 
-  protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
+  protected def this(columnProfileRunBuilder: ColumnProfilerRunBuilder) {
 
-    this(constraintSuggestionRunBuilder.dataset, constraintSuggestionRunBuilder.engine)
+    this(columnProfileRunBuilder.dataset, columnProfileRunBuilder.engine)
 
-    constraintRules = constraintSuggestionRunBuilder.constraintRules
-    printStatusUpdates = constraintSuggestionRunBuilder.printStatusUpdates
-    testsetRatio = constraintSuggestionRunBuilder.testsetRatio
-    testsetSplitRandomSeed = constraintSuggestionRunBuilder.testsetSplitRandomSeed
-    cacheInputs = constraintSuggestionRunBuilder.cacheInputs
-    lowCardinalityHistogramThreshold = constraintSuggestionRunBuilder
-      .lowCardinalityHistogramThreshold
-    restrictToColumns = constraintSuggestionRunBuilder.restrictToColumns
+    printStatusUpdates = columnProfileRunBuilder.printStatusUpdates
+    cacheInputs = columnProfileRunBuilder.cacheInputs
+    lowCardinalityHistogramThreshold = columnProfileRunBuilder.lowCardinalityHistogramThreshold
+    restrictToColumns = columnProfileRunBuilder.restrictToColumns
 
-    metricsRepository = constraintSuggestionRunBuilder.metricsRepository
-    reuseExistingResultsKey = constraintSuggestionRunBuilder.reuseExistingResultsKey
-    failIfResultsForReusingMissing = constraintSuggestionRunBuilder.failIfResultsForReusingMissing
-    saveOrAppendResultsKey = constraintSuggestionRunBuilder.saveOrAppendResultsKey
+    metricsRepository = columnProfileRunBuilder.metricsRepository
+    reuseExistingResultsKey = columnProfileRunBuilder.reuseExistingResultsKey
+    failIfResultsForReusingMissing = columnProfileRunBuilder.failIfResultsForReusingMissing
+    saveOrAppendResultsKey = columnProfileRunBuilder.saveOrAppendResultsKey
 
-    overwriteOutputFiles = constraintSuggestionRunBuilder.overwriteOutputFiles
-    saveColumnProfilesJsonPath = constraintSuggestionRunBuilder.saveColumnProfilesJsonPath
-    saveConstraintSuggestionsJsonPath = constraintSuggestionRunBuilder
-      .saveConstraintSuggestionsJsonPath
-    saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
-  }
-
-  /**
-    * Add a single rule for suggesting constraints based on ColumnProfiles to the run.
-    *
-    * @param constraintRule A rule ...
-    */
-  def addConstraintRule(constraintRule: ConstraintRule[ColumnProfile]): this.type = {
-    constraintRules :+= constraintRule
-    this
-  }
-
-  /**
-    * Add multiple rules for suggesting constraints based on ColumnProfiles to the run.
-    *
-    * @param constraintRules A sequence of rules ...
-    */
-  def addConstraintRules(constraintRules: Seq[ConstraintRule[ColumnProfile]]): this.type = {
-    this.constraintRules ++= constraintRules
-    this
+    overwriteOutputFiles = columnProfileRunBuilder.overwriteOutputFiles
+    saveColumnProfilesJsonPath = columnProfileRunBuilder.saveColumnProfilesJsonPath
+    saveConstraintSuggestionsJsonPath = columnProfileRunBuilder.saveConstraintSuggestionsJsonPath
+    saveEvaluationResultsJsonPath = columnProfileRunBuilder.saveEvaluationResultsJsonPath
   }
 
   /**
@@ -108,22 +78,6 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
   }
 
   /**
-    * Run constraint suggestion on part of data and evaluate suggestions
-    * on hold-out test set
-    *
-    * @param testsetRatio A value between 0 and 1
-    */
-  def useTrainTestSplitWithTestsetRatio(
-      testsetRatio: Double,
-      testsetSplitRandomSeed: Option[Long] = None)
-    : this.type = {
-
-    this.testsetRatio = Option(testsetRatio)
-    this.testsetSplitRandomSeed = testsetSplitRandomSeed
-    this
-  }
-
-  /**
     * Set the thresholds of values until it is considered to expensive to
     * calculate the histograms
     *
@@ -137,8 +91,7 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
   /**
     * Can be used to specify a subset of columns to look at
     *
-    * @param restrictToColumns can contain a subset of columns to profile and suggest constraints
-    *                          for, otherwise all columns will be considered
+    * @param restrictToColumns The columns to look at
     */
   def restrictToColumns(restrictToColumns: Seq[String]): this.type = {
     this.restrictToColumns = Option(restrictToColumns)
@@ -153,29 +106,25 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
     *                          run
     */
   def useRepository(metricsRepository: MetricsRepository)
-    : ConstraintSuggestionRunBuilderWithRepository = {
+    : ColumnProfilerRunBuilderWithRepository = {
 
-    new ConstraintSuggestionRunBuilderWithRepository(this, Option(metricsRepository))
+    new ColumnProfilerRunBuilderWithRepository(this, Option(metricsRepository))
   }
 
-  def run(): ConstraintSuggestionResult = {
-    ConstraintSuggestionRunner().run(
+
+  def run(): ColumnProfiles = {
+    ColumnProfilerRunner().run(
       dataset,
       engine,
-      constraintRules,
       restrictToColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
-      testsetRatio,
-      testsetSplitRandomSeed,
 //      cacheInputs,
-//      ConstraintSuggestionFileOutputOptions(
+//      ColumnProfilerRunBuilderFileOutputOptions(
 //        sparkSession,
 //        saveColumnProfilesJsonPath,
-//        saveConstraintSuggestionsJsonPath,
-//        saveEvaluationResultsJsonPath,
 //        overwriteOutputFiles),
-      ConstraintSuggestionMetricsRepositoryOptions(
+      ColumnProfilerRunBuilderMetricsRepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
@@ -184,10 +133,10 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
   }
 }
 
-class ConstraintSuggestionRunBuilderWithRepository(
-    constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder,
+class ColumnProfilerRunBuilderWithRepository(
+    columnProfilerRunBuilder: ColumnProfilerRunBuilder,
     usingMetricsRepository: Option[MetricsRepository])
-  extends ConstraintSuggestionRunBuilder(constraintSuggestionRunBuilder) {
+  extends ColumnProfilerRunBuilder(columnProfilerRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 
@@ -219,10 +168,10 @@ class ConstraintSuggestionRunBuilderWithRepository(
   }
 }
 
-//class ConstraintSuggestionRunBuilderWithSparkSession(
-//    constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder,
+//class ColumnProfilerRunBuilderWithSparkSession(
+//    columnProfilerRunBuilder: ColumnProfilerRunBuilder,
 //    usingSparkSession: Option[SparkSession])
-//  extends ConstraintSuggestionRunBuilder(constraintSuggestionRunBuilder) {
+//  extends ColumnProfilerRunBuilder(columnProfilerRunBuilder) {
 //
 //  sparkSession = usingSparkSession
 //
@@ -236,32 +185,6 @@ class ConstraintSuggestionRunBuilderWithRepository(
 //    : this.type = {
 //
 //    saveColumnProfilesJsonPath = Option(path)
-//    this
-//  }
-//
-//  /**
-//    * Save the constraint suggestion json to e.g. S3
-//    *
-//    * @param path The file path
-//    */
-//  def saveConstraintSuggestionsJsonToPath(
-//      path: String)
-//    : this.type = {
-//
-//    saveConstraintSuggestionsJsonPath = Option(path)
-//    this
-//  }
-//
-//  /**
-//    * Save the evaluation results json to e.g. S3
-//    *
-//    * @param path The file path
-//    */
-//  def saveEvaluationResultsJsonToPath(
-//      path: String)
-//    : this.type = {
-//
-//    saveEvaluationResultsJsonPath = Option(path)
 //    this
 //  }
 //

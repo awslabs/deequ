@@ -18,9 +18,9 @@ package com.amazon.deequ.examples
 
 //import ExampleUtils.{itemsAsDataframe, withSpark}
 //import com.amazon.deequ.analyzers.{Analysis, ApproxCountDistinct, Completeness, InMemoryStateProvider, Size}
-//import com.amazon.deequ.analyzers.runners.AnalysisRunner
+//import com.amazon.deequ.runtime.spark.operators.runners.AnalysisRunner
 //
-//private[examples] object IncrementalMetricsExample extends App {
+private[examples] object IncrementalMetricsExample extends App {
 //
 //  /* NOTE: Stateful support is still work in progress, and is therefore not yet integrated into
 //     VerificationSuite. We showcase however how to incrementally compute metrics on a growing
@@ -70,4 +70,4 @@ package com.amazon.deequ.examples
 //    }
 //
 //  }
-//}
+}

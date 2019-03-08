@@ -17,14 +17,14 @@
 package com.amazon.deequ.runtime.spark
 
 import com.amazon.deequ.ComputedStatistics
-import com.amazon.deequ.analyzers.Analyzer
-import com.amazon.deequ.analyzers.runners.AnalysisRunner
-import com.amazon.deequ.profiles.{ColumnProfiler, ColumnProfiles}
+import com.amazon.deequ.runtime.spark.operators.runners.{AnalysisRunner, AnalyzerContext}
+import com.amazon.deequ.profiles.ColumnProfiles
 import com.amazon.deequ.runtime.{Dataset, Engine, EngineRepositoryOptions}
 import com.amazon.deequ.statistics.Statistic
-import org.apache.spark.sql.SparkSession
-import com.amazon.deequ.analyzers._
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.statistics._
 
 case class SparkEngine(session: SparkSession) extends Engine {
@@ -78,7 +78,11 @@ case class SparkEngine(session: SparkSession) extends Engine {
       dataset: Dataset,
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
-      printStatusUpdates: Boolean)
+      printStatusUpdates: Boolean,
+      metricsRepository: Option[MetricsRepository],
+      reuseExistingResultsUsingKey: Option[ResultKey],
+      failIfResultsForReusingMissing: Boolean,
+      saveInMetricsRepositoryUsingKey: Option[ResultKey])
     : ColumnProfiles = {
 
     val df = dataset.asInstanceOf[SparkDataset].df
@@ -87,51 +91,50 @@ case class SparkEngine(session: SparkSession) extends Engine {
       df,
       restrictToColumns,
       printStatusUpdates,
-      lowCardinalityHistogramThreshold
+      lowCardinalityHistogramThreshold,
+      metricsRepository,
+      reuseExistingResultsUsingKey,
+      failIfResultsForReusingMissing,
+      saveInMetricsRepositoryUsingKey
     )
   }
 }
 
 object SparkEngine {
 
-  def matchingOperator(statistic: Statistic): Analyzer[_, Metric[_]] = {
+  private[deequ] def matchingOperator(statistic: Statistic): Operator[_, Metric[_]] = {
 
     statistic match {
 
-      case size: Size =>
-        SizeOp(size.where)
+      case size: Size => SizeOp(size.where)
 
-      case completeness: Completeness =>
-        CompletenessOp(completeness.column, completeness.where)
+      case completeness: Completeness => CompletenessOp(completeness.column, completeness.where)
 
-      case compliance: Compliance =>
-        ComplianceOp(compliance.instance, compliance.predicate, compliance.where)
+      case compliance: Compliance => ComplianceOp(compliance.instance, compliance.predicate, compliance.where)
 
-      case patternMatch: PatternMatch =>
-        PatternMatchOp(patternMatch.column, patternMatch.pattern, patternMatch.where)
+      case patternMatch: PatternMatch => PatternMatchOp(patternMatch.column, patternMatch.pattern, patternMatch.where)
 
-      case sum: Sum =>
-        SumOp(sum.column, sum.where)
+      case sum: Sum => SumOp(sum.column, sum.where)
 
-      case mean: Mean =>
-        MeanOp(mean.column, mean.where)
+      case mean: Mean => MeanOp(mean.column, mean.where)
 
-      case minimum: Minimum =>
-        MinimumOp(minimum.column, minimum.where)
+      case minimum: Minimum => MinimumOp(minimum.column, minimum.where)
 
-      case maximum: Maximum =>
-        MaximumOp(maximum.column, maximum.where)
+      case maximum: Maximum => MaximumOp(maximum.column, maximum.where)
 
-      case histogram : Histogram =>
-        HistogramOp(histogram.column, maxDetailBins = histogram.maxDetailBins)
+      case histogram : Histogram => HistogramOp(histogram.column, maxDetailBins = histogram.maxDetailBins)
 
-      case uniqueness: Uniqueness =>
-        UniquenessOp(uniqueness.columns)
+      case uniqueness: Uniqueness => UniquenessOp(uniqueness.columns)
 
-      //FIXLATER ADD MISSING
+      case distinctness: Distinctness => DistinctnessOp(distinctness.columns)
 
-      case dataType: DataType =>
-        DataTypeOp(dataType.column, dataType.where)
+      case uniqueValueRatio: UniqueValueRatio => UniqueValueRatioOp(uniqueValueRatio.columns)
+
+      case entropy: Entropy => EntropyOp(entropy.column)
+
+      case mutualInformation: MutualInformation => MutualInformationOp(mutualInformation.columns)
+
+      case dataType: DataType => DataTypeOp(dataType.column, dataType.where)
 
       case approxCountDistinct: ApproxCountDistinct =>
         ApproxCountDistinctOp(approxCountDistinct.column, approxCountDistinct.where)
@@ -139,55 +142,47 @@ object SparkEngine {
       case correlation: Correlation =>
         CorrelationOp(correlation.firstColumn, correlation.secondColumn, correlation.where)
 
-      case stdDev: StandardDeviation =>
-        StandardDeviationOp(stdDev.column, stdDev.where)
+      case stdDev: StandardDeviation => StandardDeviationOp(stdDev.column, stdDev.where)
 
-      case approxQuantile: ApproxQuantile =>
-        ApproxQuantileOp(approxQuantile.column, approxQuantile.quantile)
+      case approxQuantile: ApproxQuantile => ApproxQuantileOp(approxQuantile.column, approxQuantile.quantile)
 
-      case _ =>
-        throw new IllegalArgumentException(s"Unable to handle statistic $statistic.")
+      case _ => throw new IllegalArgumentException(s"Unable to handle statistic $statistic.")
     }
   }
 
-  def matchingStatistic(analyzer: Analyzer[_, Metric[_]]): Statistic = {
+  private[deequ] def matchingStatistic(analyzer: Operator[_, Metric[_]]): Statistic = {
 
     analyzer match {
 
-      case size: SizeOp =>
-        Size(size.where)
+      case size: SizeOp => Size(size.where)
 
-      case completeness: CompletenessOp =>
-        Completeness(completeness.column, completeness.where)
+      case completeness: CompletenessOp => Completeness(completeness.column, completeness.where)
 
-      case compliance: ComplianceOp =>
-        Compliance(compliance.instance, compliance.predicate, compliance.where)
+      case compliance: ComplianceOp => Compliance(compliance.instance, compliance.predicate, compliance.where)
 
-      case patternMatch: PatternMatchOp =>
-        PatternMatch(patternMatch.column, patternMatch.pattern, patternMatch.where)
+      case patternMatch: PatternMatchOp => PatternMatch(patternMatch.column, patternMatch.pattern, patternMatch.where)
 
-      case sum: SumOp =>
-        Sum(sum.column, sum.where)
+      case sum: SumOp => Sum(sum.column, sum.where)
 
-      case mean: MeanOp =>
-        Mean(mean.column, mean.where)
+      case mean: MeanOp => Mean(mean.column, mean.where)
 
-      case minimum: MinimumOp =>
-        Minimum(minimum.column, minimum.where)
+      case minimum: MinimumOp => Minimum(minimum.column, minimum.where)
 
-      case maximum: MaximumOp =>
-        Maximum(maximum.column, maximum.where)
+      case maximum: MaximumOp => Maximum(maximum.column, maximum.where)
 
-      case histogram: HistogramOp =>
-        Histogram(histogram.column, maxDetailBins = histogram.maxDetailBins)
+      case histogram: HistogramOp => Histogram(histogram.column, maxDetailBins = histogram.maxDetailBins)
 
-      case uniqueness: UniquenessOp =>
-        Uniqueness(uniqueness.columns)
+      case uniqueness: UniquenessOp => Uniqueness(uniqueness.columns)
 
-      //FIXLATER ADD MISSING
+      case distinctness: DistinctnessOp => Distinctness(distinctness.columns)
 
-      case dataType: DataTypeOp =>
-        DataType(dataType.column, dataType.where)
+      case uniqueValueRatio: UniqueValueRatioOp => UniqueValueRatio(uniqueValueRatio.columns)
+
+      case entropy: EntropyOp => Entropy(entropy.column)
+
+      case mutualInformation: MutualInformationOp => MutualInformation(mutualInformation.columns)
+
+      case dataType: DataTypeOp => DataType(dataType.column, dataType.where)
 
       case approxCountDistinct: ApproxCountDistinctOp =>
         ApproxCountDistinct(approxCountDistinct.column, approxCountDistinct.where)
@@ -205,5 +200,29 @@ object SparkEngine {
         throw new IllegalArgumentException(s"Unable to handle operator $analyzer.")
     }
   }
+
+  private[deequ] def analyzerContextToComputedStatistics(analyzerContext: AnalyzerContext): ComputedStatistics = {
+    val metrics = analyzerContext.metricMap.map { case (analyzer, metric) =>
+      matchingStatistic(analyzer) -> metric
+    }
+    .toMap[Statistic, Metric[_]]
+
+    ComputedStatistics(metrics)
+  }
+
+  private[deequ] def computedStatisticsToAnalyzerContext(computedStatistics: ComputedStatistics): AnalyzerContext = {
+    AnalyzerContext(computedStatistics.metricMap.map { case (analyzer: Statistic, metric: Metric[_]) =>
+      matchingOperator(analyzer).asInstanceOf[Operator[State[_], Metric[_]]] -> metric
+    }
+    .toMap[Operator[_, Metric[_]], Metric[_]])
+
+    //AnalyzerContext(metrics)
+  }
+
+  private[deequ] def computeOn(data: DataFrame, statistics: Seq[Statistic]): ComputedStatistics = {
+    val engine = SparkEngine(data.sparkSession)
+    engine.compute(SparkDataset(data), statistics)
+  }
+
 
 }

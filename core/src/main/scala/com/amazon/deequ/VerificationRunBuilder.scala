@@ -17,7 +17,6 @@
 package com.amazon.deequ
 
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
-import com.amazon.deequ.analyzers.{State, _}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.runtime.{Dataset, Engine}
@@ -176,7 +175,7 @@ class VerificationRunBuilderWithRepository(
     * @param analyzer The analyzer for the metric to run anomaly detection on
     * @param anomalyCheckConfig Some configuration settings for the Check
     */
-  def addAnomalyCheck[S <: State[S]](
+  def addAnomalyCheck(
     anomalyDetectionStrategy: AnomalyDetectionStrategy,
     analyzer: Statistic,
     anomalyCheckConfig: Option[AnomalyCheckConfig] = None)
@@ -251,11 +250,11 @@ private[this] object VerificationRunBuilderHelper {
     * @param analyzer The analyzer for the metric to run anomaly detection on
     * @param anomalyCheckConfig Some configuration settings for the Check
     */
-  def getAnomalyCheck[S <: State[S]](
-                                      metricsRepository: MetricsRepository,
-                                      anomalyDetectionStrategy: AnomalyDetectionStrategy,
-                                      analyzer: Statistic,
-                                      anomalyCheckConfig: AnomalyCheckConfig)
+  def getAnomalyCheck(
+      metricsRepository: MetricsRepository,
+      anomalyDetectionStrategy: AnomalyDetectionStrategy,
+      analyzer: Statistic,
+      anomalyCheckConfig: AnomalyCheckConfig)
   : Check = {
 
     Check(anomalyCheckConfig.level, anomalyCheckConfig.description)

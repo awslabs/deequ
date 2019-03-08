@@ -18,6 +18,7 @@ package com.amazon.deequ
 
 import com.amazon.deequ.checks.{Check, CheckResult, CheckStatus}
 import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.repository.SimpleResultSerde
 import com.amazon.deequ.statistics.Statistic
 
 /**
@@ -33,8 +34,7 @@ case class VerificationResult(
     metrics: Map[Statistic, Metric[_]]
 )
 
-//FIXLATER
-//object VerificationResult {
+object VerificationResult {
 //
 //  def successMetricsAsDataFrame(
 //                                 sparkSession: SparkSession,
@@ -47,13 +47,15 @@ case class VerificationResult(
 //    AnalyzerContext.successMetricsAsDataFrame(sparkSession, metricsAsAnalyzerContext, forAnalyzers)
 //  }
 //
-//  def successMetricsAsJson(verificationResult: VerificationResult,
-//                           forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty): String = {
-//
-//    val metricsAsAnalyzerContext = AnalyzerContext(verificationResult.metrics)
-//
-//    AnalyzerContext.successMetricsAsJson(metricsAsAnalyzerContext, forAnalyzers)
-//  }
+  def successMetricsAsJson(
+      verificationResult: VerificationResult,
+      forAnalyzers: Seq[Statistic] = Seq.empty)
+    : String = {
+
+    val metricsAsAnalyzerContext = ComputedStatistics(verificationResult.metrics)
+
+    ComputedStatistics.successMetricsAsJson(metricsAsAnalyzerContext, forAnalyzers)
+  }
 //
 //  def checkResultsAsDataFrame(
 //                               sparkSession: SparkSession,
@@ -69,50 +71,57 @@ case class VerificationResult(
 //      "constraint_status", "constraint_message")
 //  }
 //
-//  def checkResultsAsJson(verificationResult: VerificationResult,
-//                         forChecks: Seq[Check] = Seq.empty): String = {
-//
-//    val simplifiedCheckResults = getSimplifiedCheckResultOutput(verificationResult)
-//
-//    val checkResults = simplifiedCheckResults
-//      .map { simpleCheckResultOutput =>
-//        Map(
-//          "check" -> simpleCheckResultOutput.checkDescription,
-//          "check_level" -> simpleCheckResultOutput.checkLevel,
-//          "check_status" -> simpleCheckResultOutput.checkStatus,
-//          "constraint" -> simpleCheckResultOutput.constraint,
-//          "constraint_status" -> simpleCheckResultOutput.constraintStatus,
-//          "constraint_message" -> simpleCheckResultOutput.constraintMessage
-//        )
-//      }
-//
-//    SimpleResultSerde.serialize(checkResults)
-//  }
-//
-//  private[this] def getSimplifiedCheckResultOutput(
-//                                                    verificationResult: VerificationResult)
-//  : Seq[SimpleCheckResultOutput] = {
-//
-//    val selectedCheckResults = verificationResult.checkResults
-//      .values
-//      .toSeq
-//
-//    selectedCheckResults
-//      .flatMap { checkResult =>
-//        checkResult.constraintResults.map { constraintResult =>
-//          SimpleCheckResultOutput(
-//            checkResult.check.description,
-//            checkResult.check.level.toString,
-//            checkResult.status.toString,
-//
-//            constraintResult.constraint.toString,
-//            constraintResult.status.toString,
-//            constraintResult.message.getOrElse("")
-//          )
-//        }
-//      }
-//  }
-//
-//  private[this] case class SimpleCheckResultOutput(checkDescription: String, checkLevel: String,
-//                                                   checkStatus: String, constraint: String, constraintStatus: String, constraintMessage: String)
-//}
+  def checkResultsAsJson(
+      verificationResult: VerificationResult,
+      forChecks: Seq[Check] = Seq.empty)
+    : String = {
+
+    val simplifiedCheckResults = getSimplifiedCheckResultOutput(verificationResult)
+
+    val checkResults = simplifiedCheckResults
+      .map { simpleCheckResultOutput =>
+        Map(
+          "check" -> simpleCheckResultOutput.checkDescription,
+          "check_level" -> simpleCheckResultOutput.checkLevel,
+          "check_status" -> simpleCheckResultOutput.checkStatus,
+          "constraint" -> simpleCheckResultOutput.constraint,
+          "constraint_status" -> simpleCheckResultOutput.constraintStatus,
+          "constraint_message" -> simpleCheckResultOutput.constraintMessage
+        )
+      }
+
+    SimpleResultSerde.serialize(checkResults)
+  }
+
+  private[this] def getSimplifiedCheckResultOutput(
+      verificationResult: VerificationResult)
+    : Seq[SimpleCheckResultOutput] = {
+
+    val selectedCheckResults = verificationResult.checkResults
+      .values
+      .toSeq
+
+    selectedCheckResults
+      .flatMap { checkResult =>
+        checkResult.constraintResults.map { constraintResult =>
+          SimpleCheckResultOutput(
+            checkResult.check.description,
+            checkResult.check.level.toString,
+            checkResult.status.toString,
+
+            constraintResult.constraint.toString,
+            constraintResult.status.toString,
+            constraintResult.message.getOrElse("")
+          )
+        }
+      }
+  }
+
+  private[this] case class SimpleCheckResultOutput(
+      checkDescription: String,
+      checkLevel: String,
+      checkStatus: String,
+      constraint: String,
+      constraintStatus: String,
+      constraintMessage: String)
+}

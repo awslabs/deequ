@@ -19,7 +19,7 @@ package com.amazon.deequ.examples
 //import com.amazon.deequ.examples.ExampleUtils.withSpark
 //import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
 //
-//private[examples] object ConstraintSuggestionExample extends App {
+private[examples] object ConstraintSuggestionExample extends App {
 //
 //  withSpark { session =>
 //
@@ -68,4 +68,4 @@ package com.amazon.deequ.examples
 //    }
 //
 //  }
-//}
+}

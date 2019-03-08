@@ -18,10 +18,10 @@ package com.amazon.deequ.examples
 
 //import ExampleUtils.{manufacturersAsDataframe, withSpark}
 //import com.amazon.deequ.analyzers.{Analysis, InMemoryStateProvider}
-//import com.amazon.deequ.analyzers.runners.AnalysisRunner
+//import com.amazon.deequ.runtime.spark.operators.runners.AnalysisRunner
 //import com.amazon.deequ.checks.{Check, CheckLevel}
 //
-//object UpdateMetricsOnPartitionedDataExample extends App {
+object UpdateMetricsOnPartitionedDataExample extends App {
 //
 //  /* NOTE: Stateful support is still work in progress, and is therefore not yet integrated into
 //   VerificationSuite. We showcase however how to incrementally compute metrics on a growing
@@ -100,4 +100,4 @@ package com.amazon.deequ.examples
 //
 //  }
 //
-//}
+}

@@ -17,7 +17,7 @@
 package com.amazon.deequ.examples
 
 import com.amazon.deequ.examples.ExampleUtils.withSpark
-import com.amazon.deequ.profiles.NumericColumnProfile
+import com.amazon.deequ.profiles.{ColumnProfilerRunner, NumericColumnProfile}
 import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
 
 case class RawData(name: String, count: String, status: String, valuable: String)
@@ -45,7 +45,9 @@ private[examples] object DataProfilingExample extends App {
 
     /* Make deequ profile this data. It will execute the three passes over the data and avoid
        any shuffles. */
-    val result = engine.profile(rawData)
+    val result = ColumnProfilerRunner()
+      .onData(rawData, engine)
+      .run()
 
     /* We get a profile for each column which allows to inspect the completeness of the column,
        the approximate number of distinct values and the inferred datatype. */

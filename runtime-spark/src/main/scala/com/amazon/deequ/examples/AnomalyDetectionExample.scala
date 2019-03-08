@@ -26,7 +26,7 @@ package com.amazon.deequ.examples
 //import com.amazon.deequ.runtime.{SparkDataset, SparkEngine}
 //import com.amazon.deequ.statistics.Size
 //
-//private[examples] object AnomalyDetectionExample extends App {
+private[examples] object AnomalyDetectionExample extends App {
 //
 //  withSpark { session =>
 //
@@ -97,4 +97,4 @@ package com.amazon.deequ.examples
 //    }
 //  }
 //
-//}
+}
