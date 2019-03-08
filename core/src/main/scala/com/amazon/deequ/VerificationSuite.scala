@@ -16,7 +16,6 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.analyzers._
 import com.amazon.deequ.checks.{Check, CheckStatus}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.runtime.{Dataset, Engine, EngineRepositoryOptions}

@@ -1,11 +1,29 @@
+/**
+  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+  * use this file except in compliance with the License. A copy of the License
+  * is located at
+  *
+  *     http://aws.amazon.com/apache2.0/
+  *
+  * or in the "license" file accompanying this file. This file is distributed on
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+  * express or implied. See the License for the specific language governing
+  * permissions and limitations under the License.
+  *
+  */
+
 package com.amazon.deequ.runtime.spark.operators
 
-import com.amazon.deequ.runtime.spark.operators.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics.{Entity, KeyedDoubleMetric}
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DeequFunctions, Row}
+import Operators._
+import Preconditions._
+import com.amazon.deequ.runtime.spark.executor.{IllegalAnalyzerParameterException, MetricCalculationException}
 
 import scala.util.{Failure, Success}
 
@@ -21,7 +39,7 @@ import scala.util.{Failure, Success}
   *                      Must be in the interval [0, 1].
   */
 case class ApproxQuantilesOp(column: String, quantiles: Seq[Double], relativeError: Double = 0.01)
-  extends ScanShareableAnalyzer[ApproxQuantileState, KeyedDoubleMetric] {
+  extends ScanShareableOperator[ApproxQuantileState, KeyedDoubleMetric] {
 
   val PARAM_CHECKS: StructType => Unit = { _ =>
     quantiles.foreach { quantile =>
@@ -70,7 +88,7 @@ case class ApproxQuantilesOp(column: String, quantiles: Seq[Double], relativeErr
         KeyedDoubleMetric(Entity.Column, "ApproxQuantiles", column, Success(results))
 
       case _ =>
-        toFailureMetric(Analyzers.emptyStateException(this))
+        toFailureMetric(emptyStateException(this))
     }
   }
 

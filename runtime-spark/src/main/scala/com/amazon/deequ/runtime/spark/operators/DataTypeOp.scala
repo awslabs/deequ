@@ -18,7 +18,6 @@ package com.amazon.deequ.runtime.spark.operators
 
 import java.nio.ByteBuffer
 
-import com.amazon.deequ.runtime.spark.operators.runners.MetricCalculationException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
 import com.amazon.deequ.statistics.DataTypeInstances
 import org.apache.spark.sql.DeequFunctions.stateful_datatype
@@ -26,6 +25,7 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, Row}
 import Operators._
 import Preconditions._
+import com.amazon.deequ.runtime.spark.executor.MetricCalculationException
 
 import scala.util.{Failure, Success}
 

@@ -14,7 +14,7 @@
   *
   */
 
-package com.amazon.deequ.runtime.spark.operators.runners
+package com.amazon.deequ.runtime.spark.executor
 
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
@@ -27,14 +27,14 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
   *
   * @param metricMap Analyzers and their Metric results
   */
-case class AnalyzerContext(metricMap: Map[Operator[_, Metric[_]], Metric[_]]) {
+case class OperatorResults(metricMap: Map[Operator[_, Metric[_]], Metric[_]]) {
 
   def allMetrics: Seq[Metric[_]] = {
     metricMap.values.toSeq
   }
 
-  def ++(other: AnalyzerContext): AnalyzerContext = {
-    AnalyzerContext(metricMap ++ other.metricMap)
+  def ++(other: OperatorResults): OperatorResults = {
+    OperatorResults(metricMap ++ other.metricMap)
   }
 
   def metric(analyzer: Operator[_, Metric[_]]): Option[Metric[_]] = {
@@ -42,13 +42,13 @@ case class AnalyzerContext(metricMap: Map[Operator[_, Metric[_]], Metric[_]]) {
   }
 }
 
-object AnalyzerContext {
+object OperatorResults {
 
-  def empty: AnalyzerContext = AnalyzerContext(Map.empty)
+  def empty: OperatorResults = OperatorResults(Map.empty)
 
   def successMetricsAsDataFrame(
     sparkSession: SparkSession,
-    analyzerContext: AnalyzerContext,
+    analyzerContext: OperatorResults,
     forAnalyzers: Seq[Operator[_, Metric[_]]] = Seq.empty)
   : DataFrame = {
 
@@ -59,7 +59,7 @@ object AnalyzerContext {
     metricsList.toDF("entity", "instance", "name", "value")
   }
 
-  def successMetricsAsJson(analyzerContext: AnalyzerContext,
+  def successMetricsAsJson(analyzerContext: OperatorResults,
                            forAnalyzers: Seq[Operator[_, Metric[_]]] = Seq.empty): String = {
 
     val metricsList = getSimplifiedMetricOutputForSelectedAnalyzers(analyzerContext, forAnalyzers)
@@ -77,8 +77,8 @@ object AnalyzerContext {
   }
 
   private[this] def getSimplifiedMetricOutputForSelectedAnalyzers(
-    analyzerContext: AnalyzerContext,
-    forAnalyzers: Seq[Operator[_, Metric[_]]])
+                                                                   analyzerContext: OperatorResults,
+                                                                   forAnalyzers: Seq[Operator[_, Metric[_]]])
   : Seq[SimpleMetricOutput] = {
 
     val selectedMetrics = analyzerContext.metricMap

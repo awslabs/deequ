@@ -16,7 +16,7 @@
 
 package org.apache.spark.sql
 
-import com.amazon.deequ.analyzers.DataTypeHistogram
+import com.amazon.deequ.runtime.spark.operators.DataTypeHistogram
 import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
 import org.apache.spark.sql.types._
 

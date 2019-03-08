@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.runtime.spark.operators.runners
+package com.amazon.deequ.runtime.spark.executor
 
 abstract class MetricCalculationException(message: String) extends Exception(message)
 

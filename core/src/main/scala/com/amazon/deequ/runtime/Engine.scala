@@ -26,8 +26,8 @@ trait Engine {
   def compute(
       data: Dataset,
       statistics: Seq[Statistic],
-      //aggregateWith: Option[StateLoader] = None,
-      //saveStatesWith: Option[StatePersister] = None,
+      aggregateWith: Option[StateLoader] = None,
+      saveStatesWith: Option[StatePersister] = None,
       engineRepositoryOptions: EngineRepositoryOptions = EngineRepositoryOptions())
 //                                    fileOutputOptions: AnalysisRunnerFileOutputOptions =
 //                                    AnalysisRunnerFileOutputOptions())

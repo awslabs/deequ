@@ -17,7 +17,7 @@
 package com.amazon.deequ.runtime.spark.operators
 
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
-import com.amazon.deequ.runtime.spark.operators.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
+import com.amazon.deequ.runtime.spark.executor.{IllegalAnalyzerParameterException, MetricCalculationException}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.{StringType, StructType}

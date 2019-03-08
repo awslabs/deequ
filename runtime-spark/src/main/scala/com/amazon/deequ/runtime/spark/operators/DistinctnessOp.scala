@@ -16,7 +16,6 @@
 
 package com.amazon.deequ.runtime.spark.operators
 
-import com.amazon.deequ.analyzers.ScanShareableFrequencyBasedAnalyzer
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.{col, sum}
 import org.apache.spark.sql.types.DoubleType

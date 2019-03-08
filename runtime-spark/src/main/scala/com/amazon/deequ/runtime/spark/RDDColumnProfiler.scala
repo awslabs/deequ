@@ -18,11 +18,11 @@ package com.amazon.deequ.runtime.spark
 
 import com.amazon.deequ.ComputedStatistics
 import com.amazon.deequ.statistics.DataTypeInstances._
-import com.amazon.deequ.runtime.spark.operators.runners.{AnalysisRunBuilder, AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.profiles.{ColumnProfiles, NumericColumnProfile, StandardColumnProfile}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.runtime.spark.executor.{OperatorResults, ReusingNotPossibleResultsMissingException, SparkExecutor, SparkExecutorRunBuilder}
 import com.amazon.deequ.runtime.spark.operators.{ApproxQuantilesOp, CompletenessOp, HistogramOp, SizeOp}
 import com.amazon.deequ.statistics.{DataTypeInstances, Histogram, Statistic}
 import org.apache.spark.sql.DataFrame
@@ -68,7 +68,7 @@ private[deequ] case class CategoricalColumnStatistics(histograms: Map[String, Di
   * `lowCardinalityHistogramThreshold` (approx.) distinct values
   *
   */
-object ColumnProfiler {
+object RDDColumnProfiler {
 
 
   /**
@@ -112,7 +112,7 @@ object ColumnProfiler {
     // and type detection for string columns in the first pass
     val analyzersForGenericStats = getAnalyzersForGenericStats(data.schema, relevantColumns)
 
-    var analysisRunnerFirstPass = AnalysisRunner
+    var analysisRunnerFirstPass = SparkExecutor
       .onData(data)
       .addAnalyzers(analyzersForGenericStats)
       .addAnalyzer(SizeOp())
@@ -140,7 +140,7 @@ object ColumnProfiler {
     // We compute mean, stddev, min, max for all numeric columns
     val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics)
 
-    var analysisRunnerSecondPass = AnalysisRunner
+    var analysisRunnerSecondPass = SparkExecutor
       .onData(castedDataForSecondPass)
       .addAnalyzers(analyzersForSecondPass)
 
@@ -238,12 +238,12 @@ object ColumnProfiler {
     }
 
   private[this] def setMetricsRepositoryConfigurationIfNecessary(
-      analysisRunBuilder: AnalysisRunBuilder,
+      analysisRunBuilder: SparkExecutorRunBuilder,
       metricsRepository: Option[MetricsRepository],
       reuseExistingResultsForKey: Option[ResultKey],
       failIfResultsForReusingMissing: Boolean,
       saveInMetricsRepositoryUsingKey: Option[ResultKey])
-    : AnalysisRunBuilder = {
+    : SparkExecutorRunBuilder = {
 
     var analysisRunBuilderResult = analysisRunBuilder
 
@@ -270,9 +270,9 @@ object ColumnProfiler {
       metricsRepository: Option[MetricsRepository],
       reuseExistingResultsUsingKey: Option[ResultKey],
       targetColumnsForHistograms: Seq[String])
-    : AnalyzerContext = {
+    : OperatorResults = {
 
-    var analyzerContextExistingValues = AnalyzerContext.empty
+    var analyzerContextExistingValues = OperatorResults.empty
 
     metricsRepository.foreach { metricsRepository =>
       reuseExistingResultsUsingKey.foreach { resultKey =>
@@ -290,7 +290,7 @@ object ColumnProfiler {
                   HistogramOp(histogram.column).equals(histogram)
               case _ => false
             }
-          analyzerContextExistingValues = AnalyzerContext(relevantEntries)
+          analyzerContextExistingValues = OperatorResults(relevantEntries)
         }
       }
     }
@@ -334,7 +334,7 @@ object ColumnProfiler {
   }
 
   /* Cast string columns detected as numeric to their detected type */
-  private[profiles] def castColumn(
+  private[spark] def castColumn(
       data: DataFrame,
       name: String,
       toType: SparkDataType)
@@ -348,7 +348,7 @@ object ColumnProfiler {
   private[this] def extractGenericStatistics(
       columns: Seq[String],
       schema: StructType,
-      results: AnalyzerContext)
+      results: OperatorResults)
     : GenericColumnStatistics = {
 
     val numRecords = results.metricMap
@@ -424,7 +424,7 @@ object ColumnProfiler {
   }
 
 
-  private[this] def extractNumericStatistics(results: AnalyzerContext): NumericColumnStatistics = {
+  private[this] def extractNumericStatistics(results: OperatorResults): NumericColumnStatistics = {
 
     val means = results.metricMap
       .collect { case (analyzer: MeanOp, metric: DoubleMetric) =>
@@ -572,13 +572,13 @@ object ColumnProfiler {
   }
 
   def getHistogramsForThirdPass(
-      data: DataFrame,
-      nonExistingHistogramColumns: Seq[String],
-      analyzerContextExistingValues: AnalyzerContext,
-      printStatusUpdates: Boolean,
-      failIfResultsForReusingMissing: Boolean,
-      metricsRepository: Option[MetricsRepository],
-      saveInMetricsRepositoryUsingKey: Option[ResultKey])
+                                 data: DataFrame,
+                                 nonExistingHistogramColumns: Seq[String],
+                                 analyzerContextExistingValues: OperatorResults,
+                                 printStatusUpdates: Boolean,
+                                 failIfResultsForReusingMissing: Boolean,
+                                 metricsRepository: Option[MetricsRepository],
+                                 saveInMetricsRepositoryUsingKey: Option[ResultKey])
     : Map[String, Distribution] = {
 
     if (nonExistingHistogramColumns.nonEmpty) {

@@ -16,13 +16,13 @@
 
 package com.amazon.deequ.runtime.spark.operators
 
-import com.amazon.deequ.analyzers.{StateLoader, StatePersister}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row}
-import com.amazon.deequ.runtime.spark.operators.runners._
 import Operators._
+import com.amazon.deequ.runtime.spark.executor._
+import com.amazon.deequ.runtime.spark.{SparkStateLoader, SparkStatePersister}
 
 import scala.language.existentials
 import scala.util.{Failure, Success}
@@ -63,9 +63,9 @@ trait Operator[S <: State[_], +M <: Metric[_]] {
     * @return Returns failure metric in case preconditions fail.
     */
   def calculate(
-      data: DataFrame,
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None)
+                 data: DataFrame,
+                 aggregateWith: Option[SparkStateLoader] = None,
+                 saveStatesWith: Option[SparkStatePersister] = None)
     : M = {
 
     try {
@@ -82,9 +82,9 @@ trait Operator[S <: State[_], +M <: Metric[_]] {
   private[deequ] def toFailureMetric(failure: Exception): M
 
   protected def calculateMetric(
-      state: Option[S],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None)
+                                 state: Option[S],
+                                 aggregateWith: Option[SparkStateLoader] = None,
+                                 saveStatesWith: Option[SparkStatePersister] = None)
     : M = {
 
     // Try to load the state
@@ -105,9 +105,9 @@ trait Operator[S <: State[_], +M <: Metric[_]] {
   }
 
   private[deequ] def aggregateStateTo(
-      sourceA: StateLoader,
-      sourceB: StateLoader,
-      target: StatePersister)
+                                       sourceA: SparkStateLoader,
+                                       sourceB: SparkStateLoader,
+                                       target: SparkStatePersister)
     : Unit = {
 
     val maybeStateA = sourceA.load[S](this)
@@ -123,7 +123,7 @@ trait Operator[S <: State[_], +M <: Metric[_]] {
     aggregated.foreach { state => target.persist[S](this, state) }
   }
 
-  private[deequ] def loadStateAndComputeMetric(source: StateLoader): Option[M] = {
+  private[deequ] def loadStateAndComputeMetric(source: SparkStateLoader): Option[M] = {
     source.load[S](this).map { state =>
       computeMetricFrom(Option(state))
     }
@@ -150,10 +150,10 @@ trait ScanShareableOperator[S <: State[_], +M <: Metric[_]] extends Operator[S, 
 
   /** Produces a metric from the aggregation result */
   private[deequ] def metricFromAggregationResult(
-      result: Row,
-      offset: Int,
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None)
+                                                  result: Row,
+                                                  offset: Int,
+                                                  aggregateWith: Option[SparkStateLoader] = None,
+                                                  saveStatesWith: Option[SparkStatePersister] = None)
     : M = {
 
     val state = fromAggregationResult(result, offset)
@@ -311,7 +311,7 @@ object Preconditions {
   }
 }
 
-private[spark] object Operators {
+private[deequ] object Operators {
 
   val COL_PREFIX = "com_amazon_deequ_dq_metrics_"
   val COUNT_COL = s"${COL_PREFIX}count"

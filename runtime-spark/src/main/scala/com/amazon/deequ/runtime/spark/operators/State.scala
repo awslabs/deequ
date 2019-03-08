@@ -24,7 +24,7 @@ package com.amazon.deequ.runtime.spark.operators
 trait State[S <: State[S]] {
 
   // Unfortunately this is required due to type checking issues
-  private[analyzers] def sumUntyped(other: State[_]): S = {
+  private[spark] def sumUntyped(other: State[_]): S = {
     sum(other.asInstanceOf[S])
   }
 

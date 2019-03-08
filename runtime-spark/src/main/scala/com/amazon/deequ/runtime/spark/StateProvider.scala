@@ -18,9 +18,8 @@ package com.amazon.deequ.runtime.spark
 
 import java.util.concurrent.ConcurrentHashMap
 
+import com.amazon.deequ.runtime.{StateLoader, StatePersister}
 import com.amazon.deequ.runtime.spark.operators._
-import com.google.common.io.Closeables
-import org.apache.hadoop.fs.{FSDataInputStream, FSDataOutputStream, FileSystem, Path}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.aggregate.{ApproximatePercentile, DeequHyperLogLogPlusPlusUtils}
 
@@ -34,17 +33,17 @@ private object StateInformation {
 }
 
 /** Load a stored state for an analyzer */
-trait StateLoader {
+trait SparkStateLoader extends StateLoader {
   def load[S <: State[_]](analyzer: Operator[S, _]): Option[S]
 }
 
 /** Persist a state for an analyzer */
-trait StatePersister {
+trait SparkStatePersister extends StatePersister {
   def persist[S <: State[_]](analyzer: Operator[S, _], state: S)
 }
 
 /** Store states in memory */
-case class InMemoryStateProvider() extends StateLoader with StatePersister {
+case class InMemorySparkStateProvider() extends SparkStateLoader with SparkStatePersister {
 
   private[this] val statesByOperator = new ConcurrentHashMap[Operator[_, _], State[_]]()
 
@@ -70,12 +69,12 @@ case class InMemoryStateProvider() extends StateLoader with StatePersister {
 }
 
 /** Store states on a filesystem (supports local disk, HDFS, S3) */
-case class HdfsStateProvider(
+case class HdfsSparkStateProvider(
     session: SparkSession,
     locationPrefix: String,
     numPartitionsForHistogram: Int = 10,
     allowOverwrite: Boolean = false)
-  extends StateLoader with StatePersister {
+  extends SparkStateLoader with SparkStatePersister {
 
   import com.amazon.deequ.runtime.spark.DfsUtils._
 

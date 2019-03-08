@@ -18,9 +18,8 @@ package com.amazon.deequ.runtime.spark.operators
 
 import Operators._
 import Preconditions._
-
-import com.amazon.deequ.runtime.spark.operators.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.runtime.spark.executor.{IllegalAnalyzerParameterException, MetricCalculationException}
 import org.apache.spark.sql.{DeequFunctions, Row}
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile.PercentileDigest

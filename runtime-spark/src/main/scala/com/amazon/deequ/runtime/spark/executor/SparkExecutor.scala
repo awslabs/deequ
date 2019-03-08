@@ -14,12 +14,13 @@
  *
  */
 
-package com.amazon.deequ.runtime.spark.operators.runners
+package com.amazon.deequ.runtime.spark.executor
 
-import com.amazon.deequ.analyzers._
+import com.amazon.deequ.ComputedStatistics
+import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.spark.DfsUtils
+import com.amazon.deequ.runtime.spark._
 import com.amazon.deequ.runtime.spark.operators.State
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -43,15 +44,15 @@ private[deequ] case class AnalysisRunnerFileOutputOptions(
   * the number of scans over the data. Additionally, the internal states of the computation can be
   * stored and aggregated with existing states to enable incremental computations.
   */
-object AnalysisRunner {
+object SparkExecutor {
 
    /**
     * Starting point to construct an AnalysisRun.
     *
     * @param data tabular data on which the checks should be verified
     */
-  def onData(data: DataFrame): AnalysisRunBuilder = {
-    new AnalysisRunBuilder(data)
+  def onData(data: DataFrame): SparkExecutorRunBuilder = {
+    new SparkExecutorRunBuilder(data)
   }
 
   /**
@@ -72,10 +73,10 @@ object AnalysisRunner {
   def run(
            data: DataFrame,
            analysis: OperatorList,
-           aggregateWith: Option[StateLoader] = None,
-           saveStatesWith: Option[StatePersister] = None,
+           aggregateWith: Option[SparkStateLoader] = None,
+           saveStatesWith: Option[SparkStatePersister] = None,
            storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
-    : AnalyzerContext = {
+    : OperatorResults = {
 
     doAnalysisRun(data, analysis.analyzers, aggregateWith, saveStatesWith,
       storageLevelOfGroupedDataForMultiplePasses)
@@ -98,26 +99,26 @@ object AnalysisRunner {
     * @return AnalyzerContext holding the requested metrics per analyzer
     */
   private[deequ] def doAnalysisRun(
-      data: DataFrame,
-      analyzers: Seq[Analyzer[_, Metric[_]]],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None,
-      storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
-      metricsRepositoryOptions: AnalysisRunnerRepositoryOptions =
+                                    data: DataFrame,
+                                    analyzers: Seq[Operator[_, Metric[_]]],
+                                    aggregateWith: Option[SparkStateLoader] = None,
+                                    saveStatesWith: Option[SparkStatePersister] = None,
+                                    storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+                                    metricsRepositoryOptions: AnalysisRunnerRepositoryOptions =
         AnalysisRunnerRepositoryOptions(),
-      fileOutputOptions: AnalysisRunnerFileOutputOptions =
+                                    fileOutputOptions: AnalysisRunnerFileOutputOptions =
         AnalysisRunnerFileOutputOptions())
-    : AnalyzerContext = {
+    : OperatorResults = {
 
     if (analyzers.isEmpty) {
-      return AnalyzerContext.empty
+      return OperatorResults.empty
     }
 
-    val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
+    val allAnalyzers = analyzers.map { _.asInstanceOf[Operator[State[_], Metric[_]]] }
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
 //FIXLATER
-val resultsComputedPreviously = AnalyzerContext.empty
+val resultsComputedPreviously = OperatorResults.empty
 //    val resultsComputedPreviously: AnalyzerContext =
 //      (metricsRepositoryOptions.metricsRepository,
 //        metricsRepositoryOptions.reuseExistingResultsForKey)
@@ -151,7 +152,7 @@ val resultsComputedPreviously = AnalyzerContext.empty
 
     /* Identify analyzers which require us to group the data */
     val (groupingAnalyzers, scanningAnalyzers) =
-      passedAnalyzers.partition { _.isInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
+      passedAnalyzers.partition { _.isInstanceOf[GroupingOperator[State[_], Metric[_]]] }
 
     /* Run the analyzers which do not require grouping in a single pass over the data */
     val nonGroupedMetrics =
@@ -163,11 +164,11 @@ val resultsComputedPreviously = AnalyzerContext.empty
       case DoubleMetric(_, _, _, Success(value: Double)) => value.toLong
     }
 
-    var groupedMetrics = AnalyzerContext.empty
+    var groupedMetrics = OperatorResults.empty
 
     /* Run grouping analyzers based on the columns which they need to group on */
     groupingAnalyzers
-      .map { _.asInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
+      .map { _.asInstanceOf[GroupingOperator[State[_], Metric[_]]] }
       .groupBy { _.groupingColumns().sorted }
       .foreach { case (groupingColumns, analyzersForGrouping) =>
 
@@ -197,29 +198,30 @@ val resultsComputedPreviously = AnalyzerContext.empty
   }
 
   private[this] def saveOrAppendResultsIfNecessary(
-      resultingAnalyzerContext: AnalyzerContext,
-      metricsRepository: Option[MetricsRepository],
-      saveOrAppendResultsWithKey: Option[ResultKey])
+                                                    resultingAnalyzerContext: OperatorResults,
+                                                    metricsRepository: Option[MetricsRepository],
+                                                    saveOrAppendResultsWithKey: Option[ResultKey])
     : Unit = {
 
-//FIXLATER
-//    metricsRepository.foreach { repository =>
-//      saveOrAppendResultsWithKey.foreach { key =>
-//
-//        val currentValueForKey = repository.loadByKey(key).getOrElse(AnalyzerContext.empty)
-//
-//        // AnalyzerContext entries on the right side of ++ will overwrite the ones on the left
-//        // if there are two different metric results for the same analyzer
-//        val valueToSave = currentValueForKey ++ resultingAnalyzerContext
-//
-//        repository.save(saveOrAppendResultsWithKey.get, valueToSave)
-//      }
-//    }
+
+    metricsRepository.foreach { repository =>
+      saveOrAppendResultsWithKey.foreach { key =>
+
+        val currentValueForKey = repository.loadByKey(key).getOrElse(ComputedStatistics.empty)
+
+        // AnalyzerContext entries on the right side of ++ will overwrite the ones on the left
+        // if there are two different metric results for the same analyzer
+        val valueToSave = currentValueForKey ++
+          SparkEngine.analyzerContextToComputedStatistics(resultingAnalyzerContext)
+
+        repository.save(saveOrAppendResultsWithKey.get, valueToSave)
+      }
+    }
   }
 
   private[this] def saveJsonOutputsToFilesystemIfNecessary(
     fileOutputOptions: AnalysisRunnerFileOutputOptions,
-    analyzerContext: AnalyzerContext)
+    analyzerContext: OperatorResults)
   : Unit = {
 
 //FIXLATER
@@ -236,9 +238,9 @@ val resultsComputedPreviously = AnalyzerContext.empty
   }
 
   private[this] def computePreconditionFailureMetrics(
-      failedAnalyzers: Seq[Analyzer[State[_], Metric[_]]],
+      failedAnalyzers: Seq[Operator[State[_], Metric[_]]],
       schema: StructType)
-    : AnalyzerContext = {
+    : OperatorResults = {
 
     val failures = failedAnalyzers.map { analyzer =>
 
@@ -247,26 +249,26 @@ val resultsComputedPreviously = AnalyzerContext.empty
 
       analyzer -> analyzer.toFailureMetric(firstException)
     }
-    .toMap[Analyzer[_, Metric[_]], Metric[_]]
+    .toMap[Operator[_, Metric[_]], Metric[_]]
 
-    AnalyzerContext(failures)
+    OperatorResults(failures)
   }
 
   private[this] def runGroupingAnalyzers(
-      data: DataFrame,
-      groupingColumns: Seq[String],
-      analyzers: Seq[GroupingAnalyzer[State[_], Metric[_]]],
-      aggregateWith: Option[StateLoader],
-      saveStatesTo: Option[StatePersister],
-      storageLevelOfGroupedDataForMultiplePasses: StorageLevel,
-      numRowsOfData: Option[Long])
-    : (Long, AnalyzerContext) = {
+                                          data: DataFrame,
+                                          groupingColumns: Seq[String],
+                                          analyzers: Seq[GroupingOperator[State[_], Metric[_]]],
+                                          aggregateWith: Option[SparkStateLoader],
+                                          saveStatesTo: Option[SparkStatePersister],
+                                          storageLevelOfGroupedDataForMultiplePasses: StorageLevel,
+                                          numRowsOfData: Option[Long])
+    : (Long, OperatorResults) = {
 
     /* Compute the frequencies of the request groups once */
-    var frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns)
+    var frequenciesAndNumRows = FrequencyBasedOperator.computeFrequencies(data, groupingColumns)
 
     /* Pick one analyzer to store the state for */
-    val sampleAnalyzer = analyzers.head.asInstanceOf[Analyzer[FrequenciesAndNumRows, Metric[_]]]
+    val sampleAnalyzer = analyzers.head.asInstanceOf[Operator[FrequenciesAndNumRows, Metric[_]]]
 
     /* Potentially aggregate states */
     aggregateWith
@@ -283,17 +285,17 @@ val resultsComputedPreviously = AnalyzerContext.empty
   }
 
   private[this] def runScanningAnalyzers(
-      data: DataFrame,
-      analyzers: Seq[Analyzer[State[_], Metric[_]]],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesTo: Option[StatePersister] = None)
-    : AnalyzerContext = {
+                                          data: DataFrame,
+                                          analyzers: Seq[Operator[State[_], Metric[_]]],
+                                          aggregateWith: Option[SparkStateLoader] = None,
+                                          saveStatesTo: Option[SparkStatePersister] = None)
+    : OperatorResults = {
 
     /* Identify shareable analyzers */
-    val (shareable, others) = analyzers.partition { _.isInstanceOf[ScanShareableAnalyzer[_, _]] }
+    val (shareable, others) = analyzers.partition { _.isInstanceOf[ScanShareableOperator[_, _]] }
 
     val shareableAnalyzers =
-      shareable.map { _.asInstanceOf[ScanShareableAnalyzer[State[_], Metric[_]]] }
+      shareable.map { _.asInstanceOf[ScanShareableOperator[State[_], Metric[_]]] }
 
     /* Compute aggregation functions of shareable analyzers in a single pass over the data */
     val sharedResults = if (shareableAnalyzers.nonEmpty) {
@@ -318,27 +320,27 @@ val resultsComputedPreviously = AnalyzerContext.empty
           shareableAnalyzers.map { analyzer => analyzer -> analyzer.toFailureMetric(error) }
       }
 
-      AnalyzerContext(metricsByAnalyzer.toMap[Analyzer[_, Metric[_]], Metric[_]])
+      OperatorResults(metricsByAnalyzer.toMap[Operator[_, Metric[_]], Metric[_]])
     } else {
-      AnalyzerContext.empty
+      OperatorResults.empty
     }
 
     /* Run non-shareable analyzers separately */
     val otherMetrics = others
       .map { analyzer => analyzer -> analyzer.calculate(data) }
-      .toMap[Analyzer[_, Metric[_]], Metric[_]]
+      .toMap[Operator[_, Metric[_]], Metric[_]]
 
-    sharedResults ++ AnalyzerContext(otherMetrics)
+    sharedResults ++ OperatorResults(otherMetrics)
   }
 
   /** Compute scan-shareable analyzer metric from aggregation result, mapping generic exceptions
     * to a failure metric */
   private def successOrFailureMetricFrom(
-      analyzer: ScanShareableAnalyzer[State[_], Metric[_]],
-      aggregationResult: Row,
-      offset: Int,
-      aggregateWith: Option[StateLoader],
-      saveStatesTo: Option[StatePersister])
+                                          analyzer: ScanShareableOperator[State[_], Metric[_]],
+                                          aggregationResult: Row,
+                                          offset: Int,
+                                          aggregateWith: Option[SparkStateLoader],
+                                          saveStatesTo: Option[SparkStatePersister])
     : Metric[_] = {
 
     try {
@@ -351,15 +353,15 @@ val resultsComputedPreviously = AnalyzerContext.empty
   /** Compute frequency based analyzer metric from aggregation result, mapping generic exceptions
     * to a failure metric */
   private def successOrFailureMetricFrom(
-      analyzer: ScanShareableFrequencyBasedAnalyzer,
+      operator: ScanShareableFrequencyBasedOperator,
       aggregationResult: Row,
       offset: Int)
     : Metric[_] = {
 
     try {
-      analyzer.fromAggregationResult(aggregationResult, offset)
+      operator.fromAggregationResult(aggregationResult, offset)
     } catch {
-      case error: Exception => analyzer.toFailureMetric(error)
+      case error: Exception => operator.toFailureMetric(error)
     }
   }
 
@@ -381,18 +383,18 @@ val resultsComputedPreviously = AnalyzerContext.empty
     def runOnAggregatedStates(
                                schema: StructType,
                                analysis: OperatorList,
-                               stateLoaders: Seq[StateLoader],
-                               saveStatesWith: Option[StatePersister] = None,
+                               stateLoaders: Seq[SparkStateLoader],
+                               saveStatesWith: Option[SparkStatePersister] = None,
                                storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
                                metricsRepository: Option[MetricsRepository] = None,
                                saveOrAppendResultsWithKey: Option[ResultKey] = None                             )
-    : AnalyzerContext = {
+    : OperatorResults = {
 
     if (analysis.analyzers.isEmpty || stateLoaders.isEmpty) {
-      return AnalyzerContext.empty
+      return OperatorResults.empty
     }
 
-    val analyzers = analysis.analyzers.map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
+    val analyzers = analysis.analyzers.map { _.asInstanceOf[Operator[State[_], Metric[_]]] }
 
     /* Find all analyzers which violate their preconditions */
     val passedAnalyzers = analyzers
@@ -405,7 +407,7 @@ val resultsComputedPreviously = AnalyzerContext.empty
     /* Create the failure metrics from the precondition violations */
     val preconditionFailures = computePreconditionFailureMetrics(failedAnalyzers, schema)
 
-    val aggregatedStates = InMemoryStateProvider()
+    val aggregatedStates = InMemorySparkStateProvider()
 
     /* Aggregate all initial states */
     passedAnalyzers.foreach { analyzer =>
@@ -416,23 +418,23 @@ val resultsComputedPreviously = AnalyzerContext.empty
 
     /* Identify analyzers which require us to group the data */
     val (groupingAnalyzers, scanningAnalyzers) =
-      passedAnalyzers.partition { _.isInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
+      passedAnalyzers.partition { _.isInstanceOf[GroupingOperator[State[_], Metric[_]]] }
 
     val nonGroupedResults = scanningAnalyzers
-      .map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
+      .map { _.asInstanceOf[Operator[State[_], Metric[_]]] }
       .flatMap { analyzer =>
         analyzer
           .loadStateAndComputeMetric(aggregatedStates)
           .map { metric => analyzer -> metric }
       }
-      .toMap[Analyzer[_, Metric[_]], Metric[_]]
+      .toMap[Operator[_, Metric[_]], Metric[_]]
 
 
     val groupedResults = if (groupingAnalyzers.isEmpty) {
-      AnalyzerContext.empty
+      OperatorResults.empty
     } else {
       groupingAnalyzers
-        .map { _.asInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
+        .map { _.asInstanceOf[GroupingOperator[State[_], Metric[_]]] }
         .groupBy { _.groupingColumns().sorted }
         .map { case (_, analyzersForGrouping) =>
 
@@ -444,7 +446,7 @@ val resultsComputedPreviously = AnalyzerContext.empty
         .reduce { _ ++ _ }
     }
 
-    val results = preconditionFailures ++ AnalyzerContext(nonGroupedResults) ++ groupedResults
+    val results = preconditionFailures ++ OperatorResults(nonGroupedResults) ++ groupedResults
 
     saveOrAppendResultsIfNecessary(results, metricsRepository, saveOrAppendResultsWithKey)
 
@@ -454,13 +456,13 @@ val resultsComputedPreviously = AnalyzerContext.empty
   /** We only store the grouped dataframe for a particular grouping once; in order to retrieve it
     * for analyzers that require it, we need to test all of them */
   private[this] def findStateForParticularGrouping(
-      analyzers: Seq[GroupingAnalyzer[State[_], Metric[_]]], stateLoader: StateLoader)
+      analyzers: Seq[GroupingOperator[State[_], Metric[_]]], stateLoader: SparkStateLoader)
     : FrequenciesAndNumRows = {
 
     /* One of the analyzers must have the state persisted */
     val states = analyzers.flatMap { analyzer =>
       stateLoader
-        .load[FrequenciesAndNumRows](analyzer.asInstanceOf[Analyzer[FrequenciesAndNumRows, _]])
+        .load[FrequenciesAndNumRows](analyzer.asInstanceOf[Operator[FrequenciesAndNumRows, _]])
     }
 
     require(states.nonEmpty)
@@ -470,17 +472,17 @@ val resultsComputedPreviously = AnalyzerContext.empty
   /** Efficiently executes the analyzers for a particular grouping,
     * applying scan-sharing where possible */
   private[this] def runAnalyzersForParticularGrouping(
-      frequenciesAndNumRows: FrequenciesAndNumRows,
-      analyzers: Seq[GroupingAnalyzer[State[_], Metric[_]]],
-      saveStatesTo: Option[StatePersister] = None,
-      storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
-    : AnalyzerContext = {
+                                                       frequenciesAndNumRows: FrequenciesAndNumRows,
+                                                       analyzers: Seq[GroupingOperator[State[_], Metric[_]]],
+                                                       saveStatesTo: Option[SparkStatePersister] = None,
+                                                       storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
+    : OperatorResults = {
 
     val numRows = frequenciesAndNumRows.numRows
 
     /* Identify all shareable analyzers */
     val (shareable, others) =
-      analyzers.partition { _.isInstanceOf[ScanShareableFrequencyBasedAnalyzer] }
+      analyzers.partition { _.isInstanceOf[ScanShareableFrequencyBasedOperator] }
 
     /* Potentially cache the grouped data if we need to make several passes,
        controllable via the storage level */
@@ -488,7 +490,7 @@ val resultsComputedPreviously = AnalyzerContext.empty
       frequenciesAndNumRows.frequencies.persist(storageLevelOfGroupedDataForMultiplePasses)
     }
 
-    val shareableAnalyzers = shareable.map { _.asInstanceOf[ScanShareableFrequencyBasedAnalyzer] }
+    val shareableAnalyzers = shareable.map { _.asInstanceOf[ScanShareableFrequencyBasedOperator] }
 
     val metricsByAnalyzer = if (shareableAnalyzers.nonEmpty) {
 
@@ -522,7 +524,7 @@ val resultsComputedPreviously = AnalyzerContext.empty
     /* Execute remaining analyzers on grouped data */
     val otherMetrics = try {
       others
-        .map { _.asInstanceOf[FrequencyBasedAnalyzer] }
+        .map { _.asInstanceOf[FrequencyBasedOperator] }
         .map { analyzer => analyzer ->
           analyzer.computeMetricFrom(Option(frequenciesAndNumRows))
         }
@@ -536,7 +538,7 @@ val resultsComputedPreviously = AnalyzerContext.empty
 
     frequenciesAndNumRows.frequencies.unpersist()
 
-    AnalyzerContext((metricsByAnalyzer ++ otherMetrics).toMap[Analyzer[_, Metric[_]], Metric[_]])
+    OperatorResults((metricsByAnalyzer ++ otherMetrics).toMap[Operator[_, Metric[_]], Metric[_]])
   }
 
 }

@@ -145,11 +145,11 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
     FrequenciesAndNumRows(frequenciesSum, numRows + other.numRows)
   }
 
-  private[analyzers] def nullSafeEq(column: String): Column = {
+  private[spark] def nullSafeEq(column: String): Column = {
     col(s"this.$column") <=> col(s"other.$column")
   }
 
-  private[analyzers] def zeroIfNull(column: String): Column = {
+  private[spark] def zeroIfNull(column: String): Column = {
     coalesce(col(column), lit(0))
   }
 }

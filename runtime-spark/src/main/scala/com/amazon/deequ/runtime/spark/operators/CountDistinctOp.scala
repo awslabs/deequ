@@ -16,7 +16,6 @@
 
 package com.amazon.deequ.runtime.spark.operators
 
-import com.amazon.deequ.analyzers.ScanShareableFrequencyBasedAnalyzer
 import com.amazon.deequ.metrics.DoubleMetric
 import org.apache.spark.sql.functions.count
 import org.apache.spark.sql.{Column, Row}

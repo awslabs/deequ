@@ -17,13 +17,13 @@
 package com.amazon.deequ.runtime.spark
 
 import com.amazon.deequ.ComputedStatistics
-import com.amazon.deequ.runtime.spark.operators.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.profiles.ColumnProfiles
-import com.amazon.deequ.runtime.{Dataset, Engine, EngineRepositoryOptions}
+import com.amazon.deequ.runtime._
 import com.amazon.deequ.statistics.Statistic
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.runtime.spark.executor.{OperatorResults, SparkExecutor}
 import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.statistics._
 
@@ -32,14 +32,21 @@ case class SparkEngine(session: SparkSession) extends Engine {
   override def compute(
       data: Dataset,
       statistics: Seq[Statistic],
+      aggregateWith: Option[StateLoader] = None,
+      saveStatesWith: Option[StatePersister] = None,
       engineRepositoryOptions: EngineRepositoryOptions
     ): ComputedStatistics = {
 
     val analyzers = statistics.map { SparkEngine.matchingOperator }
 
-    val analysisResult = AnalysisRunner.doAnalysisRun(
+    val sparkStateLoader = aggregateWith.map { _.asInstanceOf[SparkStateLoader] }
+    val sparkStatePersister = saveStatesWith.map { _.asInstanceOf[SparkStatePersister] }
+
+    val analysisResult = SparkExecutor.doAnalysisRun(
       data.asInstanceOf[SparkDataset].df,
-      analyzers
+      analyzers,
+      aggregateWith = sparkStateLoader,
+      saveStatesWith = sparkStatePersister
     )
 
     val statisticsAndResults = analysisResult.metricMap
@@ -87,7 +94,7 @@ case class SparkEngine(session: SparkSession) extends Engine {
 
     val df = dataset.asInstanceOf[SparkDataset].df
 
-    ColumnProfiler.profile(
+    RDDColumnProfiler.profile(
       df,
       restrictToColumns,
       printStatusUpdates,
@@ -201,7 +208,7 @@ object SparkEngine {
     }
   }
 
-  private[deequ] def analyzerContextToComputedStatistics(analyzerContext: AnalyzerContext): ComputedStatistics = {
+  private[deequ] def analyzerContextToComputedStatistics(analyzerContext: OperatorResults): ComputedStatistics = {
     val metrics = analyzerContext.metricMap.map { case (analyzer, metric) =>
       matchingStatistic(analyzer) -> metric
     }
@@ -210,8 +217,8 @@ object SparkEngine {
     ComputedStatistics(metrics)
   }
 
-  private[deequ] def computedStatisticsToAnalyzerContext(computedStatistics: ComputedStatistics): AnalyzerContext = {
-    AnalyzerContext(computedStatistics.metricMap.map { case (analyzer: Statistic, metric: Metric[_]) =>
+  private[deequ] def computedStatisticsToAnalyzerContext(computedStatistics: ComputedStatistics): OperatorResults = {
+    OperatorResults(computedStatistics.metricMap.map { case (analyzer: Statistic, metric: Metric[_]) =>
       matchingOperator(analyzer).asInstanceOf[Operator[State[_], Metric[_]]] -> metric
     }
     .toMap[Operator[_, Metric[_]], Metric[_]])

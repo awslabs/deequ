@@ -164,7 +164,7 @@ object DfsMetricsRepository {
   }
 
   /* Helper function to write to a binary file on S3 */
-  private[repository] def writeToFileOnDfs(
+  private[spark] def writeToFileOnDfs(
       session: SparkSession,
       path: String,
       writeFunc: BufferedOutputStream => Unit)
@@ -196,7 +196,7 @@ object DfsMetricsRepository {
   }
 
   /* Helper function to read from a binary file on S3 */
-  private[repository] def readFromFileOnDfs[T](session: SparkSession, path: String,
+  private[spark] def readFromFileOnDfs[T](session: SparkSession, path: String,
     readFunc: BufferedInputStream => T): Option[T] = {
 
     val (fs, qualifiedPath) = asQualifiedPath(session, path)
@@ -216,7 +216,7 @@ object DfsMetricsRepository {
   }
 
   /* Make sure we write to the correct filesystem, as EMR clusters also have an internal HDFS */
-  private[repository] def asQualifiedPath(session: SparkSession, path: String): (FileSystem, Path) = {
+  private[spark] def asQualifiedPath(session: SparkSession, path: String): (FileSystem, Path) = {
     val hdfsPath = new Path(path)
     val fs = hdfsPath.getFileSystem(session.sparkContext.hadoopConfiguration)
     val qualifiedPath = hdfsPath.makeQualified(fs.getUri, fs.getWorkingDirectory)

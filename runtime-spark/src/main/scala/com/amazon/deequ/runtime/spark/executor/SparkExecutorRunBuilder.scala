@@ -14,17 +14,17 @@
  *
  */
 
-package com.amazon.deequ.runtime.spark.operators.runners
+package com.amazon.deequ.runtime.spark.executor
 
-import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.runtime.spark.operators.Operator
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build an AnalysisRun using a fluent API */
-class AnalysisRunBuilder(val data: DataFrame) {
+class SparkExecutorRunBuilder(val data: DataFrame) {
 
-  protected var analyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
+  protected var analyzers: Seq[Operator[_, Metric[_]]] = Seq.empty
 
   protected var metricsRepository: Option[MetricsRepository] = None
 
@@ -36,7 +36,7 @@ class AnalysisRunBuilder(val data: DataFrame) {
   protected var saveSuccessMetricsJsonPath: Option[String] = None
   protected var overwriteOutputFiles: Boolean = false
 
-  protected def this(analysisRunBuilder: AnalysisRunBuilder) {
+  protected def this(analysisRunBuilder: SparkExecutorRunBuilder) {
 
     this(analysisRunBuilder.data)
 
@@ -58,7 +58,7 @@ class AnalysisRunBuilder(val data: DataFrame) {
     *
     * @param analyzer An analyzer to calculate a metric during the run
     */
-  def addAnalyzer(analyzer: Analyzer[_, Metric[_]]): this.type = {
+  def addAnalyzer(analyzer: Operator[_, Metric[_]]): this.type = {
     analyzers :+= analyzer
     this
   }
@@ -68,7 +68,7 @@ class AnalysisRunBuilder(val data: DataFrame) {
     *
     * @param analyzers Analyzers to calculate metrics during the run
     */
-  def addAnalyzers(analyzers: Seq[Analyzer[_, Metric[_]]]): this.type = {
+  def addAnalyzers(analyzers: Seq[Operator[_, Metric[_]]]): this.type = {
     this.analyzers ++= analyzers
     this
   }
@@ -80,9 +80,9 @@ class AnalysisRunBuilder(val data: DataFrame) {
     * @param metricsRepository A metrics repository to store and load results associated with the
     *                          run
     */
-  def useRepository(metricsRepository: MetricsRepository): AnalysisRunBuilderWithRepository = {
+  def useRepository(metricsRepository: MetricsRepository): SparkExecutorRunBuilderWithRepository = {
 
-    new AnalysisRunBuilderWithRepository(this, Option(metricsRepository))
+    new SparkExecutorRunBuilderWithRepository(this, Option(metricsRepository))
   }
 
   /**
@@ -92,13 +92,13 @@ class AnalysisRunBuilder(val data: DataFrame) {
     */
   def useSparkSession(
       sparkSession: SparkSession)
-    : AnalysisRunBuilderWithSparkSession = {
+    : SparkExecutorRunBuilderWithSparkSession = {
 
-    new AnalysisRunBuilderWithSparkSession(this, Option(sparkSession))
+    new SparkExecutorRunBuilderWithSparkSession(this, Option(sparkSession))
   }
 
-  def run(): AnalyzerContext = {
-    AnalysisRunner.doAnalysisRun(
+  def run(): OperatorResults = {
+    SparkExecutor.doAnalysisRun(
       data,
       analyzers,
       metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
@@ -116,10 +116,10 @@ class AnalysisRunBuilder(val data: DataFrame) {
   }
 }
 
-class AnalysisRunBuilderWithRepository(
-    analysisRunBuilder: AnalysisRunBuilder,
-    usingMetricsRepository: Option[MetricsRepository])
-  extends AnalysisRunBuilder(analysisRunBuilder) {
+class SparkExecutorRunBuilderWithRepository(
+                                             analysisRunBuilder: SparkExecutorRunBuilder,
+                                             usingMetricsRepository: Option[MetricsRepository])
+  extends SparkExecutorRunBuilder(analysisRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 
@@ -152,10 +152,10 @@ class AnalysisRunBuilderWithRepository(
   }
 }
 
-class AnalysisRunBuilderWithSparkSession(
-    analysisRunBuilder: AnalysisRunBuilder,
-    usingSparkSession: Option[SparkSession])
-  extends AnalysisRunBuilder(analysisRunBuilder) {
+class SparkExecutorRunBuilderWithSparkSession(
+                                               analysisRunBuilder: SparkExecutorRunBuilder,
+                                               usingSparkSession: Option[SparkSession])
+  extends SparkExecutorRunBuilder(analysisRunBuilder) {
 
   sparkSession = usingSparkSession
 
