@@ -57,13 +57,13 @@ object SparkExecutor {
   @deprecated("Use onData instead for a fluent API", "10-07-2019")
   def run(
       data: DataFrame,
-      analysis: OperatorList,
+      analyzers: Seq[Operator[_, Metric[_]]],
       aggregateWith: Option[SparkStateLoader] = None,
       saveStatesWith: Option[SparkStatePersister] = None,
       storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     : OperatorResults = {
 
-    doAnalysisRun(data, analysis.analyzers, aggregateWith, saveStatesWith,
+    doAnalysisRun(data, analyzers, aggregateWith, saveStatesWith,
       storageLevelOfGroupedDataForMultiplePasses)
   }
 
@@ -365,20 +365,18 @@ object SparkExecutor {
     * @return AnalyzerContext holding the requested metrics per analyzer
     */
     def runOnAggregatedStates(
-                               schema: StructType,
-                               analysis: OperatorList,
-                               stateLoaders: Seq[SparkStateLoader],
-                               saveStatesWith: Option[SparkStatePersister] = None,
-                               storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
-                               metricsRepository: Option[MetricsRepository] = None,
-                               saveOrAppendResultsWithKey: Option[ResultKey] = None                             )
+       schema: StructType,
+       analyzers: Seq[Operator[State[_], Metric[_]]],
+       stateLoaders: Seq[SparkStateLoader],
+       saveStatesWith: Option[SparkStatePersister] = None,
+       storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+       metricsRepository: Option[MetricsRepository] = None,
+       saveOrAppendResultsWithKey: Option[ResultKey] = None                             )
     : OperatorResults = {
 
-    if (analysis.analyzers.isEmpty || stateLoaders.isEmpty) {
+    if (analyzers.isEmpty || stateLoaders.isEmpty) {
       return OperatorResults.empty
     }
-
-    val analyzers = analysis.analyzers.map { _.asInstanceOf[Operator[State[_], Metric[_]]] }
 
     /* Find all analyzers which violate their preconditions */
     val passedAnalyzers = analyzers

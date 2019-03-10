@@ -19,7 +19,7 @@ package com.amazon.deequ.runtime.spark
 import java.sql.Timestamp
 
 import com.amazon.deequ.checks.Check
-import com.amazon.deequ.constraints.{Constraint, ConstraintDecorator, StatisticConstraint}
+import com.amazon.deequ.constraints.{Constraint, StatisticConstraint}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.runtime.spark.operators.{Operator, State}
 import org.apache.spark.sql.types._
@@ -177,23 +177,16 @@ private[deequ] class Applicability(session: SparkSession) {
 
     val namedMetrics = check.constraints
       .map { constraint => constraint.toString -> constraint }
-      .map {
-        case (name, nc: ConstraintDecorator) => name -> nc.inner
-        case (name, c: Constraint) => name -> c
-      }
       .collect { case (name, constraint: StatisticConstraint[_, _]) =>
 
         val operator = SparkEngine.matchingOperator(constraint.statistic)
-
         val metric = operator.calculate(data).value
-
 
         name -> metric
       }
 
     val constraintApplicabilities = check.constraints.zip(namedMetrics).map {
-      case (constraint, (_, metric)) =>
-        constraint -> metric.isSuccess
+      case (constraint, (_, metric)) => constraint -> metric.isSuccess
     }
     .toMap
 

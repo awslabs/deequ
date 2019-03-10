@@ -14,11 +14,11 @@
   *
   */
 
-package com.amazon.deequ.runtime.spark.executor
+package com.amazon.deequ.runtime.spark
 
 import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.runtime.spark.executor.{OperatorResults, SparkExecutor}
 import com.amazon.deequ.runtime.spark.operators.Operator
-import com.amazon.deequ.runtime.spark.{SparkStateLoader, SparkStatePersister}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
