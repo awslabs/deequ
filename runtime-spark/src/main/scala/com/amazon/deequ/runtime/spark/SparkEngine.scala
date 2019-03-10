@@ -153,6 +153,10 @@ object SparkEngine {
 
       case approxQuantile: ApproxQuantile => ApproxQuantileOp(approxQuantile.column, approxQuantile.quantile)
 
+      case approxQuantiles: ApproxQuantiles => ApproxQuantilesOp(approxQuantiles.column, approxQuantiles.quantiles)
+
+      case countDistinct: CountDistinct => CountDistinctOp(countDistinct.columns)
+
       case _ => throw new IllegalArgumentException(s"Unable to handle statistic $statistic.")
     }
   }
@@ -202,6 +206,11 @@ object SparkEngine {
 
       case approxQuantile: ApproxQuantileOp =>
         ApproxQuantile(approxQuantile.column, approxQuantile.quantile)
+
+      case approxQuantiles: ApproxQuantilesOp =>
+        ApproxQuantiles(approxQuantiles.column, approxQuantiles.quantiles)
+
+      case countDistinctOp: CountDistinctOp => CountDistinct(countDistinctOp.columns)
 
       case _ =>
         throw new IllegalArgumentException(s"Unable to handle operator $analyzer.")

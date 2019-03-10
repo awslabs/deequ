@@ -21,7 +21,7 @@ import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetec
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
-import com.amazon.deequ.statistics._
+import com.amazon.deequ.statistics.{UniqueValueRatio, _}
 
 import scala.util.matching.Regex
 
@@ -96,7 +96,8 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Long](Size(filter), assertion, Some(_.toLong), hint)
+      val size = Size(filter)
+      StatisticConstraint[Double, Long](size, assertion, Some(_.toLong), hint, name = Some(s"SizeConstraint($size)"))
     }
   }
 
@@ -109,7 +110,9 @@ case class Check(
     */
   def isComplete(column: String, hint: Option[String] = None): CheckWithLastConstraintFilterable = {
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Completeness(column, filter), Check.IsOne, hint = hint)
+      val completeness = Completeness(column, filter)
+      StatisticConstraint[Double, Double](completeness, Check.IsOne, hint = hint,
+        name = Some(s"CompletenessConstraint($completeness)"))
     }
   }
 
@@ -129,7 +132,9 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
       addFilterableConstraint { filter =>
-        StatisticConstraint[Double, Double](Completeness(column, filter), assertion, hint = hint)
+        val completeness = Completeness(column, filter)
+        StatisticConstraint[Double, Double](Completeness(column, filter), assertion, hint = hint,
+          name = Some(s"CompletenessConstraint($completeness)"))
       }
   }
 
@@ -141,8 +146,10 @@ case class Check(
     * @return
     */
   def isUnique(column: String, hint: Option[String] = None): Check = {
+    val uniqueness = Uniqueness(Seq(column))
     addConstraint(
-      StatisticConstraint[Double, Double](Uniqueness(Seq(column)), Check.IsOne, hint = hint)
+      StatisticConstraint[Double, Double](uniqueness, Check.IsOne, hint = hint,
+        name = Some(s"UniquenessConstraint($uniqueness)"))
     )
   }
 
@@ -155,8 +162,9 @@ case class Check(
     * @return
     */
   def isPrimaryKey(column: String, columns: String*): Check = {
+    val uniqueness = Uniqueness(column :: columns.toList)
     addConstraint(
-      StatisticConstraint[Double, Double](Uniqueness(column :: columns.toList), Check.IsOne)
+      StatisticConstraint[Double, Double](uniqueness, Check.IsOne, name = Some(s"UniquenessConstraint($uniqueness)"))
     )
   }
 
@@ -170,8 +178,10 @@ case class Check(
     * @return
     */
   def isPrimaryKey(column: String, hint: Option[String], columns: String*): Check = {
+    val uniqueness = Uniqueness(column :: columns.toList)
     addConstraint(
-      StatisticConstraint[Double, Double](Uniqueness(column :: columns.toList), Check.IsOne, hint = hint)
+      StatisticConstraint[Double, Double](uniqueness, Check.IsOne, hint = hint,
+        name = Some(s"UniquenessConstraint($uniqueness)"))
     )
   }
 
@@ -184,8 +194,10 @@ case class Check(
     * @return
     */
   def hasUniqueness(columns: Seq[String], assertion: Double => Boolean): Check = {
+    val uniqueness = Uniqueness(columns)
     addConstraint(
-      StatisticConstraint[Double, Double](Uniqueness(columns), assertion)
+      StatisticConstraint[Double, Double](Uniqueness(columns), assertion,
+        name = Some(s"UniquenessConstraint($uniqueness)"))
     )
   }
 
@@ -204,8 +216,10 @@ case class Check(
       hint: Option[String])
     : Check = {
 
+    val uniqueness = Uniqueness(columns)
     addConstraint(
-      StatisticConstraint[Double, Double](Uniqueness(columns), assertion, hint = hint)
+      StatisticConstraint[Double, Double](Uniqueness(columns), assertion, hint = hint,
+        name = Some(s"UniquenessConstraint($uniqueness)"))
     )
   }
 
@@ -218,8 +232,9 @@ case class Check(
     * @return
     */
   def hasUniqueness(column: String, assertion: Double => Boolean): Check = {
+    val uniqueness = Uniqueness(Seq(column))
     addConstraint(
-      StatisticConstraint[Double, Double](Uniqueness(Seq(column)), assertion)
+      StatisticConstraint[Double, Double](uniqueness, assertion, name = Some(s"UniquenessConstraint($uniqueness)"))
     )
   }
 
@@ -250,8 +265,10 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val distinctness = Distinctness(columns)
     addConstraint(
-      StatisticConstraint[Double, Double](Distinctness(columns), assertion, hint = hint)
+      StatisticConstraint[Double, Double](Distinctness(columns), assertion, hint = hint,
+        name = Some(s"DistinctnessConstraint($distinctness)"))
     )
   }
 
@@ -270,8 +287,10 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val uniqueValueRatio = UniqueValueRatio(columns)
     addConstraint(
-      StatisticConstraint[Double, Double](UniqueValueRatio(columns), assertion, hint = hint)
+      StatisticConstraint[Double, Double](uniqueValueRatio, assertion, hint = hint,
+        name = Some(s"UniqueValueRatioConstraint($uniqueValueRatio)"))
     )
   }
 
@@ -292,8 +311,10 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val countDistinct = CountDistinct(Seq(column))
     addConstraint(
-      StatisticConstraint[Distribution, Long](Histogram(column, maxBins), assertion, Some(_.numberOfBins), hint)
+      StatisticConstraint[Distribution, Long](countDistinct, assertion, Some(_.numberOfBins), hint,
+        name = Some(s"CountDistinctConstraint($countDistinct)"))
     )
   }
 
@@ -318,8 +339,11 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val histogram = Histogram(column, maxBins)
+
     addConstraint(
-      StatisticConstraint[Distribution, Distribution](Histogram(column, maxBins), assertion, hint = hint)
+      StatisticConstraint[Distribution, Distribution](histogram, assertion, hint = hint,
+        name = Some(s"HistogramConstraint($histogram)"))
     )
   }
 
@@ -359,7 +383,8 @@ case class Check(
     )(_)
 
     addConstraint(
-      StatisticConstraint[Double, Double](statistic, anomalyAssertionFunction, hint = hint)
+      StatisticConstraint[Double, Double](statistic, anomalyAssertionFunction, hint = hint,
+        name = Some(s"AnomalyConstraint($statistic)"))
     )
   }
 
@@ -378,8 +403,9 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val entropy = Entropy(column)
     addConstraint(
-      StatisticConstraint[Double, Double](Entropy(column), assertion, hint = hint)
+      StatisticConstraint[Double, Double](entropy, assertion, hint = hint, name = Some(s"EntropyConstraint($entropy)"))
     )
   }
 
@@ -399,8 +425,10 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val mutualInformation = MutualInformation(Seq(columnA, columnB))
     addConstraint(
-      StatisticConstraint[Double, Double](MutualInformation(Seq(columnA, columnB)), assertion, hint = hint)
+      StatisticConstraint[Double, Double](mutualInformation, assertion, hint = hint,
+        name = Some(s"MutualInformationConstraint($mutualInformation)"))
     )
   }
 
@@ -420,8 +448,10 @@ case class Check(
       hint: Option[String] = None)
     : Check = {
 
+    val approxQuantile = ApproxQuantile(column, quantile)
     addConstraint(
-      StatisticConstraint[Double, Double](ApproxQuantile(column, quantile), assertion, hint = hint)
+      StatisticConstraint[Double, Double](approxQuantile, assertion, hint = hint,
+        name = Some(s"ApproxQuantileConstraint($approxQuantile)"))
     )
   }
 
@@ -441,7 +471,9 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Minimum(column, filter), assertion, hint = hint)
+      val minimum = Minimum(column, filter)
+      StatisticConstraint[Double, Double](minimum, assertion, hint = hint,
+        name = Some(s"MinimumConstraint($minimum)"))
     }
   }
 
@@ -460,7 +492,8 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Maximum(column, filter), assertion, hint = hint)
+      val maximum = Maximum(column, filter)
+      StatisticConstraint[Double, Double](maximum, assertion, hint = hint, name = Some(s"MaximumConstraint($maximum)"))
     }
   }
 
@@ -479,7 +512,8 @@ case class Check(
     : Check = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Mean(column, filter), assertion, hint = hint)
+      val mean = Mean(column, filter)
+      StatisticConstraint[Double, Double](mean, assertion, hint = hint, name = Some(s"MeanConstraint($mean)"))
     }
   }
 
@@ -498,7 +532,8 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Sum(column, filter), assertion, hint = hint)
+      val sum = Sum(column, filter)
+      StatisticConstraint[Double, Double](sum, assertion, hint = hint, name = Some(s"SumConstraint($sum)"))
     }
   }
 
@@ -517,7 +552,9 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](StandardDeviation(column, filter), assertion, hint = hint)
+      val standardDeviation = StandardDeviation(column, filter)
+      StatisticConstraint[Double, Double](standardDeviation, assertion, hint = hint,
+        name = Some(s"StandardDeviationConstraint($standardDeviation)"))
     }
   }
 
@@ -536,7 +573,9 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](ApproxCountDistinct(column, filter), assertion, hint = hint)
+      val approxCountDistinct = ApproxCountDistinct(column, filter)
+      StatisticConstraint[Double, Double](approxCountDistinct, assertion, hint = hint,
+        name = Some(s"ApproxCountDistinctConstraint($approxCountDistinct)"))
     }
   }
 
@@ -557,7 +596,9 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      StatisticConstraint[Double, Double](Correlation(columnA, columnB, filter), assertion, hint = hint)
+      val correlation = Correlation(columnA, columnB, filter)
+      StatisticConstraint[Double, Double](correlation, assertion, hint = hint,
+        name = Some(s"CorrelationConstraint($correlation)"))
     }
   }
 
@@ -954,10 +995,6 @@ case class Check(
 
   def requiredAnalyzers(): Set[Statistic] = {
     constraints
-      .map {
-        case nc: ConstraintDecorator => nc.inner
-        case c: Constraint => c
-      }
       .collect { case constraint: StatisticConstraint[_, _] => constraint.statistic }
       //.map { _.asInstanceOf[Analyzer[_, Metric[_]]] }
       .toSet

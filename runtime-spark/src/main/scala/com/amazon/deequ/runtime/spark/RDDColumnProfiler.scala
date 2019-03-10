@@ -16,13 +16,13 @@
 
 package com.amazon.deequ.runtime.spark
 
-import com.amazon.deequ.ComputedStatistics
+import com.amazon.deequ.{ComputedStatistics, RepositoryOptions}
 import com.amazon.deequ.statistics.DataTypeInstances._
 import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.profiles.{ColumnProfiles, NumericColumnProfile, StandardColumnProfile}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.spark.executor.{OperatorResults, ReusingNotPossibleResultsMissingException, SparkExecutor, SparkExecutorRunBuilder}
+import com.amazon.deequ.runtime.spark.executor.{OperatorResults, ReusingNotPossibleResultsMissingException, SparkExecutor}
 import com.amazon.deequ.runtime.spark.operators.{ApproxQuantilesOp, CompletenessOp, HistogramOp, SizeOp}
 import com.amazon.deequ.statistics.{DataTypeInstances, Histogram, Statistic}
 import org.apache.spark.sql.DataFrame
@@ -108,23 +108,22 @@ object RDDColumnProfiler {
       println("### PROFILING: Computing generic column statistics in pass (1/3)...")
     }
 
+    val repositoryOptions = RepositoryOptions(
+      metricsRepository,
+      reuseExistingResultsUsingKey,
+      failIfResultsForReusingMissing,
+      saveInMetricsRepositoryUsingKey
+    )
+
     // We compute completeness, approximate number of distinct values
     // and type detection for string columns in the first pass
     val analyzersForGenericStats = getAnalyzersForGenericStats(data.schema, relevantColumns)
 
-    var analysisRunnerFirstPass = SparkExecutor
-      .onData(data)
-      .addAnalyzers(analyzersForGenericStats)
-      .addAnalyzer(SizeOp())
-
-    analysisRunnerFirstPass = setMetricsRepositoryConfigurationIfNecessary(
-      analysisRunnerFirstPass,
-      metricsRepository,
-      reuseExistingResultsUsingKey,
-      failIfResultsForReusingMissing,
-      saveInMetricsRepositoryUsingKey)
-
-    val firstPassResults = analysisRunnerFirstPass.run()
+    val firstPassResults = SparkExecutor.doAnalysisRun(
+      data,
+      analyzersForGenericStats ++ Seq(SizeOp()),
+      metricsRepositoryOptions = repositoryOptions
+    )
 
     val genericStatistics = extractGenericStatistics(relevantColumns, data.schema, firstPassResults)
 
@@ -140,18 +139,11 @@ object RDDColumnProfiler {
     // We compute mean, stddev, min, max for all numeric columns
     val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics)
 
-    var analysisRunnerSecondPass = SparkExecutor
-      .onData(castedDataForSecondPass)
-      .addAnalyzers(analyzersForSecondPass)
-
-    analysisRunnerSecondPass = setMetricsRepositoryConfigurationIfNecessary(
-      analysisRunnerSecondPass,
-      metricsRepository,
-      reuseExistingResultsUsingKey,
-      failIfResultsForReusingMissing,
-      saveInMetricsRepositoryUsingKey)
-
-    val secondPassResults = analysisRunnerSecondPass.run()
+    val secondPassResults = SparkExecutor.doAnalysisRun(
+      castedDataForSecondPass,
+      analyzersForSecondPass,
+      metricsRepositoryOptions = repositoryOptions
+    )
 
     val numericStatistics = extractNumericStatistics(secondPassResults)
 
@@ -236,34 +228,6 @@ object RDDColumnProfiler {
             SumOp(name), ApproxQuantilesOp(name, percentiles))
         }
     }
-
-  private[this] def setMetricsRepositoryConfigurationIfNecessary(
-      analysisRunBuilder: SparkExecutorRunBuilder,
-      metricsRepository: Option[MetricsRepository],
-      reuseExistingResultsForKey: Option[ResultKey],
-      failIfResultsForReusingMissing: Boolean,
-      saveInMetricsRepositoryUsingKey: Option[ResultKey])
-    : SparkExecutorRunBuilder = {
-
-    var analysisRunBuilderResult = analysisRunBuilder
-
-    metricsRepository.foreach { metricsRepository =>
-      var analysisRunnerWithRepository = analysisRunBuilderResult.useRepository(metricsRepository)
-
-      reuseExistingResultsForKey.foreach { resultKey =>
-        analysisRunnerWithRepository = analysisRunnerWithRepository
-          .reuseExistingResultsForKey(resultKey, failIfResultsForReusingMissing)
-      }
-
-      saveInMetricsRepositoryUsingKey.foreach { resultKey =>
-        analysisRunnerWithRepository = analysisRunnerWithRepository
-          .saveOrAppendResult(resultKey)
-      }
-
-      analysisRunBuilderResult = analysisRunnerWithRepository
-    }
-    analysisRunBuilderResult
-  }
 
 
   private[this] def getAnalyzerContextWithHistogramResultsForReusingIfNecessary(
@@ -606,7 +570,7 @@ object RDDColumnProfiler {
 
       // Return overall results using the more simple Distribution format
       analyzerContext.metricMap
-        .map { case (histogram: HistogramOp, metric: HistogramMetric) if metric.value.isSuccess =>
+        .map { case (histogram: Histogram, metric: HistogramMetric) if metric.value.isSuccess =>
           histogram.column -> metric.value.get
         }
     } else {

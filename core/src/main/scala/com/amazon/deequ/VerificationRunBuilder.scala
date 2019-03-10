@@ -118,7 +118,7 @@ class VerificationRunBuilder(val data: Dataset, val engine: Engine) {
       engine,
       checks,
       requiredAnalyzers,
-      metricsRepositoryOptions = VerificationMetricsRepositoryOptions(
+      metricsRepositoryOptions = RepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,

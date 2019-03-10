@@ -21,6 +21,7 @@ import java.util.UUID.randomUUID
 
 import com.amazon.deequ.ComputedStatistics
 import com.amazon.deequ.repository._
+import com.amazon.deequ.serialization.json.StatisticsResultSerde
 import com.amazon.deequ.statistics.Statistic
 import com.google.common.io.Closeables
 import org.apache.commons.io.IOUtils
@@ -47,7 +48,7 @@ class DfsMetricsRepository(session: SparkSession, path: String) extends MetricsR
 
     val previousAnalysisResults = load().get().filter(_.resultKey != resultKey)
 
-    val serializedResult = AnalysisResultSerde.serialize(
+    val serializedResult = StatisticsResultSerde.serialize(
       previousAnalysisResults ++ Seq(StatisticsResult(resultKey, analyzerContextWithSuccessfulValues))
     )
 
@@ -130,7 +131,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
       .readFromFileOnDfs(session, path, {
         IOUtils.toString(_, DfsMetricsRepository.CHARSET_NAME)
       })
-      .map { fileContent => AnalysisResultSerde.deserialize(fileContent) }
+      .map { fileContent => StatisticsResultSerde.deserialize(fileContent) }
       .getOrElse(Seq.empty)
 
     val selection = allResults

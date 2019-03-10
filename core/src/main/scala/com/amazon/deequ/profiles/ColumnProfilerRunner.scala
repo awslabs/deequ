@@ -17,15 +17,10 @@
 package com.amazon.deequ.profiles
 
 
+import com.amazon.deequ.RepositoryOptions
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.runtime.{Dataset, Engine}
 
-private[profiles] case class ColumnProfilerRunBuilderMetricsRepositoryOptions(
-    metricsRepository: Option[MetricsRepository],
-    reuseExistingResultsKey: Option[ResultKey],
-    failIfResultsForReusingMissing: Boolean,
-    saveOrAppendResultsKey: Option[ResultKey]
-)
 
 private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
     saveColumnProfilesJsonToPath: Option[String],
@@ -47,7 +42,7 @@ class ColumnProfilerRunner {
       printStatusUpdates: Boolean,
 //      cacheInputs: Boolean,
 //      fileOutputOptions: ColumnProfilerRunBuilderFileOutputOptions,
-      metricsRepositoryOptions: ColumnProfilerRunBuilderMetricsRepositoryOptions)
+      metricsRepositoryOptions: RepositoryOptions)
     : ColumnProfiles = {
 
     val columnProfiles = engine.profile(
@@ -56,9 +51,9 @@ class ColumnProfilerRunner {
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
       metricsRepositoryOptions.metricsRepository,
-      metricsRepositoryOptions.reuseExistingResultsKey,
+      metricsRepositoryOptions.reuseExistingResultsForKey,
       metricsRepositoryOptions.failIfResultsForReusingMissing,
-      metricsRepositoryOptions.saveOrAppendResultsKey
+      metricsRepositoryOptions.saveOrAppendResultsWithKey
     )
 
 //    saveColumnProfilesJsonToFileSystemIfNecessary(

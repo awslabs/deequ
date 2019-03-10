@@ -43,9 +43,16 @@ private[deequ] case class StatisticConstraint[M, V](
     statistic: Statistic,
     private[deequ] val assertion: V => Boolean,
     private[deequ] val valuePicker: Option[M => V] = None,
-    private[deequ] val hint: Option[String] = None)
+    private[deequ] val hint: Option[String] = None,
+    private[deequ] val name: Option[String] = None)
   extends Constraint {
 
+  override def toString: String = {
+    name match {
+      case Some(str) => str
+      case _  => s"StatisticContraint($statistic,$hint)"
+    }
+  }
 
   override def evaluate(
       analysisResults: Map[Statistic, Metric[_]])

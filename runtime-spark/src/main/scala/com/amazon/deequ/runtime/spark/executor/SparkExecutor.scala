@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.runtime.spark.executor
 
-import com.amazon.deequ.ComputedStatistics
+import com.amazon.deequ.{ComputedStatistics, RepositoryOptions}
 import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
@@ -27,12 +27,6 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import scala.util.Success
-
-private[deequ] case class AnalysisRunnerRepositoryOptions(
-      metricsRepository: Option[MetricsRepository] = None,
-      reuseExistingResultsForKey: Option[ResultKey] = None,
-      failIfResultsForReusingMissing: Boolean = false,
-      saveOrAppendResultsWithKey: Option[ResultKey] = None)
 
 private[deequ] case class AnalysisRunnerFileOutputOptions(
       sparkSession: Option[SparkSession] = None,
@@ -45,15 +39,6 @@ private[deequ] case class AnalysisRunnerFileOutputOptions(
   * stored and aggregated with existing states to enable incremental computations.
   */
 object SparkExecutor {
-
-   /**
-    * Starting point to construct an AnalysisRun.
-    *
-    * @param data tabular data on which the checks should be verified
-    */
-  def onData(data: DataFrame): SparkExecutorRunBuilder = {
-    new SparkExecutorRunBuilder(data)
-  }
 
   /**
     * Compute the metrics from the analyzers configured in the analyis
@@ -71,11 +56,11 @@ object SparkExecutor {
     */
   @deprecated("Use onData instead for a fluent API", "10-07-2019")
   def run(
-           data: DataFrame,
-           analysis: OperatorList,
-           aggregateWith: Option[SparkStateLoader] = None,
-           saveStatesWith: Option[SparkStatePersister] = None,
-           storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
+      data: DataFrame,
+      analysis: OperatorList,
+      aggregateWith: Option[SparkStateLoader] = None,
+      saveStatesWith: Option[SparkStatePersister] = None,
+      storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK)
     : OperatorResults = {
 
     doAnalysisRun(data, analysis.analyzers, aggregateWith, saveStatesWith,
@@ -99,15 +84,13 @@ object SparkExecutor {
     * @return AnalyzerContext holding the requested metrics per analyzer
     */
   private[deequ] def doAnalysisRun(
-                                    data: DataFrame,
-                                    analyzers: Seq[Operator[_, Metric[_]]],
-                                    aggregateWith: Option[SparkStateLoader] = None,
-                                    saveStatesWith: Option[SparkStatePersister] = None,
-                                    storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
-                                    metricsRepositoryOptions: AnalysisRunnerRepositoryOptions =
-        AnalysisRunnerRepositoryOptions(),
-                                    fileOutputOptions: AnalysisRunnerFileOutputOptions =
-        AnalysisRunnerFileOutputOptions())
+      data: DataFrame,
+      analyzers: Seq[Operator[_, Metric[_]]],
+      aggregateWith: Option[SparkStateLoader] = None,
+      saveStatesWith: Option[SparkStatePersister] = None,
+      storageLevelOfGroupedDataForMultiplePasses: StorageLevel = StorageLevel.MEMORY_AND_DISK,
+      metricsRepositoryOptions: RepositoryOptions = RepositoryOptions(),
+      fileOutputOptions: AnalysisRunnerFileOutputOptions = AnalysisRunnerFileOutputOptions())
     : OperatorResults = {
 
     if (analyzers.isEmpty) {
@@ -117,18 +100,18 @@ object SparkExecutor {
     val allAnalyzers = analyzers.map { _.asInstanceOf[Operator[State[_], Metric[_]]] }
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
-//FIXLATER
-val resultsComputedPreviously = OperatorResults.empty
-//    val resultsComputedPreviously: AnalyzerContext =
-//      (metricsRepositoryOptions.metricsRepository,
-//        metricsRepositoryOptions.reuseExistingResultsForKey)
-//        match {
-//          case (Some(metricsRepository: MetricsRepository), Some(resultKey: ResultKey)) =>
-//            metricsRepository.loadByKey(resultKey).getOrElse(AnalyzerContext.empty)
-//          case _ => AnalyzerContext.empty
-//        }
+    val resultsComputedPreviously: ComputedStatistics =
+      (metricsRepositoryOptions.metricsRepository,
+        metricsRepositoryOptions.reuseExistingResultsForKey)
+        match {
+          case (Some(metricsRepository: MetricsRepository), Some(resultKey: ResultKey)) =>
+            metricsRepository.loadByKey(resultKey).getOrElse(ComputedStatistics.empty)
+          case _ => ComputedStatistics.empty
+        }
 
-    val analyzersAlreadyRan = resultsComputedPreviously.metricMap.keys.toSet
+    val analyzersAlreadyRan = resultsComputedPreviously.metricMap
+      .keys.toSet
+      .map { SparkEngine.matchingOperator }
 
     val analyzersToRun = allAnalyzers.filterNot(analyzersAlreadyRan.contains)
 
@@ -184,7 +167,9 @@ val resultsComputedPreviously = OperatorResults.empty
         }
       }
 
-    val resultingAnalyzerContext = resultsComputedPreviously ++ preconditionFailures ++
+    val operatorsComputedPreviously = SparkEngine.computedStatisticsToAnalyzerContext(resultsComputedPreviously)
+
+    val resultingAnalyzerContext = operatorsComputedPreviously ++ preconditionFailures ++
       nonGroupedMetrics ++ groupedMetrics
 
     saveOrAppendResultsIfNecessary(
@@ -198,11 +183,10 @@ val resultsComputedPreviously = OperatorResults.empty
   }
 
   private[this] def saveOrAppendResultsIfNecessary(
-                                                    resultingAnalyzerContext: OperatorResults,
-                                                    metricsRepository: Option[MetricsRepository],
-                                                    saveOrAppendResultsWithKey: Option[ResultKey])
+      resultingAnalyzerContext: OperatorResults,
+      metricsRepository: Option[MetricsRepository],
+      saveOrAppendResultsWithKey: Option[ResultKey])
     : Unit = {
-
 
     metricsRepository.foreach { repository =>
       saveOrAppendResultsWithKey.foreach { key =>
@@ -255,13 +239,13 @@ val resultsComputedPreviously = OperatorResults.empty
   }
 
   private[this] def runGroupingAnalyzers(
-                                          data: DataFrame,
-                                          groupingColumns: Seq[String],
-                                          analyzers: Seq[GroupingOperator[State[_], Metric[_]]],
-                                          aggregateWith: Option[SparkStateLoader],
-                                          saveStatesTo: Option[SparkStatePersister],
-                                          storageLevelOfGroupedDataForMultiplePasses: StorageLevel,
-                                          numRowsOfData: Option[Long])
+      data: DataFrame,
+      groupingColumns: Seq[String],
+      analyzers: Seq[GroupingOperator[State[_], Metric[_]]],
+      aggregateWith: Option[SparkStateLoader],
+      saveStatesTo: Option[SparkStatePersister],
+      storageLevelOfGroupedDataForMultiplePasses: StorageLevel,
+      numRowsOfData: Option[Long])
     : (Long, OperatorResults) = {
 
     /* Compute the frequencies of the request groups once */
@@ -285,10 +269,10 @@ val resultsComputedPreviously = OperatorResults.empty
   }
 
   private[this] def runScanningAnalyzers(
-                                          data: DataFrame,
-                                          analyzers: Seq[Operator[State[_], Metric[_]]],
-                                          aggregateWith: Option[SparkStateLoader] = None,
-                                          saveStatesTo: Option[SparkStatePersister] = None)
+      data: DataFrame,
+      analyzers: Seq[Operator[State[_], Metric[_]]],
+      aggregateWith: Option[SparkStateLoader] = None,
+      saveStatesTo: Option[SparkStatePersister] = None)
     : OperatorResults = {
 
     /* Identify shareable analyzers */

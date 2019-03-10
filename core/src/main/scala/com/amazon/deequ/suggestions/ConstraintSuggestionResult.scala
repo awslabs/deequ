@@ -19,6 +19,7 @@ package com.amazon.deequ.suggestions
 import com.amazon.deequ.VerificationResult
 import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
+import com.amazon.deequ.serialization.json.JsonSerializer
 
 /**
   * The result returned from the ConstraintSuggestionSuite
@@ -36,21 +37,14 @@ case class ConstraintSuggestionResult(
 object ConstraintSuggestionResult {
 
   def getColumnProfilesAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
-
-    ColumnProfiles.toJson(constraintSuggestionResult.columnProfiles.values.toSeq)
+    JsonSerializer.columnsProfiles(constraintSuggestionResult.columnProfiles.values.toSeq)
   }
 
   def getConstraintSuggestionsAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
-    ConstraintSuggestions
-      .toJson(constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _))
+    JsonSerializer.constraintSuggestions(constraintSuggestionResult)
   }
 
   def getEvaluationResultsAsJson(constraintSuggestionResult: ConstraintSuggestionResult): String = {
-
-    ConstraintSuggestions
-      .evaluationResultsToJson(
-        constraintSuggestionResult.constraintSuggestions.values.fold(Seq.empty)( _ ++ _),
-        constraintSuggestionResult.verificationResult.getOrElse(
-          VerificationResult(CheckStatus.Warning, Map.empty, Map.empty)))
+    JsonSerializer.evaluationResults(constraintSuggestionResult)
   }
 }

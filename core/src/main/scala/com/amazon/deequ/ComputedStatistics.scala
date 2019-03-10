@@ -17,7 +17,6 @@
 package com.amazon.deequ
 
 import com.amazon.deequ.metrics.Metric
-import com.amazon.deequ.repository.SimpleResultSerde
 import com.amazon.deequ.statistics.Statistic
 
 case class ComputedStatistics(metricMap: Map[Statistic, Metric[_]]) {
@@ -53,51 +52,4 @@ object ComputedStatistics {
 //    metricsList.toDF("entity", "instance", "name", "value")
 //  }
 //
-  def successMetricsAsJson(analyzerContext: ComputedStatistics,
-                           forAnalyzers: Seq[Statistic] = Seq.empty): String = {
-
-    val metricsList = getSimplifiedMetricOutputForSelectedAnalyzers(analyzerContext, forAnalyzers)
-
-    val result = metricsList.map { simplifiedMetricOutput =>
-      Map(
-        "entity" -> simplifiedMetricOutput.entity,
-        "instance" -> simplifiedMetricOutput.instance,
-        "name" -> simplifiedMetricOutput.name,
-        "value" -> simplifiedMetricOutput.value
-      )
-    }
-
-    SimpleResultSerde.serialize(result)
-  }
-
-  private[this] def getSimplifiedMetricOutputForSelectedAnalyzers(
-      analyzerContext: ComputedStatistics,
-      forAnalyzers: Seq[Statistic])
-    : Seq[SimpleMetricOutput] = {
-
-    val selectedMetrics = analyzerContext.metricMap
-      .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
-      .values
-      .toSeq
-
-    val metricsList = selectedMetrics
-      .filter(_.value.isSuccess) // Get analyzers with successful results
-      .flatMap(_.flatten()) // Get metrics as double
-      .map { doubleMetric =>
-      SimpleMetricOutput(
-        doubleMetric.entity.toString,
-        doubleMetric.instance,
-        doubleMetric.name,
-        doubleMetric.value.get
-      )
-    }
-
-    metricsList
-  }
-
-  private[this] case class SimpleMetricOutput(
-      entity: String,
-      instance: String,
-      name: String,
-      value: Double)
 }

@@ -14,27 +14,25 @@
  *
  */
 
-package com.amazon.deequ.repository
+package com.amazon.deequ.serialization.json
 
 import java.lang.reflect.Type
-
-import com.amazon.deequ.ComputedStatistics
-import com.amazon.deequ.statistics._
-
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
 
+import com.amazon.deequ.ComputedStatistics
 import com.amazon.deequ.metrics.{Distribution, Metric, _}
-import com.amazon.deequ.repository.JsonSerializationConstants._
-
-import scala.collection.JavaConverters._
-import scala.collection.JavaConversions._
-import scala.collection._
-import scala.util.{Failure, Success, Try}
-
+import com.amazon.deequ.repository._
+import com.amazon.deequ.serialization.json.JsonSerializationConstants._
+import com.amazon.deequ.statistics._
 import com.google.gson._
 import com.google.gson.reflect.TypeToken
 
-private[repository] object JsonSerializationConstants {
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import scala.collection._
+import scala.util.{Failure, Success, Try}
+
+private[deequ] object JsonSerializationConstants {
 
   val STRING_MAP_TYPE: Type = new TypeToken[JList[JMap[String, Any]]]() {}.getType
   val STRING_LIST_TYPE: Type = new TypeToken[JList[String]]() {}.getType
@@ -71,7 +69,7 @@ private[deequ] object SimpleResultSerde {
   }
 }
 
-private[deequ] object AnalysisResultSerde {
+private[deequ] object StatisticsResultSerde {
 
   def serialize(analysisResults: Seq[StatisticsResult]): String = {
     val gson = new GsonBuilder()

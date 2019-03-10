@@ -21,13 +21,6 @@ import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.runtime.{Dataset, Engine, EngineRepositoryOptions}
 import com.amazon.deequ.statistics.Statistic
 
-private[deequ] case class VerificationMetricsRepositoryOptions(
-    metricsRepository: Option[MetricsRepository] = None,
-    reuseExistingResultsForKey: Option[ResultKey] = None,
-    failIfResultsForReusingMissing: Boolean = false,
-    saveOrAppendResultsWithKey: Option[ResultKey] = None
-)
-
 //FIXLATER
 //private[deequ] case class VerificationFileOutputOptions(
 //                                                         sparkSession: Option[SparkSession] = None,
@@ -71,8 +64,7 @@ class VerificationSuite {
       requiredAnalyzers: Seq[Statistic],
       //aggregateWith: Option[StateLoader] = None,
       //saveStatesWith: Option[StatePersister] = None,
-      metricsRepositoryOptions: VerificationMetricsRepositoryOptions =
-      VerificationMetricsRepositoryOptions())
+      metricsRepositoryOptions: RepositoryOptions = RepositoryOptions())
 //                                        fileOutputOptions: VerificationFileOutputOptions =
 //                                        VerificationFileOutputOptions())
   : VerificationResult = {

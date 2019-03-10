@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
+import com.amazon.deequ.{RepositoryOptions, VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.profiles.ColumnProfilerRunner
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
@@ -34,12 +34,6 @@ object Rules {
       CategoricalRangeRule(), FractionalCategoricalRangeRule(),
       NonNegativeNumbersRule())
 }
-
-private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
-      metricsRepository: Option[MetricsRepository],
-      reuseExistingResultsKey: Option[ResultKey],
-      failIfResultsForReusingMissing: Boolean,
-      saveOrAppendResultsKey: Option[ResultKey])
 
 //private[suggestions] case class ConstraintSuggestionFileOutputOptions(
 //      session: Option[SparkSession],
@@ -72,7 +66,7 @@ class ConstraintSuggestionRunner {
       testsetSplitRandomSeed: Option[Long],
       //cacheInputs: Boolean,
       //fileOutputOptions: ConstraintSuggestionFileOutputOptions,
-      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
+      metricsRepositoryOptions: RepositoryOptions)
     : ConstraintSuggestionResult = {
 
     testsetRatio.foreach { testsetRatio =>
@@ -137,7 +131,7 @@ class ConstraintSuggestionRunner {
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
-      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions
+      metricsRepositoryOptions: RepositoryOptions
     ): (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()
@@ -152,13 +146,13 @@ class ConstraintSuggestionRunner {
     metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
       var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)
 
-      metricsRepositoryOptions.reuseExistingResultsKey.foreach { reuseExistingResultsKey =>
+      metricsRepositoryOptions.reuseExistingResultsForKey.foreach { reuseExistingResultsKey =>
         columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
           .reuseExistingResultsForKey(reuseExistingResultsKey,
             metricsRepositoryOptions.failIfResultsForReusingMissing)
       }
 
-      metricsRepositoryOptions.saveOrAppendResultsKey.foreach { saveOrAppendResultsKey =>
+      metricsRepositoryOptions.saveOrAppendResultsWithKey.foreach { saveOrAppendResultsKey =>
         columnProfilerRunnerWithRepository = columnProfilerRunnerWithRepository
           .saveOrAppendResult(saveOrAppendResultsKey)
       }

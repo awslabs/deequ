@@ -18,7 +18,6 @@ package com.amazon.deequ.profiles
 
 import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.statistics.DataTypeInstances
-import com.google.gson.{GsonBuilder, JsonArray, JsonObject, JsonPrimitive}
 
 /* Profiling results for the columns which will be given to the constraint suggestion engine */
 abstract class ColumnProfile {
@@ -63,87 +62,5 @@ case class ColumnProfiles(
 
 
 object ColumnProfiles {
-
   val DEFAULT_CARDINALITY_THRESHOLD = 120
-
-  def toJson(columnProfiles: Seq[ColumnProfile]): String = {
-
-    val json = new JsonObject()
-
-    val columns = new JsonArray()
-
-    columnProfiles.foreach { case profile =>
-
-      val columnProfileJson = new JsonObject()
-      columnProfileJson.addProperty("column", profile.column)
-      columnProfileJson.addProperty("dataType", profile.dataType.toString)
-      columnProfileJson.addProperty("isDataTypeInferred", profile.isDataTypeInferred.toString)
-
-      if (profile.typeCounts.nonEmpty) {
-        val typeCountsJson = new JsonObject()
-        profile.typeCounts.foreach { case (typeName, count) =>
-          typeCountsJson.addProperty(typeName, count.toString)
-        }
-      }
-
-      columnProfileJson.addProperty("completeness", profile.completeness)
-      columnProfileJson.addProperty("approximateNumDistinctValues",
-        profile.approximateNumDistinctValues)
-
-      if (profile.histogram.isDefined) {
-        val histogram = profile.histogram.get
-        val histogramJson = new JsonArray()
-
-        histogram.values.foreach { case (name, distributionValue) =>
-          val histogramEntry = new JsonObject()
-          histogramEntry.addProperty("value", name)
-          histogramEntry.addProperty("count", distributionValue.absolute)
-          histogramEntry.addProperty("ratio", distributionValue.ratio)
-          histogramJson.add(histogramEntry)
-        }
-
-        columnProfileJson.add("histogram", histogramJson)
-      }
-
-      profile match {
-        case numericColumnProfile: NumericColumnProfile =>
-          numericColumnProfile.mean.foreach { mean =>
-            columnProfileJson.addProperty("mean", mean)
-          }
-          numericColumnProfile.maximum.foreach { maximum =>
-            columnProfileJson.addProperty("maximum", maximum)
-          }
-          numericColumnProfile.minimum.foreach { minimum =>
-            columnProfileJson.addProperty("minimum", minimum)
-          }
-          numericColumnProfile.sum.foreach { sum =>
-            columnProfileJson.addProperty("sum", sum)
-          }
-          numericColumnProfile.stdDev.foreach { stdDev =>
-            columnProfileJson.addProperty("stdDev", stdDev)
-          }
-
-          val approxPercentilesJson = new JsonArray()
-          numericColumnProfile.approxPercentiles.foreach {
-            _.foreach { percentile =>
-              approxPercentilesJson.add(new JsonPrimitive(percentile))
-            }
-          }
-
-          columnProfileJson.add("approxPercentiles", approxPercentilesJson)
-
-        case _ =>
-      }
-
-      columns.add(columnProfileJson)
-    }
-
-    json.add("columns", columns)
-
-    val gson = new GsonBuilder()
-      .setPrettyPrinting()
-      .create()
-
-    gson.toJson(json)
-  }
 }

@@ -43,7 +43,9 @@ case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
     val targetCompleteness = BigDecimal(p - z * math.sqrt(p * (1 - p) / n))
       .setScale(2, RoundingMode.DOWN).toDouble
 
-    val constraint = StatisticConstraint[Double, Double](Completeness(profile.column), _ >= targetCompleteness)
+    val completeness = Completeness(profile.column)
+    val constraint = StatisticConstraint[Double, Double](completeness, _ >= targetCompleteness,
+      name = Some(s"CompletenessConstraint($completeness)"))
 
     val boundInPercent = ((1.0 - targetCompleteness) * 100).toInt
 

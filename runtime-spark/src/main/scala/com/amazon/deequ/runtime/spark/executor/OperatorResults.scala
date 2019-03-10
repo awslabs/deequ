@@ -17,9 +17,9 @@
 package com.amazon.deequ.runtime.spark.executor
 
 import com.amazon.deequ.metrics.Metric
-import com.amazon.deequ.repository.SimpleResultSerde
 import com.amazon.deequ.runtime.spark.operators.Operator
-//import com.amazon.deequ.repository.SimpleResultSerde
+import com.amazon.deequ.serialization.json.SimpleResultSerde
+//import com.amazon.deequ.serialization.json.SimpleResultSerde
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**

@@ -14,17 +14,16 @@
  *
  */
 
-package com.amazon.deequ.runtime.spark.executor
+package com.amazon.deequ
 
-import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.spark.operators.Operator
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import com.amazon.deequ.runtime._
+import com.amazon.deequ.statistics.Statistic
 
 /** A class to build an AnalysisRun using a fluent API */
-class SparkExecutorRunBuilder(val data: DataFrame) {
+class AnalysisRunBuilder(val data: Dataset, val engine: Engine) {
 
-  protected var analyzers: Seq[Operator[_, Metric[_]]] = Seq.empty
+  protected var analyzers: Seq[Statistic] = Seq.empty
 
   protected var metricsRepository: Option[MetricsRepository] = None
 
@@ -32,13 +31,15 @@ class SparkExecutorRunBuilder(val data: DataFrame) {
   protected var failIfResultsForReusingMissing: Boolean = false
   protected var saveOrAppendResultsKey: Option[ResultKey] = None
 
-  protected var sparkSession: Option[SparkSession] = None
   protected var saveSuccessMetricsJsonPath: Option[String] = None
   protected var overwriteOutputFiles: Boolean = false
 
-  protected def this(analysisRunBuilder: SparkExecutorRunBuilder) {
+  protected var aggregateWith: Option[StateLoader] = None
+  protected var saveStatesWith: Option[StatePersister] = None
 
-    this(analysisRunBuilder.data)
+  protected def this(analysisRunBuilder: AnalysisRunBuilder) {
+
+    this(analysisRunBuilder.data, analysisRunBuilder.engine)
 
     analyzers = analysisRunBuilder.analyzers
 
@@ -48,7 +49,6 @@ class SparkExecutorRunBuilder(val data: DataFrame) {
     failIfResultsForReusingMissing = analysisRunBuilder.failIfResultsForReusingMissing
     saveOrAppendResultsKey = analysisRunBuilder.saveOrAppendResultsKey
 
-    sparkSession = analysisRunBuilder.sparkSession
     overwriteOutputFiles = analysisRunBuilder.overwriteOutputFiles
     saveSuccessMetricsJsonPath = analysisRunBuilder.saveSuccessMetricsJsonPath
   }
@@ -58,7 +58,7 @@ class SparkExecutorRunBuilder(val data: DataFrame) {
     *
     * @param analyzer An analyzer to calculate a metric during the run
     */
-  def addAnalyzer(analyzer: Operator[_, Metric[_]]): this.type = {
+  def addAnalyzer(analyzer: Statistic): this.type = {
     analyzers :+= analyzer
     this
   }
@@ -68,8 +68,18 @@ class SparkExecutorRunBuilder(val data: DataFrame) {
     *
     * @param analyzers Analyzers to calculate metrics during the run
     */
-  def addAnalyzers(analyzers: Seq[Operator[_, Metric[_]]]): this.type = {
+  def addAnalyzers(analyzers: Seq[Statistic]): this.type = {
     this.analyzers ++= analyzers
+    this
+  }
+
+  def aggregateWith(stateLoader: StateLoader): this.type = {
+    this.aggregateWith = Some(stateLoader)
+    this
+  }
+
+  def saveStatesWith(statePersister: StatePersister): this.type = {
+    this.saveStatesWith = Some(statePersister)
     this
   }
 
@@ -80,46 +90,41 @@ class SparkExecutorRunBuilder(val data: DataFrame) {
     * @param metricsRepository A metrics repository to store and load results associated with the
     *                          run
     */
-  def useRepository(metricsRepository: MetricsRepository): SparkExecutorRunBuilderWithRepository = {
-
-    new SparkExecutorRunBuilderWithRepository(this, Option(metricsRepository))
+  def useRepository(metricsRepository: MetricsRepository): AnalysisRunBuilderWithRepository = {
+    new AnalysisRunBuilderWithRepository(this, Option(metricsRepository))
   }
 
-  /**
-    * Use a sparkSession to conveniently create output files
-    *
-    * @param sparkSession The SparkSession
-    */
-  def useSparkSession(
-      sparkSession: SparkSession)
-    : SparkExecutorRunBuilderWithSparkSession = {
-
-    new SparkExecutorRunBuilderWithSparkSession(this, Option(sparkSession))
-  }
-
-  def run(): OperatorResults = {
-    SparkExecutor.doAnalysisRun(
+  def run(): ComputedStatistics = {
+    engine.compute(
       data,
       analyzers,
-      metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
+      engineRepositoryOptions = EngineRepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
         saveOrAppendResultsKey
       ),
-      fileOutputOptions = AnalysisRunnerFileOutputOptions(
-        sparkSession,
-        saveSuccessMetricsJsonPath,
-        overwriteOutputFiles
-      )
+      aggregateWith = aggregateWith,
+      saveStatesWith = saveStatesWith
     )
+//      fileOutputOptions = AnalysisRunnerFileOutputOptions(
+//        sparkSession,
+//        saveSuccessMetricsJsonPath,
+//        overwriteOutputFiles
+//      )
   }
 }
 
-class SparkExecutorRunBuilderWithRepository(
-                                             analysisRunBuilder: SparkExecutorRunBuilder,
-                                             usingMetricsRepository: Option[MetricsRepository])
-  extends SparkExecutorRunBuilder(analysisRunBuilder) {
+object Analysis {
+  def onData(dataset: Dataset, engine: Engine): AnalysisRunBuilder = {
+    new AnalysisRunBuilder(dataset, engine)
+  }
+}
+
+class AnalysisRunBuilderWithRepository(
+    analysisRunBuilder: AnalysisRunBuilder,
+    usingMetricsRepository: Option[MetricsRepository])
+  extends AnalysisRunBuilder(analysisRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 
@@ -148,39 +153,6 @@ class SparkExecutorRunBuilderWithRepository(
     */
   def saveOrAppendResult(resultKey: ResultKey): this.type = {
     saveOrAppendResultsKey = Option(resultKey)
-    this
-  }
-}
-
-class SparkExecutorRunBuilderWithSparkSession(
-                                               analysisRunBuilder: SparkExecutorRunBuilder,
-                                               usingSparkSession: Option[SparkSession])
-  extends SparkExecutorRunBuilder(analysisRunBuilder) {
-
-  sparkSession = usingSparkSession
-
-  /**
-    * Save the success metrics json to e.g. S3
-    *
-    * @param path The file path
-    */
-  def saveSuccessMetricsJsonToPath(
-      path: String)
-    : this.type = {
-
-    saveSuccessMetricsJsonPath = Option(path)
-    this
-  }
-
-  /**
-    * Whether previous files with identical names should be overwritten when
-    * saving files to some file system.
-    *
-    * @param overwriteFiles Whether previous files with identical names
-    *                       should be overwritten
-    */
-  def overwritePreviousFiles(overwriteFiles: Boolean): this.type = {
-    overwriteOutputFiles = overwriteOutputFiles
     this
   }
 }

@@ -36,37 +36,6 @@ trait Constraint {
   def evaluate(analysisResults: Map[Statistic, Metric[_]]): ConstraintResult
 }
 
-/** Common trait for constraint decorators */
-class ConstraintDecorator(protected val _inner: Constraint) extends Constraint {
-  def inner: Constraint = {
-    _inner match {
-      case dc: ConstraintDecorator => dc.inner
-      case _ => _inner
-    }
-  }
-
-  override def evaluate(
-      analysisResults: Map[Statistic, Metric[_]])
-    : ConstraintResult = {
-
-    // most of the constraints are of type NamedConstraint
-    // having `this` as the constraint of the result to
-    // keep the more informative .toString of NamedConstraint
-    _inner.evaluate(analysisResults).copy(constraint = this)
-  }
-}
-
-/**
-  * Constraint decorator which holds a name of the constraint along with it
-  *
-  * @param constraint Delegate
-  * @param name       Name (Detailed message) for the constraint
-  */
-class NamedConstraint(private[deequ] val constraint: Constraint, name: String)
-    extends ConstraintDecorator(constraint) {
-  override def toString(): String = name
-}
-
 object ConstrainableDataTypes extends Enumeration {
   val Null: Value = Value(0)
   val Fractional: Value = Value(1)

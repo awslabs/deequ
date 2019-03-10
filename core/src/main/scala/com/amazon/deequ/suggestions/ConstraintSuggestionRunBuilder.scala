@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
+import com.amazon.deequ.RepositoryOptions
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.runtime.{Dataset, Engine}
@@ -175,7 +176,7 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
 //        saveConstraintSuggestionsJsonPath,
 //        saveEvaluationResultsJsonPath,
 //        overwriteOutputFiles),
-      ConstraintSuggestionMetricsRepositoryOptions(
+      RepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,

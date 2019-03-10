@@ -31,7 +31,9 @@ case class CompleteIfCompleteRule() extends ConstraintRule[ColumnProfile] {
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
 
-    val constraint = StatisticConstraint[Double, Double](Completeness(profile.column), Check.IsOne)
+    val completeness = Completeness(profile.column)
+    val constraint = StatisticConstraint[Double, Double](completeness, Check.IsOne,
+      name = Some(s"CompletenessConstraint($completeness)"))
 
     ConstraintSuggestion(
       constraint,

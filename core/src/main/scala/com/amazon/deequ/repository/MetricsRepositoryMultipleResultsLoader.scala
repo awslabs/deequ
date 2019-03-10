@@ -17,8 +17,8 @@ package com.amazon.deequ.repository
   */
 
 
-import com.amazon.deequ.ComputedStatistics
 import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.serialization.json.JsonSerializer
 import com.amazon.deequ.statistics.Statistic
 //import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -59,69 +59,38 @@ trait MetricsRepositoryMultipleResultsLoader {
     * Get the AnalysisResult
     */
   def get(): Seq[StatisticsResult]
+
+
+  //FIXLATER
+  //  /**
+  //    * Get the AnalysisResult as DataFrame
+  //    */
+  //  def getSuccessMetricsAsDataFrame(sparkSession: SparkSession, withTags: Seq[String] = Seq.empty)
+  //  : DataFrame = {
+  //    val analysisResults = get()
+  //
+  //    if (analysisResults.isEmpty) {
+  //      // Return an empty DataFrame that still contains the usual columns
+  //      AnalysisResult.getSuccessMetricsAsDataFrame(sparkSession,
+  //        AnalysisResult(ResultKey(0, Map.empty), AnalyzerContext(Map.empty)))
+  //    } else {
+  //      analysisResults
+  //        .map { result =>
+  //          AnalysisResult.getSuccessMetricsAsDataFrame(sparkSession, result, withTags = withTags)
+  //        }
+  //        .reduce(MetricsRepositoryMultipleResultsLoader.dataFrameUnion)
+  //    }
+  //  }
+  //
+  /** Get the AnalysisResult as DataFrame */
+  def getSuccessMetricsAsJson(withTags: Seq[String] = Seq.empty): String = {
+    JsonSerializer.metricsRepositoryResults(get(), withTags)
+  }
 }
 
-//FIXLATER
-//  /**
-//    * Get the AnalysisResult as DataFrame
-//    */
-//  def getSuccessMetricsAsDataFrame(sparkSession: SparkSession, withTags: Seq[String] = Seq.empty)
-//  : DataFrame = {
-//    val analysisResults = get()
-//
-//    if (analysisResults.isEmpty) {
-//      // Return an empty DataFrame that still contains the usual columns
-//      AnalysisResult.getSuccessMetricsAsDataFrame(sparkSession,
-//        AnalysisResult(ResultKey(0, Map.empty), AnalyzerContext(Map.empty)))
-//    } else {
-//      analysisResults
-//        .map { result =>
-//          AnalysisResult.getSuccessMetricsAsDataFrame(sparkSession, result, withTags = withTags)
-//        }
-//        .reduce(MetricsRepositoryMultipleResultsLoader.dataFrameUnion)
-//    }
-//  }
-//
-//  /** Get the AnalysisResult as DataFrame */
-//  def getSuccessMetricsAsJson(withTags: Seq[String] = Seq.empty): String = {
-//
-//    val analysisResults = get()
-//
-//    if (analysisResults.isEmpty) {
-//      // Handle this case exactly like directly calling the method on AnalysisResult
-//      AnalysisResult.getSuccessMetricsAsJson(
-//        AnalysisResult(ResultKey(0, Map.empty), AnalyzerContext.empty))
-//    } else {
-//      analysisResults
-//        .map { result => AnalysisResult.getSuccessMetricsAsJson(result, withTags = withTags) }
-//        .reduce(MetricsRepositoryMultipleResultsLoader.jsonUnion)
-//    }
-//  }
-//}
-//
-//private[repository] object MetricsRepositoryMultipleResultsLoader {
-//
-//  def jsonUnion(jsonOne: String, jsonTwo: String): String = {
-//
-//    val objectOne: Seq[Map[String, Any]] = SimpleResultSerde.deserialize(jsonOne)
-//    val objectTwo: Seq[Map[String, Any]] = SimpleResultSerde.deserialize(jsonTwo)
-//
-//    val columnsTotal = objectOne.headOption.getOrElse(Map.empty).keySet ++
-//      objectTwo.headOption.getOrElse(Map.empty).keySet
-//
-//    val unioned = (objectTwo ++ objectOne).map { map =>
-//
-//      var columnsToAdd = Map.empty[String, Any]
-//
-//      columnsTotal.diff(map.keySet).foreach { missingColumn =>
-//        columnsToAdd = columnsToAdd + (missingColumn -> null)
-//      }
-//
-//      map ++ columnsToAdd
-//    }
-//
-//    SimpleResultSerde.serialize(unioned)
-//  }
+private[repository] object MetricsRepositoryMultipleResultsLoader {
+
+
 //
 //  def dataFrameUnion(dataFrameOne: DataFrame, dataFrameTwo: DataFrame): DataFrame = {
 //
@@ -140,4 +109,4 @@ trait MetricsRepositoryMultipleResultsLoader {
 //      case colName => lit(null).as(colName)
 //    }
 //  }
-//}
+}

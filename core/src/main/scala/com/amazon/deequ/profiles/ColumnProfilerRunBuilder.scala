@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.profiles
 
+import com.amazon.deequ.RepositoryOptions
 import com.amazon.deequ.repository._
 import com.amazon.deequ.runtime.{Dataset, Engine}
 
@@ -124,7 +125,7 @@ class ColumnProfilerRunBuilder(val dataset: Dataset, val engine: Engine) {
 //        sparkSession,
 //        saveColumnProfilesJsonPath,
 //        overwriteOutputFiles),
-      ColumnProfilerRunBuilderMetricsRepositoryOptions(
+      RepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
