@@ -18,15 +18,13 @@ package com.amazon.deequ.examples
 
 import com.amazon.deequ.examples.ExampleUtils.withSpark
 import com.amazon.deequ.profiles.{ColumnProfilerRunner, NumericColumnProfile}
-import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.SparkDataset
 
 case class RawData(name: String, count: String, status: String, valuable: String)
 
 private[examples] object DataProfilingExample extends App {
 
   withSpark { session =>
-
-    val engine = SparkEngine(session)
 
     /* We profile raw data, mostly in string format (e.g., from a csv file) */
     val rows = session.sparkContext.parallelize(Seq(

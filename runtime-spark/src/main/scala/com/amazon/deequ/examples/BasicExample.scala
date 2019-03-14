@@ -27,8 +27,6 @@ private[examples] object BasicExample extends App {
 
   withSpark { session =>
 
-    val engine = SparkEngine(session)
-
     val data = itemsAsDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
       Item(2, "Thingy B", "available at http://thingb.com", null, 0),

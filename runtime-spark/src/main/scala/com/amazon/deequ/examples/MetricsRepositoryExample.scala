@@ -22,15 +22,13 @@ import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.spark.{DfsMetricsRepository, SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.{DfsMetricsRepository, SparkDataset}
 import com.amazon.deequ.statistics.Completeness
 import com.google.common.io.Files
 
 object MetricsRepositoryExample extends App {
 
   withSpark { session =>
-
-    val engine = SparkEngine(session)
 
     // The toy data on which we will compute metrics
     val data = itemsAsDataframe(session,

@@ -18,10 +18,8 @@ package com.amazon.deequ.examples
 
 import ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.Analysis
-import com.amazon.deequ.runtime.spark.{InMemorySparkStateProvider, SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.{InMemorySparkStateProvider, SparkDataset}
 import com.amazon.deequ.statistics.{ApproxCountDistinct, Completeness, Size}
-import org.apache.spark.sql.SparkSession
-
 
 private[examples] object IncrementalMetricsExample extends App {
 
@@ -30,8 +28,6 @@ private[examples] object IncrementalMetricsExample extends App {
      dataset using the AnalysisRunner. */
 
   withSpark { session =>
-
-    val engine = SparkEngine(session)
 
     val data = itemsAsDataframe(session,
       Item(1, "Thingy A", "awesome thing.", "high", 0),
@@ -42,7 +38,8 @@ private[examples] object IncrementalMetricsExample extends App {
       Item(4, "Thingy D", null, "low", 10),
       Item(5, "Thingy E", null, "high", 12))
 
-    val statistics = Seq(Size(), ApproxCountDistinct("id"), Completeness("name"), Completeness("description"))
+    val statistics = Seq(Size(), ApproxCountDistinct("id"), Completeness("name"),
+      Completeness("description"))
 
     val stateStore = InMemorySparkStateProvider()
 

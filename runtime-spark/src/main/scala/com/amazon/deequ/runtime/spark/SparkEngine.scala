@@ -34,8 +34,8 @@ case class SparkEngine(session: SparkSession) extends Engine {
       statistics: Seq[Statistic],
       aggregateWith: Option[StateLoader] = None,
       saveStatesWith: Option[StatePersister] = None,
-      engineRepositoryOptions: EngineRepositoryOptions
-    ): ComputedStatistics = {
+      engineRepositoryOptions: EngineRepositoryOptions)
+    : ComputedStatistics = {
 
     val analyzers = statistics.map { SparkEngine.matchingOperator }
 

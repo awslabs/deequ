@@ -22,14 +22,12 @@ import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.InMemoryMetricsRepository
 import com.amazon.deequ.checks.CheckStatus._
-import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.SparkDataset
 import com.amazon.deequ.statistics.Size
-//
+
 private[examples] object AnomalyDetectionExample extends App {
 
   withSpark { session =>
-
-    val engine = SparkEngine(session)
 
     /* In this simple example, we assume that we compute metrics on a dataset every day and we want
    to ensure that they don't change drastically. For sake of simplicity, we just look at the
