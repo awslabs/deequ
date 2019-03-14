@@ -19,7 +19,6 @@ package com.amazon.deequ.suggestions
 import com.amazon.deequ.{RepositoryOptions, VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.profiles.ColumnProfilerRunner
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 //import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
 //import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
@@ -50,14 +49,13 @@ object Rules {
 //@Experimental
 class ConstraintSuggestionRunner {
 
-  def onData(data: Dataset, engine: Engine): ConstraintSuggestionRunBuilder = {
-    new ConstraintSuggestionRunBuilder(data, engine)
+  def onData(data: Dataset): ConstraintSuggestionRunBuilder = {
+    new ConstraintSuggestionRunBuilder(data)
   }
 
 //  private[suggestions] def run(
   private[suggestions] def run(
       data: Dataset,
-      engine: Engine,
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
@@ -72,6 +70,8 @@ class ConstraintSuggestionRunner {
     testsetRatio.foreach { testsetRatio =>
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
     }
+
+    val engine = data.engine
 
     val (trainingData, testData) = engine.splitTrainTestSets(data, testsetRatio, testsetSplitRandomSeed)
 
@@ -135,7 +135,7 @@ class ConstraintSuggestionRunner {
     ): (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()
-      .onData(trainingData, engine)
+      .onData(trainingData)
       .printStatusUpdates(printStatusUpdates)
       .withLowCardinalityHistogramThreshold(lowCardinalityHistogramThreshold)
 
@@ -162,7 +162,7 @@ class ConstraintSuggestionRunner {
 
     val profiles = columnProfilerRunner.run()
 
-    val relevantColumns = getRelevantColumns(trainingData.columns(), restrictToColumns)
+    val relevantColumns = getRelevantColumns(trainingData.columns, restrictToColumns)
     val suggestions = applyRules(constraintRules, profiles, relevantColumns)
 
     (profiles, suggestions)
@@ -274,7 +274,7 @@ class ConstraintSuggestionRunner {
       val generatedCheck = Check(CheckLevel.Warning, "generated constraints", constraints)
 
       val verificationResult = VerificationSuite()
-        .onData(testData.get, engine)
+        .onData(testData.get)
         .addCheck(generatedCheck)
         .run()
 

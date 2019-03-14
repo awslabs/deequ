@@ -16,8 +16,6 @@ package com.amazon.deequ.repository
   *
   */
 
-
-import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.serialization.json.JsonSerializer
 import com.amazon.deequ.statistics.Statistic
 //import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -37,9 +35,9 @@ trait MetricsRepositoryMultipleResultsLoader {
   /**
     * Choose all metrics that you want to load
     *
-    * @param analyzers A sequence of analyers who's resulting metrics you want to load
+    * @param statistics A sequence of analyers who's resulting metrics you want to load
     */
-  def forAnalyzers(analyzers: Seq[Statistic]): MetricsRepositoryMultipleResultsLoader
+  def forStatistics(statistics: Seq[Statistic]): MetricsRepositoryMultipleResultsLoader
 
   /**
     * Convenience method to only look at AnalysisResults with a history key with a greater value
@@ -88,9 +86,6 @@ trait MetricsRepositoryMultipleResultsLoader {
   }
 }
 
-private[repository] object MetricsRepositoryMultipleResultsLoader {
-
-
 //
 //  def dataFrameUnion(dataFrameOne: DataFrame, dataFrameTwo: DataFrame): DataFrame = {
 //
@@ -109,4 +104,3 @@ private[repository] object MetricsRepositoryMultipleResultsLoader {
 //      case colName => lit(null).as(colName)
 //    }
 //  }
-}

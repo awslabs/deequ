@@ -45,7 +45,7 @@ private[deequ] object JsonSerializer {
    : String = {
 
     var serializableResult = SimpleResultSerde.deserialize(
-      computedStatistics(analysisResult.analyzerContext, forAnalyzers))
+      computedStatistics(analysisResult.computedStatistics, forAnalyzers))
       .asInstanceOf[Seq[Map[String, Any]]]
 
     serializableResult = addColumnToSerializableResult(

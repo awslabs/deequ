@@ -46,7 +46,7 @@ private[examples] object DataProfilingExample extends App {
     /* Make deequ profile this data. It will execute the three passes over the data and avoid
        any shuffles. */
     val result = ColumnProfilerRunner()
-      .onData(rawData, engine)
+      .onData(rawData)
       .run()
 
     /* We get a profile for each column which allows to inspect the completeness of the column,

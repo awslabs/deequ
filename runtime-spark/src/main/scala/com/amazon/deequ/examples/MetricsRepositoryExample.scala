@@ -52,7 +52,7 @@ object MetricsRepositoryExample extends App {
     val resultKey = ResultKey(System.currentTimeMillis(), Map("tag" -> "repositoryExample"))
 
     VerificationSuite()
-      .onData(SparkDataset(data), engine)
+      .onData(SparkDataset(data))
       // Some integrity checks
       .addCheck(Check(CheckLevel.Error, "integrity checks")
         .hasSize(_ == 5)

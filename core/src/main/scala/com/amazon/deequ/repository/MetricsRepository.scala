@@ -28,9 +28,9 @@ trait MetricsRepository {
     * Saves Analysis results (metrics)
     *
     * @param resultKey       A ResultKey that uniquely identifies a AnalysisResult
-    * @param analyzerContext The resulting AnalyzerContext of an Analysis
+    * @param computedStatistics The resulting AnalyzerContext of an Analysis
     */
-  def save(resultKey: ResultKey, analyzerContext: ComputedStatistics): Unit
+  def save(resultKey: ResultKey, computedStatistics: ComputedStatistics): Unit
 
   /**
     * Get a AnalyzerContext saved using exactly the same resultKey if present

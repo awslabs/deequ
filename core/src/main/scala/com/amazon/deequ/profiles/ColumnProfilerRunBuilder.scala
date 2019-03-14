@@ -21,7 +21,7 @@ import com.amazon.deequ.repository._
 import com.amazon.deequ.runtime.{Dataset, Engine}
 
 /** A class to build a Constraint Suggestion run using a fluent API */
-class ColumnProfilerRunBuilder(val dataset: Dataset, val engine: Engine) {
+class ColumnProfilerRunBuilder(val dataset: Dataset) {
 
   protected var printStatusUpdates: Boolean = false
   protected var cacheInputs: Boolean = false
@@ -40,7 +40,7 @@ class ColumnProfilerRunBuilder(val dataset: Dataset, val engine: Engine) {
 
   protected def this(columnProfileRunBuilder: ColumnProfilerRunBuilder) {
 
-    this(columnProfileRunBuilder.dataset, columnProfileRunBuilder.engine)
+    this(columnProfileRunBuilder.dataset)
 
     printStatusUpdates = columnProfileRunBuilder.printStatusUpdates
     cacheInputs = columnProfileRunBuilder.cacheInputs
@@ -116,7 +116,6 @@ class ColumnProfilerRunBuilder(val dataset: Dataset, val engine: Engine) {
   def run(): ColumnProfiles = {
     ColumnProfilerRunner().run(
       dataset,
-      engine,
       restrictToColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,

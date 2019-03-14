@@ -18,8 +18,7 @@ package com.amazon.deequ.profiles
 
 
 import com.amazon.deequ.RepositoryOptions
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.{Dataset, Engine}
+import com.amazon.deequ.runtime.Dataset
 
 
 private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
@@ -30,13 +29,12 @@ private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
 
 class ColumnProfilerRunner {
 
-  def onData(data: Dataset, engine: Engine): ColumnProfilerRunBuilder = {
-    new ColumnProfilerRunBuilder(data, engine)
+  def onData(data: Dataset): ColumnProfilerRunBuilder = {
+    new ColumnProfilerRunBuilder(data)
   }
 
   private[profiles] def run(
       data: Dataset,
-      engine: Engine,
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
@@ -45,7 +43,7 @@ class ColumnProfilerRunner {
       metricsRepositoryOptions: RepositoryOptions)
     : ColumnProfiles = {
 
-    val columnProfiles = engine.profile(
+    val columnProfiles = data.engine.profile(
       data,
       restrictToColumns,
       lowCardinalityHistogramThreshold,

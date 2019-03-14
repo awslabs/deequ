@@ -16,12 +16,16 @@
 
 package com.amazon.deequ.runtime.spark
 
-import com.amazon.deequ.runtime.Dataset
+import com.amazon.deequ.runtime.{Dataset, Engine}
 import org.apache.spark.sql.DataFrame
 
 case class SparkDataset(df: DataFrame) extends Dataset {
 
-  override def columns(): Seq[String] = {
+  override def engine: Engine = {
+    SparkEngine(df.sparkSession)
+  }
+
+  override def columns: Seq[String] = {
     df.schema.fields.map { _.name }
   }
 }

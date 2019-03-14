@@ -18,6 +18,7 @@ package com.amazon.deequ.runtime
 
 trait Dataset {
 
-  def columns(): Seq[String]
+  def engine: Engine
 
+  def columns: Seq[String]
 }

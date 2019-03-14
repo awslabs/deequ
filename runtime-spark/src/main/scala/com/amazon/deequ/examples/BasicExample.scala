@@ -37,7 +37,7 @@ private[examples] object BasicExample extends App {
       Item(5, "Thingy E", null, "high", 12))
 
     val verificationResult = VerificationSuite()
-      .onData(SparkDataset(data), engine)
+      .onData(SparkDataset(data))
       .addCheck(
         Check(CheckLevel.Error, "integrity checks")
           // we expect 5 records

@@ -47,15 +47,15 @@ private[examples] object IncrementalMetricsExample extends App {
     val stateStore = InMemorySparkStateProvider()
 
     val metricsForData = Analysis
-      .onData(SparkDataset(data), engine)
-      .addAnalyzers(statistics)
+      .onData(SparkDataset(data))
+      .addStatistics(statistics)
       .saveStatesWith(stateStore)
       .run()
 
     // We update the metrics now from the stored states without having to access the previous data!
     val metricsAfterAddingMoreData = Analysis
-      .onData(SparkDataset(moreData), engine)
-      .addAnalyzers(statistics)
+      .onData(SparkDataset(moreData))
+      .addStatistics(statistics)
       .aggregateWith(stateStore)
       .run()
 

@@ -23,7 +23,7 @@ import com.amazon.deequ.runtime.{Dataset, Engine}
 import com.amazon.deequ.statistics.Statistic
 
 /** A class to build a VerificationRun using a fluent API */
-class VerificationRunBuilder(val data: Dataset, val engine: Engine) {
+class VerificationRunBuilder(val data: Dataset) {
 
   protected var requiredAnalyzers: Seq[Statistic] = Seq.empty
 
@@ -40,7 +40,7 @@ class VerificationRunBuilder(val data: Dataset, val engine: Engine) {
   protected var overwriteOutputFiles: Boolean = false
 
   protected def this(verificationRunBuilder: VerificationRunBuilder) {
-    this(verificationRunBuilder.data, verificationRunBuilder.engine)
+    this(verificationRunBuilder.data)
 
     requiredAnalyzers = verificationRunBuilder.requiredAnalyzers
 
@@ -115,7 +115,6 @@ class VerificationRunBuilder(val data: Dataset, val engine: Engine) {
   def run(): VerificationResult = {
     VerificationSuite().doVerificationRun(
       data,
-      engine,
       checks,
       requiredAnalyzers,
       metricsRepositoryOptions = RepositoryOptions(

@@ -1044,7 +1044,7 @@ object Check {
     afterDate.foreach { afterDate =>
       repositoryLoader = repositoryLoader.after(afterDate) }
 
-    repositoryLoader = repositoryLoader.forAnalyzers(Seq(analyzer))
+    repositoryLoader = repositoryLoader.forStatistics(Seq(analyzer))
 
     val analysisResults = repositoryLoader.get()
 
@@ -1057,7 +1057,7 @@ object Check {
       // (sorting is stable in Scala)
       .sortBy(_.resultKey.tags.values)
       .map { analysisResult =>
-        val analyzerContextMetricMap = analysisResult.analyzerContext.metricMap
+        val analyzerContextMetricMap = analysisResult.computedStatistics.metricMap
 
         val onlyAnalyzerMetricEntryInLoadedAnalyzerContext = analyzerContextMetricMap.headOption
 

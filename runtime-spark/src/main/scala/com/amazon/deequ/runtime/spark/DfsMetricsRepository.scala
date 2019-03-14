@@ -65,7 +65,7 @@ class DfsMetricsRepository(session: SparkSession, path: String) extends MetricsR
     *                        DQ checks were run on.
     */
   override def loadByKey(resultKey: ResultKey): Option[ComputedStatistics] = {
-    load().get().find(_.resultKey == resultKey).map(_.analyzerContext)
+    load().get().find(_.resultKey == resultKey).map(_.computedStatistics)
   }
 
   /** Get a builder class to construct a loading query to get AnalysisResults */
@@ -97,7 +97,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
     *
     * @param analyzers A sequence of analyers who's resulting metrics you want to load
     */
-  def forAnalyzers(analyzers: Seq[Statistic])
+  def forStatistics(analyzers: Seq[Statistic])
     : MetricsRepositoryMultipleResultsLoader = {
 
     this.forAnalyzers = Option(analyzers)
@@ -144,7 +144,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
       .map { analysisResult =>
 
         val requestedMetrics = analysisResult
-          .analyzerContext
+          .computedStatistics
           .metricMap
           .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer))
 

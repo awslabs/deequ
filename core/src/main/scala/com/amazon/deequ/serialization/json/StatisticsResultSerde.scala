@@ -141,7 +141,7 @@ private[deequ] object AnalysisResultSerializer extends JsonSerializer[Statistics
     result.add(RESULT_KEY_FIELD, context.serialize(analysisResult.resultKey, classOf[ResultKey]))
 
     result.add(ANALYZER_CONTEXT_FIELD,
-      context.serialize(analysisResult.analyzerContext, classOf[ComputedStatistics]))
+      context.serialize(analysisResult.computedStatistics, classOf[ComputedStatistics]))
 
     result
   }

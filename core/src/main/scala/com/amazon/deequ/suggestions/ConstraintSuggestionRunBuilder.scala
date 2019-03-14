@@ -23,7 +23,7 @@ import com.amazon.deequ.runtime.{Dataset, Engine}
 import com.amazon.deequ.suggestions.rules.ConstraintRule
 
 /** A class to build a Constraint Suggestion run using a fluent API */
-class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
+class ConstraintSuggestionRunBuilder(val dataset: Dataset) {
 
   protected var constraintRules: Seq[ConstraintRule[ColumnProfile]] = Seq.empty
   protected var printStatusUpdates: Boolean = false
@@ -45,7 +45,7 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
-    this(constraintSuggestionRunBuilder.dataset, constraintSuggestionRunBuilder.engine)
+    this(constraintSuggestionRunBuilder.dataset)
 
     constraintRules = constraintSuggestionRunBuilder.constraintRules
     printStatusUpdates = constraintSuggestionRunBuilder.printStatusUpdates
@@ -162,7 +162,6 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset, val engine: Engine) {
   def run(): ConstraintSuggestionResult = {
     ConstraintSuggestionRunner().run(
       dataset,
-      engine,
       constraintRules,
       restrictToColumns,
       lowCardinalityHistogramThreshold,

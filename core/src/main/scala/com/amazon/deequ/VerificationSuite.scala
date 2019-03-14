@@ -36,8 +36,8 @@ class VerificationSuite {
     *
     * @param data tabular data on which the checks should be verified
     */
-  def onData(data: Dataset, engine: Engine): VerificationRunBuilder = {
-    new VerificationRunBuilder(data, engine)
+  def onData(data: Dataset): VerificationRunBuilder = {
+    new VerificationRunBuilder(data)
   }
 
 
@@ -59,7 +59,6 @@ class VerificationSuite {
     */
   private[deequ] def doVerificationRun(
       data: Dataset,
-      engine: Engine,
       checks: Seq[Check],
       requiredAnalyzers: Seq[Statistic],
       //aggregateWith: Option[StateLoader] = None,
@@ -71,7 +70,7 @@ class VerificationSuite {
 
     val analyzers = requiredAnalyzers ++ checks.flatMap { _.requiredAnalyzers() }
 
-    val analysisResults = engine.compute(
+    val analysisResults = data.engine.compute(
       data,
       analyzers,
       //aggregateWith,

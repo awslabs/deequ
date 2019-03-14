@@ -21,9 +21,9 @@ import com.amazon.deequ.runtime._
 import com.amazon.deequ.statistics.Statistic
 
 /** A class to build an AnalysisRun using a fluent API */
-class AnalysisRunBuilder(val data: Dataset, val engine: Engine) {
+class AnalysisRunBuilder(val data: Dataset) {
 
-  protected var analyzers: Seq[Statistic] = Seq.empty
+  protected var statistics: Seq[Statistic] = Seq.empty
 
   protected var metricsRepository: Option[MetricsRepository] = None
 
@@ -39,9 +39,9 @@ class AnalysisRunBuilder(val data: Dataset, val engine: Engine) {
 
   protected def this(analysisRunBuilder: AnalysisRunBuilder) {
 
-    this(analysisRunBuilder.data, analysisRunBuilder.engine)
+    this(analysisRunBuilder.data)
 
-    analyzers = analysisRunBuilder.analyzers
+    statistics = analysisRunBuilder.statistics
 
     metricsRepository = analysisRunBuilder.metricsRepository
 
@@ -56,20 +56,20 @@ class AnalysisRunBuilder(val data: Dataset, val engine: Engine) {
    /**
     * Add a single analyzer to the run.
     *
-    * @param analyzer An analyzer to calculate a metric during the run
+    * @param statistic An analyzer to calculate a metric during the run
     */
-  def addAnalyzer(analyzer: Statistic): this.type = {
-    analyzers :+= analyzer
+  def addStatistic(statistic: Statistic): this.type = {
+    statistics :+= statistic
     this
   }
 
   /**
     * Add multiple analyzers to the run.
     *
-    * @param analyzers Analyzers to calculate metrics during the run
+    * @param statistics Analyzers to calculate metrics during the run
     */
-  def addAnalyzers(analyzers: Seq[Statistic]): this.type = {
-    this.analyzers ++= analyzers
+  def addStatistics(statistics: Seq[Statistic]): this.type = {
+    this.statistics ++= statistics
     this
   }
 
@@ -95,9 +95,9 @@ class AnalysisRunBuilder(val data: Dataset, val engine: Engine) {
   }
 
   def run(): ComputedStatistics = {
-    engine.compute(
+    data.engine.compute(
       data,
-      analyzers,
+      statistics,
       engineRepositoryOptions = EngineRepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
@@ -116,8 +116,8 @@ class AnalysisRunBuilder(val data: Dataset, val engine: Engine) {
 }
 
 object Analysis {
-  def onData(dataset: Dataset, engine: Engine): AnalysisRunBuilder = {
-    new AnalysisRunBuilder(dataset, engine)
+  def onData(dataset: Dataset): AnalysisRunBuilder = {
+    new AnalysisRunBuilder(dataset)
   }
 }
 

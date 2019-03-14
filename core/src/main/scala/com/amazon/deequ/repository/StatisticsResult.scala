@@ -19,7 +19,7 @@ package com.amazon.deequ.repository
 import com.amazon.deequ.ComputedStatistics
 
 
-private[deequ] case class StatisticsResult(resultKey: ResultKey, analyzerContext: ComputedStatistics)
+private[deequ] case class StatisticsResult(resultKey: ResultKey, computedStatistics: ComputedStatistics)
 
 
 //  /**

@@ -104,7 +104,7 @@ class StatisticsResultSerdeTest extends FlatSpec with Matchers {
 
     val clonedResult = deserialize(serialize(Seq(result))).head
 
-    val (clonedAnalyzer, clonedMetric) = clonedResult.analyzerContext.metricMap
+    val (clonedAnalyzer, clonedMetric) = clonedResult.computedStatistics.metricMap
       .collect { case (analyzer: PatternMatch, metric: DoubleMetric) =>
         analyzer -> metric
       }

@@ -50,7 +50,7 @@ private[examples] object AnomalyDetectionExample extends App {
     /* We test for anomalies in the size of the data, it should not increase by more than 2x. Note
        that we store the resulting metrics in our repository */
     VerificationSuite()
-      .onData(SparkDataset(yesterdaysDataset), engine)
+      .onData(SparkDataset(yesterdaysDataset))
       .useRepository(metricsRepository)
       .saveOrAppendResult(yesterdaysKey)
       .addAnomalyCheck(
@@ -73,7 +73,7 @@ private[examples] object AnomalyDetectionExample extends App {
 
     /* Repeat the anomaly check for today's data */
     val verificationResult = VerificationSuite()
-      .onData(SparkDataset(todaysDataset), engine)
+      .onData(SparkDataset(todaysDataset))
       .useRepository(metricsRepository)
       .saveOrAppendResult(todaysKey)
       .addAnomalyCheck(
@@ -89,7 +89,7 @@ private[examples] object AnomalyDetectionExample extends App {
       /* Lets have a look at the actual metrics. */
       metricsRepository
         .load()
-        .forAnalyzers(Seq(Size()))
+        .forStatistics(Seq(Size()))
         //getSuccessMetricsAsDataFrame(session) //FIXLATER
         .get()
         //.show()
