@@ -100,14 +100,17 @@ public class AttributeReferenceCreation {
                         emptyMetadata, exprId, none, false);
             } else {
                 // Spark 2.4
-                if (Seq.class.isAssignableFrom(apply.getParameterTypes()[5])) {
+                Class<?> qualifierParameterType = apply.getParameterTypes()[5];
+                boolean qualifierParameterTypeIsSeq =
+                    Seq.class.isAssignableFrom(qualifierParameterType);
+                if (qualifierParameterTypeIsSeq) {
                     return (AttributeReference) apply.invoke(companion, name, dataType, true,
                             emptyMetadata, exprId, Seq$.MODULE$.<String>empty());
+                } else {
+                    // Spark 2.3
+                    return (AttributeReference) apply.invoke(companion, name, dataType, true,
+                            emptyMetadata, exprId, none);
                 }
-
-                // Spark 2.3
-                return (AttributeReference) apply.invoke(companion, name, dataType, true,
-                        emptyMetadata, exprId, none);
             }
         } catch (Exception e) {
             throw new IllegalStateException(e);
