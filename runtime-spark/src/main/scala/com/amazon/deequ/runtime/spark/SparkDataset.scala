@@ -17,11 +17,11 @@
 package com.amazon.deequ.runtime.spark
 
 import com.amazon.deequ.runtime.{Dataset, Engine}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-case class SparkDataset(df: DataFrame) extends Dataset {
+case class SparkDataset(df: DataFrame) extends Dataset[SparkSession] {
 
-  override def engine: Engine = {
+  override def engine: Engine[SparkSession] = {
     SparkEngine(df.sparkSession)
   }
 

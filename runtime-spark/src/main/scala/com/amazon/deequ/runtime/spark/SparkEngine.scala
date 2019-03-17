@@ -27,13 +27,13 @@ import com.amazon.deequ.runtime.spark.executor.{OperatorResults, SparkExecutor}
 import com.amazon.deequ.runtime.spark.operators._
 import com.amazon.deequ.statistics._
 
-case class SparkEngine(session: SparkSession) extends Engine {
+case class SparkEngine(session: SparkSession) extends Engine[SparkSession] {
 
   override def compute(
-      data: Dataset,
+      data: Dataset[SparkSession],
       statistics: Seq[Statistic],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None,
+      aggregateWith: Option[StateLoader[SparkSession]] = None,
+      saveStatesWith: Option[StatePersister[SparkSession]] = None,
       engineRepositoryOptions: EngineRepositoryOptions)
     : ComputedStatistics = {
 
@@ -59,10 +59,10 @@ case class SparkEngine(session: SparkSession) extends Engine {
   }
 
   override def splitTrainTestSets(
-      data: Dataset,
+      data: Dataset[SparkSession],
       testsetRatio: Option[Double],
       testsetSplitRandomSeed: Option[Long])
-    : (Dataset, Option[Dataset]) = {
+    : (Dataset[SparkSession], Option[Dataset[SparkSession]]) = {
 
     val df = data.asInstanceOf[SparkDataset].df
 
@@ -82,7 +82,7 @@ case class SparkEngine(session: SparkSession) extends Engine {
   }
 
   override def profile(
-      dataset: Dataset,
+      dataset: Dataset[SparkSession],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,

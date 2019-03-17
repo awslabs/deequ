@@ -17,7 +17,7 @@
 package com.amazon.deequ.suggestions
 
 import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.SparkDataset
 import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.FixtureSupport
 import com.google.gson.JsonParser
@@ -461,11 +461,10 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
 
   private[this] def evaluate(session: SparkSession)(test: ConstraintSuggestionResult => Unit): Unit = {
 
-    val engine = SparkEngine(session)
     val data = SparkDataset(getDfFull(session))
 
     val results = ConstraintSuggestionRunner()
-      .onData(data, engine)
+      .onData(data)
       .addConstraintRules(Rules.DEFAULT)
       .addConstraintRule(UniqueIfApproximatelyUniqueRule())
       .run()
@@ -476,11 +475,10 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
   private[this] def evaluateWithTrainTestSplit(session: SparkSession)(test: ConstraintSuggestionResult => Unit)
     : Unit = {
 
-    val engine = SparkEngine(session)
     val data = SparkDataset(getDfFull(session))
 
     val results = ConstraintSuggestionRunner()
-      .onData(data, engine)
+      .onData(data)
       .addConstraintRules(Rules.DEFAULT)
       .addConstraintRule(UniqueIfApproximatelyUniqueRule())
       .useTrainTestSplitWithTestsetRatio(0.1, Some(0))

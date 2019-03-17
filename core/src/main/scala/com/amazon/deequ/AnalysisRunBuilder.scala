@@ -21,7 +21,7 @@ import com.amazon.deequ.runtime._
 import com.amazon.deequ.statistics.Statistic
 
 /** A class to build an AnalysisRun using a fluent API */
-class AnalysisRunBuilder(val data: Dataset) {
+class AnalysisRunBuilder[T](val data: Dataset[T]) {
 
   protected var statistics: Seq[Statistic] = Seq.empty
 
@@ -34,10 +34,10 @@ class AnalysisRunBuilder(val data: Dataset) {
   protected var saveSuccessMetricsJsonPath: Option[String] = None
   protected var overwriteOutputFiles: Boolean = false
 
-  protected var aggregateWith: Option[StateLoader] = None
-  protected var saveStatesWith: Option[StatePersister] = None
+  protected var aggregateWith: Option[StateLoader[T]] = None
+  protected var saveStatesWith: Option[StatePersister[T]] = None
 
-  protected def this(analysisRunBuilder: AnalysisRunBuilder) {
+  protected def this(analysisRunBuilder: AnalysisRunBuilder[T]) {
 
     this(analysisRunBuilder.data)
 
@@ -73,12 +73,12 @@ class AnalysisRunBuilder(val data: Dataset) {
     this
   }
 
-  def aggregateWith(stateLoader: StateLoader): this.type = {
+  def aggregateWith(stateLoader: StateLoader[T]): this.type = {
     this.aggregateWith = Some(stateLoader)
     this
   }
 
-  def saveStatesWith(statePersister: StatePersister): this.type = {
+  def saveStatesWith(statePersister: StatePersister[T]): this.type = {
     this.saveStatesWith = Some(statePersister)
     this
   }
@@ -90,7 +90,7 @@ class AnalysisRunBuilder(val data: Dataset) {
     * @param metricsRepository A metrics repository to store and load results associated with the
     *                          run
     */
-  def useRepository(metricsRepository: MetricsRepository): AnalysisRunBuilderWithRepository = {
+  def useRepository(metricsRepository: MetricsRepository): AnalysisRunBuilderWithRepository[T] = {
     new AnalysisRunBuilderWithRepository(this, Option(metricsRepository))
   }
 
@@ -116,15 +116,15 @@ class AnalysisRunBuilder(val data: Dataset) {
 }
 
 object Analysis {
-  def onData(dataset: Dataset): AnalysisRunBuilder = {
+  def onData[T](dataset: Dataset[T]): AnalysisRunBuilder[T] = {
     new AnalysisRunBuilder(dataset)
   }
 }
 
-class AnalysisRunBuilderWithRepository(
-    analysisRunBuilder: AnalysisRunBuilder,
+class AnalysisRunBuilderWithRepository[T](
+    analysisRunBuilder: AnalysisRunBuilder[T],
     usingMetricsRepository: Option[MetricsRepository])
-  extends AnalysisRunBuilder(analysisRunBuilder) {
+  extends AnalysisRunBuilder[T](analysisRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 

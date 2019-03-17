@@ -47,15 +47,15 @@ object Rules {
   *
   */
 //@Experimental
-class ConstraintSuggestionRunner {
+class ConstraintSuggestionRunner[T] {
 
-  def onData(data: Dataset): ConstraintSuggestionRunBuilder = {
+  def onData(data: Dataset[T]): ConstraintSuggestionRunBuilder[T] = {
     new ConstraintSuggestionRunBuilder(data)
   }
 
 //  private[suggestions] def run(
   private[suggestions] def run(
-      data: Dataset,
+      data: Dataset[T],
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
@@ -125,8 +125,8 @@ class ConstraintSuggestionRunner {
 
 
   private[suggestions] def profileAndSuggest(
-      trainingData: Dataset,
-      engine: Engine,
+      trainingData: Dataset[T],
+      engine: Engine[T],
       constraintRules: Seq[ConstraintRule[ColumnProfile]],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
@@ -258,8 +258,8 @@ class ConstraintSuggestionRunner {
 //  }
 
   private[this] def evaluateConstraintsIfNecessary(
-     testData: Option[Dataset],
-     engine: Engine,
+     testData: Option[Dataset[T]],
+     engine: Engine[T],
      printStatusUpdates: Boolean,
      constraintSuggestions: Seq[ConstraintSuggestion])//,
 //     fileOutputOptions: ConstraintSuggestionFileOutputOptions)
@@ -294,7 +294,7 @@ class ConstraintSuggestionRunner {
 
 object ConstraintSuggestionRunner {
 
-  def apply(): ConstraintSuggestionRunner = {
-    new ConstraintSuggestionRunner()
+  def apply[T](): ConstraintSuggestionRunner[T] = {
+    new ConstraintSuggestionRunner[T]()
   }
 }

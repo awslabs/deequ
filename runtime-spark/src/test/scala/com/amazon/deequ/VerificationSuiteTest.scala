@@ -21,13 +21,12 @@ import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.InMemoryMetricsRepository
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.spark.{DfsUtils, SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.SparkDataset
 import com.amazon.deequ.statistics._
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.scalatest.{Matchers, WordSpec}
-import com.amazon.deequ.TestUtils.calculateSingle
 
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
@@ -41,11 +40,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
                            (expectedStatus: CheckStatus.Value)
           : Unit = {
 
-          val engine = SparkEngine(sparkSession)
           val dataset = SparkDataset(data)
 
           val verificationSuiteStatus = VerificationSuite()
-            .onData(dataset, engine)
+            .onData(dataset)
             .addChecks(checks)
             .run()
             .status
@@ -104,7 +102,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           MutualInformation(Seq("att1", "att2")) :: Nil // Analyzer that works on multi column
 
         VerificationSuite()
-          .onData(SparkDataset(df), SparkEngine(df.sparkSession))
+          .onData(SparkDataset(df))
           .addCheck(checkToSucceed)
           .addRequiredAnalyzers(analyzers)
           .run()
@@ -134,7 +132,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       import sparkSession.implicits._
       val df = getDfFull(sparkSession)
 
-      val result = VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession))
+      val result = VerificationSuite().onData(SparkDataset(df))
         .addRequiredAnalyzer(Size())
         .run()
 
@@ -198,7 +196,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        val metrics = VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession))
+        val metrics = VerificationSuite().onData(SparkDataset(df))
           .useRepository(repository)
           .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run().metrics
 
@@ -217,18 +215,18 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        val completeMetricResults = VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession))
+        val completeMetricResults = VerificationSuite().onData(SparkDataset(df))
           .useRepository(repository)
           .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run().metrics
 
         val completeAnalyzerContext = ComputedStatistics(completeMetricResults)
 
         // Calculate and save results for first analyzer
-        VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession)).useRepository(repository)
+        VerificationSuite().onData(SparkDataset(df)).useRepository(repository)
           .addRequiredAnalyzer(Size()).saveOrAppendResult(resultKey).run()
 
         // Calculate and append results for second analyzer
-        VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession)).useRepository(repository)
+        VerificationSuite().onData(SparkDataset(df)).useRepository(repository)
           .addRequiredAnalyzer(Completeness("item"))
           .saveOrAppendResult(resultKey).run()
 
@@ -245,7 +243,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        val actualResult = VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession))
+        val actualResult = VerificationSuite().onData(SparkDataset(df))
           .useRepository(repository)
           .addRequiredAnalyzers(analyzers).run()
         val expectedAnalyzerContextOnLoadByKey = ComputedStatistics(actualResult.metrics)
@@ -256,7 +254,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         repository.save(resultKey, resultWhichShouldBeOverwritten)
 
         // This should overwrite the previous Size value
-        VerificationSuite().onData(SparkDataset(df), SparkEngine(df.sparkSession)).useRepository(repository)
+        VerificationSuite().onData(SparkDataset(df)).useRepository(repository)
           .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run()
 
         assert(expectedAnalyzerContextOnLoadByKey == repository.loadByKey(resultKey).get)
@@ -271,7 +269,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val analyzers = Completeness("item") :: Nil
 
         val verificationResult = VerificationSuite()
-          .onData(SparkDataset(df), SparkEngine(df.sparkSession))
+          .onData(SparkDataset(df))
           .useRepository(repository)
           .addRequiredAnalyzers(analyzers)
           .saveOrAppendResult(saveResultsWithKey)

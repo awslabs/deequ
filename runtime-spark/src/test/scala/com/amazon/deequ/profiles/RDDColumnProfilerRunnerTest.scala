@@ -37,27 +37,26 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
     "save and reuse existing results for column profile runs" in
       withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
 
-        val engine = SparkEngine(sparkSession)
         val df = SparkDataset(getDfWithNumericValues(sparkSession))
 
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
 
-        ColumnProfilerRunner().onData(df, engine)
+        ColumnProfilerRunner().onData(df)
           .useRepository(repository)
           .saveOrAppendResult(resultKey)
           .run()
 
         val (separateResults: ColumnProfiles, jobNumberAllCalculations) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ColumnProfilerRunner().onData(df, engine).run()
+            val results = ColumnProfilerRunner().onData(df).run()
 
             (results, stat.jobCount)
           }
 
         val (resultsReusingMetrics: ColumnProfiles, jobNumberReusing) = sparkMonitor
           .withMonitoringSession { stat =>
-            val results = ColumnProfilerRunner().onData(df, engine).useRepository(repository)
+            val results = ColumnProfilerRunner().onData(df).useRepository(repository)
               .reuseExistingResultsForKey(resultKey).run()
 
             (results, stat.jobCount)
@@ -79,7 +78,7 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        ColumnProfilerRunner().onData(df, engine).useRepository(repository)
+        ColumnProfilerRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         val analyzerContext = engine.compute(df, analyzers)
@@ -92,7 +91,6 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
     "only append results to repository without unnecessarily overwriting existing ones" in
       withSparkSession { sparkSession =>
 
-        val engine = SparkEngine(sparkSession)
         val df = SparkDataset(getDfWithNumericValues(sparkSession))
 
         val repository = new InMemoryMetricsRepository
@@ -100,17 +98,17 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
 
         val analyzers = Size() :: Completeness("item") :: Nil
 
-        val completeMetricResults = VerificationSuite().onData(df, engine).useRepository(repository)
+        val completeMetricResults = VerificationSuite().onData(df).useRepository(repository)
           .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run().metrics
 
         val completeAnalyzerContext = ComputedStatistics(completeMetricResults)
 
         // Calculate and save results for first analyzer
-        ColumnProfilerRunner().onData(df, engine).useRepository(repository)
+        ColumnProfilerRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         // Calculate and append results for second analyzer
-        ColumnProfilerRunner().onData(df, engine).useRepository(repository)
+        ColumnProfilerRunner().onData(df).useRepository(repository)
           .saveOrAppendResult(resultKey).run()
 
         assert(completeAnalyzerContext.metricMap.size == 2)
@@ -137,7 +135,7 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
       repository.save(resultKey, resultWhichShouldBeOverwritten)
 
       // This should overwrite the previous Size value
-      ColumnProfilerRunner().onData(df, engine)
+      ColumnProfilerRunner().onData(df)
         .useRepository(repository)
         .saveOrAppendResult(resultKey).run()
 
@@ -166,12 +164,11 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
     "fail if specified when the calculation of new metrics would be needed when " +
       "reusing previous results" in withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
 
-      val engine = SparkEngine(sparkSession)
       val df = SparkDataset(getDfWithNumericValues(sparkSession))
 
       intercept[ReusingNotPossibleResultsMissingException](
         ColumnProfilerRunner()
-          .onData(df, engine)
+          .onData(df)
           .useRepository(new InMemoryMetricsRepository())
           .reuseExistingResultsForKey(ResultKey(0), true)
           .run()

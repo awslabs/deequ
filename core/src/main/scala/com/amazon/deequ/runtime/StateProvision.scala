@@ -16,6 +16,6 @@
 
 package com.amazon.deequ.runtime
 
-trait StateLoader
+trait StateLoader[T]
 
-trait StatePersister
+trait StatePersister[T]

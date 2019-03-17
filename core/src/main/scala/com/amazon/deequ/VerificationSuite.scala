@@ -18,7 +18,7 @@ package com.amazon.deequ
 
 import com.amazon.deequ.checks.{Check, CheckStatus}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-import com.amazon.deequ.runtime.{Dataset, Engine, EngineRepositoryOptions}
+import com.amazon.deequ.runtime.{Dataset, EngineRepositoryOptions}
 import com.amazon.deequ.statistics.Statistic
 
 //FIXLATER
@@ -29,14 +29,14 @@ import com.amazon.deequ.statistics.Statistic
 //                                                         overwriteOutputFiles: Boolean = false)
 
 /** Responsible for running checks and required analysis and return the results */
-class VerificationSuite {
+class VerificationSuite[T] {
 
   /**
     * Starting point to construct a VerificationRun.
     *
     * @param data tabular data on which the checks should be verified
     */
-  def onData(data: Dataset): VerificationRunBuilder = {
+  def onData(data: Dataset[T]): VerificationRunBuilder[T] = {
     new VerificationRunBuilder(data)
   }
 
@@ -50,15 +50,13 @@ class VerificationSuite {
     * @param checks           A sequence of check objects to be executed
     * @param requiredAnalyzers can be used to enforce the calculation of some some metrics
     *                          regardless of if there are constraints on them (optional)
-    * @param aggregateWith    loader from which we retrieve initial states to aggregate (optional)
-    * @param saveStatesWith   persist resulting states for the configured analyzers (optional)
     * @param metricsRepositoryOptions Options related to the MetricsRepository
     * //@param fileOutputOptions Options related to FileOuput using a SparkSession
     * @return Result for every check including the overall status, detailed status for each
     *         constraints and all metrics produced
     */
   private[deequ] def doVerificationRun(
-      data: Dataset,
+      data: Dataset[T],
       checks: Seq[Check],
       requiredAnalyzers: Seq[Statistic],
       //aggregateWith: Option[StateLoader] = None,
@@ -239,8 +237,8 @@ class VerificationSuite {
 /** Convenience functions for using the VerificationSuite */
 object VerificationSuite {
 
-  def apply(): VerificationSuite = {
-    new VerificationSuite()
+  def apply[T](): VerificationSuite[T] = {
+    new VerificationSuite[T]()
   }
 
 //FIXLATER

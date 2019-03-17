@@ -197,13 +197,12 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
 
     "fail if specified when the calculation of new metrics would be needed when " +
       "reusing previous results" in withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
-
-      val engine = SparkEngine(sparkSession)
+      
       val df = SparkDataset(getDfWithNumericValues(sparkSession))
 
       intercept[ReusingNotPossibleResultsMissingException](
         ConstraintSuggestionRunner()
-          .onData(df, engine)
+          .onData(df)
           .addConstraintRules(Rules.DEFAULT)
           .useRepository(new InMemoryMetricsRepository())
           .reuseExistingResultsForKey(ResultKey(0), true)

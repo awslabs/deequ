@@ -21,20 +21,20 @@ import com.amazon.deequ.profiles.ColumnProfiles
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.statistics.Statistic
 
-trait Engine {
+trait Engine[T] {
 
   def compute(
-      data: Dataset,
+      data: Dataset[T],
       statistics: Seq[Statistic],
-      aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None,
+      aggregateWith: Option[StateLoader[T]] = None,
+      saveStatesWith: Option[StatePersister[T]] = None,
       engineRepositoryOptions: EngineRepositoryOptions = EngineRepositoryOptions())
 //                                    fileOutputOptions: AnalysisRunnerFileOutputOptions =
 //                                    AnalysisRunnerFileOutputOptions())
     : ComputedStatistics
 
   def profile(
-      dataset: Dataset,
+      dataset: Dataset[T],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
@@ -45,10 +45,10 @@ trait Engine {
     : ColumnProfiles
 
   def splitTrainTestSets(
-      data: Dataset,
+      data: Dataset[T],
       testsetRatio: Option[Double],
       testsetSplitRandomSeed: Option[Long])
-    : (Dataset, Option[Dataset])
+    : (Dataset[T], Option[Dataset[T]])
 
 }
 

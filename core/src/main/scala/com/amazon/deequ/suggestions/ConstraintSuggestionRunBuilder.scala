@@ -23,7 +23,7 @@ import com.amazon.deequ.runtime.{Dataset, Engine}
 import com.amazon.deequ.suggestions.rules.ConstraintRule
 
 /** A class to build a Constraint Suggestion run using a fluent API */
-class ConstraintSuggestionRunBuilder(val dataset: Dataset) {
+class ConstraintSuggestionRunBuilder[T](val dataset: Dataset[T]) {
 
   protected var constraintRules: Seq[ConstraintRule[ColumnProfile]] = Seq.empty
   protected var printStatusUpdates: Boolean = false
@@ -43,7 +43,7 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
 
-  protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
+  protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder[T]) {
 
     this(constraintSuggestionRunBuilder.dataset)
 
@@ -154,7 +154,7 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset) {
     *                          run
     */
   def useRepository(metricsRepository: MetricsRepository)
-    : ConstraintSuggestionRunBuilderWithRepository = {
+    : ConstraintSuggestionRunBuilderWithRepository[T] = {
 
     new ConstraintSuggestionRunBuilderWithRepository(this, Option(metricsRepository))
   }
@@ -184,10 +184,10 @@ class ConstraintSuggestionRunBuilder(val dataset: Dataset) {
   }
 }
 
-class ConstraintSuggestionRunBuilderWithRepository(
-    constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder,
+class ConstraintSuggestionRunBuilderWithRepository[T](
+    constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder[T],
     usingMetricsRepository: Option[MetricsRepository])
-  extends ConstraintSuggestionRunBuilder(constraintSuggestionRunBuilder) {
+  extends ConstraintSuggestionRunBuilder[T](constraintSuggestionRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 

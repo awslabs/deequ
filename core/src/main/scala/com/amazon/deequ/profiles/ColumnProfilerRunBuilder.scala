@@ -18,10 +18,10 @@ package com.amazon.deequ.profiles
 
 import com.amazon.deequ.RepositoryOptions
 import com.amazon.deequ.repository._
-import com.amazon.deequ.runtime.{Dataset, Engine}
+import com.amazon.deequ.runtime.Dataset
 
 /** A class to build a Constraint Suggestion run using a fluent API */
-class ColumnProfilerRunBuilder(val dataset: Dataset) {
+class ColumnProfilerRunBuilder[T](val dataset: Dataset[T]) {
 
   protected var printStatusUpdates: Boolean = false
   protected var cacheInputs: Boolean = false
@@ -38,7 +38,7 @@ class ColumnProfilerRunBuilder(val dataset: Dataset) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
 
-  protected def this(columnProfileRunBuilder: ColumnProfilerRunBuilder) {
+  protected def this(columnProfileRunBuilder: ColumnProfilerRunBuilder[T]) {
 
     this(columnProfileRunBuilder.dataset)
 
@@ -107,9 +107,9 @@ class ColumnProfilerRunBuilder(val dataset: Dataset) {
     *                          run
     */
   def useRepository(metricsRepository: MetricsRepository)
-    : ColumnProfilerRunBuilderWithRepository = {
+    : ColumnProfilerRunBuilderWithRepository[T] = {
 
-    new ColumnProfilerRunBuilderWithRepository(this, Option(metricsRepository))
+    new ColumnProfilerRunBuilderWithRepository[T](this, Option(metricsRepository))
   }
 
 
@@ -133,10 +133,10 @@ class ColumnProfilerRunBuilder(val dataset: Dataset) {
   }
 }
 
-class ColumnProfilerRunBuilderWithRepository(
-    columnProfilerRunBuilder: ColumnProfilerRunBuilder,
+class ColumnProfilerRunBuilderWithRepository[T](
+    columnProfilerRunBuilder: ColumnProfilerRunBuilder[T],
     usingMetricsRepository: Option[MetricsRepository])
-  extends ColumnProfilerRunBuilder(columnProfilerRunBuilder) {
+  extends ColumnProfilerRunBuilder[T](columnProfilerRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 

@@ -72,11 +72,10 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
           Record(id, marketplace, measurement, propertyA, measurement2, measurement3, null, null)
         }
 
-      val engine = SparkEngine(session)
       val data = SparkDataset(session.createDataFrame(records))
 
       val constraintSuggestionResult = ConstraintSuggestionRunner()
-        .onData(data, engine)
+        .onData(data)
         .addConstraintRules(Rules.DEFAULT)
         .addConstraintRule(UniqueIfApproximatelyUniqueRule())
         .run()
@@ -191,7 +190,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
 
       val results = ConstraintSuggestionRunner()
-        .onData(data, engine)
+        .onData(data)
         .addConstraintRules(NonNegativeNumbersRule() :: Nil)
         .run()
 
@@ -200,11 +199,10 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
     "issue non negativity constraint for data > 0" in withSparkSession { sparkSession =>
       val col = "some"
-      val engine = SparkEngine(sparkSession)
       val data = SparkDataset(dataFrameWithColumn(col, IntegerType, sparkSession, Row(1), Row(null)))
 
       val results = ConstraintSuggestionRunner()
-        .onData(data, engine)
+        .onData(data)
         .addConstraintRules(NonNegativeNumbersRule() :: Nil)
         .run()
 

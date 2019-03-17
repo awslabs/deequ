@@ -17,7 +17,6 @@
 package com.amazon.deequ.repository
 
 import com.amazon.deequ.anomalydetection.{OnlineNormalStrategy, RateOfChangeStrategy}
-import com.amazon.deequ.analyzers._
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.ConstraintStatus
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
@@ -25,8 +24,7 @@ import com.amazon.deequ._
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import java.time.{LocalDate, ZoneOffset}
 
-import com.amazon.deequ.runtime.spark.executor.OperatorResults
-import com.amazon.deequ.runtime.spark.{DfsMetricsRepository, SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.{DfsMetricsRepository, SparkDataset}
 import com.amazon.deequ.statistics._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
@@ -67,7 +65,7 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Mat
     fillRepositoryWithPreviousResults(repository)
 
     // Some other checks and analyzers we are interested in not related to the anomaly detection
-    val (otherCheck, additionalRequiredAnalyzers) = getNormalCheckAndRequiredAnalyzers()
+    val (otherCheck, additionalRequiredAnalyzers) = getNormalCheckAndRequiredAnalyzers
 
     // This method is where the interesting stuff happens
     val verificationResult = createAnomalyChecksAndRunEverything(data, repository, otherCheck,
@@ -125,7 +123,7 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Mat
     }
   }
 
-  private[this] def getNormalCheckAndRequiredAnalyzers(): (Check, Seq[Statistic]) = {
+  private[this] def getNormalCheckAndRequiredAnalyzers: (Check, Seq[Statistic]) = {
 
     val check = Check(CheckLevel.Error, "check")
       .isComplete("item")
@@ -174,10 +172,9 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Mat
     val currentRunResultKey = ResultKey(createDate(2018, 8, 1), Map("marketplace" -> "EU"))
 
     val dataset = SparkDataset(data)
-    val engine = SparkEngine(data.sparkSession)
 
     VerificationSuite()
-      .onData(dataset, engine)
+      .onData(dataset)
       .addCheck(otherCheck)
       .addRequiredAnalyzers(additionalRequiredAnalyzers)
       .useRepository(repository)

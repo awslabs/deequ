@@ -19,11 +19,11 @@ package com.amazon.deequ
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.repository._
-import com.amazon.deequ.runtime.{Dataset, Engine}
+import com.amazon.deequ.runtime.Dataset
 import com.amazon.deequ.statistics.Statistic
 
 /** A class to build a VerificationRun using a fluent API */
-class VerificationRunBuilder(val data: Dataset) {
+class VerificationRunBuilder[T](val data: Dataset[T]) {
 
   protected var requiredAnalyzers: Seq[Statistic] = Seq.empty
 
@@ -39,7 +39,7 @@ class VerificationRunBuilder(val data: Dataset) {
   protected var saveSuccessMetricsJsonPath: Option[String] = None
   protected var overwriteOutputFiles: Boolean = false
 
-  protected def this(verificationRunBuilder: VerificationRunBuilder) {
+  protected def this(verificationRunBuilder: VerificationRunBuilder[T]) {
     this(verificationRunBuilder.data)
 
     requiredAnalyzers = verificationRunBuilder.requiredAnalyzers
@@ -106,7 +106,9 @@ class VerificationRunBuilder(val data: Dataset) {
     * @param metricsRepository A metrics repository to store and load results associated with the
     *                          run
     */
-  def useRepository(metricsRepository: MetricsRepository): VerificationRunBuilderWithRepository = {
+  def useRepository(
+      metricsRepository: MetricsRepository)
+    : VerificationRunBuilderWithRepository[T] = {
 
     new VerificationRunBuilderWithRepository(this, Option(metricsRepository))
   }
@@ -131,10 +133,10 @@ class VerificationRunBuilder(val data: Dataset) {
   }
 }
 
-class VerificationRunBuilderWithRepository(
-    verificationRunBuilder: VerificationRunBuilder,
+class VerificationRunBuilderWithRepository[T](
+    verificationRunBuilder: VerificationRunBuilder[T],
     usingMetricsRepository: Option[MetricsRepository])
-  extends VerificationRunBuilder(verificationRunBuilder) {
+  extends VerificationRunBuilder[T](verificationRunBuilder) {
 
   metricsRepository = usingMetricsRepository
 

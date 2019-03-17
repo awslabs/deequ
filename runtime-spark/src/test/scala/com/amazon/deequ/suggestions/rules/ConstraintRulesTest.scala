@@ -21,7 +21,7 @@ import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.constraints.ConstrainableDataTypes
 import com.amazon.deequ.metrics.{Distribution, DistributionValue}
 import com.amazon.deequ.profiles._
-import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.SparkDataset
 import com.amazon.deequ.statistics.DataTypeInstances
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
@@ -44,7 +44,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
@@ -53,7 +52,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .addConstraint(CompleteIfCompleteRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -64,7 +63,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 1)
@@ -79,7 +77,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .isComplete("att1")
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -101,7 +99,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
@@ -110,7 +107,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .addConstraint(RetainCompletenessRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -121,7 +118,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
@@ -138,7 +134,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .hasCompleteness("att1", _ >= 0.4, Some("It should be above 0.4!"))
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -164,7 +160,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithNameAndApproxNumDistinctValues("item", 100)
@@ -174,7 +169,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
           .constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -185,7 +180,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithNameAndApproxNumDistinctValues("item", 100)
@@ -201,7 +195,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .isUnique("item")
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -243,7 +237,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item", DataTypeInstances.Integral)
@@ -252,7 +245,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .addConstraint(RetainTypeRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -263,7 +256,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item", DataTypeInstances.Integral)
@@ -279,7 +271,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .hasDataType("item", ConstrainableDataTypes.Integral)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -335,7 +327,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__")))
 
@@ -351,7 +342,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .addConstraint(CategoricalRangeRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -363,7 +354,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
     "CategoricalRangeRule should return evaluable constraint candidates even " +
       "if category names contain potentially problematic characters" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__")))
 
@@ -379,7 +369,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .addConstraint(CategoricalRangeRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -390,7 +380,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__")))
 
@@ -414,7 +403,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .isContainedIn("categoricalColumn", Array("_b%%__", "'_[a_[]}!@'"))
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -483,7 +472,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-       val engine = SparkEngine(session)
        val dfWithColumnCandidate = SparkDataset(getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__")))
 
@@ -500,7 +488,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
           .constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -512,7 +500,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
     "return evaluable constraint candidates even " +
       "if category names contain potentially problematic characters" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__")))
 
@@ -530,7 +517,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
           .constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -541,7 +528,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfWithCategoricalColumn(session, 10,
         Seq("'_[a_[]}!@'", "_b%%__")))
 
@@ -570,7 +556,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
           Some("It should be above 0.9!"))
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -600,7 +586,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return evaluable constraint candidates" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithName("item")
@@ -609,7 +594,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .addConstraint(NonNegativeNumbersRule().candidate(fakeColumnProfile, 100).constraint)
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 
@@ -620,7 +605,6 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
     "return working code to add constraint to check" in withSparkSession { session =>
 
-      val engine = SparkEngine(session)
       val dfWithColumnCandidate = SparkDataset(getDfFull(session))
 
       val fakeColumnProfile = getFakeColumnProfileWithName("item")
@@ -635,7 +619,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         .isPositive("item")
 
       val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate, engine)
+        .onData(dfWithColumnCandidate)
         .addCheck(check)
         .run()
 

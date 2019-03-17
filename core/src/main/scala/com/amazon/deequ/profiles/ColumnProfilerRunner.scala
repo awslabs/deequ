@@ -27,14 +27,14 @@ private[profiles] case class ColumnProfilerRunBuilderFileOutputOptions(
 )
 
 
-class ColumnProfilerRunner {
+class ColumnProfilerRunner[T] {
 
-  def onData(data: Dataset): ColumnProfilerRunBuilder = {
-    new ColumnProfilerRunBuilder(data)
+  def onData(data: Dataset[T]): ColumnProfilerRunBuilder[T] = {
+    new ColumnProfilerRunBuilder[T](data)
   }
 
   private[profiles] def run(
-      data: Dataset,
+      data: Dataset[T],
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
@@ -87,7 +87,7 @@ class ColumnProfilerRunner {
 }
 
 object ColumnProfilerRunner {
-  def apply(): ColumnProfilerRunner = {
-    new ColumnProfilerRunner()
+  def apply[T](): ColumnProfilerRunner[T] = {
+    new ColumnProfilerRunner[T]()
   }
 }

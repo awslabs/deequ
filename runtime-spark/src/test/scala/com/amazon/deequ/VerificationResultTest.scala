@@ -17,7 +17,7 @@
 package com.amazon.deequ
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.runtime.spark.{SparkDataset, SparkEngine}
+import com.amazon.deequ.runtime.spark.SparkDataset
 import com.amazon.deequ.serialization.json.{JsonSerializer, SimpleResultSerde}
 import com.amazon.deequ.statistics._
 import com.amazon.deequ.utils.FixtureSupport
@@ -170,14 +170,13 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
 
   private[this] def evaluate(session: SparkSession)(test: VerificationResult => Unit): Unit = {
 
-    val engine = SparkEngine(session)
     val data = SparkDataset(getDfFull(session))
 
     val analyzers = getAnalyzers
     val checks = getChecks
 
     val results = VerificationSuite()
-      .onData(data, engine)
+      .onData(data)
       .addRequiredAnalyzers(analyzers)
       .addChecks(checks)
       .run()

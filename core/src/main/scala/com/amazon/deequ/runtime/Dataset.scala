@@ -16,9 +16,9 @@
 
 package com.amazon.deequ.runtime
 
-trait Dataset {
+trait Dataset[T] {
 
-  def engine: Engine
+  def engine: Engine[T]
 
   def columns: Seq[String]
 }

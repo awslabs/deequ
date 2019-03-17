@@ -33,12 +33,12 @@ private object StateInformation {
 }
 
 /** Load a stored state for an analyzer */
-trait SparkStateLoader extends StateLoader {
+trait SparkStateLoader extends StateLoader[SparkSession] {
   def load[S <: State[_]](analyzer: Operator[S, _]): Option[S]
 }
 
 /** Persist a state for an analyzer */
-trait SparkStatePersister extends StatePersister {
+trait SparkStatePersister extends StatePersister[SparkSession] {
   def persist[S <: State[_]](analyzer: Operator[S, _], state: S)
 }
 
