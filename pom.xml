@@ -6,7 +6,7 @@
 
     <groupId>com.amazon.deequ</groupId>
     <artifactId>deequ</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
 
     <name>deequ</name>
     <description>Deequ is a library built on top of Apache Spark for defining "unit tests for data",
