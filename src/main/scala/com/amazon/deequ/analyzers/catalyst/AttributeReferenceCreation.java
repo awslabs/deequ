@@ -26,6 +26,8 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.Metadata$;
 
 import java.lang.reflect.Method;
+import scala.collection.Seq;
+import scala.collection.Seq$;
 
 public class AttributeReferenceCreation {
 
@@ -36,6 +38,16 @@ public class AttributeReferenceCreation {
         org.apache.spark.sql.catalyst.expressions.AttributeReference which has a non-compatible
         signature in different versions of Spark 2.x. Therefore we need to invoke it via reflection
         depending on which version of Spark we run.
+
+        SPARK 2.4:
+
+            case class AttributeReference(
+                name: String,
+                dataType: DataType,
+                nullable: Boolean = true,
+                override val metadata: Metadata = Metadata.empty)(
+                val exprId: ExprId = NamedExpression.newExprId,
+                val qualifier: Seq[String] = Seq.empty[String])
 
         SPARK 2.3:
 
@@ -87,9 +99,18 @@ public class AttributeReferenceCreation {
                 return (AttributeReference) apply.invoke(companion, name, dataType, true,
                         emptyMetadata, exprId, none, false);
             } else {
-                // Spark 2.3
-                return (AttributeReference) apply.invoke(companion, name, dataType, true,
-                        emptyMetadata, exprId, none);
+                // Spark 2.4
+                Class<?> qualifierParameterType = apply.getParameterTypes()[5];
+                boolean qualifierParameterTypeIsSeq =
+                    Seq.class.isAssignableFrom(qualifierParameterType);
+                if (qualifierParameterTypeIsSeq) {
+                    return (AttributeReference) apply.invoke(companion, name, dataType, true,
+                            emptyMetadata, exprId, Seq$.MODULE$.<String>empty());
+                } else {
+                    // Spark 2.3
+                    return (AttributeReference) apply.invoke(companion, name, dataType, true,
+                            emptyMetadata, exprId, none);
+                }
             }
         } catch (Exception e) {
             throw new IllegalStateException(e);
