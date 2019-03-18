@@ -15,13 +15,13 @@ __Maven__
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>1.0.0-rc4</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.0-rc4"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.0"
 ```
 
 ## Example
@@ -32,10 +32,10 @@ __Deequ__ works on tabular data, e.g., CSV files, database tables, logs, flatten
 
 ```scala
 case class Item(
-  id: Long, 
-  name: String, 
-  description: String, 
-  priority: String, 
+  id: Long,
+  name: String,
+  description: String,
+  priority: String,
   numViews: Long
 )
 ```
@@ -53,18 +53,18 @@ val rdd = spark.sparkContext.parallelize(Seq(
 val data = spark.createDataFrame(rdd)
 ```
 
-Most applications that work with data have implicit assumptions about that data, e.g., that attributes have certain types, do not contain NULL values, and so on. If these assumptions are violated, your application might crash or produce wrong outputs. The idea behind __deequ__ is to explicitly state these assumptions in the form of a "unit-test" for data, which can be verified on a piece of data at hand. If the data has errors, we can "quarantine" and fix it, before we feed to an application. 
+Most applications that work with data have implicit assumptions about that data, e.g., that attributes have certain types, do not contain NULL values, and so on. If these assumptions are violated, your application might crash or produce wrong outputs. The idea behind __deequ__ is to explicitly state these assumptions in the form of a "unit-test" for data, which can be verified on a piece of data at hand. If the data has errors, we can "quarantine" and fix it, before we feed to an application.
 
 The main entry point for defining how you expect your data to look is the [VerificationSuite](src/main/scala/com/amazon/deequ/VerificationSuite.scala) from which you can add [Checks](src/main/scala/com/amazon/deequ/checks/Check.scala) that define constraints on attributes of the data. In this example, we test for the following properties of our data:
-  
+
   * there are 5 rows in total
   * values of the `id` attribute are never NULL and unique
   * values of the `name` attribute are never NULL
   * the `priority` attribute can only contain "high" or "low" as value
   * `numViews` should not contain negative values
-  * at least half of the values in `description` should contain a url 
+  * at least half of the values in `description` should contain a url
   * the median of `numViews` should be less than or equal to 10
-    
+
 In code this looks as follows:
 
 ```scala
@@ -75,18 +75,18 @@ import com.amazon.deequ.checks.{Check, CheckLevel}
 val verificationResult = VerificationSuite()
   .onData(data)
   .addCheck(
-    Check(CheckLevel.Error, "unit testing my data") 
+    Check(CheckLevel.Error, "unit testing my data")
       .hasSize(_ == 5) // we expect 5 rows
       .isComplete("id") // should never be NULL
       .isUnique("id") // should not contain duplicates
       .isComplete("name") // should never be NULL
       // should only contain the values "high" and "low"
-      .isContainedIn("priority", Array("high", "low")) 
+      .isContainedIn("priority", Array("high", "low"))
       .isNonNegative("numViews") // should not contain negative values
-      // at least half of the descriptions should contain a url          
-      .containsURL("description", _ >= 0.5) 
+      // at least half of the descriptions should contain a url
+      .containsURL("description", _ >= 0.5)
       // half of the items should have less than 10 views
-      .hasApproxQuantile("numViews", 0.5, _ <= 10)) 
+      .hasApproxQuantile("numViews", 0.5, _ <= 10))
     .run()
 ```
 
@@ -134,8 +134,8 @@ Our library contains much more functionaliy than what we showed in the basic exa
 
 If you would like to reference this package in a research paper, please cite:
 
-Sebastian Schelter, Dustin Lange, Philipp Schmidt, Meltem Celikel, Felix Biessmann, and Andreas Grafberger. 2018. [Automating large-scale data quality verification](http://www.vldb.org/pvldb/vol11/p1781-schelter.pdf). Proc. VLDB Endow. 11, 12 (August 2018), 1781-1794. 
+Sebastian Schelter, Dustin Lange, Philipp Schmidt, Meltem Celikel, Felix Biessmann, and Andreas Grafberger. 2018. [Automating large-scale data quality verification](http://www.vldb.org/pvldb/vol11/p1781-schelter.pdf). Proc. VLDB Endow. 11, 12 (August 2018), 1781-1794.
 
 ## License
 
-This library is licensed under the Apache 2.0 License. 
+This library is licensed under the Apache 2.0 License.
