@@ -213,6 +213,19 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
       }
     }
+
+    "compute correct metrics on numeric values" in withSparkSession { sparkSession =>
+      val dfFull = getDfWithNumericValues(sparkSession)
+      val histogram = Histogram("att2").calculate(dfFull)
+      assert(histogram.value.isSuccess)
+
+      histogram.value.get match {
+        case hv =>
+          assert(hv.numberOfBins == 4)
+          assert(hv.values.size == 4)
+      }
+    }
+
     "compute correct metrics after binning if provided" in withSparkSession { sparkSession =>
       val customBinner = udf {
         (cnt: String) =>
