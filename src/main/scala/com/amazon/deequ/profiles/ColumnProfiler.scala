@@ -486,7 +486,7 @@ object ColumnProfiler {
 
   /* Identifies all columns, which:
    *
-   * (1) have type string or boolean
+   * (1) have string, boolean, double, float, integer, long, or short data type
    * (2) have less than `lowCardinalityHistogramThreshold` approximate distinct values
    */
   private[this] def findTargetColumnsForHistograms(
@@ -495,9 +495,12 @@ object ColumnProfiler {
       lowCardinalityHistogramThreshold: Long)
     : Seq[String] = {
 
-    val originalStringOrBooleanColumns = schema
+    val validSparkDataTypesForHistograms = List(
+      StringType, BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType
+    )
+    val originalStringNumericOrBooleanColumns = schema
       .flatMap { field =>
-        if (field.dataType == StringType || field.dataType == BooleanType) {
+        if (validSparkDataTypesForHistograms.contains(field.dataType)) {
           Some(field.name)
         } else {
           None
@@ -506,9 +509,9 @@ object ColumnProfiler {
       .toSet
 
     genericStatistics.approximateNumDistincts
-      .filter { case (column, _) => originalStringOrBooleanColumns.contains(column) }
+      .filter { case (column, _) => originalStringNumericOrBooleanColumns.contains(column) }
       .filter { case (column, _) =>
-        genericStatistics.typeOf(column) == String || genericStatistics.typeOf(column) == Boolean
+        List(String, Boolean, Integral, Fractional).contains(genericStatistics.typeOf(column))
       }
       .filter { case (_, count) => count <= lowCardinalityHistogramThreshold }
       .map { case (column, _) => column }
