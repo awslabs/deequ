@@ -499,13 +499,8 @@ object ColumnProfiler {
       StringType, BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType
     )
     val originalStringNumericOrBooleanColumns = schema
-      .flatMap { field =>
-        if (validSparkDataTypesForHistograms.contains(field.dataType)) {
-          Some(field.name)
-        } else {
-          None
-        }
-      }
+      .filter { field => validSparkDataTypesForHistograms.contains(field.dataType) }
+      .map { field => field.name }
       .toSet
 
     genericStatistics.approximateNumDistincts
