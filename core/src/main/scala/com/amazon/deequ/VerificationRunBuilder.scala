@@ -25,7 +25,7 @@ import com.amazon.deequ.statistics.Statistic
 /** A class to build a VerificationRun using a fluent API */
 class VerificationRunBuilder[T](val data: Dataset[T]) {
 
-  protected var requiredAnalyzers: Seq[Statistic] = Seq.empty
+  protected var requiredStatistics: Seq[Statistic] = Seq.empty
 
   protected var checks: Seq[Check] = Seq.empty
 
@@ -42,7 +42,7 @@ class VerificationRunBuilder[T](val data: Dataset[T]) {
   protected def this(verificationRunBuilder: VerificationRunBuilder[T]) {
     this(verificationRunBuilder.data)
 
-    requiredAnalyzers = verificationRunBuilder.requiredAnalyzers
+    requiredStatistics = verificationRunBuilder.requiredStatistics
 
     checks = verificationRunBuilder.checks
 
@@ -81,10 +81,10 @@ class VerificationRunBuilder[T](val data: Dataset[T]) {
     * Can be used to enforce the calculation of some some metric regardless of if there is a
     * constraint on it (optional)
     *
-    * @param requiredAnalyzer The analyzer to be used to calculate the metric during the run
+    * @param statistic
     */
-  def addRequiredAnalyzer(requiredAnalyzer: Statistic): this.type = {
-    requiredAnalyzers :+= requiredAnalyzer
+  def addRequiredStatistic(statistic: Statistic): this.type = {
+    requiredStatistics :+= statistic
     this
   }
 
@@ -92,10 +92,10 @@ class VerificationRunBuilder[T](val data: Dataset[T]) {
     * Can be used to enforce the calculation of some some metrics regardless of if there are
     * constraints on them (optional)
     *
-    * @param requiredAnalyzers The analyzers to be used to calculate the metrics during the run
+    * @param requiredStatistics
     */
-  def addRequiredAnalyzers(requiredAnalyzers: Seq[Statistic]): this.type = {
-    this.requiredAnalyzers ++= requiredAnalyzers
+  def addRequiredStatistics(requiredStatistics: Seq[Statistic]): this.type = {
+    this.requiredStatistics ++= requiredStatistics
     this
   }
 
@@ -106,10 +106,7 @@ class VerificationRunBuilder[T](val data: Dataset[T]) {
     * @param metricsRepository A metrics repository to store and load results associated with the
     *                          run
     */
-  def useRepository(
-      metricsRepository: MetricsRepository)
-    : VerificationRunBuilderWithRepository[T] = {
-
+  def useRepository(metricsRepository: MetricsRepository): VerificationRunBuilderWithRepository[T] = {
     new VerificationRunBuilderWithRepository(this, Option(metricsRepository))
   }
 
@@ -118,7 +115,7 @@ class VerificationRunBuilder[T](val data: Dataset[T]) {
     VerificationSuite().doVerificationRun(
       data,
       checks,
-      requiredAnalyzers,
+      requiredStatistics,
       metricsRepositoryOptions = RepositoryOptions(
         metricsRepository,
         reuseExistingResultsKey,
@@ -173,24 +170,21 @@ class VerificationRunBuilderWithRepository[T](
     * if the new value is an Anomaly.
     *
     * @param anomalyDetectionStrategy The anomaly detection strategy
-    * @param analyzer The analyzer for the metric to run anomaly detection on
+    * @param statistic The statistic to run anomaly detection on
     * @param anomalyCheckConfig Some configuration settings for the Check
     */
   def addAnomalyCheck(
-    anomalyDetectionStrategy: AnomalyDetectionStrategy,
-    analyzer: Statistic,
-    anomalyCheckConfig: Option[AnomalyCheckConfig] = None)
-  : this.type = {
+      anomalyDetectionStrategy: AnomalyDetectionStrategy,
+      statistic: Statistic,
+      anomalyCheckConfig: Option[AnomalyCheckConfig] = None)
+    : this.type = {
 
-    val anomalyCheckConfigOrDefault = anomalyCheckConfig.getOrElse {
-
-      val checkDescription = s"Anomaly check for ${analyzer.toString}"
-
-      AnomalyCheckConfig(CheckLevel.Warning, checkDescription)
-    }
+    val anomalyCheckConfigOrDefault = anomalyCheckConfig.getOrElse(
+      AnomalyCheckConfig(CheckLevel.Warning, s"Anomaly check for $statistic"))
 
     checks :+= VerificationRunBuilderHelper.getAnomalyCheck(metricsRepository.get,
-      anomalyDetectionStrategy, analyzer, anomalyCheckConfigOrDefault)
+      anomalyDetectionStrategy, statistic, anomalyCheckConfigOrDefault)
+
     this
   }
 }
@@ -248,13 +242,13 @@ private[this] object VerificationRunBuilderHelper {
     * Build a check using Anomaly Detection methods
     * @param metricsRepository A metrics repository to get the previous results
     * @param anomalyDetectionStrategy The anomaly detection strategy
-    * @param analyzer The analyzer for the metric to run anomaly detection on
+    * @param statistic The statistic to run anomaly detection on
     * @param anomalyCheckConfig Some configuration settings for the Check
     */
   def getAnomalyCheck(
       metricsRepository: MetricsRepository,
       anomalyDetectionStrategy: AnomalyDetectionStrategy,
-      analyzer: Statistic,
+      statistic: Statistic,
       anomalyCheckConfig: AnomalyCheckConfig)
   : Check = {
 
@@ -262,7 +256,7 @@ private[this] object VerificationRunBuilderHelper {
       .isNewestPointNonAnomalous(
         metricsRepository,
         anomalyDetectionStrategy,
-        analyzer,
+        statistic,
         anomalyCheckConfig.withTagValues,
         anomalyCheckConfig.afterDate,
         anomalyCheckConfig.beforeDate
@@ -279,10 +273,8 @@ private[this] object VerificationRunBuilderHelper {
   *                      the logs.
   * @param withTagValues Can contain a Map with tag names and the corresponding values to filter
   *                      for the Anomaly Detection
-  * @param afterDate     The minimum dateTime of previous AnalysisResults to use for the
-  *                      Anomaly Detection
-  * @param beforeDate    The maximum dateTime of previous AnalysisResults to use for the
-  *                      Anomaly Detection
+  * @param afterDate     The minimum dateTime of previous results to use for the anomaly detection
+  * @param beforeDate    The maximum dateTime of previous results to use for the anomaly detection
   * @return
   */
 case class AnomalyCheckConfig(

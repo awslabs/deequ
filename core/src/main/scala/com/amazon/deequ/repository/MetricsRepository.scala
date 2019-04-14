@@ -28,12 +28,12 @@ trait MetricsRepository {
     * Saves Analysis results (metrics)
     *
     * @param resultKey       A ResultKey that uniquely identifies a AnalysisResult
-    * @param computedStatistics The resulting AnalyzerContext of an Analysis
+    * @param computedStatistics The resulting ComputedStatistics
     */
   def save(resultKey: ResultKey, computedStatistics: ComputedStatistics): Unit
 
   /**
-    * Get a AnalyzerContext saved using exactly the same resultKey if present
+    * Get a ComputedStatistics saved using exactly the same resultKey if present
     */
   def loadByKey(resultKey: ResultKey): Option[ComputedStatistics]
 

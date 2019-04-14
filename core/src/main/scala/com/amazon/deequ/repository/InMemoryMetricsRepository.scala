@@ -32,11 +32,11 @@ class InMemoryMetricsRepository() extends MetricsRepository {
     * Saves Analysis results (metrics)
     *
     * @param resultKey represents the version of the dataset deequ checks were run on.
-    * @param analyzerContext The resulting AnalyzerContext of an Analysis
+    * @param computedStatistics
     */
-  def save(resultKey: ResultKey, analyzerContext: ComputedStatistics): Unit = {
+  def save(resultKey: ResultKey, computedStatistics: ComputedStatistics): Unit = {
 
-    val successfulMetrics = analyzerContext.metricMap.filter {
+    val successfulMetrics = computedStatistics.metricMap.filter {
       case (_, metric) => metric.value.isSuccess
     }
 
@@ -46,7 +46,7 @@ class InMemoryMetricsRepository() extends MetricsRepository {
   }
 
   /**
-    * Get an AnalyzerContext saved using exactly the same resultKey if present
+    * Get ComputedStatistics saved using exactly the same resultKey if present
     *
     * @param resultKey represents the version of the dataset deequ checks were run on.
     */

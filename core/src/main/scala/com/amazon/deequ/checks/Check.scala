@@ -352,7 +352,7 @@ case class Check(
     *
     * @param metricsRepository        A metrics repository to get the previous results
     * @param anomalyDetectionStrategy The anomaly detection strategy
-    * @param statistic                 The analyzer for the metric to run anomaly detection on
+    * @param statistic                The statistic to run anomaly detection on
     * @param withTagValues            Can contain a Map with tag names and the corresponding values
     *                                 to filter for
     * @param beforeDate               The maximum dateTime of previous AnalysisResults to use for
@@ -1013,7 +1013,7 @@ object Check {
     *
     * @param metricsRepository        A metrics repository to get the previous results
     * @param anomalyDetectionStrategy The anomaly detection strategy
-    * @param analyzer                 The analyzer for the metric to run anomaly detection on
+    * @param statistic                The statistic to run anomaly detection on
     * @param withTagValues            Can contain a Map with tag names and the corresponding values
     *                                 to filter for
     * @param beforeDate               The maximum dateTime of previous AnalysisResults to use for
@@ -1026,7 +1026,7 @@ object Check {
   private[deequ] def isNewestPointNonAnomalous(
       metricsRepository: MetricsRepository,
       anomalyDetectionStrategy: AnomalyDetectionStrategy,
-      analyzer: Statistic,
+      statistic: Statistic,
       withTagValues: Map[String, String],
       afterDate: Option[Long],
       beforeDate: Option[Long])(
@@ -1044,7 +1044,7 @@ object Check {
     afterDate.foreach { afterDate =>
       repositoryLoader = repositoryLoader.after(afterDate) }
 
-    repositoryLoader = repositoryLoader.forStatistics(Seq(analyzer))
+    repositoryLoader = repositoryLoader.forStatistics(Seq(statistic))
 
     val analysisResults = repositoryLoader.get()
 

@@ -104,7 +104,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         VerificationSuite()
           .onData(SparkDataset(df))
           .addCheck(checkToSucceed)
-          .addRequiredAnalyzers(analyzers)
+          .addRequiredStatistics(analyzers)
           .run()
       }
 
@@ -133,7 +133,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val df = getDfFull(sparkSession)
 
       val result = VerificationSuite().onData(SparkDataset(df))
-        .addRequiredAnalyzer(Size())
+        .addRequiredStatistic(Size())
         .run()
 
       assert(result.status == CheckStatus.Success)
@@ -198,7 +198,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val metrics = VerificationSuite().onData(SparkDataset(df))
           .useRepository(repository)
-          .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run().metrics
+          .addRequiredStatistics(analyzers).saveOrAppendResult(resultKey).run().metrics
 
         val analyzerContext = ComputedStatistics(metrics)
 
@@ -217,17 +217,17 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val completeMetricResults = VerificationSuite().onData(SparkDataset(df))
           .useRepository(repository)
-          .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run().metrics
+          .addRequiredStatistics(analyzers).saveOrAppendResult(resultKey).run().metrics
 
         val completeAnalyzerContext = ComputedStatistics(completeMetricResults)
 
         // Calculate and save results for first analyzer
         VerificationSuite().onData(SparkDataset(df)).useRepository(repository)
-          .addRequiredAnalyzer(Size()).saveOrAppendResult(resultKey).run()
+          .addRequiredStatistic(Size()).saveOrAppendResult(resultKey).run()
 
         // Calculate and append results for second analyzer
         VerificationSuite().onData(SparkDataset(df)).useRepository(repository)
-          .addRequiredAnalyzer(Completeness("item"))
+          .addRequiredStatistic(Completeness("item"))
           .saveOrAppendResult(resultKey).run()
 
         assert(completeAnalyzerContext == repository.loadByKey(resultKey).get)
@@ -245,7 +245,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val actualResult = VerificationSuite().onData(SparkDataset(df))
           .useRepository(repository)
-          .addRequiredAnalyzers(analyzers).run()
+          .addRequiredStatistics(analyzers).run()
         val expectedAnalyzerContextOnLoadByKey = ComputedStatistics(actualResult.metrics)
 
         val resultWhichShouldBeOverwritten = ComputedStatistics(Map(Size() -> DoubleMetric(
@@ -255,7 +255,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         // This should overwrite the previous Size value
         VerificationSuite().onData(SparkDataset(df)).useRepository(repository)
-          .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run()
+          .addRequiredStatistics(analyzers).saveOrAppendResult(resultKey).run()
 
         assert(expectedAnalyzerContextOnLoadByKey == repository.loadByKey(resultKey).get)
     }
@@ -271,7 +271,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val verificationResult = VerificationSuite()
           .onData(SparkDataset(df))
           .useRepository(repository)
-          .addRequiredAnalyzers(analyzers)
+          .addRequiredStatistics(analyzers)
           .saveOrAppendResult(saveResultsWithKey)
           .addAnomalyCheck(
             RateOfChangeStrategy(Some(-2.0), Some(2.0)),

@@ -177,7 +177,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
 
     val results = VerificationSuite()
       .onData(data)
-      .addRequiredAnalyzers(analyzers)
+      .addRequiredStatistics(analyzers)
       .addChecks(checks)
       .run()
 

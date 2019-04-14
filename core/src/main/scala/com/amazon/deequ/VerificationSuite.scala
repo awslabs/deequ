@@ -124,20 +124,19 @@ class VerificationSuite[T] {
 //  }
 
   private[this] def saveOrAppendResultsIfNecessary(
-    resultingAnalyzerContext: ComputedStatistics,
-    metricsRepository: Option[MetricsRepository],
-    saveOrAppendResultsWithKey: Option[ResultKey])
-  : Unit = {
+      resultingComputedStatistics: ComputedStatistics,
+      metricsRepository: Option[MetricsRepository],
+      saveOrAppendResultsWithKey: Option[ResultKey])
+    : Unit = {
 
-    metricsRepository.foreach{repository =>
+    metricsRepository.foreach { repository =>
       saveOrAppendResultsWithKey.foreach { key =>
 
         val currentValueForKey = repository.loadByKey(key)
 
-        // AnalyzerContext entries on the right side of ++ will overwrite the ones on the left
-        // if there are two different metric results for the same analyzer
-        val valueToSave = currentValueForKey.getOrElse(ComputedStatistics.empty) ++
-          resultingAnalyzerContext
+        // ComputedStatistics entries on the right side of ++ will overwrite the ones on the left
+        // if there are two different metric results for the same statistic
+        val valueToSave = currentValueForKey.getOrElse(ComputedStatistics.empty) ++ resultingComputedStatistics
 
         repository.save(saveOrAppendResultsWithKey.get, valueToSave)
       }
@@ -214,12 +213,12 @@ class VerificationSuite[T] {
 //  }
 
   private[this] def evaluate(
-    checks: Seq[Check],
-    analysisContext: ComputedStatistics)
-  : VerificationResult = {
+      checks: Seq[Check],
+      computedStatistics: ComputedStatistics)
+     : VerificationResult = {
 
     val checkResults = checks
-      .map { check => check -> check.evaluate(analysisContext) }
+      .map { check => check -> check.evaluate(computedStatistics) }
       .toMap
 
     val verificationStatus = if (checkResults.isEmpty) {
@@ -230,7 +229,7 @@ class VerificationSuite[T] {
         .max
     }
 
-    VerificationResult(verificationStatus, checkResults, analysisContext.metricMap)
+    VerificationResult(verificationStatus, checkResults, computedStatistics.metricMap)
   }
 }
 

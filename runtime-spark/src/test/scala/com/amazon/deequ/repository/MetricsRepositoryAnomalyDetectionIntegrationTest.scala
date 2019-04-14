@@ -176,7 +176,7 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Mat
     VerificationSuite()
       .onData(dataset)
       .addCheck(otherCheck)
-      .addRequiredAnalyzers(additionalRequiredAnalyzers)
+      .addRequiredStatistics(additionalRequiredAnalyzers)
       .useRepository(repository)
       // Add the Size anomaly check
       .addAnomalyCheck(sizeAnomalyDetectionStrategy, Size(), Some(sizeAnomalyCheckConfig))

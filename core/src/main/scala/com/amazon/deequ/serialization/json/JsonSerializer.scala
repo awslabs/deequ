@@ -136,7 +136,7 @@ private[deequ] object JsonSerializer {
       .toSeq
 
     val metricsList = selectedMetrics
-      .filter(_.value.isSuccess) // Get analyzers with successful results
+      .filter(_.value.isSuccess) // Get statistics with successful results
       .flatMap(_.flatten()) // Get metrics as double
       .map { doubleMetric =>
       SimpleMetricOutput(

@@ -37,8 +37,9 @@ private[deequ] object JsonSerializationConstants {
   val STRING_MAP_TYPE: Type = new TypeToken[JList[JMap[String, Any]]]() {}.getType
   val STRING_LIST_TYPE: Type = new TypeToken[JList[String]]() {}.getType
 
-  val ANALYZER_FIELD = "analyzer"
-  val ANALYZER_NAME_FIELD = "analyzerName"
+  // We keep the string "analyzer" here for backwards compatibility
+  val STATISTICS_FIELD = "analyzer"
+  val STATISTICS_NAME_FIELD = "analyzerName"
   val WHERE_FIELD = "where"
   val COLUMN_FIELD = "column"
   val COLUMNS_FIELD = "columns"
@@ -47,7 +48,7 @@ private[deequ] object JsonSerializationConstants {
   val DATASET_DATE_FIELD = "dataSetDate"
   val TAGS_FIELD = "tags"
   val RESULT_KEY_FIELD = "resultKey"
-  val ANALYZER_CONTEXT_FIELD = "analyzerContext"
+  val COMPUTED_STATISTICS_FIELD = "analyzerContext"
 }
 
 private[deequ] object SimpleResultSerde {
@@ -71,31 +72,31 @@ private[deequ] object SimpleResultSerde {
 
 private[deequ] object StatisticsResultSerde {
 
-  def serialize(analysisResults: Seq[StatisticsResult]): String = {
+  def serialize(results: Seq[StatisticsResult]): String = {
     val gson = new GsonBuilder()
       .registerTypeAdapter(classOf[ResultKey], ResultKeySerializer)
-      .registerTypeAdapter(classOf[StatisticsResult], AnalysisResultSerializer)
-      .registerTypeAdapter(classOf[ComputedStatistics], AnalyzerContextSerializer)
-      .registerTypeAdapter(classOf[Statistic],  AnalyzerSerializer)
+      .registerTypeAdapter(classOf[StatisticsResult], StatisticsResultSerializer)
+      .registerTypeAdapter(classOf[ComputedStatistics], ComputedStatisticsSerializer)
+      .registerTypeAdapter(classOf[Statistic],  StatisticSerializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricSerializer)
       .registerTypeAdapter(classOf[Distribution], DistributionSerializer)
       .setPrettyPrinting()
       .create
 
-    gson.toJson(analysisResults.asJava, new TypeToken[JList[StatisticsResult]]() {}.getType)
+    gson.toJson(results.asJava, new TypeToken[JList[StatisticsResult]]() {}.getType)
   }
 
-  def deserialize(analysisResults: String): Seq[StatisticsResult] = {
+  def deserialize(results: String): Seq[StatisticsResult] = {
     val gson = new GsonBuilder()
       .registerTypeAdapter(classOf[ResultKey], ResultKeyDeserializer)
-      .registerTypeAdapter(classOf[StatisticsResult], AnalysisResultDeserializer)
-      .registerTypeAdapter(classOf[ComputedStatistics], AnalyzerContextDeserializer)
-      .registerTypeAdapter(classOf[Statistic], AnalyzerDeserializer)
+      .registerTypeAdapter(classOf[StatisticsResult], StatisticsResultDeserializer)
+      .registerTypeAdapter(classOf[ComputedStatistics], ComputedStatisticsDeserializer)
+      .registerTypeAdapter(classOf[Statistic], StatisticDeserializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricDeserializer)
       .registerTypeAdapter(classOf[Distribution], DistributionDeserializer)
       .create
 
-    gson.fromJson(analysisResults,
+    gson.fromJson(results,
       new TypeToken[JList[StatisticsResult]]() {}.getType)
         .asInstanceOf[JArrayList[StatisticsResult]].asScala
   }
@@ -131,50 +132,50 @@ private[deequ] object ResultKeyDeserializer extends JsonDeserializer[ResultKey] 
   }
 }
 
-private[deequ] object AnalysisResultSerializer extends JsonSerializer[StatisticsResult] {
+private[deequ] object StatisticsResultSerializer extends JsonSerializer[StatisticsResult] {
 
-  override def serialize(analysisResult: StatisticsResult, t: Type,
+  override def serialize(statisticsResult: StatisticsResult, t: Type,
     context: JsonSerializationContext): JsonElement = {
 
     val result = new JsonObject()
 
-    result.add(RESULT_KEY_FIELD, context.serialize(analysisResult.resultKey, classOf[ResultKey]))
+    result.add(RESULT_KEY_FIELD, context.serialize(statisticsResult.resultKey, classOf[ResultKey]))
 
-    result.add(ANALYZER_CONTEXT_FIELD,
-      context.serialize(analysisResult.computedStatistics, classOf[ComputedStatistics]))
+    result.add(COMPUTED_STATISTICS_FIELD,
+      context.serialize(statisticsResult.computedStatistics, classOf[ComputedStatistics]))
 
     result
   }
 }
 
-private[deequ] object AnalysisResultDeserializer extends JsonDeserializer[StatisticsResult] {
+private[deequ] object StatisticsResultDeserializer extends JsonDeserializer[StatisticsResult] {
 
   override def deserialize(jsonElement: JsonElement, t: Type,
-                           context: JsonDeserializationContext): StatisticsResult = {
+    context: JsonDeserializationContext): StatisticsResult = {
 
     val jsonObject = jsonElement.getAsJsonObject
 
     val key: ResultKey = context.deserialize(jsonObject.get(RESULT_KEY_FIELD), classOf[ResultKey])
-    val analyzerContext: ComputedStatistics = context
-      .deserialize(jsonObject.get(ANALYZER_CONTEXT_FIELD), classOf[ComputedStatistics])
+    val statistics: ComputedStatistics = context
+      .deserialize(jsonObject.get(COMPUTED_STATISTICS_FIELD), classOf[ComputedStatistics])
 
-    StatisticsResult(key, analyzerContext)
+    StatisticsResult(key, statistics)
   }
 }
 
-private[deequ] object AnalyzerContextSerializer extends JsonSerializer[ComputedStatistics] {
+private[deequ] object ComputedStatisticsSerializer extends JsonSerializer[ComputedStatistics] {
 
-  override def serialize(analyzerContext: ComputedStatistics, t: Type,
-    context: JsonSerializationContext): JsonElement = {
+  override def serialize(statistics: ComputedStatistics, t: Type,
+                         context: JsonSerializationContext): JsonElement = {
 
     val result = new JsonObject()
 
     val metricMap = new JsonArray()
 
-    analyzerContext.metricMap.foreach { case (analyzer, metric) =>
+    statistics.metricMap.foreach { case (statistic, metric) =>
       val entry = new JsonObject()
 
-      entry.add(ANALYZER_FIELD, context.serialize(analyzer, classOf[Statistic]))
+      entry.add(STATISTICS_FIELD, context.serialize(statistic, classOf[Statistic]))
       entry.add(METRIC_FIELD, context.serialize(metric, classOf[Metric[_]]))
 
       metricMap.add(entry)
@@ -186,7 +187,7 @@ private[deequ] object AnalyzerContextSerializer extends JsonSerializer[ComputedS
   }
 }
 
-private[deequ] object AnalyzerContextDeserializer extends JsonDeserializer[ComputedStatistics] {
+private[deequ] object ComputedStatisticsDeserializer extends JsonDeserializer[ComputedStatistics] {
 
   override def deserialize(jsonElement: JsonElement, t: Type,
     context: JsonDeserializationContext): ComputedStatistics = {
@@ -196,149 +197,145 @@ private[deequ] object AnalyzerContextDeserializer extends JsonDeserializer[Compu
     val metricMap = jsonObject.get(METRIC_MAP_FIELD).getAsJsonArray.asScala
       .map { entry =>
 
-        val serializedAnalyzer = entry.getAsJsonObject.get(ANALYZER_FIELD)
+        val serialized = entry.getAsJsonObject.get(STATISTICS_FIELD)
 
-        val analyzer = context.deserialize(serializedAnalyzer,
-          classOf[Statistic]).asInstanceOf[Statistic]
+        val statistic = context.deserialize(serialized, classOf[Statistic]).asInstanceOf[Statistic]
 
         val metric = context.deserialize(entry.getAsJsonObject.get(METRIC_FIELD),
           classOf[Metric[_]]).asInstanceOf[Metric[_]]
 
-        analyzer.asInstanceOf[Statistic] -> metric
+        statistic.asInstanceOf[Statistic] -> metric
       }
-      //.asInstanceOf[Seq[Statistic]]
       .toMap[Statistic, Metric[_]]
 
     ComputedStatistics(metricMap)
   }
 }
 
-private[deequ] object AnalyzerSerializer
-  extends JsonSerializer[Statistic] {
+private[deequ] object StatisticSerializer extends JsonSerializer[Statistic] {
 
-  override def serialize(analyzer: Statistic, t: Type,
+  override def serialize(statistic: Statistic, t: Type,
     context: JsonSerializationContext): JsonElement = {
 
     val result = new JsonObject()
 
-    analyzer match {
+    statistic match {
       case size: Size =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Size")
+        result.addProperty(STATISTICS_NAME_FIELD, "Size")
         result.addProperty(WHERE_FIELD, size.where.orNull)
 
 
       case completeness: Completeness =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Completeness")
+        result.addProperty(STATISTICS_NAME_FIELD, "Completeness")
         result.addProperty(COLUMN_FIELD, completeness.column)
         result.addProperty(WHERE_FIELD, completeness.where.orNull)
 
 
       case compliance: Compliance =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Compliance")
+        result.addProperty(STATISTICS_NAME_FIELD, "Compliance")
         result.addProperty(WHERE_FIELD, compliance.where.orNull)
         result.addProperty("instance", compliance.instance)
         result.addProperty("predicate", compliance.predicate)
 
       case patternMatch: PatternMatch =>
-        result.addProperty(ANALYZER_NAME_FIELD, "PatternMatch")
+        result.addProperty(STATISTICS_NAME_FIELD, "PatternMatch")
         result.addProperty(COLUMN_FIELD, patternMatch.column)
         result.addProperty(WHERE_FIELD, patternMatch.where.orNull)
         result.addProperty("pattern", patternMatch.pattern.toString())
 
       case sum: Sum =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Sum")
+        result.addProperty(STATISTICS_NAME_FIELD, "Sum")
         result.addProperty(COLUMN_FIELD, sum.column)
         result.addProperty(WHERE_FIELD, sum.where.orNull)
 
       case mean: Mean =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Mean")
+        result.addProperty(STATISTICS_NAME_FIELD, "Mean")
         result.addProperty(COLUMN_FIELD, mean.column)
         result.addProperty(WHERE_FIELD, mean.where.orNull)
 
       case minimum: Minimum =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Minimum")
+        result.addProperty(STATISTICS_NAME_FIELD, "Minimum")
         result.addProperty(COLUMN_FIELD, minimum.column)
         result.addProperty(WHERE_FIELD, minimum.where.orNull)
 
       case maximum: Maximum =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Maximum")
+        result.addProperty(STATISTICS_NAME_FIELD, "Maximum")
         result.addProperty(COLUMN_FIELD, maximum.column)
         result.addProperty(WHERE_FIELD, maximum.where.orNull)
 
       case countDistinct: CountDistinct =>
-        result.addProperty(ANALYZER_NAME_FIELD, "CountDistinct")
+        result.addProperty(STATISTICS_NAME_FIELD, "CountDistinct")
         result.add(COLUMNS_FIELD, context.serialize(countDistinct.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
 
       case distinctness: Distinctness =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Distinctness")
+        result.addProperty(STATISTICS_NAME_FIELD, "Distinctness")
         result.add(COLUMNS_FIELD, context.serialize(distinctness.columns.asJava))
 
       case entropy: Entropy =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Entropy")
+        result.addProperty(STATISTICS_NAME_FIELD, "Entropy")
         result.addProperty(COLUMN_FIELD, entropy.column)
 
       case mutualInformation: MutualInformation =>
-        result.addProperty(ANALYZER_NAME_FIELD, "MutualInformation")
+        result.addProperty(STATISTICS_NAME_FIELD, "MutualInformation")
         result.add(COLUMNS_FIELD, context.serialize(mutualInformation.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
 
       case uniqueValueRatio: UniqueValueRatio =>
-        result.addProperty(ANALYZER_NAME_FIELD, "UniqueValueRatio")
+        result.addProperty(STATISTICS_NAME_FIELD, "UniqueValueRatio")
         result.add(COLUMNS_FIELD, context.serialize(uniqueValueRatio.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
 
       case uniqueness: Uniqueness =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Uniqueness")
+        result.addProperty(STATISTICS_NAME_FIELD, "Uniqueness")
         result.add(COLUMNS_FIELD, context.serialize(uniqueness.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
 
       case histogram: Histogram =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
+        result.addProperty(STATISTICS_NAME_FIELD, "Histogram")
         result.addProperty(COLUMN_FIELD, histogram.column)
         result.addProperty("maxDetailBins", histogram.maxDetailBins)
 
       case dataType: DataType =>
-        result.addProperty(ANALYZER_NAME_FIELD, "DataType")
+        result.addProperty(STATISTICS_NAME_FIELD, "DataType")
         result.addProperty(COLUMN_FIELD, dataType.column)
         result.addProperty(WHERE_FIELD, dataType.where.orNull)
 
       case approxCountDistinct: ApproxCountDistinct =>
-        result.addProperty(ANALYZER_NAME_FIELD, "ApproxCountDistinct")
+        result.addProperty(STATISTICS_NAME_FIELD, "ApproxCountDistinct")
         result.addProperty(COLUMN_FIELD, approxCountDistinct.column)
         result.addProperty(WHERE_FIELD, approxCountDistinct.where.orNull)
 
       case correlation: Correlation =>
-        result.addProperty(ANALYZER_NAME_FIELD, "Correlation")
+        result.addProperty(STATISTICS_NAME_FIELD, "Correlation")
         result.addProperty("firstColumn", correlation.firstColumn)
         result.addProperty("secondColumn", correlation.secondColumn)
         result.addProperty(WHERE_FIELD, correlation.where.orNull)
 
       case standardDeviation: StandardDeviation =>
-        result.addProperty(ANALYZER_NAME_FIELD, "StandardDeviation")
+        result.addProperty(STATISTICS_NAME_FIELD, "StandardDeviation")
         result.addProperty(COLUMN_FIELD, standardDeviation.column)
         result.addProperty(WHERE_FIELD, standardDeviation.where.orNull)
 
       case approxQuantile: ApproxQuantile =>
-        result.addProperty(ANALYZER_NAME_FIELD, "ApproxQuantile")
+        result.addProperty(STATISTICS_NAME_FIELD, "ApproxQuantile")
         result.addProperty(COLUMN_FIELD, approxQuantile.column)
         result.addProperty("quantile", approxQuantile.quantile)
 
       case approxQuantiles: ApproxQuantiles =>
-        result.addProperty(ANALYZER_NAME_FIELD, "ApproxQuantiles")
+        result.addProperty(STATISTICS_NAME_FIELD, "ApproxQuantiles")
         result.addProperty(COLUMN_FIELD, approxQuantiles.column)
         result.addProperty("quantiles", approxQuantiles.quantiles.mkString(","))
 
       case _ =>
-        throw new IllegalArgumentException(s"Unable to serialize analyzer $analyzer.")
+        throw new IllegalArgumentException(s"Unable to serialize statistic $statistic.")
     }
 
     result
   }
 }
 
-private[deequ] object AnalyzerDeserializer
-  extends JsonDeserializer[Statistic] {
+private[deequ] object StatisticDeserializer extends JsonDeserializer[Statistic] {
 
   private[this] def getColumnsAsSeq(context: JsonDeserializationContext,
     json: JsonObject): Seq[String] = {
@@ -352,7 +349,7 @@ private[deequ] object AnalyzerDeserializer
 
     val json = jsonElement.getAsJsonObject
 
-    val analyzer = json.get(ANALYZER_NAME_FIELD).getAsString match {
+    val statistic = json.get(STATISTICS_NAME_FIELD).getAsString match {
 
       case "Size" =>
         Size(getOptionalWhereParam(json))
@@ -446,11 +443,11 @@ private[deequ] object AnalyzerDeserializer
         val quantiles = json.get("quantiles").getAsString.split(",").map { _.toDouble }
         ApproxQuantiles(column, quantiles)
 
-      case analyzerName =>
-        throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerName.")
+      case name =>
+        throw new IllegalArgumentException(s"Unable to deserialize statistic $name.")
     }
 
-    analyzer.asInstanceOf[Statistic]
+    statistic.asInstanceOf[Statistic]
   }
 
   private[this] def getOptionalWhereParam(jsonObject: JsonObject): Option[String] = {
@@ -551,7 +548,7 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
 
 
       case metricName =>
-        throw new IllegalArgumentException(s"Unable to deserialize analyzer $metricName.")
+        throw new IllegalArgumentException(s"Unable to deserialize metric $metricName.")
     }
 
     metric.asInstanceOf[Metric[_]]

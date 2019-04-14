@@ -99,7 +99,7 @@ class RDDColumnProfilerRunnerTest extends WordSpec with Matchers with SparkConte
         val analyzers = Size() :: Completeness("item") :: Nil
 
         val completeMetricResults = VerificationSuite().onData(df).useRepository(repository)
-          .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run().metrics
+          .addRequiredStatistics(analyzers).saveOrAppendResult(resultKey).run().metrics
 
         val completeAnalyzerContext = ComputedStatistics(completeMetricResults)
 

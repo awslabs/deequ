@@ -54,7 +54,7 @@ class AnalysisRunBuilder[T](val data: Dataset[T]) {
   }
 
    /**
-    * Add a single analyzer to the run.
+    * Add a single statistic to the run.
     *
     * @param statistic An analyzer to calculate a metric during the run
     */
@@ -66,7 +66,7 @@ class AnalysisRunBuilder[T](val data: Dataset[T]) {
   /**
     * Add multiple analyzers to the run.
     *
-    * @param statistics Analyzers to calculate metrics during the run
+    * @param statistics Statistics to calculate during the run
     */
   def addStatistics(statistics: Seq[Statistic]): this.type = {
     this.statistics ++= statistics
