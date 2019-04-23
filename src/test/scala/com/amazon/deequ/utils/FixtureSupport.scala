@@ -219,4 +219,14 @@ trait FixtureSupport {
       .map { index => (s"$index", random.shuffle(categories).head)}
       .toDF("att1", "categoricalColumn")
   }
+
+  def getDfWithVariableLengthValues(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+    Seq(
+      ("a", -1, 0D),
+      ("bb", 222, 0D),
+      ("ccc", 333, 0D),
+      ("dddd", 4444, 44D)
+    ).toDF("strings", "ints", "doubles")
+  }
 }
