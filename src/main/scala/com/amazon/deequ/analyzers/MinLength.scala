@@ -17,7 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
 import org.apache.spark.sql.functions.{length, min}
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.apache.spark.sql.{Column, Row}
@@ -36,6 +36,6 @@ case class MinLength(column: String, where: Option[String] = None)
   }
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
-    hasColumn(column) :: Nil
+    hasColumn(column) :: isString(column) :: Nil
   }
 }
