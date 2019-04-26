@@ -18,10 +18,11 @@ package com.amazon.deequ.profiles
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.DataTypeInstances
+import com.amazon.deequ.analyzers.Histogram.NullFieldReplacement
 import com.amazon.deequ.metrics.{Distribution, DistributionValue}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.BooleanType
+import org.apache.spark.sql.types._
 import org.scalatest.{Matchers, WordSpec}
 
 class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
@@ -145,7 +146,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           actualColumnProfile.asInstanceOf[NumericColumnProfile])
     }
 
-    "return correct Histograms" in withSparkSession { session =>
+    "return correct Histograms for string columns" in withSparkSession { session =>
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
@@ -168,7 +169,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         Some(Distribution(Map(
           "d" -> DistributionValue(1, 0.16666666666666666),
           "f" -> DistributionValue(3, 0.5),
-          "NullValue" -> DistributionValue(2, 0.3333333333333333)), 3)))
+          NullFieldReplacement -> DistributionValue(2, 0.3333333333333333)), 3)))
 
       assert(actualColumnProfile == expectedColumnProfile)
     }
@@ -198,8 +199,153 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(histogram("true").ratio == 3.0 / nRows)
       assert(histogram("false").absolute == 2L)
       assert(histogram("false").ratio == 2.0 / nRows)
-      assert(histogram("NullValue").absolute == 1)
-      assert(histogram("NullValue").ratio == 1.0 / nRows)
+      assert(histogram(NullFieldReplacement).absolute == 1)
+      assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
+    }
+
+    "return histograms for IntegerType columns" in withSparkSession { session =>
+      val attribute = "attribute"
+      val nRows = 6
+      val data = com.amazon.deequ.dataFrameWithColumn(
+        attribute,
+        IntegerType,
+        session,
+        Row(2147483647),
+        Row(2147483647),
+        Row(2147483647),
+        Row(2),
+        Row(2),
+        Row(null)
+      )
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("2147483647").absolute == 3L)
+      assert(histogram("2147483647").ratio == 3.0 / nRows)
+      assert(histogram("2").absolute == 2L)
+      assert(histogram("2").ratio == 2.0 / nRows)
+      assert(histogram(NullFieldReplacement).absolute == 1)
+      assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
+    }
+
+    "return histograms for LongType columns" in withSparkSession { session =>
+      val attribute = "attribute"
+      val nRows = 6
+      val data = com.amazon.deequ.dataFrameWithColumn(
+        attribute,
+        LongType,
+        session,
+        Row(1L),
+        Row(1L),
+        Row(1L),
+        Row(2L),
+        Row(2L),
+        Row(null)
+      )
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("1").absolute == 3L)
+      assert(histogram("1").ratio == 3.0 / nRows)
+      assert(histogram("2").absolute == 2L)
+      assert(histogram("2").ratio == 2.0 / nRows)
+      assert(histogram(NullFieldReplacement).absolute == 1)
+      assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
+    }
+
+    "return histograms for DoubleType columns" in withSparkSession { session =>
+      val attribute = "attribute"
+      val nRows = 6
+      val data = com.amazon.deequ.dataFrameWithColumn(
+        attribute,
+        DoubleType,
+        session,
+        Row(1.0),
+        Row(1.0),
+        Row(1.0),
+        Row(2.0),
+        Row(2.0),
+        Row(null)
+      )
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("1.0").absolute == 3L)
+      assert(histogram("1.0").ratio == 3.0 / nRows)
+      assert(histogram("2.0").absolute == 2L)
+      assert(histogram("2.0").ratio == 2.0 / nRows)
+      assert(histogram(NullFieldReplacement).absolute == 1)
+      assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
+    }
+
+    "return histograms for FloatType columns" in withSparkSession { session =>
+      val attribute = "attribute"
+      val nRows = 6
+      val data = com.amazon.deequ.dataFrameWithColumn(
+        attribute,
+        FloatType,
+        session,
+        Row(1.0f),
+        Row(1.0f),
+        Row(1.0f),
+        Row(2.0f),
+        Row(2.0f),
+        Row(null)
+      )
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("1.0").absolute == 3L)
+      assert(histogram("1.0").ratio == 3.0 / nRows)
+      assert(histogram("2.0").absolute == 2L)
+      assert(histogram("2.0").ratio == 2.0 / nRows)
+      assert(histogram(NullFieldReplacement).absolute == 1)
+      assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
+    }
+
+    "return histograms for ShortType columns" in withSparkSession { session =>
+      val attribute = "attribute"
+      val nRows = 6
+      val data = com.amazon.deequ.dataFrameWithColumn(
+        attribute,
+        ShortType,
+        session,
+        Row(1: Short),
+        Row(1: Short),
+        Row(1: Short),
+        Row(2: Short),
+        Row(2: Short),
+        Row(null)
+      )
+
+      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+
+      assert(actualColumnProfile.histogram.isDefined)
+
+      val histogram = actualColumnProfile.histogram.get
+
+      assert(histogram("1").absolute == 3L)
+      assert(histogram("1").ratio == 3.0 / nRows)
+      assert(histogram("2").absolute == 2L)
+      assert(histogram("2").ratio == 2.0 / nRows)
+      assert(histogram(NullFieldReplacement).absolute == 1)
+      assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
     }
   }
 
