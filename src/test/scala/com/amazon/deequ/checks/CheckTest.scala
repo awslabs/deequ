@@ -289,11 +289,11 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val isPositiveCheck = Check(CheckLevel.Error, "a")
         .isPositive("item")
 
-      val nonNegativeAndPositiveResults = runChecks(getDfWithNumericValues(sparkSession), nonNegativeCheck,
+      val results = runChecks(getDfWithNumericValues(sparkSession), nonNegativeCheck,
         isPositiveCheck)
 
-      assertEvaluatesTo(nonNegativeCheck, nonNegativeAndPositiveResults, CheckStatus.Success)
-      assertEvaluatesTo(isPositiveCheck, nonNegativeAndPositiveResults, CheckStatus.Success)
+      assertEvaluatesTo(nonNegativeCheck, results, CheckStatus.Success)
+      assertEvaluatesTo(isPositiveCheck, results, CheckStatus.Success)
     }
 
     "correctly evaluate range constraints" in withSparkSession { sparkSession =>
