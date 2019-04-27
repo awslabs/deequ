@@ -664,27 +664,35 @@ case class Check(
     * Creates a constraint that asserts that a column contains no negative values
     *
     * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isNonNegative(
       column: String,
+      assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($column, 0.0) >= 0", s"$column is non-negative", hint = hint)
+    satisfies(s"COALESCE($column, 0.0) >= 0", s"$column is non-negative", assertion, hint = hint)
   }
 
   /**
     * Creates a constraint that asserts that a column contains no negative values
     *
     * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isPositive(column: String): CheckWithLastConstraintFilterable = {
+  def isPositive(
+      column: String,
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($column, 1.0) > 0", s"$column is positive")
+    satisfies(s"COALESCE($column, 1.0) > 0", s"$column is positive", assertion, hint)
   }
 
   /**
@@ -693,16 +701,18 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isLessThan(
       columnA: String,
       columnB: String,
+      assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB",
+    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", assertion,
       hint = hint)
   }
 
@@ -711,17 +721,19 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isLessThanOrEqualTo(
       columnA: String,
       columnB: String,
+      assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
-      hint = hint)
+      assertion, hint = hint)
   }
 
   /**
@@ -729,16 +741,18 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isGreaterThan(
       columnA: String,
       columnB: String,
+      assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
+    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB", assertion,
       hint = hint)
   }
 
@@ -748,17 +762,19 @@ case class Check(
     *
     * @param columnA Column to run the assertion on
     * @param columnB Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
   def isGreaterThanOrEqualTo(
       columnA: String,
       columnB: String,
+      assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
-      hint = hint)
+      assertion, hint = hint)
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
