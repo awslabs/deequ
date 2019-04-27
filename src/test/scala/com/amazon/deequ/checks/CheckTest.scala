@@ -204,13 +204,15 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val incorrectLessThanCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
         .isLessThan("att1", "att2", _ == 0.4)
 
-      val results = runChecks(getDfWithNumericValues(sparkSession), lessThanCheck, incorrectLessThanCheck,
-        lessThanCheckWithCustomAssertionFunction, incorrectLessThanCheckWithCustomAssertionFunction)
+      val results = runChecks(getDfWithNumericValues(sparkSession), lessThanCheck,
+        incorrectLessThanCheck, lessThanCheckWithCustomAssertionFunction,
+        incorrectLessThanCheckWithCustomAssertionFunction)
 
       assertEvaluatesTo(lessThanCheck, results, CheckStatus.Success)
       assertEvaluatesTo(incorrectLessThanCheck, results, CheckStatus.Error)
       assertEvaluatesTo(lessThanCheckWithCustomAssertionFunction, results, CheckStatus.Success)
-      assertEvaluatesTo(incorrectLessThanCheckWithCustomAssertionFunction, results, CheckStatus.Error)
+      assertEvaluatesTo(incorrectLessThanCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
     }
 
     "correctly evaluate less than or equal to constraints" in withSparkSession { sparkSession =>
@@ -232,8 +234,10 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
       assertEvaluatesTo(lessThanOrEqualCheck, results, CheckStatus.Success)
       assertEvaluatesTo(incorrectLessThanOrEqualCheck, results, CheckStatus.Error)
-      assertEvaluatesTo(lessThanOrEqualCheckWithCustomAssertionFunction, results, CheckStatus.Success)
-      assertEvaluatesTo(incorrectLessThanOrEqualCheckWithCustomAssertionFunction, results, CheckStatus.Error)
+      assertEvaluatesTo(lessThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Success)
+      assertEvaluatesTo(incorrectLessThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
     }
 
     "correctly evaluate greater than constraints" in withSparkSession { sparkSession =>
@@ -256,7 +260,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(greaterThanCheck, results, CheckStatus.Success)
       assertEvaluatesTo(incorrectGreaterThanCheck, results, CheckStatus.Error)
       assertEvaluatesTo(greaterThanCheckWithCustomAssertionFunction, results, CheckStatus.Success)
-      assertEvaluatesTo(incorrectGreaterThanCheckWithCustomAssertionFunction, results, CheckStatus.Error)
+      assertEvaluatesTo(incorrectGreaterThanCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
     }
 
     "correctly evaluate greater than or equal to constraints" in withSparkSession { sparkSession =>
@@ -278,8 +283,10 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
       assertEvaluatesTo(greaterThanOrEqualCheck, results, CheckStatus.Success)
       assertEvaluatesTo(incorrectGreaterOrEqualThanCheck, results, CheckStatus.Error)
-      assertEvaluatesTo(greaterThanOrEqualCheckWithCustomAssertionFunction, results, CheckStatus.Success)
-      assertEvaluatesTo(incorrectGreaterThanOrEqualCheckWithCustomAssertionFunction, results, CheckStatus.Error)
+      assertEvaluatesTo(greaterThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Success)
+      assertEvaluatesTo(incorrectGreaterThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
     }
 
     "correctly evaluate non negative and positive constraints" in withSparkSession { sparkSession =>
