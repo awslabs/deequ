@@ -96,33 +96,21 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         Success(3.0)))
     }
 
-    "return length statistics" in withSparkSession { sparkSession =>
-      val df = getDfWithVariableLengthValues(sparkSession)
+    "return string length statistics" in withSparkSession { sparkSession =>
+      val df = getDfWithVariableStringLengthValues(sparkSession)
 
       val analysis = Analysis()
-        .addAnalyzer(MaxLength("strings"))
-        .addAnalyzer(MaxLength("ints"))
-        .addAnalyzer(MaxLength("doubles"))
-        .addAnalyzer(MinLength("strings"))
-        .addAnalyzer(MinLength("ints"))
-        .addAnalyzer(MinLength("doubles"))
+        .addAnalyzer(MaxLength("att1"))
+        .addAnalyzer(MinLength("att1"))
 
       val resultMetrics = analysis.run(df).allMetrics
 
       assert(resultMetrics.size == analysis.analyzers.size)
 
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MaxLength", "strings",
+      resultMetrics should contain(DoubleMetric(Entity.Column, "MaxLength", "att1",
         Success(4.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MaxLength", "ints",
-        Success(4.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MaxLength", "doubles",
-        Success(4.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "strings",
-        Success(1.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "ints",
-        Success(2.0))) // ToDo how to deal with negative values
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "doubles",
-        Success(3.0)))
+      resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "att1",
+        Success(0.0)))
     }
 
     "return the proper exception for non existing columns" in withSparkSession { sparkSession =>
@@ -176,7 +164,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
           Failure(new NumberOfSpecifiedColumnsException(""))))
       }
 
-    "return the proper exception when the number of max histogramm bins is too big" in
+    "return the proper exception when the number of max histogram bins is too big" in
       withSparkSession { sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
 
