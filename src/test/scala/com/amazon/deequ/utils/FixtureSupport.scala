@@ -138,13 +138,13 @@ trait FixtureSupport {
     import sparkSession.implicits._
     // att2 is always bigger than att1
     Seq(
-      ("1", 1, 0),
-      ("2", 2, 0),
-      ("3", 3, 0),
-      ("4", 4, 5),
-      ("5", 5, 6),
-      ("6", 6, 7)
-    ).toDF("item", "att1", "att2")
+      ("1", 1, 0, 0),
+      ("2", 2, 0, 0),
+      ("3", 3, 0, 0),
+      ("4", 4, 5, 4),
+      ("5", 5, 6, 6),
+      ("6", 6, 7, 7)
+    ).toDF("item", "att1", "att2", "att3")
   }
 
   def getDfWithNumericFractionalValues(sparkSession: SparkSession): DataFrame = {

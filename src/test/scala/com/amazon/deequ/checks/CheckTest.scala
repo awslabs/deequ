@@ -191,28 +191,119 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         assertEvaluatesTo(checkPartiallyGetsSatisfied, context, CheckStatus.Success)
       }
 
-    "correctly evaluate convenience constraints" in withSparkSession { sparkSession =>
-
+    "correctly evaluate less than constraints" in withSparkSession { sparkSession =>
       val lessThanCheck = Check(CheckLevel.Error, "a")
         .isLessThan("att1", "att2").where("item > 3")
 
       val incorrectLessThanCheck = Check(CheckLevel.Error, "a")
         .isLessThan("att1", "att2")
 
+      val lessThanCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isLessThan("att1", "att2", _ == 0.5)
+
+      val incorrectLessThanCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isLessThan("att1", "att2", _ == 0.4)
+
+      val results = runChecks(getDfWithNumericValues(sparkSession), lessThanCheck,
+        incorrectLessThanCheck, lessThanCheckWithCustomAssertionFunction,
+        incorrectLessThanCheckWithCustomAssertionFunction)
+
+      assertEvaluatesTo(lessThanCheck, results, CheckStatus.Success)
+      assertEvaluatesTo(incorrectLessThanCheck, results, CheckStatus.Error)
+      assertEvaluatesTo(lessThanCheckWithCustomAssertionFunction, results, CheckStatus.Success)
+      assertEvaluatesTo(incorrectLessThanCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
+    }
+
+    "correctly evaluate less than or equal to constraints" in withSparkSession { sparkSession =>
+      val lessThanOrEqualCheck = Check(CheckLevel.Error, "a")
+        .isLessThanOrEqualTo("att1", "att3").where("item > 3")
+
+      val incorrectLessThanOrEqualCheck = Check(CheckLevel.Error, "a")
+        .isLessThanOrEqualTo("att1", "att3")
+
+      val lessThanOrEqualCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isLessThanOrEqualTo("att1", "att3", _ == 0.5)
+
+      val incorrectLessThanOrEqualCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isLessThanOrEqualTo("att1", "att3", _ == 0.4)
+
+      val results = runChecks(getDfWithNumericValues(sparkSession), lessThanOrEqualCheck,
+        incorrectLessThanOrEqualCheck, lessThanOrEqualCheckWithCustomAssertionFunction,
+        incorrectLessThanOrEqualCheckWithCustomAssertionFunction)
+
+      assertEvaluatesTo(lessThanOrEqualCheck, results, CheckStatus.Success)
+      assertEvaluatesTo(incorrectLessThanOrEqualCheck, results, CheckStatus.Error)
+      assertEvaluatesTo(lessThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Success)
+      assertEvaluatesTo(incorrectLessThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
+    }
+
+    "correctly evaluate greater than constraints" in withSparkSession { sparkSession =>
+      val greaterThanCheck = Check(CheckLevel.Error, "a")
+        .isGreaterThan("att2", "att1").where("item > 3")
+
+      val incorrectGreaterThanCheck = Check(CheckLevel.Error, "a")
+        .isGreaterThan("att2", "att1")
+
+      val greaterThanCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isGreaterThan("att2", "att1", _ == 0.5)
+
+      val incorrectGreaterThanCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isGreaterThan("att2", "att1", _ == 0.4)
+
+      val results = runChecks(getDfWithNumericValues(sparkSession), greaterThanCheck,
+        incorrectGreaterThanCheck, greaterThanCheckWithCustomAssertionFunction,
+        incorrectGreaterThanCheckWithCustomAssertionFunction)
+
+      assertEvaluatesTo(greaterThanCheck, results, CheckStatus.Success)
+      assertEvaluatesTo(incorrectGreaterThanCheck, results, CheckStatus.Error)
+      assertEvaluatesTo(greaterThanCheckWithCustomAssertionFunction, results, CheckStatus.Success)
+      assertEvaluatesTo(incorrectGreaterThanCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
+    }
+
+    "correctly evaluate greater than or equal to constraints" in withSparkSession { sparkSession =>
+      val greaterThanOrEqualCheck = Check(CheckLevel.Error, "a")
+        .isGreaterThanOrEqualTo("att3", "att1").where("item > 3")
+
+      val incorrectGreaterOrEqualThanCheck = Check(CheckLevel.Error, "a")
+        .isGreaterThanOrEqualTo("att3", "att1")
+
+      val greaterThanOrEqualCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isGreaterThanOrEqualTo("att3", "att1", _ == 0.5)
+
+      val incorrectGreaterThanOrEqualCheckWithCustomAssertionFunction = Check(CheckLevel.Error, "a")
+        .isGreaterThanOrEqualTo("att3", "att1", _ == 0.4)
+
+      val results = runChecks(getDfWithNumericValues(sparkSession), greaterThanOrEqualCheck,
+        incorrectGreaterOrEqualThanCheck, greaterThanOrEqualCheckWithCustomAssertionFunction,
+        incorrectGreaterThanOrEqualCheckWithCustomAssertionFunction)
+
+      assertEvaluatesTo(greaterThanOrEqualCheck, results, CheckStatus.Success)
+      assertEvaluatesTo(incorrectGreaterOrEqualThanCheck, results, CheckStatus.Error)
+      assertEvaluatesTo(greaterThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Success)
+      assertEvaluatesTo(incorrectGreaterThanOrEqualCheckWithCustomAssertionFunction, results,
+        CheckStatus.Error)
+    }
+
+    "correctly evaluate non negative and positive constraints" in withSparkSession { sparkSession =>
       val nonNegativeCheck = Check(CheckLevel.Error, "a")
         .isNonNegative("item")
 
       val isPositiveCheck = Check(CheckLevel.Error, "a")
         .isPositive("item")
 
-      val results = runChecks(getDfWithNumericValues(sparkSession), lessThanCheck,
-        incorrectLessThanCheck, nonNegativeCheck, isPositiveCheck)
+      val results = runChecks(getDfWithNumericValues(sparkSession), nonNegativeCheck,
+        isPositiveCheck)
 
-      assertEvaluatesTo(lessThanCheck, results, CheckStatus.Success)
-      assertEvaluatesTo(incorrectLessThanCheck, results, CheckStatus.Error)
       assertEvaluatesTo(nonNegativeCheck, results, CheckStatus.Success)
       assertEvaluatesTo(isPositiveCheck, results, CheckStatus.Success)
+    }
 
+    "correctly evaluate range constraints" in withSparkSession { sparkSession =>
       val rangeCheck = Check(CheckLevel.Error, "a")
         .isContainedIn("att1", Array("a", "b", "c"))
 
