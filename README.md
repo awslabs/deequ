@@ -69,7 +69,7 @@ In code this looks as follows:
 
 ```scala
 import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 
 
 val verificationResult = VerificationSuite()
@@ -96,7 +96,7 @@ After calling `run`, __deequ__ translates your test to a series of Spark jobs, w
 import com.amazon.deequ.constraints.ConstraintStatus
 
 
-if (verificationResult.status == ConstraintStatus.Success) {
+if (verificationResult.status == CheckStatus.Success) {
   println("The data passed the test, everything is fine!")
 } else {
   println("We found errors in the data:\n")
