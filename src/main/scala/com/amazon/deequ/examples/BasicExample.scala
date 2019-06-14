@@ -18,8 +18,7 @@ package com.amazon.deequ.examples
 
 import ExampleUtils.{withSpark, itemsAsDataframe}
 import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.checks.CheckStatus._
+import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.ConstraintStatus
 
 private[examples] object BasicExample extends App {
@@ -57,7 +56,7 @@ private[examples] object BasicExample extends App {
           .hasApproxQuantile("numViews", 0.5, _ <= 10))
       .run()
 
-    if (verificationResult.status == Success) {
+    if (verificationResult.status == CheckStatus.Success) {
       println("The data passed the test, everything is fine!")
     } else {
       println("We found errors in the data, the following constraints were not satisfied:\n")
