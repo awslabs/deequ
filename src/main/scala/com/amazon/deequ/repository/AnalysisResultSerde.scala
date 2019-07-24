@@ -72,7 +72,7 @@ private[deequ] object SimpleResultSerde {
   }
 }
 
-private[deequ] object AnalysisResultSerde {
+object AnalysisResultSerde {
 
   def serialize(analysisResults: Seq[AnalysisResult]): String = {
     val gson = new GsonBuilder()
