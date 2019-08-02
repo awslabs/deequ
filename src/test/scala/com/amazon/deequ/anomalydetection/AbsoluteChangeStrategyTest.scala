@@ -19,11 +19,11 @@ package com.amazon.deequ.anomalydetection
 import breeze.linalg.DenseVector
 import org.scalatest.{Matchers, WordSpec}
 
-class RateOfChangeStrategyTest extends WordSpec with Matchers {
+class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
 
-  "Rate of Change Strategy" should {
+  "Absolute Change Strategy" should {
 
-    val strategy = RateOfChangeStrategy(Some(-2.0), Some(2.0))
+    val strategy = AbsoluteChangeStrategy(Some(-2.0), Some(2.0))
     val data = (for (i <- 0 to 50) yield {
       if (i < 20 || i > 30) {
         1.0
@@ -49,7 +49,7 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
     }
 
     "ignore min rate if none is given" in {
-      val strategy = RateOfChangeStrategy(None, Some(1.0))
+      val strategy = AbsoluteChangeStrategy(None, Some(1.0))
       val anomalyResult = strategy.detect(data)
 
       // Anomalies with positive values only
@@ -60,7 +60,7 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
     }
 
     "ignore max rate if none is given" in {
-      val strategy = RateOfChangeStrategy(Some(-1.0), None)
+      val strategy = AbsoluteChangeStrategy(Some(-1.0), None)
       val anomalyResult = strategy.detect(data)
 
       // Anomalies with negative values only
@@ -71,7 +71,7 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
     }
 
     "detect no anomalies if rates are set to min/ max value" in {
-      val strategy = RateOfChangeStrategy(Some(Double.MinValue), Some(Double.MaxValue))
+      val strategy = AbsoluteChangeStrategy(Some(Double.MinValue), Some(Double.MaxValue))
       val anomalyResult = strategy.detect(data)
 
       val expected: List[(Int, Anomaly)] = List()
@@ -103,7 +103,7 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
 
     "attribute indices correctly for higher orders without search interval" in {
       val data = Vector(0.0, 1.0, 3.0, 6.0, 18.0, 72.0)
-      val strategy = RateOfChangeStrategy(None, Some(8.0), order = 2)
+      val strategy = AbsoluteChangeStrategy(None, Some(8.0), order = 2)
       val result = strategy.detect(data)
 
       val expected = Seq((4, Anomaly(Option(18.0), 1.0)), (5, Anomaly(Option(72.0), 1.0)))
@@ -112,7 +112,7 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
 
     "attribute indices correctly for higher orders with search interval" in {
       val data = Vector(0.0, 1.0, 3.0, 6.0, 18.0, 72.0)
-      val strategy = RateOfChangeStrategy(None, Some(8.0), order = 2)
+      val strategy = AbsoluteChangeStrategy(None, Some(8.0), order = 2)
       val result = strategy.detect(data, (5, 6))
 
       val expected = Seq((5, Anomaly(Option(72.0), 1.0)))
@@ -129,13 +129,13 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
 
     "throw an error when rates aren't ordered" in {
       intercept[IllegalArgumentException] {
-        RateOfChangeStrategy(Some(-2.0), Some(-3.0))
+        AbsoluteChangeStrategy(Some(-2.0), Some(-3.0))
       }
     }
 
     "throw an error when no maximal rate given" in {
       intercept[IllegalArgumentException] {
-        RateOfChangeStrategy(None, None)
+        AbsoluteChangeStrategy(None, None)
       }
     }
 

@@ -18,7 +18,7 @@ package com.amazon.deequ
 
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
+import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.io.DfsUtils
@@ -260,18 +260,18 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .addRequiredAnalyzers(analyzers)
           .saveOrAppendResult(saveResultsWithKey)
           .addAnomalyCheck(
-            RateOfChangeStrategy(Some(-2.0), Some(2.0)),
+            AbsoluteChangeStrategy(Some(-2.0), Some(2.0)),
             Size(),
             Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
           )
           .addAnomalyCheck(
-            RateOfChangeStrategy(Some(-7.0), Some(7.0)),
+            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
             Size(),
             Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
               Map.empty, Some(0), Some(11)))
           )
           .addAnomalyCheck(
-            RateOfChangeStrategy(Some(-7.0), Some(7.0)),
+            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
             Size()
           )
           .run()
