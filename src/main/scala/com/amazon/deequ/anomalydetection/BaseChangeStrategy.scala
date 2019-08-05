@@ -29,7 +29,7 @@ import breeze.linalg.DenseVector
 abstract class BaseChangeStrategy
   extends AnomalyDetectionStrategy {
 
-  def  maxRateDecrease: Option[Double]
+  def maxRateDecrease: Option[Double]
   def maxRateIncrease: Option[Double]
   def order: Int
 

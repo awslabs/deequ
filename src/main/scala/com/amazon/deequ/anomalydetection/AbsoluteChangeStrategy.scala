@@ -16,7 +16,6 @@
 
 package com.amazon.deequ.anomalydetection
 
-
 /**
   * Detects anomalies based on the values' absolute change.
   * The order of the difference can be set manually.
@@ -32,6 +31,6 @@ package com.amazon.deequ.anomalydetection
   *                        Set to 1 it calculates the difference between two consecutive values.
   */
 case class AbsoluteChangeStrategy(
-maxRateDecrease: Option[Double] = None,
-maxRateIncrease: Option[Double] = None,
-order: Int = 1) extends BaseChangeStrategy
+  maxRateDecrease: Option[Double] = None,
+  maxRateIncrease: Option[Double] = None,
+  order: Int = 1) extends BaseChangeStrategy
