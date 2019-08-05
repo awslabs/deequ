@@ -52,7 +52,8 @@ abstract class BaseChangeStrategy
    *
    * @param dataSeries The values contained in a DenseVector[Double]
    * @param order      The order of the derivative.
-   * @return A vector with the resulting rates of change for all values except the first [[order]] elements.
+   * @return A vector with the resulting rates of change for all values
+   *         except the first [[order]] elements.
    */
   def diff(dataSeries: DenseVector[Double], order: Int): DenseVector[Double] = {
     require(order >= 0, "Order of diff cannot be negative")

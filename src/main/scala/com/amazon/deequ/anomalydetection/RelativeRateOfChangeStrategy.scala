@@ -25,7 +25,8 @@ import breeze.linalg.DenseVector
   *
   * RelativeRateOfChangeStrategy(Some(0.9), Some(1.1), 1) for example
   * calculates the first discrete difference
-  * and if some point's value changes by more than 10.0 Percent in one timestep, it flags it as an anomaly.
+  * and if some point's value changes by more than 10.0 Percent in one timestep,
+  * it flags it as an anomaly.
   *
   * @param maxRateDecrease Lower bound of accepted relative change (as new value / old value).
   * @param maxRateIncrease Upper bound of accepted relative change (as new value / old value).
@@ -42,12 +43,13 @@ case class RelativeRateOfChangeStrategy(
     * Calculates the rate of change with respect to the specified order.
     * If the order is set to 1, the resulting value for a point at index i
     * is equal to dataSeries (i) / dataSeries(i - 1).
-   * Note that this difference cannot be calculated for the first [[order]] elements in the vector.
-   * The resulting vector is therefore smaller by [[order]] elements.
+    * Note that this difference cannot be calculated for the first [[order]] elements in the vector.
+    * The resulting vector is therefore smaller by [[order]] elements.
     *
     * @param dataSeries The values contained in a DenseVector[Double]
     * @param order      The order of the derivative.
-    * @return A vector with the resulting rates of change for all values except the first [[order]] elements.
+    * @return A vector with the resulting rates of change for all values
+    *         except the first [[order]] elements.
     */
   override def diff(dataSeries: DenseVector[Double], order: Int): DenseVector[Double] = {
     require(order > 0, "Order of diff cannot be zero or negative")
