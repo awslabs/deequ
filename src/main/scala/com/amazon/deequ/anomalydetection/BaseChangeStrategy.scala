@@ -26,7 +26,7 @@ import breeze.linalg.DenseVector
  * If it is set to 0, this strategy acts like the [[SimpleThresholdStrategy]].
  *                        Set to 1 it calculates the difference between two consecutive values.
  */
-abstract class BaseChangeStrategy
+trait BaseChangeStrategy
   extends AnomalyDetectionStrategy {
 
   def maxRateDecrease: Option[Double]
@@ -81,12 +81,13 @@ abstract class BaseChangeStrategy
     dataSeries: Vector[Double],
     searchInterval: (Int, Int))
   : Seq[(Int, Anomaly)] = {
+    val (start, end) = searchInterval
 
-    require(searchInterval._1 <= searchInterval._2,
+    require(start <= end,
       "The start of the interval cannot be larger than the end.")
 
-    val startPoint = Seq(searchInterval._1 - order, 0).max
-    val data = diff(DenseVector(dataSeries.slice(startPoint, searchInterval._2): _*), order).data
+    val startPoint = Seq(start - order, 0).max
+    val data = diff(DenseVector(dataSeries.slice(startPoint, end): _*), order).data
 
     data.zipWithIndex.filter { case (value, _) =>
       (value < maxRateDecrease.getOrElse(Double.MinValue)
