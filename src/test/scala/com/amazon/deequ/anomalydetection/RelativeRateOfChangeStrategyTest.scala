@@ -23,7 +23,7 @@ class RelativeRateOfChangeStrategyTest extends WordSpec with Matchers {
 
   "Relative Rate of Change Strategy" should {
 
-    val strategy = RelativeRateOfChangeStrategy(Some(-0.5), Some(1.0))
+    val strategy = RelativeRateOfChangeStrategy(Some(0.5), Some(2.0))
     val data = (for (i <- 0 to 50) yield {
       if (i < 20 || i > 30) {
         1.0
@@ -60,7 +60,7 @@ class RelativeRateOfChangeStrategyTest extends WordSpec with Matchers {
     }
 
     "ignore max rate if none is given" in {
-      val strategy = RelativeRateOfChangeStrategy(Some(-0.5), None)
+      val strategy = RelativeRateOfChangeStrategy(Some(0.5), None)
       val anomalyResult = strategy.detect(data)
 
       // Anomalies with negative values only
@@ -149,7 +149,5 @@ class RelativeRateOfChangeStrategyTest extends WordSpec with Matchers {
         assert(value -1 < lowerBound || value -1 > upperBound)
       }
     }
-
-
   }
 }
