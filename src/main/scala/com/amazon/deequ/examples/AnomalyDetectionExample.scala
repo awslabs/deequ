@@ -18,7 +18,7 @@ package com.amazon.deequ.examples
 
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.analyzers.Size
-import com.amazon.deequ.anomalydetection.RateOfChangeStrategy
+import com.amazon.deequ.anomalydetection.RelativeRateOfChangeStrategy
 import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -50,7 +50,7 @@ private[examples] object AnomalyDetectionExample extends App {
       .useRepository(metricsRepository)
       .saveOrAppendResult(yesterdaysKey)
       .addAnomalyCheck(
-        RateOfChangeStrategy(maxRateIncrease = Some(2.0)),
+        RelativeRateOfChangeStrategy(maxRateIncrease = Some(2.0)),
         Size()
       )
       .run()
@@ -73,7 +73,7 @@ private[examples] object AnomalyDetectionExample extends App {
       .useRepository(metricsRepository)
       .saveOrAppendResult(todaysKey)
       .addAnomalyCheck(
-        RateOfChangeStrategy(maxRateIncrease = Some(2.0)),
+        RelativeRateOfChangeStrategy(maxRateIncrease = Some(2.0)),
         Size()
       )
       .run()

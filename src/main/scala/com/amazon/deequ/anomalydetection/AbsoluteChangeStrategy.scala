@@ -14,18 +14,23 @@
  *
  */
 
-
 package com.amazon.deequ.anomalydetection
 
 /**
-  * Provided for backwards compatibility.
-  * the old [[RateOfChangeStrategy]] actually detects absolute changes
-  * so it has been migrated to [[AbsoluteChangeStrategy]]
-  * use [[RelativeRateOfChangeStrategy]] if you want to
-  * detect relative changes to the previous values
+  * Detects anomalies based on the values' absolute change.
+  * The order of the difference can be set manually.
+  * If it is set to 0, this strategy acts like the [[SimpleThresholdStrategy]].
+  *
+  * AbsoluteChangeStrategy(Some(-10.0), Some(10.0), 1) for example
+  * calculates the first discrete difference
+  * and if some point's value changes by more than 10.0 in one timestep, it flags it as an anomaly.
+  *
+  * @param maxRateDecrease Upper bound of accepted decrease (lower bound of increase).
+  * @param maxRateIncrease Upper bound of accepted growth.
+  * @param order           Order of the calculated difference.
+  *                        Set to 1 it calculates the difference between two consecutive values.
   */
-@deprecated("use AbsoluteChangeStrategy instead which describes the strategy more accurately")
-case class RateOfChangeStrategy(
+case class AbsoluteChangeStrategy(
   maxRateDecrease: Option[Double] = None,
   maxRateIncrease: Option[Double] = None,
   order: Int = 1) extends BaseChangeStrategy

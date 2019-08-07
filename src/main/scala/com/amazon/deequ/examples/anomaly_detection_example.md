@@ -25,7 +25,7 @@ VerificationSuite()
   .useRepository(metricsRepository)
   .saveOrAppendResult(yesterdaysKey)
   .addAnomalyCheck(
-    RateOfChangeStrategy(maxRateIncrease = Some(2.0)),
+    RelativeRateOfChangeStrategy(maxRateIncrease = Some(2.0)),
     Size())
   .run()
 ```  
@@ -49,7 +49,7 @@ val verificationResult = VerificationSuite()
   .useRepository(metricsRepository)
   .saveOrAppendResult(todaysKey)
   .addAnomalyCheck(
-    RateOfChangeStrategy(maxRateIncrease = Some(2.0)),
+    RelativeRateOfChangeStrategy(maxRateIncrease = Some(2.0)),
     Size())
   .run()
 ```

@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.repository
 
-import com.amazon.deequ.anomalydetection.{OnlineNormalStrategy, RateOfChangeStrategy}
+import com.amazon.deequ.anomalydetection.{OnlineNormalStrategy, AbsoluteChangeStrategy}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
@@ -157,7 +157,7 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Mat
     // Config for the size anomaly check
     val sizeAnomalyCheckConfig = AnomalyCheckConfig(CheckLevel.Error, "Size only increases",
       filterEU, Some(afterDateTime), Some(beforeDateTime))
-    val sizeAnomalyDetectionStrategy = RateOfChangeStrategy(Some(0))
+    val sizeAnomalyDetectionStrategy = AbsoluteChangeStrategy(Some(0))
 
     // Config for the mean sales anomaly check
     val meanSalesAnomalyCheckConfig = AnomalyCheckConfig(
