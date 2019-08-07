@@ -92,7 +92,8 @@ trait BaseChangeStrategy
     data.zipWithIndex.filter { case (value, _) =>
       (value < maxRateDecrease.getOrElse(Double.MinValue)
         || value > maxRateIncrease.getOrElse(Double.MaxValue))
-    }.map { case (change, index) =>
+    }
+      .map { case (change, index) =>
       (index + startPoint + order, Anomaly(Option(dataSeries(index + startPoint + order)), 1.0,
         Some(s"[AbsoluteChangeStrategy]: Change of $change is not in bounds [" +
           s"${maxRateDecrease.getOrElse(Double.MinValue)}, " +

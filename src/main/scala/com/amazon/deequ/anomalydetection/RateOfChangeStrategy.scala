@@ -24,7 +24,7 @@ package com.amazon.deequ.anomalydetection
   * use [[RelativeRateOfChangeStrategy]] if you want to
   * detect relative changes to the previous values
   */
-@deprecated
+@deprecated("use AbsoluteChangeStrategy instead which describes the strategy more accurately")
 case class RateOfChangeStrategy(
   maxRateDecrease: Option[Double] = None,
   maxRateIncrease: Option[Double] = None,
