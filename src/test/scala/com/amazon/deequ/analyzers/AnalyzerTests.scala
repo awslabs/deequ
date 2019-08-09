@@ -17,13 +17,12 @@
 package com.amazon.deequ
 package analyzers
 
-import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.{col, expr, udf}
+import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types._
 import org.scalatest.{Matchers, WordSpec}
 
@@ -502,6 +501,42 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
 
       assert(result.value.isSuccess)
       assert(result.value.get == 99.0)
+    }
+
+    "compute min length correctly for string data" in withSparkSession { sparkSession =>
+      val df = getDfWithVariableStringLengthValues(sparkSession)
+      val result = MinLength("att1").calculate(df).value
+      result shouldBe Success(0.0)
+    }
+
+    "compute min length correctly for string data with filtering" in
+      withSparkSession { sparkSession =>
+        val df = getDfWithVariableStringLengthValues(sparkSession)
+        val result = MinLength("att1", where = Some("att1 != ''")).calculate(df).value
+        result shouldBe Success(1.0)
+    }
+
+    "fail to compute min length for non string type" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      assert(MinLength("att1").calculate(df).value.isFailure)
+    }
+
+    "compute max length correctly for string data" in withSparkSession { sparkSession =>
+      val df = getDfWithVariableStringLengthValues(sparkSession)
+      val result = MaxLength("att1").calculate(df).value
+      result shouldBe Success(4.0)
+    }
+
+    "compute max length correctly for string data with filtering" in
+      withSparkSession { sparkSession =>
+        val df = getDfWithVariableStringLengthValues(sparkSession)
+        val result = MaxLength("att1", where = Some("att1 != 'dddd'")).calculate(df).value
+        result shouldBe Success(3.0)
+    }
+
+    "fail to compute max length for non string type" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      assert(MaxLength("att1").calculate(df).value.isFailure)
     }
   }
 

@@ -112,6 +112,19 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
     }
   }
 
+  "Min and max string length stats constraints" should {
+    "assert on min length" in withSparkSession { sparkSession =>
+      val df = getDfWithVariableStringLengthValues(sparkSession)
+      calculate(Constraint.minLengthConstraint("att1", _ == 0.0), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+    "assert on max length" in withSparkSession { sparkSession =>
+      val df = getDfWithVariableStringLengthValues(sparkSession)
+      calculate(Constraint.maxLengthConstraint("att1", _ == 4.0), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+  }
+
   "Correlation constraint" should {
     "assert maximal correlation" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyInformativeColumns(sparkSession)

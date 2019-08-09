@@ -332,6 +332,20 @@ object Preconditions {
         s"(${numericDataTypes.mkString(",")}), but found $columnDataType instead!")
     }
   }
+
+  /** Specified column has string type */
+  def isString(column: String): StructType => Unit = { schema =>
+    val columnDataType = schema(column).dataType
+    val hasStringType = columnDataType match {
+      case StringType => true
+      case _ => false
+    }
+
+    if (!hasStringType) {
+      throw new WrongColumnTypeException(s"Expected type of column $column to be " +
+        s"StringType, but found $columnDataType instead!")
+    }
+  }
 }
 
 private[deequ] object Analyzers {

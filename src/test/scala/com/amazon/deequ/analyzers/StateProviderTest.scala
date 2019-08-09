@@ -18,7 +18,6 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.{Matchers, WordSpec}
 
@@ -46,6 +45,9 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
       assertCorrectlyRestoresState[MaxState](provider, provider, Maximum("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
+
+      assertCorrectlyRestoresState[MaxState](provider, provider, MaxLength("att1"), data)
+      assertCorrectlyRestoresState[MinState](provider, provider, MinLength("att1"), data)
 
       assertCorrectlyRestoresState[DataTypeHistogram](provider, provider, DataType("item"), data)
       assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("att1"), data)
@@ -83,6 +85,9 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
       assertCorrectlyRestoresState[MaxState](provider, provider, Maximum("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
+
+      assertCorrectlyRestoresState[MaxState](provider, provider, MaxLength("att1"), data)
+      assertCorrectlyRestoresState[MinState](provider, provider, MinLength("att1"), data)
 
       assertCorrectlyRestoresState[DataTypeHistogram](provider, provider, DataType("item"), data)
       assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("att1"), data)

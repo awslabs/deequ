@@ -397,6 +397,39 @@ case class Check(
     addConstraint(approxQuantileConstraint(column, quantile, assertion, hint))
   }
 
+  /**
+    * Creates a constraint that asserts on the minimum length of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasMinLength(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+    * Creates a constraint that asserts on the maximum length of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasMaxLength(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint) }
+  }
 
   /**
     * Creates a constraint that asserts on the minimum of the column

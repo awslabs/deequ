@@ -105,6 +105,12 @@ case class HdfsStateProvider(
       case _: Maximum =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
 
+      case _: MaxLength =>
+        persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
+
+      case _: MinLength =>
+        persistDoubleState(state.asInstanceOf[MinState].minValue, identifier)
+
       case _ : FrequencyBasedAnalyzer | _ : Histogram =>
         persistDataframeLongState(state.asInstanceOf[FrequenciesAndNumRows], identifier)
 
@@ -150,6 +156,10 @@ case class HdfsStateProvider(
       case _ : Minimum => MinState(loadDoubleState(identifier))
 
       case _ : Maximum => MaxState(loadDoubleState(identifier))
+
+      case _ : MaxLength => MaxState(loadDoubleState(identifier))
+
+      case _ : MinLength => MinState(loadDoubleState(identifier))
 
       case _ : FrequencyBasedAnalyzer | _ : Histogram => loadDataframeLongState(identifier)
 

@@ -96,6 +96,23 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         Success(3.0)))
     }
 
+    "return string length statistics" in withSparkSession { sparkSession =>
+      val df = getDfWithVariableStringLengthValues(sparkSession)
+
+      val analysis = Analysis()
+        .addAnalyzer(MaxLength("att1"))
+        .addAnalyzer(MinLength("att1"))
+
+      val resultMetrics = analysis.run(df).allMetrics
+
+      assert(resultMetrics.size == analysis.analyzers.size)
+
+      resultMetrics should contain(DoubleMetric(Entity.Column, "MaxLength", "att1",
+        Success(4.0)))
+      resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "att1",
+        Success(0.0)))
+    }
+
     "return the proper exception for non existing columns" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
 
@@ -147,7 +164,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
           Failure(new NumberOfSpecifiedColumnsException(""))))
       }
 
-    "return the proper exception when the number of max histogramm bins is too big" in
+    "return the proper exception when the number of max histogram bins is too big" in
       withSparkSession { sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
 

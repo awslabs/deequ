@@ -66,6 +66,9 @@ class NullHandlingTests extends WordSpec with Matchers with SparkContextSpec wit
       Minimum("numericCol").computeStateFrom(data) shouldBe None
       Maximum("numericCol").computeStateFrom(data) shouldBe None
 
+      MinLength("stringCol").computeStateFrom(data) shouldBe None
+      MaxLength("stringCol").computeStateFrom(data) shouldBe None
+
       DataType("stringCol").computeStateFrom(data) shouldBe
         Some(DataTypeHistogram(8L, 0L, 0L, 0L, 0L))
 
@@ -102,6 +105,9 @@ class NullHandlingTests extends WordSpec with Matchers with SparkContextSpec wit
       assertFailedWithEmptyState(StandardDeviation("numericCol").calculate(data))
       assertFailedWithEmptyState(Minimum("numericCol").calculate(data))
       assertFailedWithEmptyState(Maximum("numericCol").calculate(data))
+
+      assertFailedWithEmptyState(MinLength("stringCol").calculate(data))
+      assertFailedWithEmptyState(MaxLength("stringCol").calculate(data))
 
       val dataTypeDistribution = DataType("stringCol").calculate(data).value.get
       dataTypeDistribution.values("Unknown").ratio shouldBe 1.0

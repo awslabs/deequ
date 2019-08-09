@@ -380,6 +380,50 @@ object Constraint {
   }
 
   /**
+    * Runs max length analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def maxLengthConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val maxLength = MaxLength(column, where)
+
+    val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
+      hint = hint)
+
+    new NamedConstraint(constraint, s"MaxLengthConstraint($maxLength)")
+  }
+
+  /**
+    * Runs min length analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def minLengthConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val minLength = MinLength(column, where)
+
+    val constraint = AnalysisBasedConstraint[MinState, Double, Double](minLength, assertion,
+      hint = hint)
+
+    new NamedConstraint(constraint, s"MinLengthConstraint($minLength)")
+  }
+
+  /**
     * Runs minimum analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on

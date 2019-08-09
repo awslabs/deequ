@@ -18,7 +18,7 @@ package com.amazon.deequ
 package checks
 
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
 import com.amazon.deequ.constraints.{ConstrainableDataTypes, ConstraintStatus}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
@@ -438,6 +438,17 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertSuccess(baseCheck.hasCorrelation("att1", "att2", _ == 1.0), contextInformative)
       assertSuccess(baseCheck.hasCorrelation("att1", "att2", java.lang.Double.isNaN),
         contextUninformative)
+    }
+
+    "yield correct results for minimum and maximum length stats" in
+      withSparkSession { sparkSession =>
+        val baseCheck = Check(CheckLevel.Error, description = "a description")
+        val df = getDfWithVariableStringLengthValues(sparkSession)
+        val context = AnalysisRunner.onData(df)
+          .addAnalyzers(Seq(MinLength("att1"), MaxLength("att1"))).run()
+
+        assertSuccess(baseCheck.hasMinLength("att1", _ == 0.0), context)
+        assertSuccess(baseCheck.hasMaxLength("att1", _ == 4.0), context)
     }
 
     "work on regular expression patterns for E-Mails" in withSparkSession { sparkSession =>
