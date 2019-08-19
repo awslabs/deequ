@@ -19,7 +19,7 @@ package com.amazon.deequ.examples
 import com.amazon.deequ.examples.ExampleUtils.withSpark
 import com.amazon.deequ.profiles.{ColumnProfilerRunner, NumericColumnProfile}
 
-case class RawData(name: String, count: String, status: String, valuable: String)
+case class RawData(productName: String, totalNumber: String, status: String, valuable: String)
 
 private[examples] object DataProfilingExample extends App {
 
@@ -47,22 +47,22 @@ private[examples] object DataProfilingExample extends App {
 
     /* We get a profile for each column which allows to inspect the completeness of the column,
        the approximate number of distinct values and the inferred datatype. */
-    result.profiles.foreach { case (name, profile) =>
+    result.profiles.foreach { case (productName, profile) =>
 
-      println(s"Column '$name':\n " +
+      println(s"Column '$productName':\n " +
         s"\tcompleteness: ${profile.completeness}\n" +
         s"\tapproximate number of distinct values: ${profile.approximateNumDistinctValues}\n" +
         s"\tdatatype: ${profile.dataType}\n")
     }
 
     /* For numeric columns, we get descriptive statistics */
-    val countProfile = result.profiles("count").asInstanceOf[NumericColumnProfile]
+    val totalNumberProfile = result.profiles("totalNumber").asInstanceOf[NumericColumnProfile]
 
-    println(s"Statistics of 'count':\n" +
-      s"\tminimum: ${countProfile.minimum.get}\n" +
-      s"\tmaximum: ${countProfile.maximum.get}\n" +
-      s"\tmean: ${countProfile.mean.get}\n" +
-      s"\tstandard deviation: ${countProfile.stdDev.get}\n")
+    println(s"Statistics of 'totalNumber':\n" +
+      s"\tminimum: ${totalNumberProfile.minimum.get}\n" +
+      s"\tmaximum: ${totalNumberProfile.maximum.get}\n" +
+      s"\tmean: ${totalNumberProfile.mean.get}\n" +
+      s"\tstandard deviation: ${totalNumberProfile.stdDev.get}\n")
 
     val statusProfile = result.profiles("status")
 

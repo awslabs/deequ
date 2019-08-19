@@ -42,8 +42,8 @@ private[examples] object BasicExample extends App {
           .isComplete("id")
           // 'id' should not contain duplicates
           .isUnique("id")
-          // 'name' should never be NULL
-          .isComplete("name")
+          // 'productName' should never be NULL
+          .isComplete("productName")
           // 'priority' should only contain the values "high" and "low"
           .isContainedIn("priority", Array("high", "low"))
           // 'numViews' should not contain negative values

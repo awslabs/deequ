@@ -56,7 +56,7 @@ object MetricsRepositoryExample extends App {
       .addCheck(Check(CheckLevel.Error, "integrity checks")
         .hasSize(_ == 5)
         .isComplete("id")
-        .isComplete("name")
+        .isComplete("productName")
         .isContainedIn("priority", Array("high", "low"))
         .isNonNegative("numViews"))
       // We want to store the computed metrics for the checks in our repository
@@ -68,11 +68,11 @@ object MetricsRepositoryExample extends App {
 
 
     // We can load the metric for a particular analyzer stored under our result key:
-    val completenessOfName = repository
+    val completenessOfProductName = repository
       .loadByKey(resultKey).get
-      .metric(Completeness("name")).get
+      .metric(Completeness("productName")).get
 
-    println(s"The completeness of the name column is: $completenessOfName")
+    println(s"The completeness of the productName column is: $completenessOfProductName")
 
     // We can query the repository for all metrics from the last 10 minutes and get them as json
     val json = repository.load()

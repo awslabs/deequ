@@ -6,7 +6,7 @@ Very often we are faced with large, raw datasets and struggle to make sense of t
 Assume we have raw data that is string typed (such as the data you would get from a CSV file). For the sake of simplicity, we use the following toy data in this example:
 
 ```scala
-case class RawData(name: String, count: String, status: String, valuable: String)
+case class RawData(productName: String, count: String, status: String, valuable: String)
 
 val rows = spark.parallelize(Seq(
   RawData("thingA", "13.0", "IN_TRANSIT", "true"),
@@ -33,8 +33,8 @@ As a result, we get a profile for each column in the data, which allows us to in
 the approximate number of distinct values and the inferred datatype:
 
 ```scala
-result.profiles.foreach { case (name, profile) =>
-  println(s"Column '$name':\n " +
+result.profiles.foreach { case (productName, profile) =>
+  println(s"Column '$productName':\n " +
     s"\tcompleteness: ${profile.completeness}\n" +
     s"\tapproximate number of distinct values: ${profile.approximateNumDistinctValues}\n" +
     s"\tdatatype: ${profile.dataType}\n")
@@ -44,7 +44,7 @@ result.profiles.foreach { case (name, profile) =>
 In case of our toy data, we would get the following profiling results. Note that **deequ** detected that `count` is a fractional column (and could be casted to float or double type) and that `valuable` is a boolean column. 
 
 ```
-Column 'name':
+Column 'productName':
  	completeness: 1.0
 	approximate number of distinct values: 5
 	datatype: String
