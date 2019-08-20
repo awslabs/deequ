@@ -1,5 +1,6 @@
 language: java
 jdk: oraclejdk8
+dist: trusty
 
 # encrypted environment variables: MAVEN_REPO_USERNAME, MAVEN_REPO_PASSWORD, MAVEN_GPG_PASSPHRASE
 env:
