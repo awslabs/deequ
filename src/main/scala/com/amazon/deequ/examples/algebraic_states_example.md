@@ -19,7 +19,7 @@ val data = ExampleUtils.itemsAsDataframe(spark,
 val analysis = Analysis()
   .addAnalyzer(Size())
   .addAnalyzer(ApproxCountDistinct("id"))
-  .addAnalyzer(Completeness("name"))
+  .addAnalyzer(Completeness("productName"))
   .addAnalyzer(Completeness("description"))
 ```
 We can now trigger the execution of these analyzers via the [AnalysisRunner](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/analyzers/runners/AnalysisRunner.scala). However, we want to persist the internal state of the computation; therefore we configure a [StateProvider](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/analyzers/StateProvider.scala) in order to capture this state.
@@ -42,12 +42,12 @@ metricsForData.metricMap.foreach { case (analyzer, metric) =>
 }
 ```
 
-Executing this code will print the following. We see that there are 3 records in the data, the cardinality of the `ìd` column is 3, there are no missing values in the `name` column and two-thirds of the `description` column have values.
+Executing this code will print the following. We see that there are 3 records in the data, the cardinality of the `ìd` column is 3, there are no missing values in the `productName` column and two-thirds of the `description` column have values.
 
 ```
 Size(None): 3.0
 ApproxCountDistinct(id,None): 3.0
-Completeness(name,None): 1.0
+Completeness(productName,None): 1.0
 Completeness(description,None): 0.6666666666666666
 ```
 
@@ -69,12 +69,12 @@ metricsAfterAddingMoreData.metricMap.foreach { case (analyzer, metric) =>
   println(s"\t$analyzer: ${metric.value.get}")
 }
 ```
-Executing this code prints the updated metrics for the whole dataset. We have 5 records overall, the cardinality of the `ìd` column is also 5, there are still no missing values in the `name` column and the completeness of the `description` column dropped to 0.4.
+Executing this code prints the updated metrics for the whole dataset. We have 5 records overall, the cardinality of the `ìd` column is also 5, there are still no missing values in the `productName` column and the completeness of the `description` column dropped to 0.4.
 
 ```
 Size(None): 5.0
 ApproxCountDistinct(id,None): 5.0
-Completeness(name,None): 1.0
+Completeness(productName,None): 1.0
 Completeness(description,None): 0.4
 ```
 An [executable version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/IncrementalMetricsExample.scala) is part of our codebase.
@@ -102,8 +102,8 @@ And we have the following metrics (defined by a check) that we're interested in 
 
 ```scala
 val check = Check(CheckLevel.Warning, "a check")
-  .isComplete("name")
-  .containsURL("name", _ == 0.0)
+  .isComplete("productName")
+  .containsURL("productName", _ == 0.0)
   .isContainedIn("countryCode", Array("DE", "US", "CN"))
 ```
 
@@ -133,8 +133,8 @@ tableMetrics.metricMap.foreach { case (analyzer, metric) =>
 ```
 
 ```
-Completeness(name,None): 1.0
-PatternMatch(name,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.0
+Completeness(productName,None): 1.0
+PatternMatch(productName,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.0
 Compliance("countryCode contained in DE,US,CN", 
   countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
 ```
@@ -170,8 +170,8 @@ updatedTableMetrics.metricMap.foreach { case (analyzer, metric) =>
 This code will only operate on the updated partition and the states, but will still return the correct metrics for the table as a whole:
 
 ```
-Completeness(name,None): 0.8571428571428571
-PatternMatch(name,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.14285714285714285
+Completeness(productName,None): 0.8571428571428571
+PatternMatch(productName,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.14285714285714285
 Compliance("countryCode contained in DE,US,CN", 
   countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
 ```

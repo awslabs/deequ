@@ -24,7 +24,7 @@ tags in the form of key-value pairs. Let's setup one for this example:
 
 ```scala
 val resultKey = ResultKey(
-  System.currentTimeMillis(), 
+  System.currentTimeMillis(),
   Map("tag" -> "repositoryExample"))
 ```
 
@@ -36,7 +36,7 @@ VerificationSuite()
   .addCheck(Check(CheckLevel.Error, "integrity checks")
     .hasSize(_ == 5)
     .isComplete("id")
-    .isComplete("name")
+    .isComplete("productName")
     .isContainedIn("priority", Array("high", "low"))
     .isNonNegative("numViews"))
   .useRepository(repository)
@@ -44,18 +44,18 @@ VerificationSuite()
   .run()
 ```
 
-**Deequ** now executes the verification as usual and additionally stores the metrics under our specified key. Afterwards, we can retrieve the metrics from the repository in different ways. We can for example directly load the metric for a 
+**Deequ** now executes the verification as usual and additionally stores the metrics under our specified key. Afterwards, we can retrieve the metrics from the repository in different ways. We can for example directly load the metric for a
 particular analyzer stored under our result key as follows:
 
 ```scala
-val completenessOfName = repository
+val completenessOfProductName = repository
   .loadByKey(resultKey).get
-  .metric(Completeness("name")).get
+  .metric(Completeness("productName")).get
 
-println(s"The completeness of the name column is: $completenessOfName")
+println(s"The completeness of the productName column is: $completenessOfProductName")
 ```
 
-Executing this code will output `The completeness of the name column is: DoubleMetric(Column,Completeness,name,Success(0.8))`.
+Executing this code will output `The completeness of the productName column is: DoubleMetric(Column,Completeness,Name,Success(0.8))`.
 
 All our repositories support a couple of more general querying methods, e.g., we can also ask the repository for all metrics from the last 10 minutes and have it return the output as json:
 
@@ -96,7 +96,7 @@ This will show us the json representation of the metrics we computed so far:
  {"name":"Completeness",
   "tag":"repositoryExample",
   "dataset_date":1537951323402,
-  "instance":"name",
+  "instance":"productName",
   "entity":"Column",
   "value":0.8}]
 ```
@@ -118,7 +118,7 @@ repository.load()
 | Column|priority containe...|  Compliance|  1.0|1537951323402|repositoryExample|
 |Dataset|                   *|        Size|  5.0|1537951323402|repositoryExample|
 | Column|                  id|Completeness|  1.0|1537951323402|repositoryExample|
-| Column|                name|Completeness|  0.8|1537951323402|repositoryExample|
+| Column|         productName|Completeness|  0.8|1537951323402|repositoryExample|
 +-------+--------------------+------------+-----+-------------+-----------------+
 ```
 

@@ -46,8 +46,8 @@ object UpdateMetricsOnPartitionedDataExample extends App {
 
     // We are interested in the the following constraints of the table as a whole
     val check = Check(CheckLevel.Warning, "a check")
-        .isComplete("name")
-        .containsURL("name", _ == 0.0)
+        .isComplete("manufacturerName")
+        .containsURL("manufacturerName", _ == 0.0)
         .isContainedIn("countryCode", Array("DE", "US", "CN"))
 
     // Deequ now allows us to compute states for the metrics on which the constraints are defined

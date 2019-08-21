@@ -41,7 +41,7 @@ private[examples] object IncrementalMetricsExample extends App {
     val analysis = Analysis()
       .addAnalyzer(Size())
       .addAnalyzer(ApproxCountDistinct("id"))
-      .addAnalyzer(Completeness("name"))
+      .addAnalyzer(Completeness("productName"))
       .addAnalyzer(Completeness("description"))
 
     val stateStore = InMemoryStateProvider()

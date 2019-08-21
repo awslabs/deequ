@@ -28,12 +28,12 @@ libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.1"
 
 __Deequ__'s purpose is to "unit-test" data to find errors early, before the data gets fed to consuming systems or machine learning algorithms. In the following, we will walk you through a toy example to showcase the most basic usage of our library. An executable version of the example is available [here](/src/main/scala/com/amazon/deequ/examples/BasicExample.scala).
 
-__Deequ__ works on tabular data, e.g., CSV files, database tables, logs, flattened json files, basically anything that you can fit into a Spark dataframe. For this example, we assume that we work on some kind of `Item` data, where every item has an id, a name, a description, a priority and a count of how often it has been viewed.
+__Deequ__ works on tabular data, e.g., CSV files, database tables, logs, flattened json files, basically anything that you can fit into a Spark dataframe. For this example, we assume that we work on some kind of `Item` data, where every item has an id, a productName, a description, a priority and a count of how often it has been viewed.
 
 ```scala
 case class Item(
   id: Long,
-  name: String,
+  productName: String,
   description: String,
   priority: String,
   numViews: Long
@@ -59,7 +59,7 @@ The main entry point for defining how you expect your data to look is the [Verif
 
   * there are 5 rows in total
   * values of the `id` attribute are never NULL and unique
-  * values of the `name` attribute are never NULL
+  * values of the `productName` attribute are never NULL
   * the `priority` attribute can only contain "high" or "low" as value
   * `numViews` should not contain negative values
   * at least half of the values in `description` should contain a url
@@ -79,7 +79,7 @@ val verificationResult = VerificationSuite()
       .hasSize(_ == 5) // we expect 5 rows
       .isComplete("id") // should never be NULL
       .isUnique("id") // should not contain duplicates
-      .isComplete("name") // should never be NULL
+      .isComplete("productName") // should never be NULL
       // should only contain the values "high" and "low"
       .isContainedIn("priority", Array("high", "low"))
       .isNonNegative("numViews") // should not contain negative values
@@ -114,10 +114,10 @@ If we run the example, we get the following output:
 ```
 We found errors in the data:
 
-CompletenessConstraint(Completeness(name)): Value: 0.8 does not meet the requirement!
+CompletenessConstraint(Completeness(productName)): Value: 0.8 does not meet the requirement!
 PatternConstraint(containsURL(description)): Value: 0.4 does not meet the requirement!
 ```
-The test found that our assumptions are violated! Only 4 out of 5 (80%) of the values of the `name` attribute are non-null and only 2 out of 5 (40%) values of the `description` attribute contained a url. Fortunately, we ran a test and found the errors, somebody should immediately fix the data :)
+The test found that our assumptions are violated! Only 4 out of 5 (80%) of the values of the `productName` attribute are non-null and only 2 out of 5 (40%) values of the `description` attribute contained a url. Fortunately, we ran a test and found the errors, somebody should immediately fix the data :)
 
 ## More examples
 

@@ -7,7 +7,7 @@ Our constraint suggestion first [profiles the data](https://github.com/awslabs/d
 Let's first generate some example data:
 ```scala
 case class RawData(
-  name: String, 
+  productName: String, 
   count: String, 
   status: String, 
   valuable: String
@@ -74,13 +74,13 @@ Constraint suggestion for 'count': 'count' has only values that are equal to or 
 The corresponding scala code is .isNonNegative("count")
 ```
 
-Finally, we look at the suggestions for the `name` and `status` columns. Both of them did not have a single missing value in the example data, so an `isComplete` constraint is suggested for them. Furthermore, both of them only have a small set of possible values, therefore an `isContainedIn` constraint is suggested, which would check that future values are also contained in the range of observed values.
+Finally, we look at the suggestions for the `productName` and `status` columns. Both of them did not have a single missing value in the example data, so an `isComplete` constraint is suggested for them. Furthermore, both of them only have a small set of possible values, therefore an `isContainedIn` constraint is suggested, which would check that future values are also contained in the range of observed values.
 ```
-Constraint suggestion for 'name': 'name' is not null
-The corresponding scala code is .isComplete("name")
+Constraint suggestion for 'productName': 'productName' is not null
+The corresponding scala code is .isComplete("productName")
 
-Constraint suggestion for 'name': 'name' has value range 'thingC', 'thingA', 'thingB', 'thingE', 'thingD'
-The corresponding scala code is .isContainedIn("name", Array("thingC", "thingA", "thingB", "thingE", "thingD"))
+Constraint suggestion for 'productName': 'productName' has value range 'thingC', 'thingA', 'thingB', 'thingE', 'thingD'
+The corresponding scala code is .isContainedIn("productName", Array("thingC", "thingA", "thingB", "thingE", "thingD"))
 
 Constraint suggestion for 'status':	'status' is not null
 The corresponding scala code is .isComplete("status")
