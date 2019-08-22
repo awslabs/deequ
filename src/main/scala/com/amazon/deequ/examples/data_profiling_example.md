@@ -1,6 +1,6 @@
 # Single column profiling
 
-Very often we are faced with large, raw datasets and struggle to make sense of the data. A common example might that we are given a huge CSV file and want to understand and clean the contained data. **Deequ** supports single-column profiling of such data and its implementation scales to large datasets with billions of rows. In the following, we showcase the basic usage of this profiling functionality:
+Very often we are faced with large, raw datasets and struggle to make sense of the data. A common example might be that we are given a huge CSV file and want to understand and clean the data contained therein. **Deequ** supports single-column profiling of such data and its implementation scales to large datasets with billions of rows. In the following, we showcase the basic usage of this profiling functionality:
 
 
 Assume we have raw data that is string typed (such as the data you would get from a CSV file). For the sake of simplicity, we use the following toy data in this example:
