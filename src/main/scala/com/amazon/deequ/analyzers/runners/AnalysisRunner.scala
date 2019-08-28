@@ -66,7 +66,6 @@ object AnalysisRunner {
     *                                                   caching)
     * @return AnalyzerContext holding the requested metrics per analyzer
     */
-  @deprecated("Use onData instead for a fluent API", "10-07-2019")
   def run(
       data: DataFrame,
       analysis: Analysis,
