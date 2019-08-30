@@ -171,18 +171,24 @@ class StateAggregationIntegrationTest extends WordSpec with Matchers with SparkC
       val statesEU = InMemoryStateProvider()
       val statesIN = InMemoryStateProvider()
 
-      // TODO: Since the new fluent API does not support saving of states yet, the deprecated
-      // TODO: method is still needed here
       AnalysisRunner.run(partitionNA, analysis, saveStatesWith = Some(statesNA))
       AnalysisRunner.run(partitionEU, analysis, saveStatesWith = Some(statesEU))
       AnalysisRunner.run(partitionIN, analysis, saveStatesWith = Some(statesIN))
 
+      val aggregatedStates = InMemoryStateProvider()
+
       val resultsFromAggregation = AnalysisRunner
-        .runOnAggregatedStates(schema, analysis, Seq(statesNA, statesEU, statesIN))
+        .runOnAggregatedStates(schema, analysis, Seq(statesNA, statesEU, statesIN),
+          saveStatesWith = Some(aggregatedStates))
 
       val results = AnalysisRunner.onData(data).addAnalyzers(analyzersFromChecks).run()
 
       assert(resultsFromAggregation == results)
+
+      // Make sure that the states have been saved
+      assert(aggregatedStates.load(UniqueValueRatio(Seq("item"))).isDefined)
+      assert(aggregatedStates.load(Completeness("item")).isDefined)
+      assert(aggregatedStates.load(ApproxCountDistinct("item")).isDefined)
     }
 
     "work correctly via VerificationSuite" in withSparkSession { session =>
