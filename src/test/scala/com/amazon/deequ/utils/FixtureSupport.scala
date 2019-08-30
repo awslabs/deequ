@@ -41,6 +41,19 @@ trait FixtureSupport {
       .toDF("c0", "c1", "c2")
   }
 
+  def getDFsWithNRowsAndUniqueValuesCrossDF(
+    sparkSession: SparkSession,
+    dataFrames: Int, rows: Int): Seq[DataFrame] = {
+    import sparkSession.implicits._
+
+    (1 to dataFrames).map(dataFrameId =>
+      (1 to rows)
+        .toList
+        .map { index => (s"$dataFrameId$index", s"c1-r$dataFrameId$index",
+          s"c2-r$dataFrameId$index")}
+        .toDF("c0", "c1", "c2")
+    )
+  }
 
   def getDfMissing(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._

@@ -404,6 +404,9 @@ object AnalysisRunner {
     passedAnalyzers.foreach { analyzer =>
       stateLoaders.foreach { stateLoader =>
         analyzer.aggregateStateTo(aggregatedStates, stateLoader, aggregatedStates)
+        if(saveStatesWith.isDefined) {
+          analyzer.persistStateTo(aggregatedStates, saveStatesWith.get)
+        }
       }
     }
 

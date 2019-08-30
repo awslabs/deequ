@@ -271,5 +271,37 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         inputStream => assert(inputStream.read() > 0)
       }
     }
+
+    "should save states when running on aggregated states" in withSparkSession { session =>
+
+      val dataFrames = getDFsWithNRowsAndUniqueValuesCrossDF(session, 2, 2)
+
+      val stateStores = Seq(InMemoryStateProvider(), InMemoryStateProvider())
+
+      val analysis = Analysis().addAnalyzers(Size() :: Uniqueness("c1") :: Nil)
+
+      for((dataFrame, stateStore) <- dataFrames zip stateStores) {
+        AnalysisRunner.run(
+          data = dataFrame,
+          analysis = analysis,
+          saveStatesWith = Some(stateStore)
+        )
+      }
+
+      val mergedStateStore = InMemoryStateProvider()
+
+      AnalysisRunner.runOnAggregatedStates(
+        schema = dataFrames.head.schema,
+        analysis = analysis,
+        // Adding a duplicated store for uniqueness assertion
+        stateLoaders = stateStores :+ stateStores.head,
+        saveStatesWith = Some(mergedStateStore)
+      )
+
+      assert(mergedStateStore.load(Uniqueness("c1")).isDefined, "Uniqueness analyzer present")
+      assert(mergedStateStore.load(Uniqueness("c1")).get.frequencies.count() == 4, "Unique Values")
+      assert(mergedStateStore.load(Size()).isDefined, "Size Analyzer Present")
+      assert(mergedStateStore.load(Size()).get.metricValue() == 6, "Size Analyzer Value")
+    }
   }
 }

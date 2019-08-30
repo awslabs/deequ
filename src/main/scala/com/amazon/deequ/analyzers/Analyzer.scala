@@ -146,6 +146,11 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] {
     aggregated.foreach { state => target.persist[S](this, state) }
   }
 
+  private[deequ] def persistStateTo(source: StateLoader, target: StatePersister) : Unit = {
+    val maybeState = source.load[S](this)
+    maybeState.foreach { state => target.persist[S](this, state) }
+  }
+
   private[deequ] def loadStateAndComputeMetric(source: StateLoader): Option[M] = {
     source.load[S](this).map { state =>
       computeMetricFrom(Option(state))
