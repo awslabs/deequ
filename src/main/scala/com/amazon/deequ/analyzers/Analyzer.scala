@@ -152,8 +152,9 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] {
     }
   }
 
-  /** Copy the state from source to target. Needs to be here to allow the compiler to correctly infer the types.
-    * 
+  /** Copy the state from source to target. Needs to be here to allow the compiler
+    * to correctly infer the types.
+    *
     * @param source state provider to read from
     * @param target state provider to write to
     */
