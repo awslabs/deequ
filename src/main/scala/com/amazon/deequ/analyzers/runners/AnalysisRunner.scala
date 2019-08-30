@@ -414,9 +414,13 @@ object AnalysisRunner {
     val nonGroupedResults = scanningAnalyzers
       .map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
       .flatMap { analyzer =>
-        analyzer
+        val metrics = analyzer
           .loadStateAndComputeMetric(aggregatedStates)
-          .map { metric => analyzer -> metric }
+
+        /* Store aggregated state if a 'saveStatesWith' has been provided */
+        saveStatesWith.foreach { persister => analyzer.copyStateTo(aggregatedStates, persister) }
+
+        metrics.map { metric => analyzer -> metric }
       }
       .toMap[Analyzer[_, Metric[_]], Metric[_]]
 

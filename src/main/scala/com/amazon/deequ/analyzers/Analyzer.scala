@@ -152,6 +152,15 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] {
     }
   }
 
+  /** Copy the state from source to target. Needs to be here to allow the compiler to correctly infer the types.
+    * 
+    * @param source state provider to read from
+    * @param target state provider to write to
+    */
+  private[deequ] def copyStateTo(source: StateLoader, target: StatePersister): Unit = {
+    source.load[S](this).foreach { state => target.persist(this, state) }
+  }
+
 }
 
 /** An analyzer that runs a set of aggregation functions over the data,
