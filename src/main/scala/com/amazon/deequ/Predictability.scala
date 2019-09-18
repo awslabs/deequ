@@ -35,13 +35,15 @@ object Predictability {
     val featuresTokens = s"${targetAttribute}_features_tokens"
     val featureNgrams = s"${targetAttribute}_ngrams"
 
-    // get the labels (value tokens of attribute) and features (all values of other features concatenated) */
+    // get the labels (value tokens of attribute) and features
+    // (all values of other features concatenated)
     val datasetWithConcatenatedFeatures = dataset
         .na.drop(Seq(targetAttribute))
         .select(
           col(targetAttribute),
-          clean(concat_ws(" ", featureCols.map { c => concat_ws(c + "_", col(c)) }: _*)).alias(featuresText))
-    //TODO maybe allow users to cache this?
+          clean(concat_ws(" ", featureCols.map { c => concat_ws(c + "_", col(c)) }: _*))
+            .alias(featuresText))
+    // TODO maybe allow users to cache this?
 
     // Keep only the most frequent labels */
     val labels = datasetWithConcatenatedFeatures
@@ -52,7 +54,7 @@ object Predictability {
       .take(maxNumLabels)
       .map { row: Row => row.getString(0) }
 
-    // transform labels to label idx and drop those that are not amongst top [[dataRangeSize]] most frequent labels
+    // transform labels to label idx and drop those that are not amongst most frequent labels
     val exampleData = datasetWithConcatenatedFeatures
       .select(labelIndex(labels)(col(targetAttribute)).alias("label"), col(featuresText))
       .where(col("label") > -1)
@@ -82,7 +84,8 @@ object Predictability {
       .setOutputCol("features")
       .setNumFeatures(numHashBuckets)
 
-    // It's ok to do the train test split only here, as all our features are computed tuple-at-a-time
+    // It's ok to do the train test split only here,
+    // as all our features are computed tuple-at-a-time
     val Array(training, test) = exampleData.randomSplit(Array(0.8, 0.2))
 
     val pipeline = new Pipeline()
@@ -132,8 +135,3 @@ object Predictability {
   }
 
 }
-
-
-
-
-
