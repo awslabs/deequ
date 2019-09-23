@@ -105,7 +105,7 @@ class VerificationRunBuilder(val data: DataFrame) {
     * Can be used to efficiently compute metrics for a large dataset if e.g. a new partition is added.
     *
     * @param stateLoader A state loader that loads previously calculated states and
-   *                    allows aggregation with the ones calculated in this run.
+    *                    allows aggregation with the ones calculated in this run.
     */
   def aggregateWith(stateLoader: StateLoader): this.type = {
     this.stateLoader = Option(stateLoader)

@@ -320,14 +320,13 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val analyzers = Sum("att2") :: Completeness("att1") :: Nil
       val states = SumState(18.0) :: NumMatchesAndCount(6, 6) :: Nil
 
-      analyzers.zip(states).foreach {
-        case (analyzer: Analyzer[_, _], state: State[_]) =>
-          (statePersister.persist[state.type] _)
-            .expects(
-              where { (analyzer_, state_) => analyzer_ == analyzer && state_ == state }
-            )
-            .returns()
-            .atLeastOnce()
+      analyzers.zip(states).foreach { case (analyzer: Analyzer[_, _], state: State[_]) =>
+        (statePersister.persist[state.type] _)
+          .expects(
+            where { (analyzer_, state_) => analyzer_ == analyzer && state_ == state }
+          )
+          .returns()
+          .atLeastOnce()
       }
 
       VerificationSuite().onData(df)
