@@ -28,11 +28,13 @@ import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 
 
+
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
-  with FixtureSupport {
+  with FixtureSupport with MockFactory {
 
   "Verification Suite" should {
 
@@ -309,6 +311,52 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       DfsUtils.readFromFileOnDfs(sparkSession, successMetricsPath) {
         inputStream => assert(inputStream.read() > 0)
       }
+    }
+
+    "call state persister if specified" in withSparkSession { sparkSession =>
+      val statePersister = mock[StatePersister]
+
+      val df = getDfWithNumericValues(sparkSession)
+      val analyzers = Sum("att2") :: Completeness("att1") :: Nil
+      val states = SumState(18.0) :: NumMatchesAndCount(6, 6) :: Nil
+
+      analyzers.zip(states).foreach { case (analyzer: Analyzer[_, _], state: State[_]) =>
+        (statePersister.persist[state.type] _)
+          .expects(
+            where { (analyzer_, state_) => analyzer_ == analyzer && state_ == state }
+          )
+          .returns()
+          .atLeastOnce()
+      }
+
+      VerificationSuite().onData(df)
+        .addRequiredAnalyzers(analyzers)
+        .saveStatesWith(statePersister)
+        .run()
+    }
+
+    "load stored states for aggregation if specified" in withSparkSession { sparkSession =>
+      val stateLoaderStub = stub[StateLoader]
+
+      val df = getDfWithNumericValues(sparkSession)
+      val analyzers = Sum("att2") :: Completeness("att1") :: Nil
+
+      (stateLoaderStub.load[SumState] _)
+        .when(Sum("att2"))
+        .returns(Some(SumState(18.0)))
+
+      (stateLoaderStub.load[NumMatchesAndCount] _)
+        .when(Completeness("att1"))
+        .returns(Some(NumMatchesAndCount(0, 6)))
+
+
+      val results = VerificationSuite().onData(df)
+        .addRequiredAnalyzers(analyzers)
+        .aggregateWith(stateLoaderStub)
+        .run()
+
+      assert(results.metrics(Sum("att2")).value.get == 18.0 * 2)
+      assert(results.metrics(Completeness("att1")).value.get == 0.5)
     }
 
     "keep order of check constraints and their results" in withSparkSession { sparkSession =>

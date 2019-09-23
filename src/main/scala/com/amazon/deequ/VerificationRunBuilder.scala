@@ -42,6 +42,9 @@ class VerificationRunBuilder(val data: DataFrame) {
   protected var saveSuccessMetricsJsonPath: Option[String] = None
   protected var overwriteOutputFiles: Boolean = false
 
+  protected var statePersister: Option[StatePersister] = None
+  protected var stateLoader: Option[StateLoader] = None
+
   protected def this(verificationRunBuilder: VerificationRunBuilder) {
 
     this(verificationRunBuilder.data)
@@ -60,6 +63,9 @@ class VerificationRunBuilder(val data: DataFrame) {
     overwriteOutputFiles = verificationRunBuilder.overwriteOutputFiles
     saveCheckResultsJsonPath = verificationRunBuilder.saveCheckResultsJsonPath
     saveSuccessMetricsJsonPath = verificationRunBuilder.saveSuccessMetricsJsonPath
+
+    stateLoader = verificationRunBuilder.stateLoader
+    statePersister = verificationRunBuilder.statePersister
   }
 
   /**
@@ -79,6 +85,31 @@ class VerificationRunBuilder(val data: DataFrame) {
     */
   def addChecks(checks: Seq[Check]): this.type = {
     this.checks ++= checks
+    this
+  }
+
+  /**
+    * Save analyzer states.
+    * Enables aggregate computation of metrics later, e.g., when a new partition is
+    * added to the dataset.
+    *
+    * @param statePersister A state persister that saves the computed states for later aggregation
+    */
+  def saveStatesWith(statePersister: StatePersister): this.type = {
+    this.statePersister = Option(statePersister)
+    this
+  }
+
+  /**
+    * Use to load saved analyzer states and aggregate them with those calculated in this new run.
+    * Can be used to efficiently compute metrics for a large dataset
+    * if e.g. a new partition is added.
+    *
+    * @param stateLoader A state loader that loads previously calculated states and
+    *                    allows aggregation with the ones calculated in this run.
+    */
+  def aggregateWith(stateLoader: StateLoader): this.type = {
+    this.stateLoader = Option(stateLoader)
     this
   }
 
@@ -143,7 +174,9 @@ class VerificationRunBuilder(val data: DataFrame) {
         sparkSession,
         saveCheckResultsJsonPath,
         saveSuccessMetricsJsonPath,
-        overwriteOutputFiles)
+        overwriteOutputFiles),
+      saveStatesWith = statePersister,
+      aggregateWith = stateLoader
     )
   }
 }
