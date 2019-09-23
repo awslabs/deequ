@@ -66,7 +66,6 @@ class VerificationRunBuilder(val data: DataFrame) {
 
     stateLoader = verificationRunBuilder.stateLoader
     statePersister = verificationRunBuilder.statePersister
-
   }
 
   /**
@@ -90,8 +89,9 @@ class VerificationRunBuilder(val data: DataFrame) {
   }
 
   /**
-    * Use to automatically save analyzer states.
-    * Enables later aggregation e.g. when a new partition is added to the dataset.
+    * Save analyzer states.
+    * Enables aggregate computation of metrics later, e.g., when a new partition is
+    * added to the dataset.
     *
     * @param statePersister A state persister that saves the computed states for later aggregation
     */
@@ -102,7 +102,8 @@ class VerificationRunBuilder(val data: DataFrame) {
 
   /**
     * Use to load saved analyzer states and aggregate them with those calculated in this new run.
-    * Can be used to efficiently compute metrics for a large dataset if e.g. a new partition is added.
+    * Can be used to efficiently compute metrics for a large dataset
+    * if e.g. a new partition is added.
     *
     * @param stateLoader A state loader that loads previously calculated states and
     *                    allows aggregation with the ones calculated in this run.
