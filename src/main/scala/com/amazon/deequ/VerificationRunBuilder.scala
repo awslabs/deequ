@@ -96,7 +96,7 @@ class VerificationRunBuilder(val data: DataFrame) {
     * @param statePersister A state persister that saves the computed states for later aggregation
     */
   def saveStatesWith(statePersister: StatePersister): this.type = {
-    this.statePersister = Some(statePersister)
+    this.statePersister = Option(statePersister)
     this
   }
 
@@ -108,7 +108,7 @@ class VerificationRunBuilder(val data: DataFrame) {
    *                    aggregates them with the ones calculated in this run.
     */
   def aggregateWith(stateLoader: StateLoader): this.type = {
-    this.stateLoader = Some(stateLoader)
+    this.stateLoader = Option(stateLoader)
     this
   }
 
