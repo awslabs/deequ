@@ -31,7 +31,6 @@ import org.apache.spark.sql.DataFrame
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.util.Success
 
 
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
@@ -325,11 +324,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         case (analyzer: Analyzer[_, _], state: State[_]) =>
           (statePersister.persist[state.type] _)
             .expects(
-              where { (ana, st) => ana == analyzer && st == state }
+              where { (analyzer_, state_) => analyzer_ == analyzer && state_ == state }
             )
             .returns()
             .atLeastOnce()
-
       }
 
       VerificationSuite().onData(df)
@@ -358,8 +356,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         .aggregateWith(stateLoaderStub)
         .run()
 
-      assert(results.metrics(Sum("att2")).value == Success(18.0 * 2))
-      assert(results.metrics(Completeness("att1")).value == Success(0.5))
+      assert(results.metrics(Sum("att2")).value.get == 18.0 * 2)
+      assert(results.metrics(Completeness("att1")).value.get == 0.5)
     }
 
     "keep order of check constraints and their results" in withSparkSession { sparkSession =>
