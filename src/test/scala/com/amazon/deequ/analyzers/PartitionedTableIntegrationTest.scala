@@ -67,14 +67,14 @@ class PartitionedTableIntegrationTest extends WordSpec with SparkContextSpec {
           // Key under which the metrics of this partition will be stored
           val partitionMetricsKey = ResultKey(currentTime, Map("target" -> partitionName))
 
-          // We have to use the deprecated run() method because we did not yet integrate the state
-          // handling into the fluid API. We'll do this once we have more clarity on the use case.
-          val verificationResultsForPartition = VerificationSuite().run(
-            data,
-            Seq(check),
-            saveStatesWith = Some(statesForPartition),
-            metricsRepository = Some(metricsRepository),
-            saveOrAppendResultsWithKey = Some(partitionMetricsKey))
+          val verificationResultsForPartition = VerificationSuite()
+            .onData(data)
+            .addCheck(check)
+            .saveStatesWith(statesForPartition)
+            .useRepository(metricsRepository)
+            .saveOrAppendResult(partitionMetricsKey)
+            .run()
+
 
           (verificationResultsForPartition, statesForPartition)
         }
