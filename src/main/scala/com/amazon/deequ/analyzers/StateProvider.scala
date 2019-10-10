@@ -22,6 +22,7 @@ import com.google.common.io.Closeables
 import org.apache.hadoop.fs.{FSDataInputStream, FSDataOutputStream, FileSystem, Path}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.aggregate.{ApproximatePercentile, DeequHyperLogLogPlusPlusUtils}
+import org.apache.spark.sql.SaveMode
 
 import scala.collection.JavaConversions._
 import scala.util.hashing.MurmurHash3
@@ -223,9 +224,15 @@ case class HdfsStateProvider(
       identifier: String)
     : Unit = {
 
+    val saveMode = if (allowOverwrite) {
+      SaveMode.Overwrite
+    } else {
+      SaveMode.ErrorIfExists
+    }
+
     state.frequencies
       .coalesce(numPartitionsForHistogram)
-      .write.parquet(s"$locationPrefix-$identifier-frequencies.pqt")
+      .write.mode(saveMode).parquet(s"$locationPrefix-$identifier-frequencies.pqt")
 
     writeToFileOnDfs(session, s"$locationPrefix-$identifier-num_rows.bin", allowOverwrite) {
       _.writeLong(state.numRows)
