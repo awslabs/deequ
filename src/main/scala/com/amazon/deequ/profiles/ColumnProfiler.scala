@@ -22,7 +22,10 @@ import com.amazon.deequ.analyzers.runners.{AnalysisRunBuilder, AnalysisRunner, A
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.{BooleanType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType, DataType => SparkDataType}
+
+import scala.collection.mutable.ListBuffer
 import scala.util.Success
 
 private[deequ] case class GenericColumnStatistics(
@@ -45,10 +48,13 @@ private[deequ] case class NumericColumnStatistics(
     minima: Map[String, Double],
     maxima: Map[String, Double],
     sums: Map[String, Double],
+//    kll: Map[String, BucketDistribution],
     approxPercentiles: Map[String, Seq[Double]]
 )
 
 private[deequ] case class CategoricalColumnStatistics(histograms: Map[String, Distribution])
+
+private[deequ] case class KLLColumnStatistics(kllSketches: Map[String, BucketDistribution])
 
 
 /** Computes single-column profiles in three scans over the data, intented for large (TB) datasets
@@ -87,7 +93,10 @@ object ColumnProfiler {
       metricsRepository: Option[MetricsRepository] = None,
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
-      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None)
+      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+      kllSketchSize: Int = 100,
+      kllShrinkingFactor: Double = 0.64,
+      maxkllBins: Integer = KLLSketch.MaximumAllowedDetailBins)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -184,7 +193,41 @@ object ColumnProfiler {
 
     val thirdPassResults = CategoricalColumnStatistics(histograms)
 
-    createProfiles(relevantColumns, genericStatistics, numericStatistics, thirdPassResults)
+    // Is it suitable to implement kll inside NumericColumnStatistics?
+//    val kll = results.metricMap
+//      .map { case (analyzer : KLLSketch, metric: KLLMetric) if metric.value.isSuccess =>
+//        analyzer.column -> metric.value.get
+//      }
+
+    // Fourth pass
+    if (printStatusUpdates) {
+      println("### PROFILING: Computing KLL Sketches in pass (4/3)...")
+    }
+    val targetColumnsForKLLSketches = findTargetColumnsForKLLSketches(data.schema, genericStatistics)
+    val analyzerContextExistingValuesKLL = getAnalyzerContextWithKLLResultsForReusingIfNecessary(
+      metricsRepository,
+      reuseExistingResultsUsingKey,
+      targetColumnsForKLLSketches,
+      kllSketchSize,
+      kllShrinkingFactor
+    )
+
+    val nonExistingKLLColumns = targetColumnsForKLLSketches
+      .filter { column =>
+        analyzerContextExistingValuesKLL.metricMap.get(KLLSketch(column, kllSketchSize, kllShrinkingFactor)).isEmpty }
+
+    val kllSketches: Map[String, BucketDistribution] = getKLLForFourthPass(
+      data,
+      nonExistingKLLColumns,
+      analyzerContextExistingValuesKLL,
+      printStatusUpdates,
+      failIfResultsForReusingMissing,
+      metricsRepository,
+      saveInMetricsRepositoryUsingKey)
+
+    val fourthPassResults = KLLColumnStatistics(kllSketches)
+
+    createProfiles(relevantColumns, genericStatistics, numericStatistics, thirdPassResults, fourthPassResults)
   }
 
   private[this] def getRelevantColumns(
@@ -218,7 +261,11 @@ object ColumnProfiler {
 
    private[this] def getAnalyzersForSecondPass(
       relevantColumnNames: Seq[String],
-      genericStatistics: GenericColumnStatistics)
+      genericStatistics: GenericColumnStatistics
+//      kllSketchSize: Int,
+//      kllShrinkingFactor: Double,
+//      maxkllBins: Integer
+        )
     : Seq[Analyzer[_, Metric[_]]] = {
 
       relevantColumnNames
@@ -229,8 +276,11 @@ object ColumnProfiler {
             _.toDouble / 100
           }
 
+
           Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
-            Sum(name), ApproxQuantiles(name, percentiles))
+            Sum(name),
+//            KLLSketch(name, kllSketchSize, kllShrinkingFactor, maxkllBins),
+            ApproxQuantiles(name, percentiles))
         }
     }
 
@@ -292,6 +342,36 @@ object ColumnProfiler {
     analyzerContextExistingValues
   }
 
+  private[this] def getAnalyzerContextWithKLLResultsForReusingIfNecessary(
+        metricsRepository: Option[MetricsRepository],
+       reuseExistingResultsUsingKey: Option[ResultKey],
+        targetColumnsForKLLSketches: Seq[String], kllSketchSize :Int = 100,kllShrinkingFactor: Double = 0.64)
+  : AnalyzerContext = {
+
+    var analyzerContextExistingValues = AnalyzerContext.empty
+
+    metricsRepository.foreach { metricsRepository =>
+      reuseExistingResultsUsingKey.foreach { resultKey =>
+
+        val analyzerContextWithAllPreviousResults = metricsRepository.loadByKey(resultKey)
+
+        analyzerContextWithAllPreviousResults.foreach { analyzerContextWithAllPreviousResults =>
+
+          val relevantEntries = analyzerContextWithAllPreviousResults.metricMap
+            .filterKeys {
+              case kll: KLLSketch =>
+                targetColumnsForKLLSketches.contains(kll.column) &&
+                  KLLSketch(kll.column, kllSketchSize, kllShrinkingFactor).equals(kll)
+              case _ => false
+            }
+          analyzerContextExistingValues = AnalyzerContext(relevantEntries)
+        }
+      }
+    }
+
+    analyzerContextExistingValues
+  }
+
   private[this] def convertColumnNamesAndDistributionToHistogramWithMetric(
     columnNamesAndDistribution: Map[String, Distribution])
   : Map[Analyzer[_, Metric[_]], Metric[_]] = {
@@ -301,6 +381,20 @@ object ColumnProfiler {
 
         val analyzer = Histogram(columnName)
         val metric = HistogramMetric(columnName, Success(distribution))
+
+        analyzer -> metric
+      }
+  }
+
+  private[this] def convertColumnNamesAndDistributionToKLLWithMetric(
+      columnNamesAndDistribution: Map[String, BucketDistribution], sketchSize: Int = 100 , shrinkingFactor: Double = 0.64)
+  : Map[Analyzer[_, Metric[_]], Metric[_]] = {
+
+    columnNamesAndDistribution
+      .map { case (columnName, distribution) =>
+
+        val analyzer = KLLSketch(columnName, sketchSize, shrinkingFactor)
+        val metric = KLLMetric(columnName, Success(distribution))
 
         analyzer -> metric
       }
@@ -490,10 +584,10 @@ object ColumnProfiler {
    * (2) have less than `lowCardinalityHistogramThreshold` approximate distinct values
    */
   private[this] def findTargetColumnsForHistograms(
-      schema: StructType,
-      genericStatistics: GenericColumnStatistics,
-      lowCardinalityHistogramThreshold: Long)
-    : Seq[String] = {
+                                                     schema: StructType,
+                                                     genericStatistics: GenericColumnStatistics,
+                                                     lowCardinalityHistogramThreshold: Long)
+  : Seq[String] = {
 
     val validSparkDataTypesForHistograms: Set[SparkDataType] = Set(
       StringType, BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType
@@ -512,6 +606,31 @@ object ColumnProfiler {
       .map { case (column, _) => column }
       .toSeq
   }
+
+  //  findTargetColumnsForKLLSketches
+  private[this] def findTargetColumnsForKLLSketches (
+                                                  schema: StructType,
+                                                  genericStatistics: GenericColumnStatistics)
+  : Seq[String] = {
+
+    val validSparkDataTypesForKLLSketches: Set[SparkDataType] = Set(
+      DoubleType, FloatType, IntegerType, LongType, ShortType
+    )
+    val originalStringNumericOrBooleanColumns = schema
+      .filter { field => validSparkDataTypesForKLLSketches.contains(field.dataType) }
+      .map { field => field.name }
+      .toSet
+
+    genericStatistics.approximateNumDistincts
+      .filter { case (column, _) =>
+        originalStringNumericOrBooleanColumns.contains(column) &&
+          Set(Integral, Fractional).contains(genericStatistics.typeOf(column))
+      }
+      .map { case (column, _) => column }
+      .toSeq
+  }
+
+
 
   /* Map each the values in the target columns of each row to tuples keyed by column name and value
    * ((column_name, column_value), 1)
@@ -561,6 +680,53 @@ object ColumnProfiler {
     }
     .toMap
   }
+
+  // Not sure if we need this step
+  private[this] def computeKLLs(data: DataFrame,
+                                targetColumns: Seq[String],
+                                sketchSize: Int = 100,
+                                shrinkingFactor: Double = 0.64,
+                                maxDetailBins: Integer = 1000)
+  : Map[String, BucketDistribution] = {
+
+    val qSketch = new QuantileNonSample[Long](sketchSize,shrinkingFactor)
+    targetColumns.map {targetColumn =>
+      val streams = data.select(col(targetColumn).cast(LongType)).rdd.map(r => r.getLong(0)).collect.toList
+
+      val globalMax = streams.max
+
+      val globalMin = streams.min
+
+      streams.foreach { i =>
+        qSketch.update(i)
+      }
+      val finalSketch = qSketch
+      val start = globalMin
+      val end = globalMax
+      var bucketsList = new ListBuffer[BucketValue]()
+      for (i <- 0 until maxDetailBins) {
+        val lowBound = start + (end - start) * i / maxDetailBins
+        val highBound = start + (end - start) * (i + 1) / maxDetailBins
+        if (i == maxDetailBins - 1) {
+          bucketsList +=
+            BucketValue(lowBound,highBound,finalSketch.getRank(highBound) -
+              finalSketch.getRankExclusive(lowBound))
+        } else {
+          bucketsList += BucketValue(lowBound,highBound,finalSketch.getRankExclusive(highBound) -
+            finalSketch.getRankExclusive(lowBound))
+        }
+      }
+
+      val parameters = List[Double](finalSketch.getShrinkingFactor, finalSketch.getSketchSize)
+      val dataItems = finalSketch.getCompactorItems
+
+      targetColumn -> BucketDistribution(bucketsList.toList, parameters, dataItems)
+
+    }
+      .toMap
+  }
+
+
 
   def getHistogramsForThirdPass(
       data: DataFrame,
@@ -612,11 +778,63 @@ object ColumnProfiler {
     }
   }
 
+  def getKLLForFourthPass(
+                          data: DataFrame,
+                          nonExistingKLLColumns: Seq[String],
+                          analyzerContextExistingValuesKLL: AnalyzerContext,
+                          printStatusUpdates: Boolean,
+                          failIfResultsForReusingMissing: Boolean,
+                          metricsRepository: Option[MetricsRepository],
+                          saveInMetricsRepositoryUsingKey: Option[ResultKey], sketchSize: Int = 100,
+                          shrinkingFactor: Double = 0.64)
+  : Map[String, BucketDistribution] = {
+
+    if (nonExistingKLLColumns.nonEmpty) {
+
+      // Throw an error if all required metrics should have been calculated before but did not
+      if (failIfResultsForReusingMissing) {
+        throw new ReusingNotPossibleResultsMissingException(
+          "Could not find all necessary results in the MetricsRepository, the calculation of " +
+            s"the KLL Sketches for these columns would be required: " +
+            s"${nonExistingKLLColumns.mkString(", ")}")
+      }
+
+      val columnNamesAndDistribution = computeKLLs(data, nonExistingKLLColumns, sketchSize, shrinkingFactor)
+
+      // Now merge these results with the results that we want to reuse and store them if specified
+
+      val analyzerAndKLLMetrics = convertColumnNamesAndDistributionToKLLWithMetric(
+        columnNamesAndDistribution, sketchSize, shrinkingFactor)
+
+      val analyzerContext = AnalyzerContext(analyzerAndKLLMetrics) ++
+        analyzerContextExistingValuesKLL
+
+      saveOrAppendResultsIfNecessary(analyzerContext, metricsRepository,
+        saveInMetricsRepositoryUsingKey)
+
+      // Return overall results using the more simple Distribution format
+      analyzerContext.metricMap
+        .map { case (kll: KLLSketch, metric: KLLMetric) if metric.value.isSuccess =>
+          kll.column -> metric.value.get
+        }
+    } else {
+      // We do not need to calculate new histograms
+      if (printStatusUpdates) {
+        println("### PROFILING: Skipping pass (3/3), no new KLL Sketches need to be calculated.")
+      }
+      analyzerContextExistingValuesKLL.metricMap
+        .map { case (kll: KLLSketch, metric: KLLMetric) if metric.value.isSuccess =>
+          kll.column -> metric.value.get
+        }
+    }
+  }
+
   private[this] def createProfiles(
       columns: Seq[String],
       genericStats: GenericColumnStatistics,
       numericStats: NumericColumnStatistics,
-      categoricalStats: CategoricalColumnStatistics)
+      categoricalStats: CategoricalColumnStatistics,
+      kllStats: KLLColumnStatistics)
     : ColumnProfiles = {
 
     val profiles = columns
@@ -627,6 +845,7 @@ object ColumnProfiler {
         val dataType = genericStats.typeOf(name)
         val isDataTypeInferred = genericStats.inferredTypes.contains(name)
         val histogram = categoricalStats.histograms.get(name)
+        val kll = kllStats.kllSketches.get(name)
 
         val typeCounts = genericStats.typeDetectionHistograms.getOrElse(name, Map.empty)
 
@@ -641,6 +860,7 @@ object ColumnProfiler {
               isDataTypeInferred,
               typeCounts,
               histogram,
+              kll,
               numericStats.means.get(name),
               numericStats.maxima.get(name),
               numericStats.minima.get(name),

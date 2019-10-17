@@ -116,6 +116,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-xml_2.11</artifactId>
+            <version>1.0.6</version>
+        </dependency>
+
     </dependencies>
 
 
