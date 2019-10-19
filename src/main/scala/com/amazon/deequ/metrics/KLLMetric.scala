@@ -2,9 +2,9 @@ package com.amazon.deequ.metrics
 
 import scala.util.{Failure, Success, Try}
 
-case class BucketValue(low_value: Long, high_value: Long, count: Long)
+case class BucketValue(low_value: Double, high_value: Double, count: Long)
 
-case class BucketDistribution(buckets: List[BucketValue], parameters: List[Double], data: Array[Array[Long]]) {
+case class BucketDistribution(buckets: List[BucketValue], parameters: List[Double], data: Array[Array[Double]]) {
 
   // Get relevant bucketValue with index of bucket
   def apply(key: Int): BucketValue = {

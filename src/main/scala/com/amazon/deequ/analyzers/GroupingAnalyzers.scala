@@ -156,17 +156,3 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
   }
 }
 
-/** State for KLL Sketches */
-case class KLLState(qSketch: QuantileNonSample[Long], globalMax: Long, globalMin: Long)
-  extends State[KLLState] {
-
-  /** Add up states by merging sketches */
-  override def sum(other: KLLState): KLLState = {
-    val mergedSketch = qSketch.merge(other.qSketch)
-    KLLState(mergedSketch, Math.max(globalMax,other.globalMax), Math.min(globalMin,other.globalMin))
-  }
-}
-
-
-
-

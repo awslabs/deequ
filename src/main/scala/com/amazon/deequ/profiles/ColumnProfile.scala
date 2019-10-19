@@ -16,9 +16,10 @@
 
 package com.amazon.deequ.profiles
 
-import com.amazon.deequ.analyzers.DataTypeInstances
+import com.amazon.deequ.analyzers.{DataTypeInstances, QuantileNonSample}
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution}
 import com.google.gson.{Gson, GsonBuilder, JsonArray, JsonObject, JsonPrimitive}
+import javassist.bytecode.SignatureAttribute.ArrayType
 
 
 /* Profiling results for the columns which will be given to the constraint suggestion engine */
@@ -147,6 +148,10 @@ object ColumnProfiles {
             // convert kllSketch.data to JSON String
             val gson = new Gson()
             val dataJson = gson.toJson(kllSketch.data)
+
+            // possible deserialization
+//            val newwhat = gson.fromJson(dataJson, classOf[Array[Array[Long]]])
+
             store.addProperty("data", dataJson)
 
             kllSketchJson.add("sketch", store)

@@ -7,19 +7,20 @@ import scala.util.control.Breaks._
 
 
 class QuantileNonSample[T](val sketchSize: Int,
-                           private val shrinkingFactor: Double = 0.64)
+                           val shrinkingFactor: Double = 0.64)
                           (implicit ordering: Ordering[T],
                            ct: ClassTag[T]) extends Serializable{
 
   private var curNumOfCompactors = 0
-  // initialize with ArrayBuffer, add compactors later
-  private var compactors = ArrayBuffer[NonSampleCompactor[T]]()
   // number of items in compactors
   private var compactorActualSize = 0
   // overall capacity of compactors
   private var compactorTotalSize = 0
+  // initialize with ArrayBuffer, add compactors later
+  private var compactors = ArrayBuffer[NonSampleCompactor[T]]()
   expand()
 
+  // get and set method for the serialize/deserialize functions
   def getShrinkingFactor: Double = {
     shrinkingFactor
   }
@@ -28,10 +29,52 @@ class QuantileNonSample[T](val sketchSize: Int,
     sketchSize
   }
 
+  def getCurNumOfCompactors: Int = {
+    curNumOfCompactors
+  }
+
+  def getCompactorActualSize: Int = {
+    compactorActualSize
+  }
+
+  def getCompactorTotalSize: Int = {
+    compactorTotalSize
+  }
+
+  def getCompactorItems: Array[Array[T]] = {
+    var ret = ArrayBuffer[Array[T]]()
+    compactors.toArray.foreach {compactor =>
+      ret = ret :+ compactor.buffer.toArray
+    }
+    ret.toArray
+  }
+
+  def getCompactor: ArrayBuffer[NonSampleCompactor[T]] = {
+    compactors
+  }
+
+
+  // TODO: set stricter access modifier here
+  def setCurNumOfCompactors(input : Int): Unit = {
+    curNumOfCompactors = input
+  }
+
+  def setCompactorActualSize(input : Int): Unit = {
+    compactorActualSize = input
+  }
+
+  def setCompactorTotalSize(input : Int): Unit = {
+    compactorTotalSize = input
+  }
+
+  def setCompactor(input: ArrayBuffer[NonSampleCompactor[T]]) : Unit = {
+    compactors = input
+  }
+
 
 
   // expand a layer of compactor
-  private def expand(): Unit = {
+  def expand(): Unit = {
     compactors = compactors :+ new NonSampleCompactor[T]
     curNumOfCompactors = compactors.length
     compactorTotalSize = getCompactorCapacityCount
@@ -54,7 +97,7 @@ class QuantileNonSample[T](val sketchSize: Int,
     }
   }
 
-  private def condense(): Unit = {
+  def condense(): Unit = {
     breakable {
       for (height <- compactors.indices) {
         if (compactors(height).buffer.length >= capacity(height)) {
@@ -248,12 +291,17 @@ class QuantileNonSample[T](val sketchSize: Int,
     size
   }
 
-  def getCompactorItems: Array[Array[T]] = {
-    var ret = ArrayBuffer[Array[T]]()
-    compactors.toArray.foreach {compactor =>
-      ret = ret :+ compactor.buffer.toArray
+  def printCompactorItems() : Unit = {
+    compactors.foreach{ compactor=>
+      print("[" )
+      var count = 0
+      compactor.buffer.foreach{item=>
+        print(item)
+        count = count + 1
+        if (count != compactor.buffer.length) print(",")
+      }
+      println("]")
     }
-    ret.toArray
   }
 }
 

@@ -28,9 +28,11 @@ class NonSampleCompactor[T]()
     val len = items - (items % 2)
     if (numOfCompress % 2 == 1) {
       offset = 1 - offset
-    } else {
-      offset = if (Random.nextBoolean()) 1 else 0
     }
+    // Comment it For unit testing, should uncomment it for real use.
+//    else {
+//      offset = if (Random.nextBoolean()) 1 else 0
+//    }
     val sBuff = buffer.toArray.slice(0,len).sorted
     val output = (offset until len by 2).map(sBuff(_)).toArray
     val tail = findOdd(items)

@@ -1,50 +1,74 @@
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
+import com.amazon.deequ.analyzers.catalyst.KLLSketchSerializer
+import com.amazon.deequ.analyzers.runners.IllegalAnalyzerParameterException
 import com.amazon.deequ.metrics.{BucketDistribution, BucketValue, KLLMetric}
-
 import scala.collection.mutable.ListBuffer
+import scala.util.Try
+import java.nio.ByteBuffer
+import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
+import com.amazon.deequ.analyzers.runners.MetricCalculationException
+import org.apache.spark.sql.DeequFunctions.stateful_kll
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Column, Row}
 
-//import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{StringType, StructType,LongType}
-import org.apache.spark.sql.{DataFrame, Row}
+import scala.util.Failure
 
-import scala.util.{Failure, Try}
+/** State for KLL Sketches */
+case class KLLState(qSketch: QuantileNonSample[Double], globalMax: Double, globalMin: Double)
+  extends State[KLLState] {
 
-case class KLLSketch(
-                      column: String,
-                      sketchSize: Int,
-                      shrinkingFactor: Double = 0.64,
-                      maxDetailBins: Integer = KLLSketch.MaximumAllowedDetailBins)
-  extends Analyzer[KLLState, KLLMetric] {
+  /** Add up states by merging sketches */
+  override def sum(other: KLLState): KLLState = {
+    val mergedSketch = qSketch.merge(other.qSketch)
+    KLLState(mergedSketch, Math.max(globalMax,other.globalMax), Math.min(globalMin,other.globalMin))
+  }
+}
 
-  private[this] val PARAM_CHECK: StructType => Unit = { _ =>
-    if (maxDetailBins > KLLSketch.MaximumAllowedDetailBins) {
-      throw new IllegalAnalyzerParameterException(s"Cannot return KLL Sketch related values for more " +
-        s"than ${KLLSketch.MaximumAllowedDetailBins} values")
-    }
+object KLLState{
+  // from Array[Byte] to original type
+  def fromBytes(bytes: Array[Byte]): KLLState = {
+    val buffer = ByteBuffer.wrap(bytes)
+    val min = buffer.getDouble
+    val max = buffer.getDouble
+    val store = new Array[Byte](buffer.remaining())
+    buffer.get(store)
+    val obj = KLLSketchSerializer.serializer.deserialize(store)
+    KLLState(obj, max, min)
   }
 
-  val qSketch = new QuantileNonSample[Long](sketchSize,shrinkingFactor)
+}
 
-  override def computeStateFrom(data: DataFrame): Option[KLLState] = {
+/**
+ *
+ *
+ * @param column Which column to compute this aggregation on.
+ */
+case class KLLSketch(column: String, where: Option[String] = None, sketchSize: Int = KLLSketch.defaultSketchSize,
+                     shrinkingFactor: Double = KLLSketch.defaultShrinkingFactor,
+                     maxDetailBins: Int = KLLSketch.MaximumAllowedDetailBins)
+  extends ScanShareableAnalyzer[KLLState, KLLMetric] {
 
-    val streams = data.select(col(column).cast(LongType)).rdd.map(r => r.getLong(0)).collect.toList
+  private[this] val PARAM_CHECK: StructType => Unit = { _ =>
+        if (maxDetailBins > KLLSketch.MaximumAllowedDetailBins) {
+          throw new IllegalAnalyzerParameterException(s"Cannot return KLL Sketch related values for more " +
+            s"than ${KLLSketch.MaximumAllowedDetailBins} values")
+        }
+      }
 
-    val globalMax = streams.max
+  override def aggregationFunctions(): Seq[Column] = {
+    stateful_kll(conditionalSelection(column, where),sketchSize, shrinkingFactor) :: Nil
+  }
 
-    val globalMin = streams.min
-
-    streams.foreach { i =>
-      qSketch.update(i)
+  override def fromAggregationResult(result: Row, offset: Int): Option[KLLState] = {
+    ifNoNullsIn(result, offset) { _ =>
+      KLLState.fromBytes(result.getAs[Array[Byte]](offset))
     }
 
-    Some(KLLState(qSketch, globalMax, globalMin))
   }
 
   override def computeMetricFrom(state: Option[KLLState]): KLLMetric = {
-
     state match {
 
       case Some(theState) =>
@@ -54,10 +78,9 @@ case class KLLSketch(
           val start = theState.globalMin
           val end = theState.globalMax
           var bucketsList = new ListBuffer[BucketValue]()
-//          val PREFIX = "BUCKET_"
           for (i <- 0 until maxDetailBins) {
-            val lowBound = start + (end - start) * i / maxDetailBins
-            val highBound = start + (end - start) * (i + 1) / maxDetailBins
+            val lowBound = start + (end - start) * i / maxDetailBins.toDouble
+            val highBound = start + (end - start) * (i + 1) / maxDetailBins.toDouble
             if (i == maxDetailBins - 1) {
               bucketsList +=
                 BucketValue(lowBound,highBound,finalSketch.getRank(highBound) -
@@ -68,10 +91,7 @@ case class KLLSketch(
             }
           }
 
-          val parameters = List[Double](finalSketch.getShrinkingFactor, finalSketch.getSketchSize)
-//          val sketchMap = Map("parameters" -> Map("c" -> finalSketch.getShrinkingFactor,
-//            "k" -> finalSketch.getSketchSize),
-//          "data" -> finalSketch.getCompactorItems)
+          val parameters = List[Double](finalSketch.getShrinkingFactor, finalSketch.getSketchSize.toDouble)
           val data = finalSketch.getCompactorItems
 
           BucketDistribution(bucketsList.toList, parameters, data)
@@ -82,19 +102,21 @@ case class KLLSketch(
       case None =>
         KLLMetric(column, Failure(Analyzers.emptyStateException(this)))
     }
+
   }
 
   override def toFailureMetric(exception: Exception): KLLMetric = {
     KLLMetric(column, Failure(MetricCalculationException.wrapIfNecessary(exception)))
   }
 
-  override def preconditions: Seq[StructType => Unit] = {
-    PARAM_CHECK :: Preconditions.hasColumn(column) :: Preconditions.isNumeric(column) :: Nil
+
+  override def preconditions(): Seq[StructType => Unit] = {
+    PARAM_CHECK :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 }
 
 object KLLSketch {
-  val NullFieldReplacement = "NullValue"
-  val MaximumAllowedDetailBins = 1000
+  val defaultSketchSize = 2
+  val defaultShrinkingFactor = 0.64
+  val MaximumAllowedDetailBins = 2
 }
-
