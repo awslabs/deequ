@@ -156,3 +156,4 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
   }
 }
 
+

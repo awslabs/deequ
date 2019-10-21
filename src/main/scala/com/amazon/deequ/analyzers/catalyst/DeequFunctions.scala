@@ -81,8 +81,10 @@ object DeequFunctions {
     statefulDataType(column)
   }
 
-  def stateful_kll(column: Column, sketchSize: Int = KLLSketch.defaultSketchSize,
-                   shrinkingFactor: Double = KLLSketch.defaultShrinkingFactor): Column = {
+  def stateful_kll(
+      column: Column,
+      sketchSize: Int,
+      shrinkingFactor: Double): Column = {
     val statefulKLL = new StatefulKLLSketch(sketchSize, shrinkingFactor)
     statefulKLL(column)
   }

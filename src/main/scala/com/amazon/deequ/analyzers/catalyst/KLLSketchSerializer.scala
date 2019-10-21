@@ -1,11 +1,27 @@
+/**
+ * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ */
+
 package com.amazon.deequ.analyzers.catalyst
 
 import java.nio.ByteBuffer
 
+import scala.collection.mutable.ArrayBuffer
+
 import com.amazon.deequ.analyzers.{NonSampleCompactor, QuantileNonSample}
 import com.google.common.primitives.{Doubles, Ints}
-
-import scala.collection.mutable.ArrayBuffer
 
 class KLLSketchSerializer {
 
@@ -19,7 +35,7 @@ class KLLSketchSerializer {
     }
 
     private final def getCompactorLengthInSample (sketch: QuantileNonSample[Double]): Int = {
-      val tmp = sketch.getCompactor
+      val tmp = sketch.compactors
       val len = tmp.length
       var count = 0
       for (i <- 0 until len) {
@@ -44,10 +60,10 @@ class KLLSketchSerializer {
       val buffer = ByteBuffer.wrap(new Array(length(obj)))
       buffer.putInt(obj.sketchSize)
       buffer.putDouble(obj.shrinkingFactor)
-      buffer.putInt(obj.getCurNumOfCompactors)
-      buffer.putInt(obj.getCompactorActualSize)
-      buffer.putInt(obj.getCompactorTotalSize)
-      val compactors = obj.getCompactor
+      buffer.putInt(obj.curNumOfCompactors)
+      buffer.putInt(obj.compactorActualSize)
+      buffer.putInt(obj.compactorTotalSize)
+      val compactors = obj.compactors
       buffer.putInt(compactors.length)
 
       var j = 0
@@ -91,10 +107,10 @@ class KLLSketchSerializer {
       }
 
       var ret = new QuantileNonSample[Double](sketchSize, shrinkingFactor)
-      ret.setCurNumOfCompactors(curNumOfCompactors)
-      ret.setCompactorActualSize(compactorActualSize)
-      ret.setCompactorTotalSize(compactorTotalSize)
-      ret.setCompactor(compactors)
+      ret.curNumOfCompactors = curNumOfCompactors
+      ret.compactorActualSize = compactorActualSize
+      ret.compactorTotalSize = compactorTotalSize
+      ret.compactors = compactors
       ret
     }
 }

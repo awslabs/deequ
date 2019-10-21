@@ -16,11 +16,9 @@
 
 package com.amazon.deequ.profiles
 
-import com.amazon.deequ.analyzers.{DataTypeInstances, QuantileNonSample}
+import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution}
 import com.google.gson.{Gson, GsonBuilder, JsonArray, JsonObject, JsonPrimitive}
-import javassist.bytecode.SignatureAttribute.ArrayType
-
 
 /* Profiling results for the columns which will be given to the constraint suggestion engine */
 abstract class ColumnProfile {
@@ -51,7 +49,7 @@ case class NumericColumnProfile(
     isDataTypeInferred: Boolean,
     typeCounts: Map[String, Long],
     histogram: Option[Distribution],
-    KLL: Option[BucketDistribution],
+    kll: Option[BucketDistribution],
     mean: Option[Double],
     maximum: Option[Double],
     minimum: Option[Double],
@@ -125,8 +123,8 @@ object ColumnProfiles {
           }
 
           // KLL Sketch
-          if (numericColumnProfile.KLL.isDefined) {
-            val kllSketch = numericColumnProfile.KLL.get
+          if (numericColumnProfile.kll.isDefined) {
+            val kllSketch = numericColumnProfile.kll.get
             val kllSketchJson = new JsonObject()
 
             val tmp = new JsonArray()
@@ -145,7 +143,6 @@ object ColumnProfiles {
             val store = new JsonObject()
             store.add("parameters", entry)
 
-            // convert kllSketch.data to JSON String
             val gson = new Gson()
             val dataJson = gson.toJson(kllSketch.data)
 

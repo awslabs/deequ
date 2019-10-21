@@ -43,14 +43,14 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
     assert(expected.sum == actual.sum)
     assert(expected.stdDev == actual.stdDev)
     // if kll has distributions
-    assert(expected.KLL.isDefined)
-    assert(actual.KLL.isDefined)
-    assert(expected.KLL.get.buckets == actual.KLL.get.buckets)
-    assert(expected.KLL.get.parameters == actual.KLL.get.parameters)
+    assert(expected.kll.isDefined)
+    assert(actual.kll.isDefined)
+    assert(expected.kll.get.buckets == actual.kll.get.buckets)
+    assert(expected.kll.get.parameters == actual.kll.get.parameters)
 
-    assert(expected.KLL.get.data.length == actual.KLL.get.data.length)
-    for (i <- expected.KLL.get.data.indices) {
-      assert (expected.KLL.get.data(i).sameElements(actual.KLL.get.data(i)))
+    assert(expected.kll.get.data.length == actual.kll.get.data.length)
+    for (i <- expected.kll.get.data.indices) {
+      assert (expected.kll.get.data(i).sameElements(actual.kll.get.data(i)))
     }
 
     // TODO disabled for now, as we get different results for Spark 2.2 and Spark 2.3
@@ -139,8 +139,8 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
 
       val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
       val numericalProfile = actualColumnProfile.asInstanceOf[NumericColumnProfile]
-      assert(numericalProfile.KLL.isDefined)
-      val kll = numericalProfile.KLL
+      assert(numericalProfile.kll.isDefined)
+      val kll = numericalProfile.kll
       assert(kll.get.buckets == List(BucketValue(1.0, 3.5, 4), BucketValue(3.5, 6.0, 2)))
       assert(kll.get.parameters == List(0.64, 2.0))
       assert(kll.get.data.length == 2)

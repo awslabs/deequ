@@ -83,18 +83,18 @@ object ColumnProfiler {
     * @return
     */
   private[deequ] def profile(
-      data: DataFrame,
-      restrictToColumns: Option[Seq[String]] = None,
-      printStatusUpdates: Boolean = false,
-      lowCardinalityHistogramThreshold: Int =
+                              data: DataFrame,
+                              restrictToColumns: Option[Seq[String]] = None,
+                              printStatusUpdates: Boolean = false,
+                              lowCardinalityHistogramThreshold: Int =
         ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD,
-      metricsRepository: Option[MetricsRepository] = None,
-      reuseExistingResultsUsingKey: Option[ResultKey] = None,
-      failIfResultsForReusingMissing: Boolean = false,
-      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-      kllSketchSize: Int = KLLSketch.defaultSketchSize,
-      kllShrinkingFactor: Double = KLLSketch.defaultShrinkingFactor,
-      maxkllBins: Integer = KLLSketch.MaximumAllowedDetailBins)
+                              metricsRepository: Option[MetricsRepository] = None,
+                              reuseExistingResultsUsingKey: Option[ResultKey] = None,
+                              failIfResultsForReusingMissing: Boolean = false,
+                              saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+                              kllSketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE,
+                              kllShrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR,
+                              maxkllBins: Integer = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -142,7 +142,8 @@ object ColumnProfiler {
       genericStatistics)
 
     // We compute mean, stddev, min, max for all numeric columns
-    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics, kllSketchSize, kllShrinkingFactor, maxkllBins)
+    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics, kllSketchSize,
+      kllShrinkingFactor, maxkllBins)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)

@@ -19,17 +19,11 @@ package com.amazon.deequ.examples
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 private[examples] object ExampleUtils {
-  // conf.set("spark.eventLog.enabled", "true")
-  //conf.set("spark.eventLog.dir", "file:///C:/Users/me/spark/logs")
-  // spark.history.fs.logDirectory
   def withSpark(func: SparkSession => Unit): Unit = {
     val session = SparkSession.builder()
       .master("local")
       .appName("test")
-      .config("spark.ui.enabled", "true")
-      .config("spark.eventLog.enabled","true")
-      .config("spark.eventLog.dir", "/tmp/spark-events")
-      .config("spark.history.fs.logDirectory ", "/tmp/spark-events")
+      .config("spark.ui.enabled", "false")
       .getOrCreate()
     session.sparkContext.setCheckpointDir(System.getProperty("java.io.tmpdir"))
 
