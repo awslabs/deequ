@@ -58,7 +58,7 @@ case class BucketDistribution(
    */
   override def equals(obj: Any): Boolean = {
     obj match {
-      case that: BucketDistribution => {
+      case that: BucketDistribution =>
         var check = that.isInstanceOf[BucketDistribution] &&
           this.buckets.equals(that.buckets) &&
           this.parameters.equals(that.parameters) &&
@@ -72,10 +72,11 @@ case class BucketDistribution(
           }
         }
         check
-      }
       case _ => false
     }
   }
+
+  override def hashCode(): Int = super.hashCode()
 }
 
 case class KLLMetric(column: String, value: Try[BucketDistribution])
