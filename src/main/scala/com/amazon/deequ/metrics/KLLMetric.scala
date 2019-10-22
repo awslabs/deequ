@@ -17,6 +17,7 @@
 package com.amazon.deequ.metrics
 
 import scala.util.{Failure, Success, Try}
+import scala.util.control.Breaks._
 
 case class BucketValue(low_value: Double, high_value: Double, count: Long)
 
@@ -48,6 +49,32 @@ case class BucketDistribution(
       }
     }
     maxBucket
+  }
+
+  /**
+   * Check if it is equal with two BucketDistribution.
+   * @param obj object to compare
+   * @return true if equal
+   */
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case that: BucketDistribution => {
+        var check = that.isInstanceOf[BucketDistribution] &&
+          this.buckets.equals(that.buckets) &&
+          this.parameters.equals(that.parameters) &&
+          this.data.length == that.data.length
+        breakable {
+          for (i <- this.data.indices) {
+            if (!this.data(i).sameElements(that.data(i))) {
+              check = false
+              break
+            }
+          }
+        }
+        check
+      }
+      case _ => false
+    }
   }
 }
 

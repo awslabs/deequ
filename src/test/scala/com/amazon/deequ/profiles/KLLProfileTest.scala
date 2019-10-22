@@ -42,16 +42,7 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
     assert(expected.minimum == actual.minimum)
     assert(expected.sum == actual.sum)
     assert(expected.stdDev == actual.stdDev)
-    // if kll has distributions
-    assert(expected.kll.isDefined)
-    assert(actual.kll.isDefined)
-    assert(expected.kll.get.buckets == actual.kll.get.buckets)
-    assert(expected.kll.get.parameters == actual.kll.get.parameters)
-
-    assert(expected.kll.get.data.length == actual.kll.get.data.length)
-    for (i <- expected.kll.get.data.indices) {
-      assert (expected.kll.get.data(i).sameElements(actual.kll.get.data(i)))
-    }
+    assert(expected.kll == actual.kll)
 
     // TODO disabled for now, as we get different results for Spark 2.2 and Spark 2.3
     // assert(expected.approxPercentiles == actual.approxPercentiles)
