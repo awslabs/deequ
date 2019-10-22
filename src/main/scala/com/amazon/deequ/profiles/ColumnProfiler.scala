@@ -16,15 +16,16 @@
 
 package com.amazon.deequ.profiles
 
+import scala.util.Success
+
 import com.amazon.deequ.analyzers.DataTypeInstances._
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunBuilder, AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{BooleanType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType, DataType => SparkDataType}
-
-import scala.util.Success
 
 private[deequ] case class GenericColumnStatistics(
     numRecords: Long,
@@ -80,18 +81,18 @@ object ColumnProfiler {
     * @return
     */
   private[deequ] def profile(
-       data: DataFrame,
-       restrictToColumns: Option[Seq[String]] = None,
-       printStatusUpdates: Boolean = false,
-       lowCardinalityHistogramThreshold: Int =
+      data: DataFrame,
+      restrictToColumns: Option[Seq[String]] = None,
+      printStatusUpdates: Boolean = false,
+      lowCardinalityHistogramThreshold: Int =
         ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD,
-       metricsRepository: Option[MetricsRepository] = None,
-       reuseExistingResultsUsingKey: Option[ResultKey] = None,
-       failIfResultsForReusingMissing: Boolean = false,
-       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-       kllSketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE,
-       kllShrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR,
-       numberOfBuckets: Integer = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS)
+      metricsRepository: Option[MetricsRepository] = None,
+      reuseExistingResultsUsingKey: Option[ResultKey] = None,
+      failIfResultsForReusingMissing: Boolean = false,
+      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+      kllSketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE,
+      kllShrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR,
+      numberOfBuckets: Integer = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -507,10 +508,10 @@ object ColumnProfiler {
    * (2) have less than `lowCardinalityHistogramThreshold` approximate distinct values
    */
   private[this] def findTargetColumnsForHistograms(
-     schema: StructType,
-     genericStatistics: GenericColumnStatistics,
-     lowCardinalityHistogramThreshold: Long)
-   : Seq[String] = {
+      schema: StructType,
+      genericStatistics: GenericColumnStatistics,
+      lowCardinalityHistogramThreshold: Long)
+    : Seq[String] = {
 
     val validSparkDataTypesForHistograms: Set[SparkDataType] = Set(
       StringType, BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType
