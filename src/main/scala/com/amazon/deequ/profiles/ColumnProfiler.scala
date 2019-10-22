@@ -83,9 +83,7 @@ object ColumnProfiler {
    * @param reuseExistingResultsUsingKey     key for reuse existing result
    * @param failIfResultsForReusingMissing   true if we have results for reusing
    * @param saveInMetricsRepositoryUsingKey  key for saving in metrics repo
-   * @param kllSketchSize                    the sketch size of KLL Sketch
-   * @param kllShrinkingFactor               the shrinking factor of KLL Sketch
-   * @param numberOfBuckets                  number of buckets to divide the samples
+   *
    * @return the profile of columns
    */
   private[deequ] def profile(
@@ -97,10 +95,7 @@ object ColumnProfiler {
       metricsRepository: Option[MetricsRepository] = None,
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
-      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-      kllSketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE,
-      kllShrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR,
-      numberOfBuckets: Integer = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS)
+      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -146,6 +141,11 @@ object ColumnProfiler {
     // We cast all string columns that were detected as numeric
     val castedDataForSecondPass = castNumericStringColumns(relevantColumns, data,
       genericStatistics)
+
+    // Specify KLL Sketch parameters
+    val kllSketchSize = KLLSketch.DEFAULT_SKETCH_SIZE
+    val kllShrinkingFactor = KLLSketch.DEFAULT_SHRINKING_FACTOR
+    val numberOfBuckets = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS
 
     // We compute mean, stddev, min, max for all numeric columns
     val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns,
