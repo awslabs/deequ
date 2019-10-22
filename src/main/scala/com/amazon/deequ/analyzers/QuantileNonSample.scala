@@ -245,7 +245,7 @@ class QuantileNonSample[T](
       while (sumSoFar < nextThresh) {
         val (_, weight) = sortedItems(i)
         sumSoFar += weight
-        i+=1
+        i += 1
       }
       val (item, _) = sortedItems(math.min(i, sortedItems.length - 1))
       quantiles(curq - 1) = item

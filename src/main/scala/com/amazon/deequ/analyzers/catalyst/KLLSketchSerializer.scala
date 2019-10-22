@@ -94,7 +94,7 @@ class KLLSketchSerializer {
       var i = 0
       while (i < compactorLength) {
         var compactor = new NonSampleCompactor[Double]()
-        val numOfCompress= buffer.getInt()
+        val numOfCompress = buffer.getInt()
         val offset = buffer.getInt()
         val bufferLength = buffer.getInt()
         compactor.numOfCompress = numOfCompress

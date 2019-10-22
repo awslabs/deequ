@@ -48,11 +48,12 @@ case class KLLState(
   /** Add up states by merging sketches */
   override def sum(other: KLLState): KLLState = {
     val mergedSketch = qSketch.merge(other.qSketch)
-    KLLState(mergedSketch, Math.max(globalMax,other.globalMax), Math.min(globalMin,other.globalMin))
+    KLLState(mergedSketch, Math.max(globalMax, other.globalMax), Math.min(globalMin, other.globalMin))
   }
 }
 
 object KLLState{
+
   /**
    * Reconstruct the state from the serialized byte arrays.
    * @param bytes the serialized byte arrays of the state
@@ -122,7 +123,7 @@ case class KLLSketch(
               bucketsList += BucketValue(lowBound, highBound,
                 finalSketch.getRank(highBound) - finalSketch.getRankExclusive(lowBound))
             } else {
-              bucketsList += BucketValue(lowBound,highBound,
+              bucketsList += BucketValue(lowBound, highBound,
                 finalSketch.getRankExclusive(highBound) - finalSketch.getRankExclusive(lowBound))
             }
           }

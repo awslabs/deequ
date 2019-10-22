@@ -6,12 +6,19 @@ case class BucketValue(low_value: Double, high_value: Double, count: Long)
 
 case class BucketDistribution(buckets: List[BucketValue], parameters: List[Double], data: Array[Array[Double]]) {
 
-  // Get relevant bucketValue with index of bucket
+  /**
+   * Get relevant bucketValue with index of bucket.
+   * @param key index of bucket
+   * @return The metrics for the bucket
+   */
   def apply(key: Int): BucketValue = {
     buckets(key)
   }
 
-  // find the index of bucket which has the largest count
+  /**
+   * Find the index of bucket which contains the most items.
+   * @return The index of bucket which contains the most items.
+   */
   def argmax: Int = {
     var currentMax = 0L
     var maxBucket = 0

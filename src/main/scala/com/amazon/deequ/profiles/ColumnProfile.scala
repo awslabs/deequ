@@ -152,7 +152,7 @@ object ColumnProfiles {
             store.addProperty("data", dataJson)
 
             kllSketchJson.add("sketch", store)
-            columnProfileJson.add("KLL", kllSketchJson)
+            columnProfileJson.add("kll", kllSketchJson)
           }
 
           val approxPercentilesJson = new JsonArray()
