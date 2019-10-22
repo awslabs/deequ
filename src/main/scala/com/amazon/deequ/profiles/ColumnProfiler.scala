@@ -52,9 +52,6 @@ private[deequ] case class NumericColumnStatistics(
 
 private[deequ] case class CategoricalColumnStatistics(histograms: Map[String, Distribution])
 
-private[deequ] case class KLLColumnStatistics(kllSketches: Map[String, BucketDistribution])
-
-
 /** Computes single-column profiles in three scans over the data, intented for large (TB) datasets
   *
   * In the first phase, we compute the number of records, as well as the datatype, approx. num
@@ -83,18 +80,18 @@ object ColumnProfiler {
     * @return
     */
   private[deequ] def profile(
-                              data: DataFrame,
-                              restrictToColumns: Option[Seq[String]] = None,
-                              printStatusUpdates: Boolean = false,
-                              lowCardinalityHistogramThreshold: Int =
+       data: DataFrame,
+       restrictToColumns: Option[Seq[String]] = None,
+       printStatusUpdates: Boolean = false,
+       lowCardinalityHistogramThreshold: Int =
         ColumnProfiler.DEFAULT_CARDINALITY_THRESHOLD,
-                              metricsRepository: Option[MetricsRepository] = None,
-                              reuseExistingResultsUsingKey: Option[ResultKey] = None,
-                              failIfResultsForReusingMissing: Boolean = false,
-                              saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-                              kllSketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE,
-                              kllShrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR,
-                              maxkllBins: Integer = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS)
+       metricsRepository: Option[MetricsRepository] = None,
+       reuseExistingResultsUsingKey: Option[ResultKey] = None,
+       failIfResultsForReusingMissing: Boolean = false,
+       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+       kllSketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE,
+       kllShrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR,
+       numberOfBuckets: Integer = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -143,7 +140,7 @@ object ColumnProfiler {
 
     // We compute mean, stddev, min, max for all numeric columns
     val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics, kllSketchSize,
-      kllShrinkingFactor, maxkllBins)
+      kllShrinkingFactor, numberOfBuckets)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)
@@ -191,6 +188,7 @@ object ColumnProfiler {
       saveInMetricsRepositoryUsingKey)
 
     val thirdPassResults = CategoricalColumnStatistics(histograms)
+
     createProfiles(relevantColumns, genericStatistics, numericStatistics, thirdPassResults)
   }
 
@@ -228,7 +226,7 @@ object ColumnProfiler {
       genericStatistics: GenericColumnStatistics,
       kllSketchSize: Int,
       kllShrinkingFactor: Double,
-      maxkllBins: Int)
+      numberOfBuckets: Int)
     : Seq[Analyzer[_, Metric[_]]] = {
 
       relevantColumnNames
@@ -242,7 +240,7 @@ object ColumnProfiler {
 
           Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
             Sum(name),
-            KLLSketch(name, None, kllSketchSize, kllShrinkingFactor, maxkllBins),
+            KLLSketch(name, None, kllSketchSize, kllShrinkingFactor, numberOfBuckets),
             ApproxQuantiles(name, percentiles))
         }
     }
@@ -509,10 +507,10 @@ object ColumnProfiler {
    * (2) have less than `lowCardinalityHistogramThreshold` approximate distinct values
    */
   private[this] def findTargetColumnsForHistograms(
-                                                     schema: StructType,
-                                                     genericStatistics: GenericColumnStatistics,
-                                                     lowCardinalityHistogramThreshold: Long)
-  : Seq[String] = {
+     schema: StructType,
+     genericStatistics: GenericColumnStatistics,
+     lowCardinalityHistogramThreshold: Long)
+   : Seq[String] = {
 
     val validSparkDataTypesForHistograms: Set[SparkDataType] = Set(
       StringType, BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType
@@ -531,9 +529,6 @@ object ColumnProfiler {
       .map { case (column, _) => column }
       .toSeq
   }
-
-
-
 
   /* Map each the values in the target columns of each row to tuples keyed by column name and value
    * ((column_name, column_value), 1)
@@ -583,8 +578,6 @@ object ColumnProfiler {
     }
     .toMap
   }
-
-
 
   def getHistogramsForThirdPass(
       data: DataFrame,
@@ -643,14 +636,15 @@ object ColumnProfiler {
       categoricalStats: CategoricalColumnStatistics)
     : ColumnProfiles = {
 
-
     val profiles = columns
       .map { name =>
+
         val completeness = genericStats.completenesses(name)
         val approxNumDistinct = genericStats.approximateNumDistincts(name)
         val dataType = genericStats.typeOf(name)
         val isDataTypeInferred = genericStats.inferredTypes.contains(name)
         val histogram = categoricalStats.histograms.get(name)
+
         val typeCounts = genericStats.typeDetectionHistograms.getOrElse(name, Map.empty)
 
         val profile = genericStats.typeOf(name) match {
