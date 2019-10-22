@@ -13,15 +13,15 @@ case class BucketDistribution(buckets: List[BucketValue], parameters: List[Doubl
 
   // find the index of bucket which has the largest count
   def argmax: Int = {
-    var max_store = 0L
-    var ret = 0
+    var currentMax = 0L
+    var maxBucket = 0
     buckets.foreach { bucket =>
-      if (bucket.count > max_store) {
-        max_store = bucket.count
-        ret = buckets.indexOf(bucket)
+      if (bucket.count > currentMax) {
+        currentMax = bucket.count
+        maxBucket = buckets.indexOf(bucket)
       }
     }
-    ret
+    maxBucket
   }
 }
 
