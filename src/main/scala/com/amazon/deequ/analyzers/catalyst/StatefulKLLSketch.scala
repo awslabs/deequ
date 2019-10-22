@@ -69,19 +69,21 @@ private [sql] class StatefulKLLSketch(
       return
     }
 
-    val kll_this  = deserialize(buffer1.getAs[Array[Byte]](OBJECT_POS))
+    val kll_this = deserialize(buffer1.getAs[Array[Byte]](OBJECT_POS))
     val kll_other = deserialize(buffer2.getAs[Array[Byte]](OBJECT_POS))
     val kll_ret = kll_this.merge(kll_other)
     buffer1(OBJECT_POS) = serialize(kll_ret)
-    buffer1(MIN_POS) = Math.min(buffer1.getDouble(MIN_POS),buffer2.getDouble(MIN_POS))
-    buffer1(MAX_POS) = Math.max(buffer1.getDouble(MAX_POS),buffer2.getDouble(MAX_POS))
+    buffer1(MIN_POS) = Math.min(buffer1.getDouble(MIN_POS), buffer2.getDouble(MIN_POS))
+    buffer1(MAX_POS) = Math.max(buffer1.getDouble(MAX_POS), buffer2.getDouble(MAX_POS))
   }
 
   override def evaluate(buffer: Row): Any = {
-    toBytes(buffer.getDouble(MIN_POS), buffer.getDouble(MAX_POS), buffer.getAs[Array[Byte]](OBJECT_POS))
+    toBytes(buffer.getDouble(MIN_POS),
+      buffer.getDouble(MAX_POS),
+      buffer.getAs[Array[Byte]](OBJECT_POS))
   }
 
-  def toBytes(min: Double, max: Double, obj: Array[Byte]): Array[Byte]= {
+  def toBytes(min: Double, max: Double, obj: Array[Byte]): Array[Byte] = {
     val buffer2 = ByteBuffer.wrap(new Array(Doubles.BYTES + Doubles.BYTES + obj.length))
     buffer2.putDouble(min)
     buffer2.putDouble(max)

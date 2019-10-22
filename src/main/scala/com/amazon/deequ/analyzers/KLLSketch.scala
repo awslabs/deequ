@@ -48,7 +48,9 @@ case class KLLState(
   /** Add up states by merging sketches */
   override def sum(other: KLLState): KLLState = {
     val mergedSketch = qSketch.merge(other.qSketch)
-    KLLState(mergedSketch, Math.max(globalMax, other.globalMax), Math.min(globalMin, other.globalMin))
+    KLLState(mergedSketch,
+      Math.max(globalMax, other.globalMax),
+      Math.min(globalMin, other.globalMin))
   }
 }
 
@@ -89,7 +91,8 @@ case class KLLSketch(
 
   private[this] val PARAM_CHECK: StructType => Unit = { _ =>
     if (numberOfBuckets > KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS) {
-      throw new IllegalAnalyzerParameterException(s"Cannot return KLL Sketch related values for more " +
+      throw new IllegalAnalyzerParameterException(
+        s"Cannot return KLL Sketch related values for more " +
         s"than ${KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS} values")
     }
   }
@@ -128,7 +131,8 @@ case class KLLSketch(
             }
           }
 
-          val parameters = List[Double](finalSketch.shrinkingFactor, finalSketch.sketchSize.toDouble)
+          val parameters = List[Double](finalSketch.shrinkingFactor,
+            finalSketch.sketchSize.toDouble)
           val data = finalSketch.getCompactorItems
 
           BucketDistribution(bucketsList.toList, parameters, data)

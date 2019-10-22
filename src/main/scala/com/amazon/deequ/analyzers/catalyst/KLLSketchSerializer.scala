@@ -85,8 +85,8 @@ class KLLSketchSerializer {
       val sketchSize = buffer.getInt()
       val shrinkingFactor = buffer.getDouble()
       val curNumOfCompactors = buffer.getInt()
-      val compactorActualSize =  buffer.getInt()
-      val compactorTotalSize =  buffer.getInt()
+      val compactorActualSize = buffer.getInt()
+      val compactorTotalSize = buffer.getInt()
       val compactorLength = buffer.getInt()
 
       // reconstruct compactors

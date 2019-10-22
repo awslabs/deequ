@@ -20,7 +20,10 @@ import scala.util.{Failure, Success, Try}
 
 case class BucketValue(low_value: Double, high_value: Double, count: Long)
 
-case class BucketDistribution(buckets: List[BucketValue], parameters: List[Double], data: Array[Array[Double]]) {
+case class BucketDistribution(
+    buckets: List[BucketValue],
+    parameters: List[Double],
+    data: Array[Array[Double]]) {
 
   /**
    * Get relevant bucketValue with index of bucket.
@@ -48,7 +51,9 @@ case class BucketDistribution(buckets: List[BucketValue], parameters: List[Doubl
   }
 }
 
-case class KLLMetric(column: String, value: Try[BucketDistribution]) extends Metric[BucketDistribution] {
+case class KLLMetric(column: String, value: Try[BucketDistribution])
+  extends Metric[BucketDistribution] {
+
   val entity: Entity.Value = Entity.Column
   val instance: String = column
   val name = "KLL"

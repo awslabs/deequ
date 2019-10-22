@@ -35,7 +35,7 @@ class NonSampleCompactor[T]()
   var offset = 0
   var buffer: ArrayBuffer[T] = ArrayBuffer[T]()
 
-  private def findOdd(items:Int): Option[T] = items % 2 match {
+  private def findOdd(items: Int): Option[T] = items % 2 match {
     case 1 => Some(buffer(math.max(items - 1, 0)))
     case _ => None
   }
@@ -62,7 +62,7 @@ class NonSampleCompactor[T]()
     if (tail.isDefined) {
       newBuffer = newBuffer :+ tail.get
     }
-    buffer=newBuffer
+    buffer = newBuffer
     numOfCompress = numOfCompress + 1
     output
   }

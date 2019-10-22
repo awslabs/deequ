@@ -70,16 +70,24 @@ object ColumnProfiler {
   val DEFAULT_CARDINALITY_THRESHOLD = 120
 
   /**
-    * Profile a (potentially very large) dataset
-    *
-    * @param data dataset as dataframe
-    * @param restrictToColumns  can contain a subset of columns to profile, otherwise
-    *                           all columns will be considered
-    * @param lowCardinalityHistogramThreshold the maximum  (estimated) number of distinct values
-    *                                         in a column until which we should compute exact
-    *                                         histograms for it (defaults to 120)
-    * @return
-    */
+   * Profile a (potentially very large) dataset.
+   *
+   * @param data                             data dataset as dataframe
+   * @param restrictToColumns                an contain a subset of columns to profile, otherwise
+   *                                         all columns will be considered
+   * @param printStatusUpdates
+   * @param lowCardinalityHistogramThreshold the maximum (estimated) number of distinct values
+   *                                         in a column until which we should compute exact
+   *                                         histograms for it (defaults to 120)
+   * @param metricsRepository                the repo to store metrics
+   * @param reuseExistingResultsUsingKey     key for reuse existing result
+   * @param failIfResultsForReusingMissing   true if we have results for reusing
+   * @param saveInMetricsRepositoryUsingKey  key for saving in metrics repo
+   * @param kllSketchSize                    the sketch size of KLL Sketch
+   * @param kllShrinkingFactor               the shrinking factor of KLL Sketch
+   * @param numberOfBuckets                  number of buckets to divide the samples
+   * @return the profile of columns
+   */
   private[deequ] def profile(
       data: DataFrame,
       restrictToColumns: Option[Seq[String]] = None,
@@ -140,8 +148,8 @@ object ColumnProfiler {
       genericStatistics)
 
     // We compute mean, stddev, min, max for all numeric columns
-    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics, kllSketchSize,
-      kllShrinkingFactor, numberOfBuckets)
+    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns,
+      genericStatistics, kllSketchSize, kllShrinkingFactor, numberOfBuckets)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)

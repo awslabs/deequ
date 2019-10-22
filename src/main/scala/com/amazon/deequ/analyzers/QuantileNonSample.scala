@@ -98,7 +98,7 @@ class QuantileNonSample[T](
     ord.gt(o1, o2)
   }
   private def smallerThan[T](o1: T, o2: T)(implicit ord: Ordering[T]): Boolean = {
-    ord.lt(o1,o2)
+    ord.lt(o1, o2)
   }
 
   /**
@@ -106,11 +106,11 @@ class QuantileNonSample[T](
    *
    * @return the sorted Listmap (by key), which contains the rank of all current items in the sketch
    */
-  def getRankMap(): ListMap[T,Long] = {
+  def getRankMap(): ListMap[T, Long] = {
     val sortedOutput = ListMap(output.toSeq.sortBy({
       case (item, _) => item
-    }):_*)
-    var states = scala.collection.mutable.Map[T,Long]()
+    }): _*)
+    var states = scala.collection.mutable.Map[T, Long]()
     var runningRank = 0L
     sortedOutput.foreach { case (item, weight) =>
       runningRank = runningRank + weight
@@ -118,7 +118,7 @@ class QuantileNonSample[T](
     }
     ListMap(states.toSeq.sortBy({
       case (item, _) => item
-    }):_*)
+    }): _*)
   }
 
   /**
@@ -126,11 +126,11 @@ class QuantileNonSample[T](
    *
    * @return CDF function
    */
-  def getCDF(): Array[(T,Double)] = {
+  def getCDF(): Array[(T, Double)] = {
     val rankMap = getRankMap()
     val tmp = rankMap.keySet.toArray
     val (_, totalWeight) = rankMap.last
-    var ret = ArrayBuffer[(T,Double)]()
+    var ret = ArrayBuffer[(T, Double)]()
     tmp.foreach { item =>
       ret = ret :+ (item, rankMap(item).toDouble / totalWeight.toDouble)
     }
@@ -143,10 +143,10 @@ class QuantileNonSample[T](
    * @param item item to query
    * @return the estimated rank of the query item in sketch
    */
-  def getRank(item:T): Long = {
+  def getRank(item: T): Long = {
     var rank = 0L
     output.foreach {case (target, weight) =>
-      if (!greaterThan(target,item)) {
+      if (!greaterThan(target, item)) {
         rank = rank + weight
       }
     }
@@ -158,10 +158,10 @@ class QuantileNonSample[T](
    * @param item item to query
    * @return the estimated rank of the query item in sketch
    */
-  def getRankExclusive(item:T): Long = {
+  def getRankExclusive(item: T): Long = {
     var rank = 0L
     output.foreach {case (target, weight) =>
-      if (smallerThan(target,item)) {
+      if (smallerThan(target, item)) {
         rank = rank + weight
       }
     }
@@ -174,11 +174,11 @@ class QuantileNonSample[T](
    * @param rankMap the estimated rank of the query item in sketch
    * @return
    */
-  def getRank(item:T, rankMap:ListMap[T,Long]): Long = {
+  def getRank(item: T, rankMap: ListMap[T, Long]): Long = {
     var curRank = 0L
     breakable {
       rankMap.foreach { case (target, weight) =>
-        if (greaterThan(target,item)) {
+        if (greaterThan(target, item)) {
           break
         }
         curRank = weight
@@ -212,11 +212,11 @@ class QuantileNonSample[T](
     this
   }
 
-  private def output: Array[(T,Long)] = {
-    val compactorArray = compactors.toArray.slice(0,curNumOfCompactors)
+  private def output: Array[(T, Long)] = {
+    val compactorArray = compactors.toArray.slice(0, curNumOfCompactors)
     val compactorIndexMap = compactorArray.zipWithIndex
-    compactorIndexMap.flatMap {case (compactor,i) =>
-      compactor.buffer.toArray.map((_,1L << i))
+    compactorIndexMap.flatMap {case (compactor, i) =>
+      compactor.buffer.toArray.map((_, 1L << i))
     }
   }
 
@@ -236,7 +236,7 @@ class QuantileNonSample[T](
     var nextThresh = totalWeight/q
     var curq = 1
     var i = 0
-    var sumSoFar:Long = 0
+    var sumSoFar: Long = 0
     val (initializedValue, _) = sortedItems(0)
     val quantiles = Array.fill[T](q - 1)(initializedValue)
 
@@ -262,7 +262,7 @@ class QuantileNonSample[T](
    */
   def getCompactorItemsCount: Int = {
     var size = 0
-    compactors.toArray.slice(0,curNumOfCompactors).foreach{ compactor=>
+    compactors.toArray.slice(0, curNumOfCompactors).foreach{ compactor =>
       size = size + compactor.buffer.length
     }
     size
