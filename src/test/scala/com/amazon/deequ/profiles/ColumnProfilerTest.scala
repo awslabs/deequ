@@ -96,6 +96,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           "String" -> 0
         ),
         None,
+        None,
         Some(3.5),
         Some(6.0),
         Some(1.0),
@@ -128,6 +129,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         DataTypeInstances.Fractional,
         false,
         Map.empty,
+        None,
         None,
         Some(3.5),
         Some(6.0),

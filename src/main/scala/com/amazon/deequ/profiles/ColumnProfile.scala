@@ -17,8 +17,8 @@
 package com.amazon.deequ.profiles
 
 import com.amazon.deequ.analyzers.DataTypeInstances
-import com.amazon.deequ.metrics.Distribution
-import com.google.gson.{GsonBuilder, JsonArray, JsonObject, JsonPrimitive}
+import com.amazon.deequ.metrics.{BucketDistribution, Distribution}
+import com.google.gson.{Gson, GsonBuilder, JsonArray, JsonObject, JsonPrimitive}
 
 /* Profiling results for the columns which will be given to the constraint suggestion engine */
 abstract class ColumnProfile {
@@ -49,6 +49,7 @@ case class NumericColumnProfile(
     isDataTypeInferred: Boolean,
     typeCounts: Map[String, Long],
     histogram: Option[Distribution],
+    kll: Option[BucketDistribution],
     mean: Option[Double],
     maximum: Option[Double],
     minimum: Option[Double],
@@ -119,6 +120,39 @@ object ColumnProfiles {
           }
           numericColumnProfile.stdDev.foreach { stdDev =>
             columnProfileJson.addProperty("stdDev", stdDev)
+          }
+
+          // KLL Sketch
+          if (numericColumnProfile.kll.isDefined) {
+            val kllSketch = numericColumnProfile.kll.get
+            val kllSketchJson = new JsonObject()
+
+            val tmp = new JsonArray()
+            kllSketch.buckets.foreach{bucket =>
+              val entry = new JsonObject()
+              entry.addProperty("low_value", bucket.low_value)
+              entry.addProperty("high_value", bucket.high_value)
+              entry.addProperty("count", bucket.count)
+              tmp.add(entry)
+            }
+
+            kllSketchJson.add("buckets", tmp)
+            val entry = new JsonObject()
+            entry.addProperty("c", kllSketch.parameters(0))
+            entry.addProperty("k", kllSketch.parameters(1))
+            val store = new JsonObject()
+            store.add("parameters", entry)
+
+            val gson = new Gson()
+            val dataJson = gson.toJson(kllSketch.data)
+
+            // possible deserialization
+//            val newwhat = gson.fromJson(dataJson, classOf[Array[Array[Long]]])
+
+            store.addProperty("data", dataJson)
+
+            kllSketchJson.add("sketch", store)
+            columnProfileJson.add("kll", kllSketchJson)
           }
 
           val approxPercentilesJson = new JsonArray()
