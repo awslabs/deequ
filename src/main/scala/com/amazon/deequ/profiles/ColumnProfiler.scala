@@ -97,7 +97,7 @@ object ColumnProfiler {
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-      kllParameters: Option[Seq[Double]] = None)
+      kllParameters: Option[kllParameters] = None)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -230,7 +230,7 @@ object ColumnProfiler {
    private[this] def getAnalyzersForSecondPass(
       relevantColumnNames: Seq[String],
       genericStatistics: GenericColumnStatistics,
-      kllParameters: Option[Seq[Double]] = None)
+      kllParameters: Option[kllParameters] = None)
     : Seq[Analyzer[_, Metric[_]]] = {
       relevantColumnNames
         .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }

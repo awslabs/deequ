@@ -74,6 +74,14 @@ object KLLState{
 }
 
 /**
+ * Parameter definition for KLL Sketches.
+ * @param sketchSize size of kll sketch
+ * @param shrinkingFactor  shrinking factor of kll sketch
+ * @param numberOfBuckets  number of buckets
+ */
+case class kllParameters(sketchSize: Int, shrinkingFactor: Double, numberOfBuckets: Int)
+
+/**
  * The KLL Sketch analyzer.
  * @param column the column to run the analyzer
  * @param where constraint expression on the column
@@ -82,20 +90,16 @@ object KLLState{
 case class KLLSketch(
     column: String,
     where: Option[String] = None,
-    kllParameters: Option[Seq[Double]] = None)
+    kllParameters: Option[kllParameters] = None)
   extends ScanShareableAnalyzer[KLLState, KLLMetric] {
-
-  val KLL_SKETCH_SIZE_POS = 0
-  val KLL_SHRINKING_FACTOR_POS = 1
-  val KLL_BUCKETS_POS = 2
 
   var sketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE
   var shrinkingFactor: Double = KLLSketch.DEFAULT_SHRINKING_FACTOR
   var numberOfBuckets: Int = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS
   if (kllParameters.isDefined) {
-    sketchSize = kllParameters.get(KLL_SKETCH_SIZE_POS).asInstanceOf[Int]
-    shrinkingFactor = kllParameters.get(KLL_SHRINKING_FACTOR_POS)
-    numberOfBuckets = kllParameters.get(KLL_BUCKETS_POS).asInstanceOf[Int]
+    sketchSize = kllParameters.get.sketchSize
+    shrinkingFactor = kllParameters.get.shrinkingFactor
+    numberOfBuckets = kllParameters.get.numberOfBuckets
   }
 
   private[this] val PARAM_CHECK: StructType => Unit = { _ =>

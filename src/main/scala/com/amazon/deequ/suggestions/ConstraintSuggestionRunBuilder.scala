@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
+import com.amazon.deequ.analyzers.kllParameters
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.suggestions.rules.ConstraintRule
@@ -43,7 +44,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveColumnProfilesJsonPath: Option[String] = None
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
-  protected var kllParameters: Option[Seq[Double]] = None
+  protected var kllParameters: Option[kllParameters] = None
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
@@ -155,7 +156,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
    *
    * @param parameters Seq(sketchSize,shrinkingFactor,numberOfBuckets)
    */
-  def setKLLParameters(parameters: Seq[Double]): this.type = {
+  def setKLLParameters(parameters: kllParameters): this.type = {
     this.kllParameters = Option(parameters)
     this
   }

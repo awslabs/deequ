@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
+import com.amazon.deequ.analyzers.kllParameters
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
@@ -69,7 +70,7 @@ class ConstraintSuggestionRunner {
       cacheInputs: Boolean,
       fileOutputOptions: ConstraintSuggestionFileOutputOptions,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
-      kllParameters: Option[Seq[Double]])
+      kllParameters: Option[kllParameters])
     : ConstraintSuggestionResult = {
 
     // get testset related data from wrapper
@@ -159,7 +160,7 @@ class ConstraintSuggestionRunner {
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
-      kllParameters: Option[Seq[Double]])
+      kllParameters: Option[kllParameters])
     : (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()

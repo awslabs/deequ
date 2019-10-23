@@ -625,7 +625,7 @@ object Constraint {
   def kllConstraint(
       column: String,
       assertion: BucketDistribution => Boolean,
-      kllParameters: Option[Seq[Double]] = None,
+      kllParameters: Option[kllParameters] = None,
       hint: Option[String] = None)
     : Constraint = {
 

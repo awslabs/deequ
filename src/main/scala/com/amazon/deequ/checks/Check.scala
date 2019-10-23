@@ -18,7 +18,7 @@ package com.amazon.deequ.checks
 
 import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State}
+import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State, kllParameters}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
@@ -316,10 +316,10 @@ case class Check(
    * @param hint A hint to provide additional context why a constraint could have failed
    * @return
    */
-  def hasLargeKLLSketchSize(
+  def kllSketchSatisfies(
       column: String,
       assertion: BucketDistribution => Boolean,
-      kllParameters: Option[Seq[Double]] = None,
+      kllParameters: Option[kllParameters] = None,
       hint: Option[String] = None)
     : Check = {
 
