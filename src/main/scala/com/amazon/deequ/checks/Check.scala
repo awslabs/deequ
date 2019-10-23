@@ -311,7 +311,7 @@ case class Check(
    * @param assertion Function that receives a Distribution input parameter and returns a boolean.
    *                  E.g
    *                  .hasLargeKLLSketchSize("att2", _.parameters(1) >= 16,
-   *                  kllParameters = Option(Seq(2, 0.64, 2)))
+   *                  kllParameters = Option(kllParameters(2, 0.64, 2)))
    * @param kllParameters parameters of KLL Sketch
    * @param hint A hint to provide additional context why a constraint could have failed
    * @return
