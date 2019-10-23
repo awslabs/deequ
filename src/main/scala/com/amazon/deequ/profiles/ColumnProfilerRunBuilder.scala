@@ -17,7 +17,7 @@
 package com.amazon.deequ.profiles
 
 import com.amazon.deequ.repository._
-import com.amazon.deequ.analyzers.kllParameters
+import com.amazon.deequ.analyzers.KLLParameters
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a Constraint Suggestion run using a fluent API */
@@ -39,7 +39,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var saveColumnProfilesJsonPath: Option[String] = None
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
-  protected var kllParameters: Option[kllParameters] = None
+  protected var kllParameters: Option[KLLParameters] = None
 
   protected def this(constraintSuggestionRunBuilder: ColumnProfilerRunBuilder) {
 
@@ -106,7 +106,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     this
   }
 
-  def setKLLParameters(kllParameters: Option[kllParameters]): this.type = {
+  def setKLLParameters(kllParameters: Option[KLLParameters]): this.type = {
     this.kllParameters = kllParameters
     this
   }

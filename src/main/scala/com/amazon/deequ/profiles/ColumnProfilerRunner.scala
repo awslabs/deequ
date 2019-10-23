@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.profiles
 
-import com.amazon.deequ.analyzers.kllParameters
+import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.annotation.Experimental
@@ -48,7 +48,7 @@ class ColumnProfilerRunner {
       cacheInputs: Boolean,
       fileOutputOptions: ColumnProfilerRunBuilderFileOutputOptions,
       metricsRepositoryOptions: ColumnProfilerRunBuilderMetricsRepositoryOptions,
-      kllParameters: Option[kllParameters])
+      kllParameters: Option[KLLParameters])
     : ColumnProfiles = {
 
     if (cacheInputs) {

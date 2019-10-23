@@ -18,7 +18,7 @@ package com.amazon.deequ.checks
 
 import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State, kllParameters}
+import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State, KLLParameters}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
@@ -317,10 +317,10 @@ case class Check(
    * @return
    */
   def kllSketchSatisfies(
-      column: String,
-      assertion: BucketDistribution => Boolean,
-      kllParameters: Option[kllParameters] = None,
-      hint: Option[String] = None)
+                          column: String,
+                          assertion: BucketDistribution => Boolean,
+                          kllParameters: Option[KLLParameters] = None,
+                          hint: Option[String] = None)
     : Check = {
 
     addConstraint(kllConstraint(column, assertion, kllParameters, hint))

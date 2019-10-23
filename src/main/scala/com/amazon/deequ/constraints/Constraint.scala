@@ -623,10 +623,10 @@ object Constraint {
    * @param hint A hint to provide additional context why a constraint could have failed
    */
   def kllConstraint(
-      column: String,
-      assertion: BucketDistribution => Boolean,
-      kllParameters: Option[kllParameters] = None,
-      hint: Option[String] = None)
+                     column: String,
+                     assertion: BucketDistribution => Boolean,
+                     kllParameters: Option[KLLParameters] = None,
+                     hint: Option[String] = None)
     : Constraint = {
 
     val kllSketch = KLLSketch(column, kllParameters = kllParameters)

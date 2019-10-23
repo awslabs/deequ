@@ -18,7 +18,7 @@ package com.amazon.deequ.examples
 
 import ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.analyzers.kllParameters
+import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.ConstraintStatus
 import org.apache.spark.sql.types.DoubleType
@@ -46,7 +46,7 @@ private[examples] object KLLCheckExample extends App {
           .hasMax("numViews", _ <= 10)
           // we expect the sketch size to be at least 16
           .kllSketchSatisfies("numViews", _.parameters(1) >= 16,
-            kllParameters = Option(kllParameters(2, 0.64, 2))))
+            kllParameters = Option(KLLParameters(2, 0.64, 2))))
       .run()
 
     if (verificationResult.status == CheckStatus.Success) {

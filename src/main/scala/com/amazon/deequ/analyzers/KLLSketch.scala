@@ -79,7 +79,7 @@ object KLLState{
  * @param shrinkingFactor  shrinking factor of kll sketch
  * @param numberOfBuckets  number of buckets
  */
-case class kllParameters(sketchSize: Int, shrinkingFactor: Double, numberOfBuckets: Int)
+case class KLLParameters(sketchSize: Int, shrinkingFactor: Double, numberOfBuckets: Int)
 
 /**
  * The KLL Sketch analyzer.
@@ -90,7 +90,7 @@ case class kllParameters(sketchSize: Int, shrinkingFactor: Double, numberOfBucke
 case class KLLSketch(
     column: String,
     where: Option[String] = None,
-    kllParameters: Option[kllParameters] = None)
+    kllParameters: Option[KLLParameters] = None)
   extends ScanShareableAnalyzer[KLLState, KLLMetric] {
 
   var sketchSize: Int = KLLSketch.DEFAULT_SKETCH_SIZE

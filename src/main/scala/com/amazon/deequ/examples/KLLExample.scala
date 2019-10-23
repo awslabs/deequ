@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.examples
 
-import com.amazon.deequ.analyzers.kllParameters
+import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.profiles.NumericColumnProfile
 import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
@@ -35,7 +35,7 @@ private[examples] object KLLExample extends App {
     val suggestionResult = ConstraintSuggestionRunner()
       .onData(df)
       .addConstraintRules(Rules.DEFAULT)
-      .setKLLParameters(kllParameters(2, 0.64, 2))
+      .setKLLParameters(KLLParameters(2, 0.64, 2))
       .run()
 
     val columnProfiles = suggestionResult.columnProfiles
