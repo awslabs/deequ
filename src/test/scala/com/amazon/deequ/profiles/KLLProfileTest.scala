@@ -55,7 +55,8 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
 
         val data = getDfWithNumericFractionalValues(session)
 
-        val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att1")), false, 1)
+        val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att1")), false, 1,
+          kllParameters = Option(Seq(2, 0.64, 2)))
           .profiles("att1")
 
         val expectedColumnProfile = NumericColumnProfile(
@@ -93,7 +94,8 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
 
         val data = getDfWithNumericFractionalValuesForKLL(session)
 
-        val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att1")), false, 1)
+        val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att1")), false, 1,
+          kllParameters = Option(Seq(2, 0.64, 2)))
           .profiles("att1")
 
         val expectedColumnProfile = NumericColumnProfile(
@@ -136,7 +138,9 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
         Row(null)
       )
 
-      val actualColumnProfile = ColumnProfiler.profile(data).profiles(attribute)
+      val actualColumnProfile = ColumnProfiler.profile(data,
+        kllParameters = Option(Seq(2, 0.64, 2)))
+        .profiles(attribute)
       val numericalProfile = actualColumnProfile.asInstanceOf[NumericColumnProfile]
       assert(numericalProfile.kll.isDefined)
       val kll = numericalProfile.kll

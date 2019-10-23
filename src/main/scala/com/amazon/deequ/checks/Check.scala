@@ -21,10 +21,11 @@ import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
-import com.amazon.deequ.metrics.{Distribution, Metric}
+import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
+
 import scala.util.matching.Regex
 
 object CheckLevel extends Enumeration {
@@ -301,6 +302,28 @@ case class Check(
     : Check = {
 
     addConstraint(histogramConstraint(column, assertion, binningUdf, maxBins, hint))
+  }
+
+  /**
+   * Creates a constraint that asserts on column's sketch size.
+   *
+   * @param column    Column to run the assertion on
+   * @param assertion Function that receives a Distribution input parameter and returns a boolean.
+   *                  E.g
+   *                  .hasLargeKLLSketchSize("att2", _.parameters(1) >= 16,
+   *                  kllParameters = Option(Seq(2, 0.64, 2)))
+   * @param kllParameters parameters of KLL Sketch
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasLargeKLLSketchSize(
+      column: String,
+      assertion: BucketDistribution => Boolean,
+      kllParameters: Option[Seq[Double]] = None,
+      hint: Option[String] = None)
+    : Check = {
+
+    addConstraint(kllConstraint(column, assertion, kllParameters, hint))
   }
 
   /**
