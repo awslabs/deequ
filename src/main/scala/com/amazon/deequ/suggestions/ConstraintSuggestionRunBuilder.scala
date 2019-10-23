@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
+import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.suggestions.rules.ConstraintRule
@@ -43,6 +44,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveColumnProfilesJsonPath: Option[String] = None
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
+  protected var kllParameters: Option[KLLParameters] = None
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
@@ -68,6 +70,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     saveConstraintSuggestionsJsonPath = constraintSuggestionRunBuilder
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
+    kllParameters = constraintSuggestionRunBuilder.kllParameters
   }
 
   /**
@@ -149,6 +152,16 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 
   /**
+   * Set KLL parameters.
+   *
+   * @param parameters kllParameters(sketchSize, shrinkingFactor, numberOfBuckets)
+   */
+  def setKLLParameters(parameters: KLLParameters): this.type = {
+    this.kllParameters = Option(parameters)
+    this
+  }
+
+  /**
     * Set a metrics repository associated with the current data to enable features like reusing
     * previously computed results and storing the results of the current run.
     *
@@ -180,8 +193,9 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
       restrictToColumns,
       lowCardinalityHistogramThreshold,
       printStatusUpdates,
-      testsetRatio,
-      testsetSplitRandomSeed,
+      testsetWrapper(
+        testsetRatio,
+        testsetSplitRandomSeed),
       cacheInputs,
       ConstraintSuggestionFileOutputOptions(
         sparkSession,
@@ -193,8 +207,18 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
         metricsRepository,
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
-        saveOrAppendResultsKey)
+        saveOrAppendResultsKey),
+      kllParameters
     )
+  }
+
+  // implement this wrapper to not violate scalastyle requirement on argcount
+  private def testsetWrapper(
+    testsetRatio: Option[Double],
+    testsetSplitRandomSeed: Option[Long])
+  : List[Any] = {
+
+    List[Any](testsetRatio, testsetSplitRandomSeed)
   }
 }
 

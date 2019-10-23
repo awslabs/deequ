@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
+import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
@@ -65,12 +66,16 @@ class ConstraintSuggestionRunner {
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
-      testsetRatio: Option[Double],
-      testsetSplitRandomSeed: Option[Long],
+      testsetWrapper: List[Any],
       cacheInputs: Boolean,
       fileOutputOptions: ConstraintSuggestionFileOutputOptions,
-      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
+      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
+      kllParameters: Option[KLLParameters])
     : ConstraintSuggestionResult = {
+
+    // get testset related data from wrapper
+    val testsetRatio: Option[Double] = testsetWrapper(0).asInstanceOf[Option[Double]]
+    val testsetSplitRandomSeed: Option[Long] = testsetWrapper(1).asInstanceOf[Option[Long]]
 
     testsetRatio.foreach { testsetRatio =>
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
@@ -89,7 +94,8 @@ class ConstraintSuggestionRunner {
         restrictToColumns,
         lowCardinalityHistogramThreshold,
         printStatusUpdates,
-        metricsRepositoryOptions
+        metricsRepositoryOptions,
+        kllParameters
       )
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
@@ -153,7 +159,8 @@ class ConstraintSuggestionRunner {
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
-      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions)
+      metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
+      kllParameters: Option[KLLParameters])
     : (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()
@@ -164,6 +171,8 @@ class ConstraintSuggestionRunner {
     restrictToColumns.foreach { restrictToColumns =>
       columnProfilerRunner = columnProfilerRunner.restrictToColumns(restrictToColumns)
     }
+
+    columnProfilerRunner = columnProfilerRunner.setKLLParameters(kllParameters)
 
     metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
       var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)

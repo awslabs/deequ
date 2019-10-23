@@ -83,6 +83,7 @@ object ColumnProfiler {
    * @param reuseExistingResultsUsingKey     key for reuse existing result
    * @param failIfResultsForReusingMissing   true if we have results for reusing
    * @param saveInMetricsRepositoryUsingKey  key for saving in metrics repo
+   * @param kllParameters                    parameters for KLL Sketches
    *
    * @return the profile of columns
    */
@@ -95,7 +96,8 @@ object ColumnProfiler {
       metricsRepository: Option[MetricsRepository] = None,
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
-      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None)
+      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+      kllParameters: Option[KLLParameters] = None)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -142,14 +144,9 @@ object ColumnProfiler {
     val castedDataForSecondPass = castNumericStringColumns(relevantColumns, data,
       genericStatistics)
 
-    // Specify KLL Sketch parameters
-    val kllSketchSize = KLLSketch.DEFAULT_SKETCH_SIZE
-    val kllShrinkingFactor = KLLSketch.DEFAULT_SHRINKING_FACTOR
-    val numberOfBuckets = KLLSketch.MAXIMUM_ALLOWED_DETAIL_BINS
-
     // We compute mean, stddev, min, max for all numeric columns
     val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns,
-      genericStatistics, kllSketchSize, kllShrinkingFactor, numberOfBuckets)
+      genericStatistics, kllParameters)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)
@@ -233,11 +230,8 @@ object ColumnProfiler {
    private[this] def getAnalyzersForSecondPass(
       relevantColumnNames: Seq[String],
       genericStatistics: GenericColumnStatistics,
-      kllSketchSize: Int,
-      kllShrinkingFactor: Double,
-      numberOfBuckets: Int)
+      kllParameters: Option[KLLParameters] = None)
     : Seq[Analyzer[_, Metric[_]]] = {
-
       relevantColumnNames
         .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }
         .flatMap { name =>
@@ -248,8 +242,7 @@ object ColumnProfiler {
 
 
           Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
-            Sum(name),
-            KLLSketch(name, None, kllSketchSize, kllShrinkingFactor, numberOfBuckets),
+            Sum(name), KLLSketch(name, kllParameters = kllParameters),
             ApproxQuantiles(name, percentiles))
         }
     }
