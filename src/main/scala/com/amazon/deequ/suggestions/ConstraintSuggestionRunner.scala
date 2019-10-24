@@ -127,7 +127,8 @@ class ConstraintSuggestionRunner {
       .mapValues { groupedSuggestionsWithColumnNames =>
         groupedSuggestionsWithColumnNames.map { case (_, suggestion) => suggestion } }
 
-    ConstraintSuggestionResult(columnProfiles.profiles, columnsWithSuggestions, verificationResult)
+    ConstraintSuggestionResult(columnProfiles.profiles, columnProfiles.numRecords,
+      columnsWithSuggestions, verificationResult)
   }
 
   private[this] def splitTrainTestSets(
