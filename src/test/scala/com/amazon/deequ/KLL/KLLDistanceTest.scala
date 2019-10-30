@@ -30,7 +30,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
     var sample2 = new QuantileNonSample[Double](4, 0.64)
     sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4)))
     sample2.reconstruct(4, 0.64, Array(Array(2, 3, 4, 5)))
-    assert(Distance.calculateNumericalDistance(sample1, sample2, true) == 0.25)
+    assert(Distance.numericalDistance(sample1, sample2, true) == 0.25)
   }
 
   "KLL distance calculator should compute correct linf_robust" in {
@@ -38,7 +38,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
     var sample2 = new QuantileNonSample[Double](4, 0.64)
     sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4)))
     sample2.reconstruct(4, 0.64, Array(Array(2, 3, 4, 5)))
-    assert(Distance.calculateNumericalDistance(sample1, sample2) == 0.0)
+    assert(Distance.numericalDistance(sample1, sample2) == 0.0)
   }
 
   "Categorial distance should compute correct linf_simple" in {
@@ -52,7 +52,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateCategoricalDistance(sample1,
+    assert(Distance.categoricalDistance(sample1,
       sample2, true) == 0.06015037593984962)
   }
 
@@ -67,7 +67,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateCategoricalDistance(sample1, sample2) == 0.0)
+    assert(Distance.categoricalDistance(sample1, sample2) == 0.0)
   }
 
   "Categorial distance should compute correct linf_simple with different bin value" in {
@@ -81,7 +81,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateCategoricalDistance(sample1,
+    assert(Distance.categoricalDistance(sample1,
       sample2, true) == 0.2857142857142857)
   }
 
@@ -96,6 +96,6 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateCategoricalDistance(sample1, sample2) == 0.0)
+    assert(Distance.categoricalDistance(sample1, sample2) == 0.0)
   }
 }

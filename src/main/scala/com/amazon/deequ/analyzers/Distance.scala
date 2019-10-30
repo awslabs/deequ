@@ -23,10 +23,10 @@ case class CategoricalHistogram(buckets: List[CategoricalHistogramBucket])
 object Distance {
 
     /** Calculate distance of numerical profiles based on KLL Sketches and L-Infinity Distance */
-    def calculateNumericalDistance(
+    def numericalDistance(
       sample1: QuantileNonSample[Double],
       sample2: QuantileNonSample[Double],
-      enoughSample: Boolean = false)
+      correctForLowNumberOfSamples: Boolean = false)
     : Double = {
       val rankMap1 = sample1.getRankMap()
       val rankMap2 = sample2.getRankMap()
@@ -41,14 +41,14 @@ object Distance {
         val cdfDiff = Math.abs(cdf1 - cdf2)
         linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      selectMetrics(linfSimple, n, m, enoughSample)
+      selectMetrics(linfSimple, n, m, correctForLowNumberOfSamples)
     }
 
     /** Calculate distance of categorical profiles based on L-Infinity Distance */
-    def calculateCategoricalDistance(
+    def categoricalDistance(
       sample1: CategoricalHistogram,
       sample2: CategoricalHistogram,
-      enoughSample: Boolean = false)
+      correctForLowNumberOfSamples: Boolean = false)
     : Double = {
 
       var countMap1 = scala.collection.mutable.Map[String, Long]()
@@ -72,18 +72,18 @@ object Distance {
         val cdfDiff = Math.abs(cdf1 - cdf2)
         linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      selectMetrics(linfSimple, n, m, enoughSample)
+      selectMetrics(linfSimple, n, m, correctForLowNumberOfSamples)
     }
 
   /** Select which metrics to compute (linf_simple or linf_robust)
    *  based on whether samples are enough */
-   private def selectMetrics(
+   private[this] def selectMetrics(
      linfSimple: Double,
      n: Double,
      m: Double,
-     enoughSamples: Boolean = false)
+     correctForLowNumberOfSamples: Boolean = false)
    : Double = {
-     if (enoughSamples) {
+     if (correctForLowNumberOfSamples) {
        linfSimple
      } else {
        // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
