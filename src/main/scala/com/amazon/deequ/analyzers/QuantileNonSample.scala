@@ -24,7 +24,7 @@ import scala.util.control.Breaks._
 
 class QuantileNonSample[T](
     var sketchSize: Int,
-    var shrinkingFactor: Double)
+    var shrinkingFactor: Double = 0.64)
     (implicit ordering: Ordering[T], ct: ClassTag[T])
   extends Serializable{
 
@@ -43,17 +43,18 @@ class QuantileNonSample[T](
   expand()
 
   /** Given sketchSize, shrinkingFactor, and data, reconstruct the KLL Object */
-  def reconstruct(k: Int, c: Double, data: Array[Array[T]]): Unit = {
-    sketchSize = k
-    shrinkingFactor = c
-    compactors = ArrayBuffer[NonSampleCompactor[T]]()
-    for (i <- data.indices) {
-      expand()
-      for (j <- data(i).indices) {
-        compactors(i).buffer = compactors(i).buffer :+ data(i)(j)
-      }
+  def reconstruct(
+    sketchSizeInput: Int,
+    shrinkingFactorInput: Double,
+    dataInput: Array[Array[T]])
+  : Unit = {
+    sketchSize = sketchSizeInput
+    shrinkingFactor = shrinkingFactorInput
+    compactors = ArrayBuffer.fill(dataInput.length)(new NonSampleCompactor[T])
+    for (i <- dataInput.indices) {
+      compactors(i).buffer = dataInput(i).to[ArrayBuffer]
     }
-    curNumOfCompactors = compactors.length
+    curNumOfCompactors = dataInput.length
     compactorActualSize = getCompactorItemsCount
     compactorTotalSize = getCompactorCapacityCount
   }

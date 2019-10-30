@@ -16,19 +16,17 @@
 
 package com.amazon.deequ.analyzers
 
-case class CategoricalBucket(value: String, count: Long)
+case class CategoricalHistogramBucket(value: String, count: Long)
 
-case class Categorical(buckets: List[CategoricalBucket])
+case class CategoricalHistogram(buckets: List[CategoricalHistogramBucket])
 
-class Distance {
+object Distance {
 
-    /** Calculate distance of numerical profiles based on KLL Sketch
-     *  This formula is based on  “Two-sample Kolmogorov–Smirnov test"
-     *  Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test */
+    /** Calculate distance of numerical profiles based on KLL Sketch */
     def calculateNumericalDistance(
       sample1: QuantileNonSample[Double],
       sample2: QuantileNonSample[Double],
-      isSimple: Boolean = false)
+      calculateLinfSimple: Boolean = false)
     : Double = {
       val rankMap1 = sample1.getRankMap()
       val rankMap2 = sample2.getRankMap()
@@ -38,53 +36,57 @@ class Distance {
       var linfSimple = 0.0
 
       combinedKeys.foreach { key =>
-        linfSimple = Math.max(linfSimple,
-          Math.abs(sample1.getRank(key, rankMap1) / n - sample2.getRank(key, rankMap2) / m))
+        val cdf1 = sample1.getRank(key, rankMap1) / n
+        val cdf2 = sample2.getRank(key, rankMap2) / m
+        val cdfDiff = Math.abs(cdf1 - cdf2)
+        linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m) ))
-      if (isSimple) {
+      if (calculateLinfSimple) {
         linfSimple
       } else {
+        // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
+        // Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
+        val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m)))
         linfRobust
       }
     }
 
     /** Calculate distance of categorical profiles based on L-Infinity Distance */
-    def calculateCategoricalDistance(
-      sample1: Categorical,
-      sample2: Categorical,
-      isSimple: Boolean = false)
+    def calculateLInfinityCategoricalDistance(
+      sample1: CategoricalHistogram,
+      sample2: CategoricalHistogram,
+      calculateLinfSimple: Boolean = false)
     : Double = {
 
-      val buckets1 = sample1.buckets
-      val buckets2 = sample2.buckets
       var countMap1 = scala.collection.mutable.Map[String, Long]()
       var countMap2 = scala.collection.mutable.Map[String, Long]()
       var n = 0.0
       var m = 0.0
-      buckets1.foreach { bucket =>
+      sample1.buckets.foreach { bucket =>
         n += bucket.count
         countMap1 += (bucket.value -> bucket.count)
       }
-      buckets2.foreach { bucket =>
+      sample2.buckets.foreach { bucket =>
         m += bucket.count
         countMap2 += (bucket.value -> bucket.count)
       }
       val combinedKeys = countMap1.keySet.union(countMap2.keySet)
       var linfSimple = 0.0
+
       combinedKeys.foreach { key =>
-        linfSimple = Math.max(linfSimple,
-          Math.abs(countMap1.getOrElse(key, 0L) / n - countMap2.getOrElse(key, 0L) / m))
+        val cdf1 = countMap1.getOrElse(key, 0L) / n
+        val cdf2 = countMap2.getOrElse(key, 0L) / m
+        val cdfDiff = Math.abs(cdf1 - cdf2)
+        linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m) ))
-      if (isSimple) {
+      if (calculateLinfSimple) {
         linfSimple
       } else {
+        // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
+        // Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
+        val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m)))
         linfRobust
       }
     }
 }
 
-object Distance{
-  val distance: Distance = new Distance
-}

@@ -17,7 +17,8 @@
 package com.amazon.deequ.KLL
 
 import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.analyzers.{Categorical, CategoricalBucket, Distance, QuantileNonSample}
+import com.amazon.deequ.analyzers.{CategoricalHistogram, CategoricalHistogramBucket}
+import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.{Matchers, WordSpec}
 
@@ -29,7 +30,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
     var sample2 = new QuantileNonSample[Double](4, 0.64)
     sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4)))
     sample2.reconstruct(4, 0.64, Array(Array(2, 3, 4, 5)))
-    assert(Distance.distance.calculateNumericalDistance(sample1, sample2, true) == 0.25)
+    assert(Distance.calculateNumericalDistance(sample1, sample2, true) == 0.25)
   }
 
   "KLL distance calculator should compute correct linf_robust" in {
@@ -37,64 +38,64 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
     var sample2 = new QuantileNonSample[Double](4, 0.64)
     sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4)))
     sample2.reconstruct(4, 0.64, Array(Array(2, 3, 4, 5)))
-    assert(Distance.distance.calculateNumericalDistance(sample1, sample2) == 0.0)
+    assert(Distance.calculateNumericalDistance(sample1, sample2) == 0.0)
   }
 
   "Categorial distance should compute correct linf_simple" in {
-    var sample1 = Categorical(List(CategoricalBucket("a", 10),
-      CategoricalBucket("b", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 5)))
-    var sample2 = Categorical(List(CategoricalBucket("a", 11),
-      CategoricalBucket("b", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 10)))
-    assert(Distance.distance.calculateCategoricalDistance(sample1,
+    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
+      CategoricalHistogramBucket("b", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 5)))
+    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
+      CategoricalHistogramBucket("b", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 10)))
+    assert(Distance.calculateLInfinityCategoricalDistance(sample1,
       sample2, true) == 0.06015037593984962)
   }
 
   "Categorial distance should compute correct linf_robust" in {
-    var sample1 = Categorical(List(CategoricalBucket("a", 10),
-      CategoricalBucket("b", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 5)))
-    var sample2 = Categorical(List(CategoricalBucket("a", 11),
-      CategoricalBucket("b", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 10)))
-    assert(Distance.distance.calculateCategoricalDistance(sample1, sample2) == 0.0)
+    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
+      CategoricalHistogramBucket("b", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 5)))
+    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
+      CategoricalHistogramBucket("b", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 10)))
+    assert(Distance.calculateLInfinityCategoricalDistance(sample1, sample2) == 0.0)
   }
 
   "Categorial distance should compute correct linf_simple with different bin value" in {
-    var sample1 = Categorical(List(CategoricalBucket("a", 10),
-      CategoricalBucket("b", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 5)))
-    var sample2 = Categorical(List(CategoricalBucket("a", 11),
-      CategoricalBucket("a", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 10)))
-    assert(Distance.distance.calculateCategoricalDistance(sample1,
+    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
+      CategoricalHistogramBucket("b", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 5)))
+    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
+      CategoricalHistogramBucket("a", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 10)))
+    assert(Distance.calculateLInfinityCategoricalDistance(sample1,
       sample2, true) == 0.2857142857142857)
   }
 
   "Categorial distance should compute correct linf_robust with different bin value" in {
-    var sample1 = Categorical(List(CategoricalBucket("a", 10),
-      CategoricalBucket("b", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 5)))
-    var sample2 = Categorical(List(CategoricalBucket("a", 11),
-      CategoricalBucket("a", 20),
-      CategoricalBucket("c", 25),
-      CategoricalBucket("d", 10),
-      CategoricalBucket("e", 10)))
-    assert(Distance.distance.calculateCategoricalDistance(sample1, sample2) == 0.0)
+    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
+      CategoricalHistogramBucket("b", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 5)))
+    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
+      CategoricalHistogramBucket("a", 20),
+      CategoricalHistogramBucket("c", 25),
+      CategoricalHistogramBucket("d", 10),
+      CategoricalHistogramBucket("e", 10)))
+    assert(Distance.calculateLInfinityCategoricalDistance(sample1, sample2) == 0.0)
   }
 }
