@@ -52,7 +52,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateLInfinityCategoricalDistance(sample1,
+    assert(Distance.calculateCategoricalDistance(sample1,
       sample2, true) == 0.06015037593984962)
   }
 
@@ -67,7 +67,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateLInfinityCategoricalDistance(sample1, sample2) == 0.0)
+    assert(Distance.calculateCategoricalDistance(sample1, sample2) == 0.0)
   }
 
   "Categorial distance should compute correct linf_simple with different bin value" in {
@@ -81,7 +81,7 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateLInfinityCategoricalDistance(sample1,
+    assert(Distance.calculateCategoricalDistance(sample1,
       sample2, true) == 0.2857142857142857)
   }
 
@@ -96,6 +96,6 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
       CategoricalHistogramBucket("c", 25),
       CategoricalHistogramBucket("d", 10),
       CategoricalHistogramBucket("e", 10)))
-    assert(Distance.calculateLInfinityCategoricalDistance(sample1, sample2) == 0.0)
+    assert(Distance.calculateCategoricalDistance(sample1, sample2) == 0.0)
   }
 }

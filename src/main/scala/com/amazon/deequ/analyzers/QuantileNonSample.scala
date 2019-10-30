@@ -44,17 +44,17 @@ class QuantileNonSample[T](
 
   /** Given sketchSize, shrinkingFactor, and data, reconstruct the KLL Object */
   def reconstruct(
-    sketchSizeInput: Int,
-    shrinkingFactorInput: Double,
-    dataInput: Array[Array[T]])
+    sketchSize: Int,
+    shrinkingFactor: Double,
+    data: Array[Array[T]])
   : Unit = {
-    sketchSize = sketchSizeInput
-    shrinkingFactor = shrinkingFactorInput
-    compactors = ArrayBuffer.fill(dataInput.length)(new NonSampleCompactor[T])
-    for (i <- dataInput.indices) {
-      compactors(i).buffer = dataInput(i).to[ArrayBuffer]
+    this.sketchSize = sketchSize
+    this.shrinkingFactor = shrinkingFactor
+    compactors = ArrayBuffer.fill(data.length)(new NonSampleCompactor[T])
+    for (i <- data.indices) {
+      compactors(i).buffer = data(i).to[ArrayBuffer]
     }
-    curNumOfCompactors = dataInput.length
+    curNumOfCompactors = data.length
     compactorActualSize = getCompactorItemsCount
     compactorTotalSize = getCompactorCapacityCount
   }

@@ -22,11 +22,11 @@ case class CategoricalHistogram(buckets: List[CategoricalHistogramBucket])
 
 object Distance {
 
-    /** Calculate distance of numerical profiles based on KLL Sketch */
+    /** Calculate distance of numerical profiles based on KLL Sketches and L-Infinity Distance */
     def calculateNumericalDistance(
       sample1: QuantileNonSample[Double],
       sample2: QuantileNonSample[Double],
-      calculateLinfSimple: Boolean = false)
+      enoughSample: Boolean = false)
     : Double = {
       val rankMap1 = sample1.getRankMap()
       val rankMap2 = sample2.getRankMap()
@@ -41,21 +41,14 @@ object Distance {
         val cdfDiff = Math.abs(cdf1 - cdf2)
         linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      if (calculateLinfSimple) {
-        linfSimple
-      } else {
-        // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
-        // Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
-        val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m)))
-        linfRobust
-      }
+      selectMetrics(linfSimple, n, m, enoughSample)
     }
 
     /** Calculate distance of categorical profiles based on L-Infinity Distance */
-    def calculateLInfinityCategoricalDistance(
+    def calculateCategoricalDistance(
       sample1: CategoricalHistogram,
       sample2: CategoricalHistogram,
-      calculateLinfSimple: Boolean = false)
+      enoughSample: Boolean = false)
     : Double = {
 
       var countMap1 = scala.collection.mutable.Map[String, Long]()
@@ -79,14 +72,25 @@ object Distance {
         val cdfDiff = Math.abs(cdf1 - cdf2)
         linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      if (calculateLinfSimple) {
-        linfSimple
-      } else {
-        // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
-        // Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
-        val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m)))
-        linfRobust
-      }
+      selectMetrics(linfSimple, n, m, enoughSample)
     }
+
+  /** Select which metrics to compute (linf_simple or linf_robust)
+   *  based on whether samples are enough */
+   private def selectMetrics(
+     linfSimple: Double,
+     n: Double,
+     m: Double,
+     enoughSamples: Boolean = false)
+   : Double = {
+     if (enoughSamples) {
+       linfSimple
+     } else {
+       // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
+       // Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
+       val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m)))
+       linfRobust
+     }
+   }
 }
 
