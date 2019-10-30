@@ -23,8 +23,8 @@ import scala.util.control.Breaks._
 
 
 class QuantileNonSample[T](
-    val sketchSize: Int,
-    val shrinkingFactor: Double)
+    var sketchSize: Int,
+    var shrinkingFactor: Double = 0.64)
     (implicit ordering: Ordering[T], ct: ClassTag[T])
   extends Serializable{
 
@@ -41,6 +41,23 @@ class QuantileNonSample[T](
   var compactors: ArrayBuffer[NonSampleCompactor[T]] = ArrayBuffer[NonSampleCompactor[T]]()
 
   expand()
+
+  /** Given sketchSize, shrinkingFactor, and data, reconstruct the KLL Object */
+  def reconstruct(
+    sketchSize: Int,
+    shrinkingFactor: Double,
+    data: Array[Array[T]])
+  : Unit = {
+    this.sketchSize = sketchSize
+    this.shrinkingFactor = shrinkingFactor
+    compactors = ArrayBuffer.fill(data.length)(new NonSampleCompactor[T])
+    for (i <- data.indices) {
+      compactors(i).buffer = data(i).to[ArrayBuffer]
+    }
+    curNumOfCompactors = data.length
+    compactorActualSize = getCompactorItemsCount
+    compactorTotalSize = getCompactorCapacityCount
+  }
 
   /** Get method for items inside compactors */
   def getCompactorItems: Array[Array[T]] = {
@@ -110,7 +127,7 @@ class QuantileNonSample[T](
     val sortedOutput = ListMap(output.toSeq.sortBy({
       case (item, _) => item
     }): _*)
-    var states = scala.collection.mutable.Map[T, Long]()
+    val states = scala.collection.mutable.Map[T, Long]()
     var runningRank = 0L
     sortedOutput.foreach { case (item, weight) =>
       runningRank = runningRank + weight

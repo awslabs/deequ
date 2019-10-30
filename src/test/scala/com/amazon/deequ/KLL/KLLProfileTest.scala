@@ -14,11 +14,12 @@
  *
  */
 
-package com.amazon.deequ.profiles
+package com.amazon.deequ.KLL
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import com.amazon.deequ.metrics.{BucketDistribution, BucketValue}
+import com.amazon.deequ.profiles.{ColumnProfiler, NumericColumnProfile}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
