@@ -17,7 +17,6 @@
 package com.amazon.deequ.KLL
 
 import com.amazon.deequ.SparkContextSpec
-import com.amazon.deequ.analyzers.{CategoricalHistogram, CategoricalHistogramBucket}
 import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.{Matchers, WordSpec}
@@ -42,60 +41,36 @@ class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
   }
 
   "Categorial distance should compute correct linf_simple" in {
-    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
-      CategoricalHistogramBucket("b", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 5)))
-    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
-      CategoricalHistogramBucket("b", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 10)))
+    val sample1 = scala.collection.mutable.Map(
+      "a" -> 10L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 5L)
+    val sample2 = scala.collection.mutable.Map(
+      "a" -> 11L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 10L)
     assert(Distance.categoricalDistance(sample1,
       sample2, true) == 0.06015037593984962)
   }
 
   "Categorial distance should compute correct linf_robust" in {
-    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
-      CategoricalHistogramBucket("b", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 5)))
-    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
-      CategoricalHistogramBucket("b", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 10)))
+    val sample1 = scala.collection.mutable.Map(
+      "a" -> 10L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 5L)
+    val sample2 = scala.collection.mutable.Map(
+      "a" -> 11L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 10L)
     assert(Distance.categoricalDistance(sample1, sample2) == 0.0)
   }
 
   "Categorial distance should compute correct linf_simple with different bin value" in {
-    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
-      CategoricalHistogramBucket("b", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 5)))
-    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
-      CategoricalHistogramBucket("a", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 10)))
+    val sample1 = scala.collection.mutable.Map(
+      "a" -> 10L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 5L)
+    val sample2 = scala.collection.mutable.Map(
+      "f" -> 11L, "a" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 10L)
     assert(Distance.categoricalDistance(sample1,
       sample2, true) == 0.2857142857142857)
   }
 
   "Categorial distance should compute correct linf_robust with different bin value" in {
-    var sample1 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 10),
-      CategoricalHistogramBucket("b", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 5)))
-    var sample2 = CategoricalHistogram(List(CategoricalHistogramBucket("a", 11),
-      CategoricalHistogramBucket("a", 20),
-      CategoricalHistogramBucket("c", 25),
-      CategoricalHistogramBucket("d", 10),
-      CategoricalHistogramBucket("e", 10)))
+    val sample1 = scala.collection.mutable.Map(
+      "a" -> 10L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 5L)
+    val sample2 = scala.collection.mutable.Map(
+      "f" -> 11L, "a" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 10L)
     assert(Distance.categoricalDistance(sample1, sample2) == 0.0)
   }
 }

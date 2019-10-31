@@ -16,10 +16,6 @@
 
 package com.amazon.deequ.analyzers
 
-case class CategoricalHistogramBucket(value: String, count: Long)
-
-case class CategoricalHistogram(buckets: List[CategoricalHistogramBucket])
-
 object Distance {
 
     /** Calculate distance of numerical profiles based on KLL Sketches and L-Infinity Distance */
@@ -46,29 +42,25 @@ object Distance {
 
     /** Calculate distance of categorical profiles based on L-Infinity Distance */
     def categoricalDistance(
-      sample1: CategoricalHistogram,
-      sample2: CategoricalHistogram,
+      sample1: scala.collection.mutable.Map[String, Long],
+      sample2: scala.collection.mutable.Map[String, Long],
       correctForLowNumberOfSamples: Boolean = false)
     : Double = {
 
-      var countMap1 = scala.collection.mutable.Map[String, Long]()
-      var countMap2 = scala.collection.mutable.Map[String, Long]()
       var n = 0.0
       var m = 0.0
-      sample1.buckets.foreach { bucket =>
-        n += bucket.count
-        countMap1 += (bucket.value -> bucket.count)
+      sample1.keySet.foreach { key =>
+        n += sample1(key)
       }
-      sample2.buckets.foreach { bucket =>
-        m += bucket.count
-        countMap2 += (bucket.value -> bucket.count)
+      sample2.keySet.foreach { key =>
+        m += sample2(key)
       }
-      val combinedKeys = countMap1.keySet.union(countMap2.keySet)
+      val combinedKeys = sample1.keySet.union(sample2.keySet)
       var linfSimple = 0.0
 
       combinedKeys.foreach { key =>
-        val cdf1 = countMap1.getOrElse(key, 0L) / n
-        val cdf2 = countMap2.getOrElse(key, 0L) / m
+        val cdf1 = sample1.getOrElse(key, 0L) / n
+        val cdf2 = sample2.getOrElse(key, 0L) / m
         val cdfDiff = Math.abs(cdf1 - cdf2)
         linfSimple = Math.max(linfSimple, cdfDiff)
       }
