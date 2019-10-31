@@ -146,9 +146,6 @@ object ColumnProfiles {
             val gson = new Gson()
             val dataJson = gson.toJson(kllSketch.data)
 
-            // possible deserialization
-//            val newwhat = gson.fromJson(dataJson, classOf[Array[Array[Long]]])
-
             store.addProperty("data", dataJson)
 
             kllSketchJson.add("sketch", store)
