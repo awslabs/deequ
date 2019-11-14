@@ -92,7 +92,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
         Success(6.0)))
       resultMetrics should contain(DoubleMetric(Entity.Column, "CountDistinct", "att1",
         Success(6.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxQuantile", "att1",
+      resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxQuantile-0.5", "att1",
         Success(3.0)))
     }
 

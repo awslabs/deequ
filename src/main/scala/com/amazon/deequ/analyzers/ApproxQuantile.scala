@@ -87,14 +87,14 @@ case class ApproxQuantile(column: String, quantile: Double, relativeError: Doubl
     state match {
       case Some(theState) =>
         val percentile = theState.percentileDigest.getPercentiles(Array(quantile)).head
-        Analyzers.metricFromValue(percentile, "ApproxQuantile", column)
+        Analyzers.metricFromValue(percentile, s"ApproxQuantile-$quantile", column)
       case _ =>
-        Analyzers.metricFromEmpty(this, "ApproxQuantile", column)
+        Analyzers.metricFromEmpty(this, s"ApproxQuantile-$quantile", column)
     }
   }
 
   override def toFailureMetric(exception: Exception): DoubleMetric = {
-    Analyzers.metricFromFailure(exception, "ApproxQuantile", column)
+    Analyzers.metricFromFailure(exception, s"ApproxQuantile-$quantile", column)
   }
 
   override def preconditions: Seq[StructType => Unit] = {
