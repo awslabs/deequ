@@ -21,7 +21,8 @@ import com.amazon.deequ.analyzers.{KLLSketch, QuantileNonSample}
 object KLLBenchmarkHelper {
 
   def floatSketch(): QuantileNonSample[java.lang.Float] = {
-    new QuantileNonSample[java.lang.Float](KLLSketch.DEFAULT_SKETCH_SIZE, KLLSketch.DEFAULT_SHRINKING_FACTOR)
+    new QuantileNonSample[java.lang.Float](KLLSketch.DEFAULT_SKETCH_SIZE,
+      KLLSketch.DEFAULT_SHRINKING_FACTOR)
   }
 
 }

@@ -104,7 +104,7 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] {
 
   private[deequ] def toFailureMetric(failure: Exception): M
 
-  protected def calculateMetric(
+  def calculateMetric(
       state: Option[S],
       aggregateWith: Option[StateLoader] = None,
       saveStatesWith: Option[StatePersister] = None)
