@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.runners
 
-import com.amazon.deequ.analyzers.{Analyzer, KLLParameters, KLLSketch, KLLState, QuantileNonSample, ScanShareableAnalyzer, State, StateLoader, StatePersister}
+import com.amazon.deequ.analyzers.{Analyzer, KLLParameters, KLLSketch, KLLState, QuantileNonSample, State, StateLoader, StatePersister}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.types.{ByteType, DoubleType, FloatType, IntegerType, LongType, ShortType, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
@@ -153,12 +153,14 @@ object KLLRunner {
       .zipWithIndex
       .toMap
 
+    // Include the index to avoid a lookup per row
+    val indexesAndSketches = columnsAndSketches.map { case (column, sketch) =>
+      (namesToIndexes(column), sketch )
+    }
+
     while (rows.hasNext) {
       val row = rows.next()
-      columnsAndSketches.foreach { case (column, sketch) =>
-
-        val index = namesToIndexes(column)
-
+      indexesAndSketches.foreach { case (index, sketch) =>
         if (!row.isNullAt(index)) {
           sketch.updateUntyped(row.get(index))
         }

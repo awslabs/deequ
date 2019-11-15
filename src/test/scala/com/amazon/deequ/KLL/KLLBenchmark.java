@@ -86,15 +86,4 @@ public class KLLBenchmark {
     }
     bh.consume(sketch);
   }
-
-//  @Benchmark
-//  public void sketchArrayWithJavaSketchesQuantiles(Blackhole bh) {
-//    DirectUpdateDoublesSketch sketch = Direct();
-//    for (int i = 0; i < N; i++) {
-//      sketch.update(DATA_FOR_TESTING[i]);
-//    }
-//    bh.consume(sketch);
-//  }
-
-
 }
