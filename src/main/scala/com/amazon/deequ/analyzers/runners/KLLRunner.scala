@@ -102,16 +102,14 @@ object KLLRunner {
     val sketching = sketchPartitions(columnsAndParameters, data.schema)_
 
     val sketchPerColumn =
-      data.rdd.mapPartitions(sketching, preservesPartitioning = true)
-          // TODO treeAggregate would maybe be faster,
-          //  but the intialisation of the zeroElement is ugly...
-          .reduce { case (columnAndSketchesA, columnAndSketchesB) =>
-             columnAndSketchesA.foreach { case (column, sketch) =>
-               sketch.mergeUntyped(columnAndSketchesB(column))
-             }
-
-             columnAndSketchesA
-          }
+      data.rdd
+        .mapPartitions(sketching, preservesPartitioning = true)
+        .treeReduce { case (columnAndSketchesA, columnAndSketchesB) =>
+            columnAndSketchesA.map { case (column, sketch) =>
+              sketch.mergeUntyped(columnAndSketchesB(column))
+              column -> sketch
+            }
+        }
 
     val metricsByAnalyzer = kllAnalyzers.map { analyzer =>
       val kllState = sketchPerColumn(analyzer.column).asKLLState()
@@ -123,11 +121,11 @@ object KLLRunner {
     AnalyzerContext(metricsByAnalyzer.toMap[Analyzer[_, Metric[_]], Metric[_]])
   }
 
-  def sketchPartitions(columnsAndParameters: Map[String, Option[KLLParameters]], schema: StructType)
-                      (rows: Iterator[Row])
-    : Iterator[Map[String, UntypedQuantileNonSample]] = {
+  private[this] def emptySketches(
+      columnsAndParameters: Map[String, Option[KLLParameters]],
+      schema: StructType): Map[String, UntypedQuantileNonSample] = {
 
-    val columnsAndSketches = columnsAndParameters.map { case (column, parameters) =>
+    columnsAndParameters.map { case (column, parameters) =>
 
       val (sketchSize, shrinkingFactor) = parameters match {
         case Some(kllParameters) => (kllParameters.sketchSize, kllParameters.shrinkingFactor)
@@ -147,6 +145,14 @@ object KLLRunner {
 
       column -> sketch
     }
+  }
+
+  private[this] def sketchPartitions(
+      columnsAndParameters: Map[String, Option[KLLParameters]],
+      schema: StructType)(rows: Iterator[Row])
+    : Iterator[Map[String, UntypedQuantileNonSample]] = {
+
+    val columnsAndSketches = emptySketches(columnsAndParameters, schema)
 
     val namesToIndexes = schema.fields
       .map { _.name }
