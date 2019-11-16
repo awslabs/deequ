@@ -16,15 +16,28 @@
 
 package com.amazon.deequ.metrics
 
+import com.amazon.deequ.analyzers.QuantileNonSample
+
 import scala.util.{Failure, Success, Try}
 import scala.util.control.Breaks._
 
-case class BucketValue(low_value: Double, high_value: Double, count: Long)
+case class BucketValue(lowValue: Double, highValue: Double, count: Long)
 
 case class BucketDistribution(
     buckets: List[BucketValue],
     parameters: List[Double],
     data: Array[Array[Double]]) {
+
+  def computePercentiles(): Array[Double] = {
+
+    val sketchSize = parameters(0).toInt
+    val shrinkingFactor = parameters(1)
+
+    val quantileNonSample = new QuantileNonSample[Double](sketchSize, shrinkingFactor)
+    quantileNonSample.reconstruct(sketchSize, shrinkingFactor, data)
+
+    quantileNonSample.quantiles(100)
+  }
 
   /**
    * Get relevant bucketValue with index of bucket.
@@ -76,6 +89,7 @@ case class BucketDistribution(
     }
   }
 
+  // TODO not sure if thats correct...
   override def hashCode(): Int = super.hashCode()
 }
 
@@ -94,8 +108,8 @@ case class KLLMetric(column: String, value: Try[BucketDistribution])
 
         val details = distribution.buckets
           .flatMap { distValue =>
-            DoubleMetric(entity, s"$name.low", instance, Success(distValue.low_value)) ::
-              DoubleMetric(entity, s"$name.high", instance, Success(distValue.high_value)) ::
+            DoubleMetric(entity, s"$name.low", instance, Success(distValue.lowValue)) ::
+              DoubleMetric(entity, s"$name.high", instance, Success(distValue.highValue)) ::
               DoubleMetric(entity, s"$name.count", instance, Success(distValue.count)) :: Nil
           }
         numberOfBuckets ++ details

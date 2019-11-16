@@ -130,8 +130,8 @@ object ColumnProfiles {
             val tmp = new JsonArray()
             kllSketch.buckets.foreach{bucket =>
               val entry = new JsonObject()
-              entry.addProperty("low_value", bucket.low_value)
-              entry.addProperty("high_value", bucket.high_value)
+              entry.addProperty("low_value", bucket.lowValue)
+              entry.addProperty("high_value", bucket.highValue)
               entry.addProperty("count", bucket.count)
               tmp.add(entry)
             }

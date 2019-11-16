@@ -235,15 +235,8 @@ object ColumnProfiler {
       relevantColumnNames
         .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }
         .flatMap { name =>
-
-          val percentiles = (1 to 100).map {
-            _.toDouble / 100
-          }
-
-
           Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
-            Sum(name), KLLSketch(name, kllParameters = kllParameters),
-            ApproxQuantiles(name, percentiles))
+            Sum(name), KLLSketch(name, kllParameters = kllParameters))
         }
     }
 
@@ -485,20 +478,29 @@ object ColumnProfiler {
 
     val kll = results.metricMap
       .collect { case (analyzer: KLLSketch, metric: KLLMetric) if metric.value.isSuccess =>
-        analyzer.column -> metric.value.get
-      }
-
-    val approxPercentiles = results.metricMap
-      .collect {  case (analyzer: ApproxQuantiles, metric: KeyedDoubleMetric) =>
         metric.value match {
-          case Success(metricValue) =>
-            val percentiles = metricValue.values.toSeq.sorted
-            Some(analyzer.column -> percentiles)
+          case Success(bucketDistribution) =>
+            Some(analyzer.column -> bucketDistribution)
           case _ => None
         }
       }
       .flatten
       .toMap
+
+    val approxPercentiles = results.metricMap
+      .collect {  case (analyzer: KLLSketch, metric: KLLMetric) =>
+        metric.value match {
+          case Success(bucketDistribution) =>
+
+            val percentiles = bucketDistribution.computePercentiles()
+
+            Some(analyzer.column -> percentiles.toSeq.sorted)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
 
     NumericColumnStatistics(means, stdDevs, minima, maxima, sums, kll, approxPercentiles)
   }

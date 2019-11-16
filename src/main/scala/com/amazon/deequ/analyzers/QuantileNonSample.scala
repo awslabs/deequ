@@ -244,6 +244,11 @@ class QuantileNonSample[T](
    * @return quantiles 1/q through (q-1)/q
    */
   def quantiles(q: Int) : Array[T] = {
+
+    if (output.isEmpty) {
+      return Array.empty
+    }
+
     val sortedItems = output.sortBy({
       case (item, _) => item
     })

@@ -55,8 +55,8 @@ private[examples] object KLLExample extends App {
         output += s"\t\t\tbuckets: [\n"
         val kllMetric = numProfile.kll.get
         kllMetric.buckets.foreach { item =>
-          output += s"\t\t\t\t{\n \t\t\t\t\tlow_value: ${item.low_value} \n " +
-            s"\t\t\t\t\thigh_value: ${item.high_value} \n " +
+          output += s"\t\t\t\t{\n \t\t\t\t\tlow_value: ${item.lowValue} \n " +
+            s"\t\t\t\t\thigh_value: ${item.highValue} \n " +
             s"\t\t\t\t\tcount: ${item.count}\n\t\t\t\t}\n"
         }
         output += s"\t\t\t],\n"

@@ -148,7 +148,6 @@ case class KLLSketch(
           val parameters = List[Double](finalSketch.shrinkingFactor,
             finalSketch.sketchSize.toDouble)
           val data = finalSketch.getCompactorItems
-
           BucketDistribution(bucketsList.toList, parameters, data)
         }
 
