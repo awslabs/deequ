@@ -31,7 +31,7 @@ import com.amazon.deequ.analyzers.runners.MetricCalculationException
 import org.apache.spark.sql.DeequFunctions.stateful_kll
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Column, Row}
-
+import org.apache.spark.sql.functions.col
 
 /**
  * State definition for KLL Sketches.
@@ -84,12 +84,12 @@ case class KLLParameters(sketchSize: Int, shrinkingFactor: Double, numberOfBucke
 /**
  * The KLL Sketch analyzer.
  * @param column the column to run the analyzer
- * @param where constraint expression on the column
+ * //@param where constraint expression on the column
  * @param kllParameters parameters of KLL Sketch
  */
 case class KLLSketch(
     column: String,
-    where: Option[String] = None,
+//    where: Option[String] = None,
     kllParameters: Option[KLLParameters] = None)
   extends ScanShareableAnalyzer[KLLState, KLLMetric] {
 
@@ -111,7 +111,8 @@ case class KLLSketch(
   }
 
   override def aggregationFunctions(): Seq[Column] = {
-    stateful_kll(conditionalSelection(column, where), sketchSize, shrinkingFactor) :: Nil
+    // stateful_kll(conditionalSelection(column, where), sketchSize, shrinkingFactor) :: Nil
+    stateful_kll(col(column), sketchSize, shrinkingFactor) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[KLLState] = {
@@ -147,7 +148,6 @@ case class KLLSketch(
           val parameters = List[Double](finalSketch.shrinkingFactor,
             finalSketch.sketchSize.toDouble)
           val data = finalSketch.getCompactorItems
-
           BucketDistribution(bucketsList.toList, parameters, data)
         }
 

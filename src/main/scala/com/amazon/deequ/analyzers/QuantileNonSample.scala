@@ -26,7 +26,7 @@ class QuantileNonSample[T](
     var sketchSize: Int,
     var shrinkingFactor: Double = 0.64)
     (implicit ordering: Ordering[T], ct: ClassTag[T])
-  extends Serializable{
+  extends Serializable {
 
   /** Current Number of levels in compactors */
   var curNumOfCompactors = 0
@@ -244,6 +244,11 @@ class QuantileNonSample[T](
    * @return quantiles 1/q through (q-1)/q
    */
   def quantiles(q: Int) : Array[T] = {
+
+    if (output.isEmpty) {
+      return Array.empty
+    }
+
     val sortedItems = output.sortBy({
       case (item, _) => item
     })

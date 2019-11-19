@@ -145,8 +145,19 @@ object AnalysisRunner {
     val preconditionFailures = computePreconditionFailureMetrics(failedAnalyzers, data.schema)
 
     /* Identify analyzers which require us to group the data */
-    val (groupingAnalyzers, scanningAnalyzers) =
+    val (groupingAnalyzers, allScanningAnalyzers) =
       passedAnalyzers.partition { _.isInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
+
+
+    val (kllAnalyzers, scanningAnalyzers) =
+      allScanningAnalyzers.partition { _.isInstanceOf[KLLSketch] }
+
+    val kllMetrics =
+      if (kllAnalyzers.nonEmpty) {
+        KLLRunner.computeKLLSketchesInExtraPass(data, kllAnalyzers, aggregateWith, saveStatesWith)
+      } else {
+        AnalyzerContext.empty
+      }
 
     /* Run the analyzers which do not require grouping in a single pass over the data */
     val nonGroupedMetrics =
@@ -179,7 +190,7 @@ object AnalysisRunner {
       }
 
     val resultingAnalyzerContext = resultsComputedPreviously ++ preconditionFailures ++
-      nonGroupedMetrics ++ groupedMetrics
+      nonGroupedMetrics ++ groupedMetrics ++ kllMetrics
 
     saveOrAppendResultsIfNecessary(
       resultingAnalyzerContext,
