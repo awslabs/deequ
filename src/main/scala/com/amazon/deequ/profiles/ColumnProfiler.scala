@@ -33,11 +33,25 @@ private[deequ] case class GenericColumnStatistics(
     knownTypes: Map[String, DataTypeInstances.Value],
     typeDetectionHistograms: Map[String, Map[String, Long]],
     approximateNumDistincts: Map[String, Long],
-    completenesses: Map[String, Double]) {
+    completenesses: Map[String, Double],
+    predefinedColumnDataTypes: Option[Map[String, String]]) {
 
   def typeOf(column: String): DataTypeInstances.Value = {
-    val inferredAndKnown = inferredTypes ++ knownTypes
-    inferredAndKnown(column)
+    if (predefinedColumnDataTypes.isDefined && predefinedColumnDataTypes.get.contains(column)) {
+      val predefinedDataType = predefinedColumnDataTypes.get(column) match {
+        case "Integral" => Integral
+        case "Fractional" => Fractional
+        case "String" => String
+        case "Boolean" => Boolean
+        case _ =>
+          println(s"Unable to map predefined dataType ${predefinedColumnDataTypes.get(column)}")
+          Unknown
+      }
+      predefinedDataType
+    } else {
+      val inferredAndKnown = inferredTypes ++ knownTypes
+      inferredAndKnown(column)
+    }
   }
 }
 
@@ -97,7 +111,8 @@ object ColumnProfiler {
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-      kllParameters: Option[KLLParameters] = None)
+      kllParameters: Option[KLLParameters] = None,
+      predefinedColumnDataTypes: Option[Map[String, String]] = None)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -133,7 +148,11 @@ object ColumnProfiler {
 
     val firstPassResults = analysisRunnerFirstPass.run()
 
-    val genericStatistics = extractGenericStatistics(relevantColumns, data.schema, firstPassResults)
+    val genericStatistics = extractGenericStatistics(
+      relevantColumns,
+      data.schema,
+      firstPassResults,
+      predefinedColumnDataTypes)
 
     // Second pass
     if (printStatusUpdates) {
@@ -347,7 +366,8 @@ object ColumnProfiler {
   private[this] def extractGenericStatistics(
       columns: Seq[String],
       schema: StructType,
-      results: AnalyzerContext)
+      results: AnalyzerContext,
+      predefinedColumnDataTypes: Option[Map[String, String]])
     : GenericColumnStatistics = {
 
     val numRecords = results.metricMap
@@ -398,7 +418,7 @@ object ColumnProfiler {
       .toMap
 
     GenericColumnStatistics(numRecords, inferredTypes, knownTypes, typeDetectionHistograms,
-      approximateNumDistincts, completenesses)
+      approximateNumDistincts, completenesses, predefinedColumnDataTypes)
   }
 
 

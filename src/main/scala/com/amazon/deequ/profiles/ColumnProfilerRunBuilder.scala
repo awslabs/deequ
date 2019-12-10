@@ -40,6 +40,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
+  protected var predefinedColumnDataTypes: Option[Map[String, String]] = None
 
   protected def this(constraintSuggestionRunBuilder: ColumnProfilerRunBuilder) {
 
@@ -63,6 +64,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
     kllParameters = constraintSuggestionRunBuilder.kllParameters
+    predefinedColumnDataTypes = constraintSuggestionRunBuilder.predefinedColumnDataTypes
   }
 
   /**
@@ -111,6 +113,12 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     this
   }
 
+  def setPredefinedColumnDataTypes(dataTypes: Option[Map[String, String]]): this.type = {
+    this.predefinedColumnDataTypes = dataTypes
+    this
+  }
+
+
   /**
     * Set a metrics repository associated with the current data to enable features like reusing
     * previously computed results and storing the results of the current run.
@@ -152,7 +160,8 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
         saveOrAppendResultsKey),
-      kllParameters
+      kllParameters,
+      predefinedColumnDataTypes
     )
   }
 }

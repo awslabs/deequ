@@ -45,6 +45,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
+  protected var predefinedColumnDataTypes: Option[Map[String, String]] = None
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
@@ -71,6 +72,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
     kllParameters = constraintSuggestionRunBuilder.kllParameters
+    predefinedColumnDataTypes = constraintSuggestionRunBuilder.predefinedColumnDataTypes
   }
 
   /**
@@ -161,6 +163,11 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     this
   }
 
+  def setPredefinedColumnDataTypes(dataType: Map[String, String]): this.type = {
+    this.predefinedColumnDataTypes = Option(dataType)
+    this
+  }
+
   /**
     * Set a metrics repository associated with the current data to enable features like reusing
     * previously computed results and storing the results of the current run.
@@ -187,7 +194,8 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 
   def run(): ConstraintSuggestionResult = {
-    ConstraintSuggestionRunner().run(
+    ConstraintSuggestionRunner().
+      run(
       data,
       constraintRules,
       restrictToColumns,
@@ -208,7 +216,9 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
         saveOrAppendResultsKey),
-      kllParameters
+        kllWrapper(
+          kllParameters,
+          predefinedColumnDataTypes)
     )
   }
 
@@ -219,6 +229,15 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   : List[Any] = {
 
     List[Any](testsetRatio, testsetSplitRandomSeed)
+  }
+
+  // implement this wrapper to not violate scalastyle requirement on argcount
+  private def kllWrapper(
+    kllParameters: Option[KLLParameters],
+    predefinedColumnDataTypes: Option[Map[String, String]])
+  : List[Any] = {
+
+    List[Any](kllParameters, predefinedColumnDataTypes)
   }
 }
 

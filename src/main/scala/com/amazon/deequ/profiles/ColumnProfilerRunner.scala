@@ -48,7 +48,8 @@ class ColumnProfilerRunner {
       cacheInputs: Boolean,
       fileOutputOptions: ColumnProfilerRunBuilderFileOutputOptions,
       metricsRepositoryOptions: ColumnProfilerRunBuilderMetricsRepositoryOptions,
-      kllParameters: Option[KLLParameters])
+      kllParameters: Option[KLLParameters],
+      predefinedColumnDataTypes: Option[Map[String, String]])
     : ColumnProfiles = {
 
     if (cacheInputs) {
@@ -65,7 +66,8 @@ class ColumnProfilerRunner {
         metricsRepositoryOptions.reuseExistingResultsKey,
         metricsRepositoryOptions.failIfResultsForReusingMissing,
         metricsRepositoryOptions.saveOrAppendResultsKey,
-        kllParameters
+        kllParameters,
+        predefinedColumnDataTypes
       )
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
