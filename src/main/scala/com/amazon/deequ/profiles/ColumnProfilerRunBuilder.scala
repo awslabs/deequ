@@ -108,11 +108,21 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     this
   }
 
+  /**
+   * Set KLL parameters.
+   *
+   * @param kllParameters kllParameters(sketchSize, shrinkingFactor, numberOfBuckets)
+   */
   def setKLLParameters(kllParameters: Option[KLLParameters]): this.type = {
     this.kllParameters = kllParameters
     this
   }
 
+  /**
+   * Set predefined data types for each column (e.g. baseline)
+   *
+   * @param dataTypes dataType map for baseline columns
+   */
   def setPredefinedColumnDataTypes(dataTypes: Option[Map[String, String]]): this.type = {
     this.predefinedColumnDataTypes = dataTypes
     this

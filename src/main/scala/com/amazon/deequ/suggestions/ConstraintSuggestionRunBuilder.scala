@@ -163,8 +163,13 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
     this
   }
 
-  def setPredefinedColumnDataTypes(dataType: Map[String, String]): this.type = {
-    this.predefinedColumnDataTypes = Option(dataType)
+  /**
+   * Set predefined data types for each column (e.g. baseline)
+   *
+   * @param dataType dataType map for baseline columns
+   */
+  def setPredefinedColumnDataTypes(dataType: Option[Map[String, String]]): this.type = {
+    this.predefinedColumnDataTypes = dataType
     this
   }
 
