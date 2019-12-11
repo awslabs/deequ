@@ -34,20 +34,11 @@ private[deequ] case class GenericColumnStatistics(
     typeDetectionHistograms: Map[String, Map[String, Long]],
     approximateNumDistincts: Map[String, Long],
     completenesses: Map[String, Double],
-    predefinedColumnDataTypes: Option[Map[String, String]]) {
+    predefinedColumnDataTypes: Option[Map[String, DataTypeInstances.Value]]) {
 
   def typeOf(column: String): DataTypeInstances.Value = {
     if (predefinedColumnDataTypes.isDefined && predefinedColumnDataTypes.get.contains(column)) {
-      val predefinedDataType = predefinedColumnDataTypes.get(column) match {
-        case "Integral" => Integral
-        case "Fractional" => Fractional
-        case "String" => String
-        case "Boolean" => Boolean
-        case _ =>
-          println(s"Unable to map predefined dataType ${predefinedColumnDataTypes.get(column)}")
-          Unknown
-      }
-      predefinedDataType
+      predefinedColumnDataTypes.get(column)
     } else {
       val inferredAndKnown = inferredTypes ++ knownTypes
       inferredAndKnown(column)
@@ -375,10 +366,22 @@ object ColumnProfiler {
       .head
       .toLong
 
-    val inferredTypes = results.metricMap
-      .collect { case (analyzer: DataType, metric: HistogramMetric) =>
-        val typeHistogram = metric.value.get
-        analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
+
+    val inferredTypes =
+      if (predefinedColumnDataTypes.isDefined) {
+        results.metricMap
+          .collect { case (analyzer: DataType, metric: HistogramMetric)
+            if (!predefinedColumnDataTypes.get.contains(analyzer.column)) =>
+            // only infer dataType of a column when it is not predefined
+              val typeHistogram = metric.value.get
+              analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
+          }
+      } else {
+        results.metricMap
+          .collect { case (analyzer: DataType, metric: HistogramMetric) =>
+            val typeHistogram = metric.value.get
+            analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
+          }
       }
 
     val typeDetectionHistograms = results.metricMap
@@ -399,26 +402,81 @@ object ColumnProfiler {
         analyzer.column -> metric.value.get
       }
 
-    val knownTypes = schema.fields
-      .filter { column => columns.contains(column.name) }
-      .filter { _.dataType != StringType }
-      .map { field =>
-        val knownType = field.dataType match {
-          case ShortType | LongType | IntegerType => Integral
-          case DecimalType() | FloatType | DoubleType => Fractional
-          case BooleanType => Boolean
-          case TimestampType => String  // TODO We should have support for dates in deequ...
-          case _ =>
-            println(s"Unable to map type ${field.dataType}")
-            Unknown
-        }
+    val knownTypes =
+      if (predefinedColumnDataTypes.isDefined) {
+        schema.fields
+          .filter { column => columns.contains(column.name) }
+          .filter { column => !predefinedColumnDataTypes.get.contains(column.name)}
+          .filter {
+            _.dataType != StringType
+          }
+          .map { field =>
+            val knownType = field.dataType match {
+              case ShortType | LongType | IntegerType => Integral
+              case DecimalType() | FloatType | DoubleType => Fractional
+              case BooleanType => Boolean
+              case TimestampType => String // TODO We should have support for dates in deequ...
+              case _ =>
+                println(s"Unable to map type ${field.dataType}")
+                Unknown
+            }
 
-        field.name -> knownType
+            field.name -> knownType
+          }
+          .toMap
+      } else {
+        schema.fields
+          .filter { column => columns.contains(column.name) }
+          .filter {
+            _.dataType != StringType
+          }
+          .map { field =>
+            val knownType = field.dataType match {
+              case ShortType | LongType | IntegerType => Integral
+              case DecimalType() | FloatType | DoubleType => Fractional
+              case BooleanType => Boolean
+              case TimestampType => String // TODO We should have support for dates in deequ...
+              case _ =>
+                println(s"Unable to map type ${field.dataType}")
+                Unknown
+            }
+
+            field.name -> knownType
+          }
+          .toMap
       }
-      .toMap
 
+    // convert predefinedDataTypes from Option[Map[String, String]]
+    // to Option[Map[String, DataTypeInstances.Value]]
+    val predefinedTypes =
+      if (predefinedColumnDataTypes.isDefined) {
+        val predefinedDataTypeStringMap = predefinedColumnDataTypes.get
+        val predefinedConvertedMap =
+        predefinedDataTypeStringMap.collect {
+          case (column: String, predefinedDataTypeString: String) =>
+          val predefinedDataType = predefinedDataTypeString match {
+            case "Integral" => Integral
+            case "Fractional" => Fractional
+            case "String" => String
+            case "Boolean" => Boolean
+            case "Unknown" => Unknown
+            case _ =>
+              val message = s"Unable to map predefined dataType " +
+                s"${predefinedColumnDataTypes.get(column)} for column ${column}. " +
+                s"Currently Deequ only accepts these baseline dataType: " +
+                s"Integral, Fractional, String, Boolean, Unknown." +
+                s"Please double check your baseline dataType."
+              println(message)
+              throw new Exception(message)
+          }
+          column -> predefinedDataType
+        }
+        Some(predefinedConvertedMap)
+      } else {
+        None
+      }
     GenericColumnStatistics(numRecords, inferredTypes, knownTypes, typeDetectionHistograms,
-      approximateNumDistincts, completenesses, predefinedColumnDataTypes)
+      approximateNumDistincts, completenesses, predefinedTypes)
   }
 
 
