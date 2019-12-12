@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
@@ -78,8 +78,8 @@ class ConstraintSuggestionRunner {
     val testsetSplitRandomSeed: Option[Long] = testsetWrapper(1).asInstanceOf[Option[Long]]
 
     val kllParameters: Option[KLLParameters] = kllWrapper(0).asInstanceOf[Option[KLLParameters]]
-    val predefinedColumnDataTypes: Option[Map[String, String]] =
-      kllWrapper(1).asInstanceOf[Option[Map[String, String]]]
+    val predefinedColumnDataTypes: Map[String, DataTypeInstances.Value] =
+      kllWrapper(1).asInstanceOf[Map[String, DataTypeInstances.Value]]
 
     testsetRatio.foreach { testsetRatio =>
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
@@ -167,7 +167,7 @@ class ConstraintSuggestionRunner {
       printStatusUpdates: Boolean,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
       kllParameters: Option[KLLParameters],
-      predefinedColumnDataTypes: Option[Map[String, String]])
+      predefinedColumnDataTypes: Map[String, DataTypeInstances.Value])
     : (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()

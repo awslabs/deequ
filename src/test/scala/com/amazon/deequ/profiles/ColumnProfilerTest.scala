@@ -74,6 +74,55 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(actualColumnProfile == expectedColumnProfile)
     }
 
+    "return correct columnProfiles with predefined dataType" in withSparkSession { session =>
+
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("item")), false, 1,
+        predefinedColumnDataTypes =
+          Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
+        .profiles("item")
+
+      val expectedColumnProfile = StandardColumnProfile(
+        "item",
+        1.0,
+        6,
+        DataTypeInstances.String,
+        false,
+        Map(),
+        None)
+
+      assert(actualColumnProfile == expectedColumnProfile)
+    }
+
+    "return correct columnProfiles without predefined dataType" in withSparkSession { session =>
+
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 1,
+        predefinedColumnDataTypes =
+          Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
+        .profiles("att2")
+
+      val expectedColumnProfile = StandardColumnProfile(
+        "att2",
+        2.0 / 3.0,
+        2,
+        DataTypeInstances.String,
+        true,
+        Map(
+          "Boolean" -> 0,
+          "Fractional" -> 0,
+          "Integral" -> 0,
+          "Unknown" -> 2,
+          "String" -> 4
+        ),
+        None)
+
+      assert(actualColumnProfile == expectedColumnProfile)
+    }
+
+
     "return correct NumericColumnProfiles for numeric String DataType columns" in
       withSparkSession { session =>
 

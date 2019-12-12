@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.suggestions.rules.ConstraintRule
@@ -45,7 +45,8 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
-  protected var predefinedColumnDataTypes: Option[Map[String, String]] = None
+  protected var predefinedColumnDataTypes: Map[String, DataTypeInstances.Value] =
+    Map[String, DataTypeInstances.Value]()
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
@@ -168,7 +169,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
    *
    * @param dataType dataType map for baseline columns
    */
-  def setPredefinedColumnDataTypes(dataType: Option[Map[String, String]]): this.type = {
+  def setPredefinedColumnDataTypes(dataType: Map[String, DataTypeInstances.Value]): this.type = {
     this.predefinedColumnDataTypes = dataType
     this
   }
@@ -239,7 +240,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   // implement this wrapper to not violate scalastyle requirement on argcount
   private def kllWrapper(
     kllParameters: Option[KLLParameters],
-    predefinedColumnDataTypes: Option[Map[String, String]])
+    predefinedColumnDataTypes: Map[String, DataTypeInstances.Value])
   : List[Any] = {
 
     List[Any](kllParameters, predefinedColumnDataTypes)

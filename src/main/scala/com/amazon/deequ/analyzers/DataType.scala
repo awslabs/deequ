@@ -29,7 +29,7 @@ import org.apache.spark.sql.{Column, Row}
 import scala.util.{Failure, Success}
 
 /** Data type instances */
-private[deequ] object DataTypeInstances extends Enumeration {
+object DataTypeInstances extends Enumeration {
   val Unknown: Value = Value(0)
   val Fractional: Value = Value(1)
   val Integral: Value = Value(2)
