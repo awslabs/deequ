@@ -66,20 +66,19 @@ class ConstraintSuggestionRunner {
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
-      testsetWrapper: List[Any],
+      testsetWrapper: (Option[Double], Option[Long]),
       cacheInputs: Boolean,
       fileOutputOptions: ConstraintSuggestionFileOutputOptions,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
-      kllWrapper: List[Any])
+      kllWrapper: (Option[KLLParameters], Map[String, DataTypeInstances.Value]))
     : ConstraintSuggestionResult = {
 
     // get testset related data from wrapper
-    val testsetRatio: Option[Double] = testsetWrapper(0).asInstanceOf[Option[Double]]
-    val testsetSplitRandomSeed: Option[Long] = testsetWrapper(1).asInstanceOf[Option[Long]]
+    val testsetRatio: Option[Double] = testsetWrapper._1
+    val testsetSplitRandomSeed: Option[Long] = testsetWrapper._2
 
-    val kllParameters: Option[KLLParameters] = kllWrapper(0).asInstanceOf[Option[KLLParameters]]
-    val predefinedColumnDataTypes: Map[String, DataTypeInstances.Value] =
-      kllWrapper(1).asInstanceOf[Map[String, DataTypeInstances.Value]]
+    val kllParameters: Option[KLLParameters] = kllWrapper._1
+    val predefinedTypes: Map[String, DataTypeInstances.Value] = kllWrapper._2
 
     testsetRatio.foreach { testsetRatio =>
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
@@ -100,7 +99,7 @@ class ConstraintSuggestionRunner {
       printStatusUpdates,
       metricsRepositoryOptions,
       kllParameters,
-      predefinedColumnDataTypes
+      predefinedTypes
     )
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
@@ -167,7 +166,7 @@ class ConstraintSuggestionRunner {
       printStatusUpdates: Boolean,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
       kllParameters: Option[KLLParameters],
-      predefinedColumnDataTypes: Map[String, DataTypeInstances.Value])
+      predefinedTypes: Map[String, DataTypeInstances.Value])
     : (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()
@@ -182,7 +181,7 @@ class ConstraintSuggestionRunner {
     columnProfilerRunner = columnProfilerRunner.setKLLParameters(kllParameters)
 
     columnProfilerRunner =
-      columnProfilerRunner.setPredefinedColumnDataTypes(predefinedColumnDataTypes)
+      columnProfilerRunner.setPredefinedTypes(predefinedTypes)
 
     metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
       var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)

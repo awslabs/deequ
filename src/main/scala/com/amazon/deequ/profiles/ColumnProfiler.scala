@@ -34,10 +34,10 @@ private[deequ] case class GenericColumnStatistics(
     typeDetectionHistograms: Map[String, Map[String, Long]],
     approximateNumDistincts: Map[String, Long],
     completenesses: Map[String, Double],
-    predefinedColumnDataTypes: Map[String, DataTypeInstances.Value]) {
+    predefinedTypes: Map[String, DataTypeInstances.Value]) {
 
   def typeOf(column: String): DataTypeInstances.Value = {
-    val inferredAndKnown = inferredTypes ++ knownTypes ++ predefinedColumnDataTypes
+    val inferredAndKnown = inferredTypes ++ knownTypes ++ predefinedTypes
     inferredAndKnown(column)
   }
 }
@@ -99,8 +99,7 @@ object ColumnProfiler {
       failIfResultsForReusingMissing: Boolean = false,
       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
       kllParameters: Option[KLLParameters] = None,
-      predefinedColumnDataTypes: Map[String, DataTypeInstances.Value] =
-      Map[String, DataTypeInstances.Value]())
+      predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -140,7 +139,7 @@ object ColumnProfiler {
       relevantColumns,
       data.schema,
       firstPassResults,
-      predefinedColumnDataTypes)
+      predefinedTypes)
 
     // Second pass
     if (printStatusUpdates) {
@@ -355,7 +354,7 @@ object ColumnProfiler {
       columns: Seq[String],
       schema: StructType,
       results: AnalyzerContext,
-      predefinedColumnDataTypes: Map[String, DataTypeInstances.Value])
+      predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty)
     : GenericColumnStatistics = {
 
     val numRecords = results.metricMap
@@ -365,15 +364,19 @@ object ColumnProfiler {
 
 
     val inferredTypes = results.metricMap
-      .collect { case (analyzer: DataType, metric: HistogramMetric)
-        if !predefinedColumnDataTypes.contains(analyzer.column) =>
+      .filterNot{
+        case (analyzer: DataType, _) => predefinedTypes.contains(analyzer.column)
+        case _ => true}
+      .collect { case (analyzer: DataType, metric: HistogramMetric) =>
           val typeHistogram = metric.value.get
           analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
       }
 
     val typeDetectionHistograms = results.metricMap
-      .collect { case (analyzer: DataType, metric: HistogramMetric)
-        if !predefinedColumnDataTypes.contains(analyzer.column) =>
+      .filterNot{
+        case (analyzer: DataType, _) => predefinedTypes.contains(analyzer.column)
+        case _ => true}
+      .collect { case (analyzer: DataType, metric: HistogramMetric) =>
           val typeCounts = metric.value.get.values
             .map { case (key, distValue) => key -> distValue.absolute }
           analyzer.column -> typeCounts
@@ -391,7 +394,7 @@ object ColumnProfiler {
 
     val knownTypes = schema.fields
       .filter { column => columns.contains(column.name) }
-      .filter { column => !predefinedColumnDataTypes.contains(column.name)}
+      .filterNot { column => predefinedTypes.contains(column.name)}
       .filter {
         _.dataType != StringType
       }
@@ -411,7 +414,7 @@ object ColumnProfiler {
       .toMap
 
     GenericColumnStatistics(numRecords, inferredTypes, knownTypes, typeDetectionHistograms,
-      approximateNumDistincts, completenesses, predefinedColumnDataTypes)
+      approximateNumDistincts, completenesses, predefinedTypes)
   }
 
 

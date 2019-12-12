@@ -45,8 +45,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
-  protected var predefinedColumnDataTypes: Map[String, DataTypeInstances.Value] =
-    Map[String, DataTypeInstances.Value]()
+  protected var predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
@@ -73,7 +72,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
     kllParameters = constraintSuggestionRunBuilder.kllParameters
-    predefinedColumnDataTypes = constraintSuggestionRunBuilder.predefinedColumnDataTypes
+    predefinedTypes = constraintSuggestionRunBuilder.predefinedTypes
   }
 
   /**
@@ -169,8 +168,8 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
    *
    * @param dataType dataType map for baseline columns
    */
-  def setPredefinedColumnDataTypes(dataType: Map[String, DataTypeInstances.Value]): this.type = {
-    this.predefinedColumnDataTypes = dataType
+  def setPredefinedTypes(dataType: Map[String, DataTypeInstances.Value]): this.type = {
+    this.predefinedTypes = dataType
     this
   }
 
@@ -224,7 +223,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
         saveOrAppendResultsKey),
         kllWrapper(
           kllParameters,
-          predefinedColumnDataTypes)
+          predefinedTypes)
     )
   }
 
@@ -232,18 +231,18 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   private def testsetWrapper(
     testsetRatio: Option[Double],
     testsetSplitRandomSeed: Option[Long])
-  : List[Any] = {
+  : (Option[Double], Option[Long]) = {
 
-    List[Any](testsetRatio, testsetSplitRandomSeed)
+    (testsetRatio, testsetSplitRandomSeed)
   }
 
   // implement this wrapper to not violate scalastyle requirement on argcount
   private def kllWrapper(
     kllParameters: Option[KLLParameters],
-    predefinedColumnDataTypes: Map[String, DataTypeInstances.Value])
-  : List[Any] = {
+    predefinedTypes: Map[String, DataTypeInstances.Value])
+  : (Option[KLLParameters], Map[String, DataTypeInstances.Value]) = {
 
-    List[Any](kllParameters, predefinedColumnDataTypes)
+    (kllParameters, predefinedTypes)
   }
 }
 

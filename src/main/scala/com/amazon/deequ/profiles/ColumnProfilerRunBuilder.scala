@@ -40,8 +40,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
-  protected var predefinedColumnDataTypes: Map[String, DataTypeInstances.Value] =
-    Map[String, DataTypeInstances.Value]()
+  protected var predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty
 
   protected def this(constraintSuggestionRunBuilder: ColumnProfilerRunBuilder) {
 
@@ -65,7 +64,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
     kllParameters = constraintSuggestionRunBuilder.kllParameters
-    predefinedColumnDataTypes = constraintSuggestionRunBuilder.predefinedColumnDataTypes
+    predefinedTypes = constraintSuggestionRunBuilder.predefinedTypes
   }
 
   /**
@@ -124,8 +123,8 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
    *
    * @param dataTypes dataType map for baseline columns
    */
-  def setPredefinedColumnDataTypes(dataTypes: Map[String, DataTypeInstances.Value]): this.type = {
-    this.predefinedColumnDataTypes = dataTypes
+  def setPredefinedTypes(dataTypes: Map[String, DataTypeInstances.Value]): this.type = {
+    this.predefinedTypes = dataTypes
     this
   }
 
@@ -172,7 +171,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
         failIfResultsForReusingMissing,
         saveOrAppendResultsKey),
       kllParameters,
-      predefinedColumnDataTypes
+      predefinedTypes
     )
   }
 }

@@ -79,7 +79,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       val data = getDfCompleteAndInCompleteColumns(session)
 
       val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("item")), false, 1,
-        predefinedColumnDataTypes =
+        predefinedTypes =
           Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
         .profiles("item")
 
@@ -100,7 +100,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       val data = getDfCompleteAndInCompleteColumns(session)
 
       val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 1,
-        predefinedColumnDataTypes =
+        predefinedTypes =
           Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
         .profiles("att2")
 
