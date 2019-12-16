@@ -119,7 +119,10 @@ object ColumnProfiler {
 
     // We compute completeness, approximate number of distinct values
     // and type detection for string columns in the first pass
-    val analyzersForGenericStats = getAnalyzersForGenericStats(data.schema, relevantColumns)
+    val analyzersForGenericStats = getAnalyzersForGenericStats(
+      data.schema,
+      relevantColumns,
+      predefinedTypes)
 
     var analysisRunnerFirstPass = AnalysisRunner
       .onData(data)
@@ -216,7 +219,8 @@ object ColumnProfiler {
 
   private[this] def getAnalyzersForGenericStats(
       schema: StructType,
-      relevantColumns: Seq[String])
+      relevantColumns: Seq[String],
+      predefinedTypes: Map[String, DataTypeInstances.Value])
     : Seq[Analyzer[_, Metric[_]]] = {
 
     schema.fields
@@ -225,7 +229,7 @@ object ColumnProfiler {
 
         val name = field.name
 
-        if (field.dataType == StringType) {
+        if (field.dataType == StringType && !predefinedTypes.contains(name)) {
           Seq(Completeness(name), ApproxCountDistinct(name), DataType(name))
         } else {
           Seq(Completeness(name), ApproxCountDistinct(name))
@@ -366,7 +370,8 @@ object ColumnProfiler {
     val inferredTypes = results.metricMap
       .filterNot{
         case (analyzer: DataType, _) => predefinedTypes.contains(analyzer.column)
-        case _ => true}
+        case _ => true
+      }
       .collect { case (analyzer: DataType, metric: HistogramMetric) =>
           val typeHistogram = metric.value.get
           analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
@@ -375,7 +380,8 @@ object ColumnProfiler {
     val typeDetectionHistograms = results.metricMap
       .filterNot{
         case (analyzer: DataType, _) => predefinedTypes.contains(analyzer.column)
-        case _ => true}
+        case _ => true
+      }
       .collect { case (analyzer: DataType, metric: HistogramMetric) =>
           val typeCounts = metric.value.get.values
             .map { case (key, distValue) => key -> distValue.absolute }
