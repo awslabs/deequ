@@ -17,7 +17,7 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.metrics.{Distribution, Metric}
+import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
 import scala.util.matching.Regex
@@ -612,6 +612,29 @@ object Constraint {
 
     AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column), assertion,
       Some(valuePicker), hint)
+  }
+
+  /**
+   * Runs kll analyzer on the given column and executes the assertion on the BucketDistribution.
+   *
+   * @param column Column to compute the BucketDistribution for.
+   * @param assertion  Function from BucketDistribution in the specified column to boolean.
+   * @param kllParameters parameters of KLL Sketch
+   * @param hint A hint to provide additional context why a constraint could have failed
+   */
+  def kllConstraint(
+                     column: String,
+                     assertion: BucketDistribution => Boolean,
+                     kllParameters: Option[KLLParameters] = None,
+                     hint: Option[String] = None)
+    : Constraint = {
+
+    val kllSketch = KLLSketch(column, kllParameters = kllParameters)
+
+    val constraint = AnalysisBasedConstraint[KLLState, BucketDistribution, BucketDistribution] (
+      kllSketch, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"kllSketchConstraint($kllSketch)")
   }
 
   /**

@@ -60,7 +60,8 @@ class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextS
             (results, stat.jobCount)
           }
 
-        assert(jobNumberAllCalculations == 3)
+        // assert(jobNumberAllCalculations == 3)
+        assert(jobNumberAllCalculations == 4)
         assert(jobNumberReusing == 0)
         assertConstraintSuggestionResultsEquals(separateResults, resultsReusingMetrics)
       }

@@ -78,7 +78,8 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
             (results, stat.jobCount)
           }
 
-        assert(jobNumberAllCalculations == 3)
+        // assert(jobNumberAllCalculations == 3)
+        assert(jobNumberAllCalculations == 4)
         assert(jobNumberReusing == 0)
         assertConstraintSuggestionResultsEquals(separateResults, resultsReusingMetrics)
       }

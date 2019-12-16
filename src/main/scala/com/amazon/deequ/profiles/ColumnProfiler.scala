@@ -16,14 +16,16 @@
 
 package com.amazon.deequ.profiles
 
+import scala.util.Success
+
 import com.amazon.deequ.analyzers.DataTypeInstances._
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunBuilder, AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.{BooleanType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType, DataType => SparkDataType}
-import scala.util.Success
 
 private[deequ] case class GenericColumnStatistics(
     numRecords: Long,
@@ -45,11 +47,11 @@ private[deequ] case class NumericColumnStatistics(
     minima: Map[String, Double],
     maxima: Map[String, Double],
     sums: Map[String, Double],
+    kll: Map[String, BucketDistribution],
     approxPercentiles: Map[String, Seq[Double]]
 )
 
 private[deequ] case class CategoricalColumnStatistics(histograms: Map[String, Distribution])
-
 
 /** Computes single-column profiles in three scans over the data, intented for large (TB) datasets
   *
@@ -68,16 +70,23 @@ object ColumnProfiler {
   val DEFAULT_CARDINALITY_THRESHOLD = 120
 
   /**
-    * Profile a (potentially very large) dataset
-    *
-    * @param data dataset as dataframe
-    * @param restrictToColumns  can contain a subset of columns to profile, otherwise
-    *                           all columns will be considered
-    * @param lowCardinalityHistogramThreshold the maximum  (estimated) number of distinct values
-    *                                         in a column until which we should compute exact
-    *                                         histograms for it (defaults to 120)
-    * @return
-    */
+   * Profile a (potentially very large) dataset.
+   *
+   * @param data                             data dataset as dataframe
+   * @param restrictToColumns                an contain a subset of columns to profile, otherwise
+   *                                         all columns will be considered
+   * @param printStatusUpdates
+   * @param lowCardinalityHistogramThreshold the maximum (estimated) number of distinct values
+   *                                         in a column until which we should compute exact
+   *                                         histograms for it (defaults to 120)
+   * @param metricsRepository                the repo to store metrics
+   * @param reuseExistingResultsUsingKey     key for reuse existing result
+   * @param failIfResultsForReusingMissing   true if we have results for reusing
+   * @param saveInMetricsRepositoryUsingKey  key for saving in metrics repo
+   * @param kllParameters                    parameters for KLL Sketches
+   *
+   * @return the profile of columns
+   */
   private[deequ] def profile(
       data: DataFrame,
       restrictToColumns: Option[Seq[String]] = None,
@@ -87,7 +96,8 @@ object ColumnProfiler {
       metricsRepository: Option[MetricsRepository] = None,
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
-      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None)
+      saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+      kllParameters: Option[KLLParameters] = None)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -135,7 +145,8 @@ object ColumnProfiler {
       genericStatistics)
 
     // We compute mean, stddev, min, max for all numeric columns
-    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns, genericStatistics)
+    val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns,
+      genericStatistics, kllParameters)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)
@@ -218,19 +229,14 @@ object ColumnProfiler {
 
    private[this] def getAnalyzersForSecondPass(
       relevantColumnNames: Seq[String],
-      genericStatistics: GenericColumnStatistics)
+      genericStatistics: GenericColumnStatistics,
+      kllParameters: Option[KLLParameters] = None)
     : Seq[Analyzer[_, Metric[_]]] = {
-
       relevantColumnNames
         .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }
         .flatMap { name =>
-
-          val percentiles = (1 to 100).map {
-            _.toDouble / 100
-          }
-
           Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
-            Sum(name), ApproxQuantiles(name, percentiles))
+            Sum(name), KLLSketch(name, kllParameters = kllParameters))
         }
     }
 
@@ -469,19 +475,34 @@ object ColumnProfiler {
       .flatten
       .toMap
 
-    val approxPercentiles = results.metricMap
-      .collect {  case (analyzer: ApproxQuantiles, metric: KeyedDoubleMetric) =>
+
+    val kll = results.metricMap
+      .collect { case (analyzer: KLLSketch, metric: KLLMetric) if metric.value.isSuccess =>
         metric.value match {
-          case Success(metricValue) =>
-            val percentiles = metricValue.values.toSeq.sorted
-            Some(analyzer.column -> percentiles)
+          case Success(bucketDistribution) =>
+            Some(analyzer.column -> bucketDistribution)
           case _ => None
         }
       }
       .flatten
       .toMap
 
-    NumericColumnStatistics(means, stdDevs, minima, maxima, sums, approxPercentiles)
+    val approxPercentiles = results.metricMap
+      .collect {  case (analyzer: KLLSketch, metric: KLLMetric) =>
+        metric.value match {
+          case Success(bucketDistribution) =>
+
+            val percentiles = bucketDistribution.computePercentiles()
+
+            Some(analyzer.column -> percentiles.toSeq.sorted)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
+
+    NumericColumnStatistics(means, stdDevs, minima, maxima, sums, kll, approxPercentiles)
   }
 
   /* Identifies all columns, which:
@@ -641,6 +662,7 @@ object ColumnProfiler {
               isDataTypeInferred,
               typeCounts,
               histogram,
+              numericStats.kll.get(name),
               numericStats.means.get(name),
               numericStats.maxima.get(name),
               numericStats.minima.get(name),

@@ -18,7 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession, AnalysisException}
 import org.scalatest.{Matchers, WordSpec}
 
 class StateProviderTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
@@ -100,6 +100,50 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
       assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("att1"), data)
 
       assertCorrectlyApproxQuantileState(provider, provider, ApproxQuantile("price", 0.5), data)
+    }
+
+    "store frequency based state to same HDFS StateProvider for same analyzer more than once " +
+      "should fail if allowOverwrite is not set to true" in withSparkSession { session =>
+
+      val tempDir = TempFileUtils.tempDir("statePersist")
+
+      val provider = HdfsStateProvider(session, tempDir)
+
+      val data = someData(session)
+
+      val uniquenessAtt1Analyzer = Uniqueness("att1")
+      val entropyAtt1Analyzer = Entropy("att1")
+      val uniquenessAtt1AndCountAnalyzer = Uniqueness(Seq("att1", "count"))
+
+      val uniquenessAtt1State = uniquenessAtt1Analyzer.computeStateFrom(data).get
+      val entropyAtt1State = entropyAtt1Analyzer.computeStateFrom(data).get
+      val uniquenessAtt1AndCountState = uniquenessAtt1AndCountAnalyzer.computeStateFrom(data).get
+
+      provider.persist(uniquenessAtt1Analyzer, uniquenessAtt1State)
+      provider.persist(entropyAtt1Analyzer, entropyAtt1State)
+      provider.persist(uniquenessAtt1AndCountAnalyzer, uniquenessAtt1AndCountState)
+
+      val caught = intercept[AnalysisException]{
+        provider.persist(uniquenessAtt1Analyzer, uniquenessAtt1State)
+      }
+      assert(caught.message.contains("already exists"))
+    }
+
+    "store frequency based state to same HDFS StateProvider for same analyzer more than once " +
+      "should overwrite state if allowOverwrite is set to true" in withSparkSession { session =>
+
+      val tempDir = TempFileUtils.tempDir("statePersist")
+
+      val provider = HdfsStateProvider(session, tempDir, allowOverwrite = true)
+
+      val data = someData(session)
+      val filteredData = data.filter("att1 == 'a'")
+
+      val uniquenessAtt1Analyzer = Uniqueness("att1")
+
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider, uniquenessAtt1Analyzer, data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider, uniquenessAtt1Analyzer,
+        filteredData)
     }
   }
 

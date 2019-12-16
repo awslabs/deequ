@@ -24,11 +24,14 @@ import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiles}
   * The result returned from the ConstraintSuggestionSuite
   *
   * @param columnProfiles The column profiles
+  * @param numRecordsUsedForProfiling The number of records that were used for computing
+  *                                   the column profiles
   * @param constraintSuggestions The suggested constraints
   * @param verificationResult The verificationResult in case a train/test split was used
   */
 case class ConstraintSuggestionResult(
   columnProfiles: Map[String, ColumnProfile],
+  numRecordsUsedForProfiling: Long,
   constraintSuggestions: Map[String, Seq[ConstraintSuggestion]],
   verificationResult: Option[VerificationResult] = None)
 

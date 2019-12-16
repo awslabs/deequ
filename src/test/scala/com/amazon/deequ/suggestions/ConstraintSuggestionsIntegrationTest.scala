@@ -86,6 +86,8 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
         println(profile)
       }
 
+      assert(constraintSuggestionResult.numRecordsUsedForProfiling == numRecords)
+
       // IS NOT NULL for "id"
       assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("id") && assertionFunc(1.0)
