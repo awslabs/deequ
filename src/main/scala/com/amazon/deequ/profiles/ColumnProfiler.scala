@@ -33,10 +33,11 @@ private[deequ] case class GenericColumnStatistics(
     knownTypes: Map[String, DataTypeInstances.Value],
     typeDetectionHistograms: Map[String, Map[String, Long]],
     approximateNumDistincts: Map[String, Long],
-    completenesses: Map[String, Double]) {
+    completenesses: Map[String, Double],
+    predefinedTypes: Map[String, DataTypeInstances.Value]) {
 
   def typeOf(column: String): DataTypeInstances.Value = {
-    val inferredAndKnown = inferredTypes ++ knownTypes
+    val inferredAndKnown = inferredTypes ++ knownTypes ++ predefinedTypes
     inferredAndKnown(column)
   }
 }
@@ -97,7 +98,8 @@ object ColumnProfiler {
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
-      kllParameters: Option[KLLParameters] = None)
+      kllParameters: Option[KLLParameters] = None,
+      predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty)
     : ColumnProfiles = {
 
     // Ensure that all desired columns exist
@@ -117,7 +119,10 @@ object ColumnProfiler {
 
     // We compute completeness, approximate number of distinct values
     // and type detection for string columns in the first pass
-    val analyzersForGenericStats = getAnalyzersForGenericStats(data.schema, relevantColumns)
+    val analyzersForGenericStats = getAnalyzersForGenericStats(
+      data.schema,
+      relevantColumns,
+      predefinedTypes)
 
     var analysisRunnerFirstPass = AnalysisRunner
       .onData(data)
@@ -133,7 +138,11 @@ object ColumnProfiler {
 
     val firstPassResults = analysisRunnerFirstPass.run()
 
-    val genericStatistics = extractGenericStatistics(relevantColumns, data.schema, firstPassResults)
+    val genericStatistics = extractGenericStatistics(
+      relevantColumns,
+      data.schema,
+      firstPassResults,
+      predefinedTypes)
 
     // Second pass
     if (printStatusUpdates) {
@@ -210,7 +219,8 @@ object ColumnProfiler {
 
   private[this] def getAnalyzersForGenericStats(
       schema: StructType,
-      relevantColumns: Seq[String])
+      relevantColumns: Seq[String],
+      predefinedTypes: Map[String, DataTypeInstances.Value])
     : Seq[Analyzer[_, Metric[_]]] = {
 
     schema.fields
@@ -219,7 +229,7 @@ object ColumnProfiler {
 
         val name = field.name
 
-        if (field.dataType == StringType) {
+        if (field.dataType == StringType && !predefinedTypes.contains(name)) {
           Seq(Completeness(name), ApproxCountDistinct(name), DataType(name))
         } else {
           Seq(Completeness(name), ApproxCountDistinct(name))
@@ -347,7 +357,8 @@ object ColumnProfiler {
   private[this] def extractGenericStatistics(
       columns: Seq[String],
       schema: StructType,
-      results: AnalyzerContext)
+      results: AnalyzerContext,
+      predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty)
     : GenericColumnStatistics = {
 
     val numRecords = results.metricMap
@@ -355,18 +366,26 @@ object ColumnProfiler {
       .head
       .toLong
 
+
     val inferredTypes = results.metricMap
+      .filterNot{
+        case (analyzer: DataType, _) => predefinedTypes.contains(analyzer.column)
+        case _ => true
+      }
       .collect { case (analyzer: DataType, metric: HistogramMetric) =>
-        val typeHistogram = metric.value.get
-        analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
+          val typeHistogram = metric.value.get
+          analyzer.column -> DataTypeHistogram.determineType(typeHistogram)
       }
 
     val typeDetectionHistograms = results.metricMap
+      .filterNot{
+        case (analyzer: DataType, _) => predefinedTypes.contains(analyzer.column)
+        case _ => true
+      }
       .collect { case (analyzer: DataType, metric: HistogramMetric) =>
-        val typeCounts = metric.value.get.values
-          .map { case (key, distValue) => key -> distValue.absolute }
-
-        analyzer.column -> typeCounts
+          val typeCounts = metric.value.get.values
+            .map { case (key, distValue) => key -> distValue.absolute }
+          analyzer.column -> typeCounts
       }
 
     val approximateNumDistincts = results.metricMap
@@ -381,13 +400,16 @@ object ColumnProfiler {
 
     val knownTypes = schema.fields
       .filter { column => columns.contains(column.name) }
-      .filter { _.dataType != StringType }
+      .filterNot { column => predefinedTypes.contains(column.name)}
+      .filter {
+        _.dataType != StringType
+      }
       .map { field =>
         val knownType = field.dataType match {
           case ShortType | LongType | IntegerType => Integral
           case DecimalType() | FloatType | DoubleType => Fractional
           case BooleanType => Boolean
-          case TimestampType => String  // TODO We should have support for dates in deequ...
+          case TimestampType => String // TODO We should have support for dates in deequ...
           case _ =>
             println(s"Unable to map type ${field.dataType}")
             Unknown
@@ -398,7 +420,7 @@ object ColumnProfiler {
       .toMap
 
     GenericColumnStatistics(numRecords, inferredTypes, knownTypes, typeDetectionHistograms,
-      approximateNumDistincts, completenesses)
+      approximateNumDistincts, completenesses, predefinedTypes)
   }
 
 
