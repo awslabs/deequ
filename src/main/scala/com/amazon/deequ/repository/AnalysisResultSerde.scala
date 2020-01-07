@@ -338,6 +338,17 @@ private[deequ] object AnalyzerSerializer
         result.addProperty("quantiles", approxQuantiles.quantiles.mkString(","))
         result.addProperty("relativeError", approxQuantiles.relativeError)
 
+
+      case minLength: MinLength =>
+        result.addProperty(ANALYZER_NAME_FIELD, "MinLength")
+        result.addProperty(COLUMN_FIELD, minLength.column)
+        result.addProperty(WHERE_FIELD, minLength.where.orNull)
+
+      case maxLength: MaxLength =>
+        result.addProperty(ANALYZER_NAME_FIELD, "MaxLength")
+        result.addProperty(COLUMN_FIELD, maxLength.column)
+        result.addProperty(WHERE_FIELD, maxLength.where.orNull)
+
       case _ =>
         throw new IllegalArgumentException(s"Unable to serialize analyzer $analyzer.")
     }
@@ -457,6 +468,16 @@ private[deequ] object AnalyzerDeserializer
         val quantile = json.get("quantiles").getAsString.split(",").map { _.toDouble }
         val relativeError = json.get("relativeError").getAsDouble
         ApproxQuantiles(column, quantile, relativeError)
+
+      case "MinLength" =>
+        MinLength(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "MaxLength" =>
+        MaxLength(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
 
       case analyzerName =>
         throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerName.")
