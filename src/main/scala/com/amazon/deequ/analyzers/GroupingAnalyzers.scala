@@ -47,36 +47,35 @@ object FrequencyBasedAnalyzer {
     *
     * SELECT colA, colB, ..., COUNT(*)
     * FROM DATA
-    * WHERE colA IS NOT NULL AND colB IS NOT NULL AND ...
+    * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
     * GROUP BY colA, colB, ...
     */
   def computeFrequencies(
       data: DataFrame,
-      groupingColumns: Seq[String],
-      numRows: Option[Long] = None)
+      groupingColumns: Seq[String])
     : FrequenciesAndNumRows = {
 
     val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
 
-    val noGroupingColumnIsNull = groupingColumns
-      .foldLeft(expr(true.toString)) { case (condition, name) =>
-        condition.and(col(name).isNotNull)
+    val atLeastOneNonNullGroupingColumn = groupingColumns
+      .foldLeft(expr(false.toString)) { case (condition, name) =>
+        condition.or(col(name).isNotNull)
       }
 
     val frequencies = data
       .select(columnsToGroupBy: _*)
-      .where(noGroupingColumnIsNull)
+      .where(atLeastOneNonNullGroupingColumn)
       .groupBy(columnsToGroupBy: _*)
       .agg(count(lit(1)).alias(COUNT_COL))
       .select(projectionColumns: _*)
 
-    val numRowsOfData = numRows match {
-      case Some(count) => count
-      case _ => data.count()
-    }
+    val numRows = data
+        .select(columnsToGroupBy: _*)
+        .where(atLeastOneNonNullGroupingColumn)
+        .count()
 
-    FrequenciesAndNumRows(frequencies, numRowsOfData)
+    FrequenciesAndNumRows(frequencies, numRows)
   }
 }
 

@@ -19,7 +19,6 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.expr
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.util.Success
@@ -118,9 +117,9 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
 
       val uniqueness = analyzer.computeMetricFrom(mergedState)
 
-      assert(initialUniqueness.value == Success(0.6666666666666666))
-      assert(deltaUniqueness.value == Success(0.5))
-      assert(uniqueness.value == Success(0.2))
+      assert(initialUniqueness.value == Success(1.0))
+      assert(deltaUniqueness.value == Success(1.0))
+      assert(uniqueness.value == Success(1.0 / 3))
     }
 
     "compute correct metrics for column combinations" in withSparkSession { session =>
@@ -140,8 +139,8 @@ class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSp
 
       val uniqueness = analyzer.computeMetricFrom(mergedState)
 
-      assert(initialUniqueness.value == Success(0.6666666666666666))
-      assert(deltaUniqueness.value == Success(0.5))
+      assert(initialUniqueness.value == Success(1.0))
+      assert(deltaUniqueness.value == Success(1.0))
       assert(uniqueness.value == Success(0.2))
     }
   }

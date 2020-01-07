@@ -69,13 +69,18 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         .isUnique("nonUnique")
         .isUnique("nonUniqueWithNulls")
 
-      val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
+      val (context, states) = runChecksWithState(getDfWithUniqueColumns(sparkSession), check)
       val result = check.evaluate(context)
+
+      states.load(Uniqueness("uniqueWithNulls")).get.frequencies.show(20)
 
       assert(result.status == CheckStatus.Error)
       val constraintStatuses = result.constraintResults.map(_.status)
       assert(constraintStatuses.head == ConstraintStatus.Success)
-      assert(constraintStatuses(1) == ConstraintStatus.Failure)
+      assert(constraintStatuses(1) == ConstraintStatus.Success)
+
+
+
       assert(constraintStatuses(2) == ConstraintStatus.Failure)
       assert(constraintStatuses(3) == ConstraintStatus.Failure)
     }
@@ -83,8 +88,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     "return the correct check status for distinctness" in withSparkSession { sparkSession =>
 
       val check = Check(CheckLevel.Error, "distinctness-check")
-        .hasDistinctness(Seq("att1"), _ == 0.5)
-        .hasDistinctness(Seq("att1", "att2"), _ == 1.0 / 3)
+        .hasDistinctness(Seq("att1"), _ == 3.0 / 5)
+        .hasDistinctness(Seq("att1", "att2"), _ == 4.0 / 6)
         .hasDistinctness(Seq("att2"), _ == 1.0)
 
       val context = runChecks(getDfWithDistinctValues(sparkSession), check)
@@ -111,7 +116,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
       val result = check.evaluate(context)
 
-      assert(result.status == CheckStatus.Error)
+      assert(result.status == CheckStatus.Success)
       val constraintStatuses = result.constraintResults.map { _.status }
       // Half of nonUnique column are duplicates
       assert(constraintStatuses.head == ConstraintStatus.Success)
@@ -122,7 +127,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assert(constraintStatuses(3) == ConstraintStatus.Success)
       assert(constraintStatuses(4) == ConstraintStatus.Success)
       // Nulls are duplicated so this will not be unique
-      assert(constraintStatuses(5) == ConstraintStatus.Failure)
+      assert(constraintStatuses(5) == ConstraintStatus.Success)
     }
 
     "return the correct check status for size" in withSparkSession { sparkSession =>
