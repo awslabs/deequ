@@ -69,10 +69,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         .isUnique("nonUnique")
         .isUnique("nonUniqueWithNulls")
 
-      val (context, states) = runChecksWithState(getDfWithUniqueColumns(sparkSession), check)
+      val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
       val result = check.evaluate(context)
-
-      states.load(Uniqueness("uniqueWithNulls")).get.frequencies.show(20)
 
       assert(result.status == CheckStatus.Error)
       val constraintStatuses = result.constraintResults.map(_.status)
