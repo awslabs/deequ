@@ -92,18 +92,18 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         "att2", Success(0.25)))
 
     }
-    "compute correct metrics on multi columns" in withSparkSession { sparkSession =>
+    "compute correct metrics on multiple columns" in withSparkSession { sparkSession =>
       val dfFull = getDfWithUniqueColumns(sparkSession)
 
       assert(Uniqueness("unique").calculate(dfFull) ==
         DoubleMetric(Entity.Column, "Uniqueness", "unique", Success(1.0)))
       assert(Uniqueness("uniqueWithNulls").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(5 / 6.0)))
+        DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(1.0)))
       assert(Uniqueness(Seq("unique", "nonUnique")).calculate(dfFull) ==
         DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUnique", Success(1.0)))
       assert(Uniqueness(Seq("unique", "nonUniqueWithNulls")).calculate(dfFull) ==
         DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUniqueWithNulls",
-          Success(3 / 6.0)))
+          Success(1.0)))
       assert(Uniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique")).calculate(dfFull) ==
         DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "nonUnique,onlyUniqueWithOtherNonUnique",
           Success(1.0)))
