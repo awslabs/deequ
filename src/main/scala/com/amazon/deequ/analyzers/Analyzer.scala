@@ -340,7 +340,9 @@ object Preconditions {
       dataType match {
         // nested type, enqueue all fields in it
         case st: StructType =>
-          st.fields.foreach(field => fieldQueue.enqueue(fieldName + "." + field.name -> field.dataType))
+          st.fields.foreach { field =>
+            fieldQueue.enqueue(fieldName + "." + field.name -> field.dataType)
+          }
         // if it is not a struct, the field has already been added to the set
         case _ =>
       }
