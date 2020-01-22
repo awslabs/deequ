@@ -20,7 +20,7 @@ import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
-import com.amazon.deequ.constraints.Constraint
+import com.amazon.deequ.constraints.{Constraint, ConstraintStatus}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -386,6 +386,27 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       checkConstraintsWithResultConstraints.foreach {
         case (checkConstraint, checkResultConstraint) =>
           assert(checkConstraint == checkResultConstraint.constraint)
+      }
+    }
+
+    "support checks on data with nested schema" in withSparkSession { spark =>
+      val data = getDfWithNestedSchema(spark)
+
+      val check =
+        Check(CheckLevel.Warning, "Nested Data")
+          .isComplete("name")
+          .hasCompleteness("location.city.name", _ == 0.5)
+          .isComplete("location.city.zip")
+          .isComplete("location.country")
+
+      val results = VerificationSuite()
+        .onData(data)
+        .addCheck(check)
+        .run()
+
+      val (_, checkResult) = results.checkResults.head
+      checkResult.constraintResults.foreach { constraintResult =>
+        assert(constraintResult.status == ConstraintStatus.Success)
       }
     }
   }

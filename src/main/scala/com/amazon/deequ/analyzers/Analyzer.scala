@@ -323,7 +323,26 @@ object Preconditions {
 
   /** Specified column exists in the data */
   def hasColumn(column: String): StructType => Unit = { schema =>
-    if (!schema.fieldNames.contains(column)) {
+    // all schema fieldNames
+    val fieldNames = collection.mutable.Set.empty[String]
+    // used to put together the possibly nested field names
+    val fieldQueue = collection.mutable.Queue.empty[(String, org.apache.spark.sql.types.DataType)]
+
+    // enqueue all first level fields
+    schema.fields.foreach(field => fieldQueue.enqueue(field.name -> field.dataType))
+
+    while(fieldQueue.nonEmpty) {
+      val (fieldName, dataType) = fieldQueue.dequeue()
+      dataType match {
+        // nested type
+        case st: StructType =>
+          st.fields.foreach(field => fieldQueue.enqueue(fieldName + "." + field.name -> field.dataType))
+        // for all other types, use the fieldName as is
+        case _ => fieldNames.add(fieldName)
+      }
+    }
+
+    if (!fieldNames.contains(column)) {
       throw new NoSuchColumnException(s"Input data does not include column $column!")
     }
   }

@@ -17,6 +17,7 @@
 package com.amazon.deequ
 package analyzers
 
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.runners.NoSuchColumnException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
@@ -657,7 +658,6 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
     }
   }
 
-
   "Pattern compliance analyzer" should {
     val someColumnName = "some"
 
@@ -750,6 +750,17 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         maybeSSN.map(Row(_)): _*)
       val analyzer = PatternMatch(someColumnName, Patterns.SOCIAL_SECURITY_NUMBER_US)
       analyzer.calculate(df).value shouldBe Success(2.0 / 8.0)
+    }
+  }
+
+  "Precondition column naming" should {
+    "support nested schemas" in withSparkSession { spark =>
+      val nestedDf = getDfWithNestedSchema(spark)
+
+      noException should be thrownBy hasColumn("name")(nestedDf.schema)
+      noException should be thrownBy hasColumn("location.city.name")(nestedDf.schema)
+      noException should be thrownBy hasColumn("location.city.zip")(nestedDf.schema)
+      noException should be thrownBy hasColumn("location.country")(nestedDf.schema)
     }
   }
 }

@@ -16,8 +16,9 @@
 
 package com.amazon.deequ.utils
 
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+
 import scala.util.Random
 
 
@@ -265,5 +266,29 @@ trait FixtureSupport {
       "ccc",
       "dddd"
     ).toDF("att1")
+  }
+
+  def getDfWithNestedSchema(sparkSession: SparkSession): DataFrame = {
+    val schema = StructType(
+      Seq(
+        StructField("name", StringType),
+        StructField("location",
+          StructType(
+            Seq(
+              StructField("city",
+                StructType(Seq(StructField("name", StringType), StructField("zip", StringType)))),
+              StructField("country", StringType)
+            )
+          )
+        )
+      )
+    )
+
+    val data = sparkSession.sparkContext.parallelize(Seq(
+      Row("Lisa", Row(Row(null, "87348"), "DE")),
+      Row("Paul", Row(Row("NYC", "10033"), "US"))
+    ))
+
+    sparkSession.createDataFrame(data, schema)
   }
 }
