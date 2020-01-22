@@ -395,6 +395,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val check =
         Check(CheckLevel.Warning, "Nested Data")
           .isComplete("name")
+          .isComplete("location")
           .hasCompleteness("location.city.name", _ == 0.5)
           .isComplete("location.city.zip")
           .isComplete("location.country")

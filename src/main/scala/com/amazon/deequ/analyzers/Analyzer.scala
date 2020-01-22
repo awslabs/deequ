@@ -333,12 +333,16 @@ object Preconditions {
 
     while(fieldQueue.nonEmpty) {
       val (fieldName, dataType) = fieldQueue.dequeue()
+
+      // add current fieldName
+      fieldNames.add(fieldName)
+
       dataType match {
-        // nested type
+        // nested type, enqueue all fields in it
         case st: StructType =>
           st.fields.foreach(field => fieldQueue.enqueue(fieldName + "." + field.name -> field.dataType))
-        // for all other types, use the fieldName as is
-        case _ => fieldNames.add(fieldName)
+        // if it is not a struct, the field has already been added to the set
+        case _ =>
       }
     }
 

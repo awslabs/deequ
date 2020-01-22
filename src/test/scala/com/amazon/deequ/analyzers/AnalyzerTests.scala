@@ -758,6 +758,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val nestedDf = getDfWithNestedSchema(spark)
 
       noException should be thrownBy hasColumn("name")(nestedDf.schema)
+      noException should be thrownBy hasColumn("location")(nestedDf.schema)
       noException should be thrownBy hasColumn("location.city.name")(nestedDf.schema)
       noException should be thrownBy hasColumn("location.city.zip")(nestedDf.schema)
       noException should be thrownBy hasColumn("location.country")(nestedDf.schema)
