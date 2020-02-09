@@ -247,7 +247,7 @@ class StateAggregationIntegrationTest extends WordSpec with Matchers with SparkC
       assert(resultsFromStates == resultsDirect)
     }
 
-    "not throw errors for the example from https://github.com/awslabs/deequ/issues/189" in withSparkSession { session =>
+    "not throw errors for the example from DEEQU-189" in withSparkSession { session =>
 
       val data = ExampleUtils.itemsAsDataframe(session,
         Item(1, "Thingy A", "awesome thing.", "high", 0),
