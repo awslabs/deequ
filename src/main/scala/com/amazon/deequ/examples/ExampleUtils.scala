@@ -18,7 +18,7 @@ package com.amazon.deequ.examples
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-private[examples] object ExampleUtils {
+private[deequ] object ExampleUtils {
 
   def withSpark(func: SparkSession => Unit): Unit = {
     val session = SparkSession.builder()
