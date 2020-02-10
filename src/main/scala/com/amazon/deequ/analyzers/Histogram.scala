@@ -64,6 +64,7 @@ case class Histogram(
     .na.fill(Histogram.NullFieldReplacement)
     .groupBy(column)
     .count()
+    .withColumnRenamed("count", Analyzers.COUNT_COL)
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))
   }
