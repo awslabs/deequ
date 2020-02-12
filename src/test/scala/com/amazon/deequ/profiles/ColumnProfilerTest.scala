@@ -402,55 +402,53 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
   "return correct profile for the Titanic dataset" in withSparkSession { session =>
     val data = session.read.format("csv")
-                .option("inferSchema", "true")
-                .option("header", "true")
-                .load("test-data/titanic.csv")
-    
+      .option("inferSchema", "true")
+      .option("header", "true")
+      .load("test-data/titanic.csv")
+
     val columnProfiles = ColumnProfiler.profile(data)
 
-    val idProfile = columnProfiles.profiles("PassengerId")
-    assert(idProfile.column == "PassengerId")
-    assert(idProfile.dataType == DataTypeInstances.Integral)
-    assert(idProfile.completeness == 1.0)
-    assert(idProfile.approximateNumDistinctValues == 887) //exact is 891
-    
-    val survivedProfile = columnProfiles.profiles("Survived")
-    assert(survivedProfile.column == "Survived")
-    assert(survivedProfile.dataType == DataTypeInstances.Integral)
-    assert(survivedProfile.completeness == 1.0)
-    assert(survivedProfile.approximateNumDistinctValues == 2)
-    
-    val pclassProfile = columnProfiles.profiles("Pclass")
-    assert(pclassProfile.column == "Pclass")
-    assert(pclassProfile.dataType == DataTypeInstances.Integral)
-    assert(pclassProfile.completeness == 1.0)
-    assert(pclassProfile.approximateNumDistinctValues == 3)
+    val expectedProfiles = List(
+      StandardColumnProfile(
+        "PassengerId",
+        1.0,
+        891,
+        DataTypeInstances.Integral,
+        false,
+        Map(),
+        None),
+      StandardColumnProfile("Survived", 1.0, 2, DataTypeInstances.Integral, false, Map(), None),
+      StandardColumnProfile("Pclass", 1.0, 3, DataTypeInstances.Integral, false, Map(), None),
+      StandardColumnProfile("Name", 1.0, 0, DataTypeInstances.String, true, Map(), None),
+      StandardColumnProfile("Sex", 1.0, 2, DataTypeInstances.String, true, Map(), None),
+      StandardColumnProfile("Ticket", 1.0, 681, DataTypeInstances.String, true, Map(), None),
+      StandardColumnProfile("Fare", 1.0, 0, DataTypeInstances.Fractional, false, Map(), None),
+      StandardColumnProfile("Cabin", 0.22, 0, DataTypeInstances.String, true, Map(), None)
+    )
 
-    val nameProfile = columnProfiles.profiles("Name")
-    assert(nameProfile.column == "Name")
-    assert(nameProfile.dataType == DataTypeInstances.String)
-    assert(nameProfile.completeness == 1.0)
+    assertSameColumnProfiles(columnProfiles.profiles, expectedProfiles)
 
-    val sexProfile = columnProfiles.profiles("Sex")
-    assert(sexProfile.column == "Sex")
-    assert(sexProfile.dataType == DataTypeInstances.String)
-    assert(sexProfile.completeness == 1.0)
-    assert(sexProfile.approximateNumDistinctValues == 2)
+  }
 
-    val ticketProfile = columnProfiles.profiles("Ticket")
-    assert(ticketProfile.column == "Ticket")
-    assert(ticketProfile.dataType == DataTypeInstances.String)
-    assert(ticketProfile.completeness == 1.0)
-    assert(ticketProfile.approximateNumDistinctValues == 710)
+  private[this] def assertSameColumnProfiles(
+      actualProfiles: Map[String, ColumnProfile],
+      expectedProfiles: List[ColumnProfile])
+    : Unit = {
 
-    val fareProfile = columnProfiles.profiles("Fare")
-    assert(fareProfile.column == "Fare")
-    assert(fareProfile.dataType == DataTypeInstances.Fractional)
-    assert(fareProfile.completeness == 1.0)
-
-    val cabinProfile = columnProfiles.profiles("Cabin")
-    assert(cabinProfile.column == "Cabin")
-    assert(cabinProfile.dataType == DataTypeInstances.String)
-    assert(cabinProfile.completeness > 0.22)
+    expectedProfiles.foreach { expected =>
+      val actual = actualProfiles(expected.column)
+      val msg = s"""(Column "${expected.column}"")"""
+      assert(actual.dataType == expected.dataType, msg)
+      assert(actual.completeness >= expected.completeness, msg)
+      assert(actual.isDataTypeInferred == expected.isDataTypeInferred, msg)
+      if(expected.approximateNumDistinctValues > 0) {
+        val upperBound = 1.1 * expected.approximateNumDistinctValues
+        val lowerBound = 0.9 * expected.approximateNumDistinctValues
+        assert(
+          actual.approximateNumDistinctValues <= upperBound &&
+          actual.approximateNumDistinctValues >= lowerBound,
+          msg)
+      }
+    }
   }
 }
