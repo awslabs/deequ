@@ -415,15 +415,22 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         891,
         DataTypeInstances.Integral,
         false,
-        Map(),
+        Map.empty,
         None),
-      StandardColumnProfile("Survived", 1.0, 2, DataTypeInstances.Integral, false, Map(), None),
-      StandardColumnProfile("Pclass", 1.0, 3, DataTypeInstances.Integral, false, Map(), None),
-      StandardColumnProfile("Name", 1.0, 0, DataTypeInstances.String, true, Map(), None),
-      StandardColumnProfile("Sex", 1.0, 2, DataTypeInstances.String, true, Map(), None),
-      StandardColumnProfile("Ticket", 1.0, 681, DataTypeInstances.String, true, Map(), None),
-      StandardColumnProfile("Fare", 1.0, 0, DataTypeInstances.Fractional, false, Map(), None),
-      StandardColumnProfile("Cabin", 0.22, 0, DataTypeInstances.String, true, Map(), None)
+      StandardColumnProfile(
+        "Survived",
+        1.0,
+        2,
+        DataTypeInstances.Integral,
+        false,
+        Map.empty,
+        None),
+      StandardColumnProfile("Pclass", 1.0, 3, DataTypeInstances.Integral, false, Map.empty, None),
+      StandardColumnProfile("Name", 1.0, 0, DataTypeInstances.String, true, Map.empty, None),
+      StandardColumnProfile("Sex", 1.0, 2, DataTypeInstances.String, true, Map.empty, None),
+      StandardColumnProfile("Ticket", 1.0, 681, DataTypeInstances.String, true, Map.empty, None),
+      StandardColumnProfile("Fare", 1.0, 0, DataTypeInstances.Fractional, false, Map.empty, None),
+      StandardColumnProfile("Cabin", 0.22, 0, DataTypeInstances.String, true, Map.empty, None)
     )
 
     assertSameColumnProfiles(columnProfiles.profiles, expectedProfiles)
@@ -441,7 +448,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(actual.dataType == expected.dataType, msg)
       assert(actual.completeness >= expected.completeness, msg)
       assert(actual.isDataTypeInferred == expected.isDataTypeInferred, msg)
-      if(expected.approximateNumDistinctValues > 0) {
+      if (expected.approximateNumDistinctValues > 0) {
         val upperBound = 1.1 * expected.approximateNumDistinctValues
         val lowerBound = 0.9 * expected.approximateNumDistinctValues
         assert(
