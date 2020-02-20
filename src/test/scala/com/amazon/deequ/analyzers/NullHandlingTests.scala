@@ -16,9 +16,8 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
+import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.EmptyStateException
-import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -78,7 +77,7 @@ class NullHandlingTests extends WordSpec with Matchers with SparkContextSpec wit
       val stringColFrequenciesAndNumRows = CountDistinct("stringCol").computeStateFrom(data)
       assert(stringColFrequenciesAndNumRows.isDefined)
 
-      stringColFrequenciesAndNumRows.get.numRows shouldBe 8
+      stringColFrequenciesAndNumRows.get.numRows shouldBe 0L
       stringColFrequenciesAndNumRows.get.frequencies.count() shouldBe 0L
 
       val numericColFrequenciesAndNumRows = MutualInformation("numericCol", "numericCol2")
@@ -86,7 +85,7 @@ class NullHandlingTests extends WordSpec with Matchers with SparkContextSpec wit
 
       assert(numericColFrequenciesAndNumRows.isDefined)
 
-      numericColFrequenciesAndNumRows.get.numRows shouldBe 8
+      numericColFrequenciesAndNumRows.get.numRows shouldBe 0L
       numericColFrequenciesAndNumRows.get.frequencies.count() shouldBe 0L
 
 

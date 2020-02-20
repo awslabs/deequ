@@ -19,6 +19,7 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.examples.{ExampleUtils, Item}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
@@ -244,6 +245,22 @@ class StateAggregationIntegrationTest extends WordSpec with Matchers with SparkC
         Seq(statesNA, statesEU, statesIN))
 
       assert(resultsFromStates == resultsDirect)
+    }
+
+    "not throw errors for the example from DEEQU-189" in withSparkSession { session =>
+
+      val data = ExampleUtils.itemsAsDataframe(session,
+        Item(1, "Thingy A", "awesome thing.", "high", 0),
+        Item(2, "Thingy B", "available at http://thingb.com", null, 0),
+        Item(3, null, null, "low", 5),
+        Item(4, "Thingy D", "checkout https://thingd.ca", "low", 10),
+        Item(5, "Thingy E", null, "high", 12))
+
+      val histogramOne = Histogram("id").computeStateFrom(data).get
+      val histogramTwo = Histogram("id").computeStateFrom(data).get
+
+      histogramOne.sum(histogramTwo)
+
     }
 
   }

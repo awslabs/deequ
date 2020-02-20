@@ -74,6 +74,55 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(actualColumnProfile == expectedColumnProfile)
     }
 
+    "return correct columnProfiles with predefined dataType" in withSparkSession { session =>
+
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("item")), false, 1,
+        predefinedTypes =
+          Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
+        .profiles("item")
+
+      val expectedColumnProfile = StandardColumnProfile(
+        "item",
+        1.0,
+        6,
+        DataTypeInstances.String,
+        false,
+        Map(),
+        None)
+
+      assert(actualColumnProfile == expectedColumnProfile)
+    }
+
+    "return correct columnProfiles without predefined dataType" in withSparkSession { session =>
+
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 1,
+        predefinedTypes =
+          Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
+        .profiles("att2")
+
+      val expectedColumnProfile = StandardColumnProfile(
+        "att2",
+        2.0 / 3.0,
+        2,
+        DataTypeInstances.String,
+        true,
+        Map(
+          "Boolean" -> 0,
+          "Fractional" -> 0,
+          "Integral" -> 0,
+          "Unknown" -> 2,
+          "String" -> 4
+        ),
+        None)
+
+      assert(actualColumnProfile == expectedColumnProfile)
+    }
+
+
     "return correct NumericColumnProfiles for numeric String DataType columns" in
       withSparkSession { session =>
 
@@ -351,4 +400,62 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
     }
   }
 
+  "return correct profile for the Titanic dataset" in withSparkSession { session =>
+    val data = session.read.format("csv")
+      .option("inferSchema", "true")
+      .option("header", "true")
+      .load("test-data/titanic.csv")
+
+    val columnProfiles = ColumnProfiler.profile(data)
+
+    val expectedProfiles = List(
+      StandardColumnProfile(
+        "PassengerId",
+        1.0,
+        891,
+        DataTypeInstances.Integral,
+        false,
+        Map.empty,
+        None),
+      StandardColumnProfile(
+        "Survived",
+        1.0,
+        2,
+        DataTypeInstances.Integral,
+        false,
+        Map.empty,
+        None),
+      StandardColumnProfile("Pclass", 1.0, 3, DataTypeInstances.Integral, false, Map.empty, None),
+      StandardColumnProfile("Name", 1.0, 0, DataTypeInstances.String, true, Map.empty, None),
+      StandardColumnProfile("Sex", 1.0, 2, DataTypeInstances.String, true, Map.empty, None),
+      StandardColumnProfile("Ticket", 1.0, 681, DataTypeInstances.String, true, Map.empty, None),
+      StandardColumnProfile("Fare", 1.0, 0, DataTypeInstances.Fractional, false, Map.empty, None),
+      StandardColumnProfile("Cabin", 0.22, 0, DataTypeInstances.String, true, Map.empty, None)
+    )
+
+    assertSameColumnProfiles(columnProfiles.profiles, expectedProfiles)
+
+  }
+
+  private[this] def assertSameColumnProfiles(
+      actualProfiles: Map[String, ColumnProfile],
+      expectedProfiles: List[ColumnProfile])
+    : Unit = {
+
+    expectedProfiles.foreach { expected =>
+      val actual = actualProfiles(expected.column)
+      val msg = s"""(Column "${expected.column}"")"""
+      assert(actual.dataType == expected.dataType, msg)
+      assert(actual.completeness >= expected.completeness, msg)
+      assert(actual.isDataTypeInferred == expected.isDataTypeInferred, msg)
+      if (expected.approximateNumDistinctValues > 0) {
+        val upperBound = 1.1 * expected.approximateNumDistinctValues
+        val lowerBound = 0.9 * expected.approximateNumDistinctValues
+        assert(
+          actual.approximateNumDistinctValues <= upperBound &&
+          actual.approximateNumDistinctValues >= lowerBound,
+          msg)
+      }
+    }
+  }
 }

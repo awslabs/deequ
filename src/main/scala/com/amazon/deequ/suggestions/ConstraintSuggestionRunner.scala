@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.io.DfsUtils
@@ -66,16 +66,19 @@ class ConstraintSuggestionRunner {
       restrictToColumns: Option[Seq[String]],
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
-      testsetWrapper: List[Any],
+      testsetWrapper: (Option[Double], Option[Long]),
       cacheInputs: Boolean,
       fileOutputOptions: ConstraintSuggestionFileOutputOptions,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
-      kllParameters: Option[KLLParameters])
+      kllWrapper: (Option[KLLParameters], Map[String, DataTypeInstances.Value]))
     : ConstraintSuggestionResult = {
 
     // get testset related data from wrapper
-    val testsetRatio: Option[Double] = testsetWrapper(0).asInstanceOf[Option[Double]]
-    val testsetSplitRandomSeed: Option[Long] = testsetWrapper(1).asInstanceOf[Option[Long]]
+    val testsetRatio: Option[Double] = testsetWrapper._1
+    val testsetSplitRandomSeed: Option[Long] = testsetWrapper._2
+
+    val kllParameters: Option[KLLParameters] = kllWrapper._1
+    val predefinedTypes: Map[String, DataTypeInstances.Value] = kllWrapper._2
 
     testsetRatio.foreach { testsetRatio =>
       require(testsetRatio > 0 && testsetRatio < 1.0, "Testset ratio must be in ]0, 1[")
@@ -89,14 +92,15 @@ class ConstraintSuggestionRunner {
     }
 
     val (columnProfiles, constraintSuggestions) = ConstraintSuggestionRunner().profileAndSuggest(
-        trainingData,
-        constraintRules,
-        restrictToColumns,
-        lowCardinalityHistogramThreshold,
-        printStatusUpdates,
-        metricsRepositoryOptions,
-        kllParameters
-      )
+      trainingData,
+      constraintRules,
+      restrictToColumns,
+      lowCardinalityHistogramThreshold,
+      printStatusUpdates,
+      metricsRepositoryOptions,
+      kllParameters,
+      predefinedTypes
+    )
 
     saveColumnProfilesJsonToFileSystemIfNecessary(
       fileOutputOptions,
@@ -161,7 +165,8 @@ class ConstraintSuggestionRunner {
       lowCardinalityHistogramThreshold: Int,
       printStatusUpdates: Boolean,
       metricsRepositoryOptions: ConstraintSuggestionMetricsRepositoryOptions,
-      kllParameters: Option[KLLParameters])
+      kllParameters: Option[KLLParameters],
+      predefinedTypes: Map[String, DataTypeInstances.Value])
     : (ColumnProfiles, Seq[ConstraintSuggestion]) = {
 
     var columnProfilerRunner = ColumnProfilerRunner()
@@ -174,6 +179,9 @@ class ConstraintSuggestionRunner {
     }
 
     columnProfilerRunner = columnProfilerRunner.setKLLParameters(kllParameters)
+
+    columnProfilerRunner =
+      columnProfilerRunner.setPredefinedTypes(predefinedTypes)
 
     metricsRepositoryOptions.metricsRepository.foreach { metricsRepository =>
       var columnProfilerRunnerWithRepository = columnProfilerRunner.useRepository(metricsRepository)

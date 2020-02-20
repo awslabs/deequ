@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.examples
 
-private[examples] case class Item(
+private[deequ] case class Item(
     id: Long,
     productName: String,
     description: String,
@@ -24,7 +24,7 @@ private[examples] case class Item(
     numViews: Long
 )
 
-private[examples] case class Manufacturer(
+private[deequ] case class Manufacturer(
     id: Long,
     manufacturerName: String,
     countryCode: String

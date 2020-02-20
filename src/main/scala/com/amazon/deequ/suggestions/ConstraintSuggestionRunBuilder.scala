@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
-import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfiler}
 import com.amazon.deequ.repository._
 import com.amazon.deequ.suggestions.rules.ConstraintRule
@@ -45,6 +45,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
+  protected var predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty
 
   protected def this(constraintSuggestionRunBuilder: ConstraintSuggestionRunBuilder) {
 
@@ -71,6 +72,7 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
     kllParameters = constraintSuggestionRunBuilder.kllParameters
+    predefinedTypes = constraintSuggestionRunBuilder.predefinedTypes
   }
 
   /**
@@ -162,6 +164,16 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 
   /**
+   * Set predefined data types for each column (e.g. baseline)
+   *
+   * @param dataType dataType map for baseline columns
+   */
+  def setPredefinedTypes(dataType: Map[String, DataTypeInstances.Value]): this.type = {
+    this.predefinedTypes = dataType
+    this
+  }
+
+  /**
     * Set a metrics repository associated with the current data to enable features like reusing
     * previously computed results and storing the results of the current run.
     *
@@ -187,7 +199,8 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   }
 
   def run(): ConstraintSuggestionResult = {
-    ConstraintSuggestionRunner().run(
+    ConstraintSuggestionRunner().
+      run(
       data,
       constraintRules,
       restrictToColumns,
@@ -208,7 +221,9 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
         saveOrAppendResultsKey),
-      kllParameters
+        kllWrapper(
+          kllParameters,
+          predefinedTypes)
     )
   }
 
@@ -216,9 +231,18 @@ class ConstraintSuggestionRunBuilder(val data: DataFrame) {
   private def testsetWrapper(
     testsetRatio: Option[Double],
     testsetSplitRandomSeed: Option[Long])
-  : List[Any] = {
+  : (Option[Double], Option[Long]) = {
 
-    List[Any](testsetRatio, testsetSplitRandomSeed)
+    (testsetRatio, testsetSplitRandomSeed)
+  }
+
+  // implement this wrapper to not violate scalastyle requirement on argcount
+  private def kllWrapper(
+    kllParameters: Option[KLLParameters],
+    predefinedTypes: Map[String, DataTypeInstances.Value])
+  : (Option[KLLParameters], Map[String, DataTypeInstances.Value]) = {
+
+    (kllParameters, predefinedTypes)
   }
 }
 

@@ -78,7 +78,11 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       StandardDeviation("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       DataType("ColumnA") ->
-        DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0))
+        DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
+      MinLength("ColumnA") ->
+        DoubleMetric(Entity.Column, "MinLength", "ColumnA", Success(5.0)),
+      MaxLength("ColumnA") ->
+        DoubleMetric(Entity.Column, "MaxLength", "ColumnA", Success(5.0))
     ))
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
@@ -203,6 +207,8 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
         .addAnalyzer(Completeness("att2"))
         .addAnalyzer(Uniqueness("att2"))
         .addAnalyzer(MutualInformation("att1", "att2"))
+        .addAnalyzer(MinLength("att1"))
+        .addAnalyzer(MaxLength("att1"))
 
       val analysisContext = analysis.run(df)
 
@@ -219,6 +225,10 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
           |"instance":"att2","name":"Completeness","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att1","name":"Completeness","value":1.0},
+          |{"dataset_date":1507975810,"entity":"Column","region":"EU",
+          |"instance":"att1","name":"MinLength","value":1.0},
+          |{"dataset_date":1507975810,"entity":"Column","region":"EU",
+          |"instance":"att1","name":"MaxLength","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att2","name":"Uniqueness","value":0.25},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",

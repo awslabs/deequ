@@ -17,7 +17,7 @@
 package com.amazon.deequ.profiles
 
 import com.amazon.deequ.repository._
-import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a Constraint Suggestion run using a fluent API */
@@ -40,6 +40,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   protected var saveConstraintSuggestionsJsonPath: Option[String] = None
   protected var saveEvaluationResultsJsonPath: Option[String] = None
   protected var kllParameters: Option[KLLParameters] = None
+  protected var predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty
 
   protected def this(constraintSuggestionRunBuilder: ColumnProfilerRunBuilder) {
 
@@ -63,6 +64,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
       .saveConstraintSuggestionsJsonPath
     saveEvaluationResultsJsonPath = constraintSuggestionRunBuilder.saveEvaluationResultsJsonPath
     kllParameters = constraintSuggestionRunBuilder.kllParameters
+    predefinedTypes = constraintSuggestionRunBuilder.predefinedTypes
   }
 
   /**
@@ -106,10 +108,26 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
     this
   }
 
+  /**
+   * Set KLL parameters.
+   *
+   * @param kllParameters kllParameters(sketchSize, shrinkingFactor, numberOfBuckets)
+   */
   def setKLLParameters(kllParameters: Option[KLLParameters]): this.type = {
     this.kllParameters = kllParameters
     this
   }
+
+  /**
+   * Set predefined data types for each column (e.g. baseline)
+   *
+   * @param dataTypes dataType map for baseline columns
+   */
+  def setPredefinedTypes(dataTypes: Map[String, DataTypeInstances.Value]): this.type = {
+    this.predefinedTypes = dataTypes
+    this
+  }
+
 
   /**
     * Set a metrics repository associated with the current data to enable features like reusing
@@ -152,7 +170,8 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
         reuseExistingResultsKey,
         failIfResultsForReusingMissing,
         saveOrAppendResultsKey),
-      kllParameters
+      kllParameters,
+      predefinedTypes
     )
   }
 }
