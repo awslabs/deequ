@@ -1,18 +1,18 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not
- * use this file except in compliance with the License. A copy of the License
- * is located at
- *
- *     http://aws.amazon.com/apache2.0/
- *
- * or in the "license" file accompanying this file. This file is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- *
- */
+  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+  * use this file except in compliance with the License. A copy of the License
+  * is located at
+  *
+  *     http://aws.amazon.com/apache2.0/
+  *
+  * or in the "license" file accompanying this file. This file is distributed on
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+  * express or implied. See the License for the specific language governing
+  * permissions and limitations under the License.
+  *
+  */
 
 package com.amazon.deequ.analyzers.runners
 
@@ -80,26 +80,49 @@ object AnalyzerContext {
       forAnalyzers: Seq[Analyzer[_, Metric[_]]])
     : Seq[SimpleMetricOutput] = {
 
-    val selectedMetrics = analyzerContext.metricMap
+    analyzerContext.metricMap
+      // Get matching analyzers
       .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
-      .values
+      // Get analyzers with successful results
+      .filter({ case (_, metrics) => metrics.value.isSuccess })
+      // Get metrics as Double and replace simple name with description
+      .flatMap({ case (analyzer, metrics) => metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
+      // Simplify metrics
+      .map(SimpleMetricOutput(_))
       .toSeq
-
-    val metricsList = selectedMetrics
-      .filter(_.value.isSuccess) // Get analyzers with successful results
-      .flatMap(_.flatten()) // Get metrics as double
-      .map { doubleMetric =>
-        SimpleMetricOutput(
-          doubleMetric.entity.toString,
-          doubleMetric.instance,
-          doubleMetric.name,
-          doubleMetric.value.get
-        )
-      }
-
-    metricsList
   }
 
-  private[this] case class SimpleMetricOutput(entity: String, instance: String, name: String,
-    value: Double)
+  private[this] def renameMetric(metric: DoubleMetric, newName: String): DoubleMetric = {
+    metric.copy(name = newName)
+  }
+
+  /**
+    * Describe the Analyzer, using the name of the class, including the value of `where` field if exists.
+    * It helps us to show more readable success metrics (see https://github.com/awslabs/deequ/issues/177)
+    *
+    * @param analyzer the Analyzer to be described
+    * @return the description of the Analyzer
+    */
+  private[this] def describeAnalyzer(analyzer: Any): String = {
+    val name = analyzer.getClass.getSimpleName
+
+    ReflectionUtils.getFieldValue(analyzer, "where") match {
+      case Some(Some(e)) => s"$name (where: $e)"
+      case _ => name
+    }
+  }
+
+  private[this] case class SimpleMetricOutput(entity: String, instance: String, name: String, value: Double)
+
+  private[this] object SimpleMetricOutput {
+
+    def apply(doubleMetric: DoubleMetric): SimpleMetricOutput = {
+      SimpleMetricOutput(
+        doubleMetric.entity.toString,
+        doubleMetric.instance,
+        doubleMetric.name,
+        doubleMetric.value.get
+      )
+    }
+  }
 }
