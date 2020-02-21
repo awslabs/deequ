@@ -39,7 +39,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
           ("Column", "item", "Distinctness", 1.0),
           ("Column", "att1", "Completeness", 1.0),
           ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
-          .toDF("entity", "instance", "name", "value")
+            .toDF("entity", "instance", "name", "value")
 
         assertSameRows(successMetricsAsDataFrame, expected)
       }
@@ -53,7 +53,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
           val metricsForAnalyzers = Seq(Completeness("att1"), Uniqueness(Seq("att1", "att2")))
 
           val successMetricsAsDataFrame = AnalyzerContext
-            .successMetricsAsDataFrame(session, results, metricsForAnalyzers)
+              .successMetricsAsDataFrame(session, results, metricsForAnalyzers)
 
           import session.implicits._
           val expected = Seq(
@@ -84,7 +84,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
 
           assertSameJson(successMetricsResultsJson, expectedJson)
         }
-    }
+      }
 
     "only include requested metrics in returned Json" in
       withSparkSession { session =>
@@ -100,7 +100,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
             """[{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
               |{"entity":"Mutlicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25}]"""
-              .stripMargin.replaceAll("\n", "")
+            .stripMargin.replaceAll("\n", "")
 
           assertSameJson(successMetricsResultsJson, expectedJson)
         }
