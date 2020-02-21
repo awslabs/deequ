@@ -84,9 +84,11 @@ object AnalyzerContext {
       // Get matching analyzers
       .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
       // Get analyzers with successful results
-      .filter({ case (_, metrics) => metrics.value.isSuccess })
+      .filter({ case (_, metrics) =>
+      metrics.value.isSuccess })
       // Get metrics as Double and replace simple name with description
-      .flatMap({ case (analyzer, metrics) => metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
+      .flatMap({ case (analyzer, metrics) =>
+      metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
       // Simplify metrics
       .map(SimpleMetricOutput(_))
       .toSeq
@@ -97,8 +99,10 @@ object AnalyzerContext {
   }
 
   /**
-    * Describe the Analyzer, using the name of the class, including the value of `where` field if exists.
-    * It helps us to show more readable success metrics (see https://github.com/awslabs/deequ/issues/177)
+    * Describe the Analyzer, using the name of the class, including the value of `where` field
+    * if exists.
+    * It helps us to show more readable success metrics
+    * (see https://github.com/awslabs/deequ/issues/177 for details)
     *
     * @param analyzer the Analyzer to be described
     * @return the description of the Analyzer
@@ -112,7 +116,10 @@ object AnalyzerContext {
     }
   }
 
-  private[this] case class SimpleMetricOutput(entity: String, instance: String, name: String, value: Double)
+  private[this] case class SimpleMetricOutput( entity: String,
+                                               instance: String,
+                                               name: String,
+                                               value: Double)
 
   private[this] object SimpleMetricOutput {
 
