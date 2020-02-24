@@ -84,11 +84,10 @@ object AnalyzerContext {
       // Get matching analyzers
       .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
       // Get analyzers with successful results
-      .filter({ case (_, metrics) =>
-      metrics.value.isSuccess })
+      .filter({ case (_, metrics) => metrics.value.isSuccess })
       // Get metrics as Double and replace simple name with description
       .flatMap({ case (analyzer, metrics) =>
-      metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
+        metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
       // Simplify metrics
       .map(SimpleMetricOutput(_))
       .toSeq
@@ -116,10 +115,11 @@ object AnalyzerContext {
     }
   }
 
-  private[this] case class SimpleMetricOutput( entity: String,
-                                               instance: String,
-                                               name: String,
-                                               value: Double)
+  private[this] case class SimpleMetricOutput(
+    entity: String,
+    instance: String,
+    name: String,
+    value: Double)
 
   private[this] object SimpleMetricOutput {
 
