@@ -61,6 +61,28 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(check3, context, CheckStatus.Warning)
     }
 
+    "return the correct check status for combined completeness" in withSparkSession { sparkSession =>
+
+      val check1 = Check(CheckLevel.Error, "group-1")
+        .isCombinedComplete(Seq("item", "att1")) // 1.0
+        .hasCombinedCompleteness(Seq("item", "att1"), _ == 1.0) // 1.0
+
+      val check2 = Check(CheckLevel.Error, "group-2-E")
+        .hasCombinedCompleteness(Seq("item", "att1", "att2"), _ > 0.8) // 0.75
+
+      val check3 = Check(CheckLevel.Warning, "group-2-W")
+        .hasCombinedCompleteness(Seq("item", "att1", "att2"), _ > 0.8) // 0.75
+
+      val context = runChecks(getDfCompleteAndInCompleteColumns(sparkSession),
+        check1, check2, check3)
+
+      context.metricMap.foreach { println }
+
+      assertEvaluatesTo(check1, context, CheckStatus.Success)
+      assertEvaluatesTo(check2, context, CheckStatus.Error)
+      assertEvaluatesTo(check3, context, CheckStatus.Warning)
+    }
+
     "return the correct check status for uniqueness" in withSparkSession { sparkSession =>
 
       val check = Check(CheckLevel.Error, "group-1")
