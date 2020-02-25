@@ -34,7 +34,8 @@ case class MinState(minValue: Double) extends DoubleValuedState[MinState] {
 }
 
 case class Minimum(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[MinState]("Minimum", column) {
+  extends StandardScanShareableAnalyzer[MinState]("Minimum", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     min(conditionalSelection(column, where)).cast(DoubleType) :: Nil
@@ -50,4 +51,6 @@ case class Minimum(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }

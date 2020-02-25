@@ -34,7 +34,8 @@ case class MaxState(maxValue: Double) extends DoubleValuedState[MaxState] {
 }
 
 case class Maximum(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[MaxState]("Maximum", column) {
+  extends StandardScanShareableAnalyzer[MaxState]("Maximum", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     max(conditionalSelection(column, where)).cast(DoubleType) :: Nil
@@ -50,4 +51,6 @@ case class Maximum(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }

@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.runners
 
-import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.{Analyzer, FilterableAnalyzer}
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -109,8 +109,13 @@ object AnalyzerContext {
   private[this] def describeAnalyzer(analyzer: Any): String = {
     val name = analyzer.getClass.getSimpleName
 
-    ReflectionUtils.getFieldValue(analyzer, "where") match {
-      case Some(Some(e)) => s"$name (where: $e)"
+    val filterCondition: Option[String] = analyzer match {
+      case x : FilterableAnalyzer => x.filterCondition
+      case _ => None
+    }
+
+    filterCondition match {
+      case Some(x) => s"$name (where: $x)"
       case _ => name
     }
   }

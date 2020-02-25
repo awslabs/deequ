@@ -23,7 +23,8 @@ import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.apache.spark.sql.{Column, Row}
 
 case class MinLength(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[MinState]("MinLength", column) {
+  extends StandardScanShareableAnalyzer[MinState]("MinLength", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     min(length(conditionalSelection(column, where))).cast(DoubleType) :: Nil
@@ -38,4 +39,6 @@ case class MinLength(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isString(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }

@@ -35,7 +35,8 @@ import scala.util.matching.Regex
   * @param where      Additional filter to apply before the analyzer is run.
   */
 case class PatternMatch(column: String, pattern: Regex, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[NumMatchesAndCount]("PatternMatch", column) {
+  extends StandardScanShareableAnalyzer[NumMatchesAndCount]("PatternMatch", column)
+  with FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
@@ -52,6 +53,8 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
     summation :: conditionalCount(where) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
 
 object Patterns {

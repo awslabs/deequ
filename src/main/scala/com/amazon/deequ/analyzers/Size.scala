@@ -34,7 +34,8 @@ case class NumMatches(numMatches: Long) extends DoubleValuedState[NumMatches] {
 
 /** Size is the number of rows in a DataFrame. */
 case class Size(where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[NumMatches]("Size", "*", Entity.Dataset) {
+  extends StandardScanShareableAnalyzer[NumMatches]("Size", "*", Entity.Dataset)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     conditionalCount(where) :: Nil
@@ -45,4 +46,6 @@ case class Size(where: Option[String] = None)
       NumMatches(result.getLong(offset))
     }
   }
+
+  override def filterCondition: Option[String] = where
 }

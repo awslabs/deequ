@@ -45,7 +45,8 @@ case class StandardDeviationState(
 }
 
 case class StandardDeviation(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[StandardDeviationState]("StandardDeviation", column) {
+  extends StandardScanShareableAnalyzer[StandardDeviationState]("StandardDeviation", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     stateful_stddev_pop(conditionalSelection(column, where)) :: Nil
@@ -70,4 +71,6 @@ case class StandardDeviation(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
