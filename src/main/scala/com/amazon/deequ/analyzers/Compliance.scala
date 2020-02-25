@@ -35,7 +35,8 @@ import Analyzers._
   * @param where Additional filter to apply before the analyzer is run.
   */
 case class Compliance(instance: String, predicate: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance) {
+  extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
+  with FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
@@ -50,4 +51,6 @@ case class Compliance(instance: String, predicate: String, where: Option[String]
 
     summation :: conditionalCount(where) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }

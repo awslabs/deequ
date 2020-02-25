@@ -34,7 +34,8 @@ case class MeanState(sum: Double, count: Long) extends DoubleValuedState[MeanSta
 }
 
 case class Mean(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[MeanState]("Mean", column) {
+  extends StandardScanShareableAnalyzer[MeanState]("Mean", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     sum(conditionalSelection(column, where)).cast(DoubleType) ::
@@ -51,4 +52,6 @@ case class Mean(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }

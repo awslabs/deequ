@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.runners
 
-import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.{Analyzer, FilterableAnalyzer}
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -80,26 +80,61 @@ object AnalyzerContext {
       forAnalyzers: Seq[Analyzer[_, Metric[_]]])
     : Seq[SimpleMetricOutput] = {
 
-    val selectedMetrics = analyzerContext.metricMap
+    analyzerContext.metricMap
+      // Get matching analyzers
       .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
-      .values
+      // Get analyzers with successful results
+      .filter({ case (_, metrics) => metrics.value.isSuccess })
+      // Get metrics as Double and replace simple name with description
+      .flatMap({ case (analyzer, metrics) =>
+        metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
+      // Simplify metrics
+      .map(SimpleMetricOutput(_))
       .toSeq
-
-    val metricsList = selectedMetrics
-      .filter(_.value.isSuccess) // Get analyzers with successful results
-      .flatMap(_.flatten()) // Get metrics as double
-      .map { doubleMetric =>
-        SimpleMetricOutput(
-          doubleMetric.entity.toString,
-          doubleMetric.instance,
-          doubleMetric.name,
-          doubleMetric.value.get
-        )
-      }
-
-    metricsList
   }
 
-  private[this] case class SimpleMetricOutput(entity: String, instance: String, name: String,
+  private[this] def renameMetric(metric: DoubleMetric, newName: String): DoubleMetric = {
+    metric.copy(name = newName)
+  }
+
+  /**
+    * Describe the Analyzer, using the name of the class, including the value of `where` field
+    * if exists.
+    * It helps us to show more readable success metrics
+    * (see https://github.com/awslabs/deequ/issues/177 for details)
+    *
+    * @param analyzer the Analyzer to be described
+    * @return the description of the Analyzer
+    */
+  private[this] def describeAnalyzer(analyzer: Any): String = {
+    val name = analyzer.getClass.getSimpleName
+
+    val filterCondition: Option[String] = analyzer match {
+      case x : FilterableAnalyzer => x.filterCondition
+      case _ => None
+    }
+
+    filterCondition match {
+      case Some(x) => s"$name (where: $x)"
+      case _ => name
+    }
+  }
+
+  private[this] case class SimpleMetricOutput(
+    entity: String,
+    instance: String,
+    name: String,
     value: Double)
+
+  private[this] object SimpleMetricOutput {
+
+    def apply(doubleMetric: DoubleMetric): SimpleMetricOutput = {
+      SimpleMetricOutput(
+        doubleMetric.entity.toString,
+        doubleMetric.instance,
+        doubleMetric.name,
+        doubleMetric.value.get
+      )
+    }
+  }
 }

@@ -34,7 +34,8 @@ case class SumState(sum: Double) extends DoubleValuedState[SumState] {
 }
 
 case class Sum(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[SumState]("Sum", column) {
+  extends StandardScanShareableAnalyzer[SumState]("Sum", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     sum(conditionalSelection(column, where)).cast(DoubleType) :: Nil
@@ -49,4 +50,6 @@ case class Sum(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }

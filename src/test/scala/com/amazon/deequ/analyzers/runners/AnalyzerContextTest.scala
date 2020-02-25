@@ -35,6 +35,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
         import session.implicits._
         val expected = Seq(
           ("Dataset", "*", "Size", 4.0),
+          ("Dataset", "*", "Size (where: att2 == 'd')", 1.0),
           ("Column", "item", "Distinctness", 1.0),
           ("Column", "att1", "Completeness", 1.0),
           ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
@@ -72,11 +73,13 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
           val successMetricsResultsJson = AnalyzerContext.successMetricsAsJson(results)
 
           val expectedJson =
-            """[{"entity":"Dataset","instance":"*","name":"Size","value":4.0},
+            """[
               |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
-              |"name":"Uniqueness","value":0.25}]"""
+              |{"entity":"Dataset","instance":"*","name":"Size (where: att2 == 'd')","value":1.0},
+              |{"entity":"Dataset","instance":"*","name":"Size","value":4.0},
+              |{"entity":"Mutlicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25}
+              |]"""
               .stripMargin.replaceAll("\n", "")
 
           assertSameJson(successMetricsResultsJson, expectedJson)
@@ -116,6 +119,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
   private[this] def createAnalysis(): Analysis = {
     Analysis()
       .addAnalyzer(Size())
+      .addAnalyzer(Size(where = Some("att2 == 'd'")))
       .addAnalyzer(Distinctness("item"))
       .addAnalyzer(Completeness("att1"))
       .addAnalyzer(Uniqueness(Seq("att1", "att2")))

@@ -24,7 +24,8 @@ import org.apache.spark.sql.{Column, Row}
 
 /** Completeness is the fraction of non-null values in a column of a DataFrame. */
 case class Completeness(column: String, where: Option[String] = None) extends
-  StandardScanShareableAnalyzer[NumMatchesAndCount]("Completeness", column) {
+  StandardScanShareableAnalyzer[NumMatchesAndCount]("Completeness", column) with
+  FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
@@ -43,4 +44,6 @@ case class Completeness(column: String, where: Option[String] = None) extends
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
