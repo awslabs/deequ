@@ -122,32 +122,33 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assert(constraintStatuses(2) == ConstraintStatus.Failure)
     }
 
-    "return the correct check status for hasUniqueness" in withSparkSession { sparkSession =>
+    "return the correct check status for hasUniqueness" in
+      withSparkSession { sparkSession =>
 
-      val check = Check(CheckLevel.Error, "group-1-u")
-        .hasUniqueness("nonUnique", (fraction: Double) => fraction == .5)
-        .hasUniqueness("nonUnique", (fraction: Double) => fraction < .6)
-        .hasUniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"),
-          (fraction: Double) => fraction == .5)
-        .hasUniqueness(Seq("onlyUniqueWithOtherNonUnique", "nonUnique"), Check.IsOne)
-        .hasUniqueness("unique", Check.IsOne)
-        .hasUniqueness("uniqueWithNulls", Check.IsOne)
+        val check = Check(CheckLevel.Error, "group-1-u")
+          .hasUniqueness("nonUnique", (fraction: Double) => fraction == .5)
+          .hasUniqueness("nonUnique", (fraction: Double) => fraction < .6)
+          .hasUniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"),
+            (fraction: Double) => fraction == .5)
+          .hasUniqueness(Seq("onlyUniqueWithOtherNonUnique", "nonUnique"), Check.IsOne)
+          .hasUniqueness("unique", Check.IsOne)
+          .hasUniqueness("uniqueWithNulls", Check.IsOne)
 
-      val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
-      val result = check.evaluate(context)
+        val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
+        val result = check.evaluate(context)
 
-      assert(result.status == CheckStatus.Success)
-      val constraintStatuses = result.constraintResults.map { _.status }
-      // Half of nonUnique column are duplicates
-      assert(constraintStatuses.head == ConstraintStatus.Success)
-      assert(constraintStatuses(1) == ConstraintStatus.Success)
-      // Half of the 2 columns are duplicates as well.
-      assert(constraintStatuses(2) == ConstraintStatus.Success)
-      // Both next 2 cases are actually unique so should meet threshold
-      assert(constraintStatuses(3) == ConstraintStatus.Success)
-      assert(constraintStatuses(4) == ConstraintStatus.Success)
-      // Nulls are duplicated so this will not be unique
-      assert(constraintStatuses(5) == ConstraintStatus.Success)
+        assert(result.status == CheckStatus.Success)
+        val constraintStatuses = result.constraintResults.map { _.status }
+        // Half of nonUnique column are duplicates
+        assert(constraintStatuses.head == ConstraintStatus.Success)
+        assert(constraintStatuses(1) == ConstraintStatus.Success)
+        // Half of the 2 columns are duplicates as well.
+        assert(constraintStatuses(2) == ConstraintStatus.Success)
+        // Both next 2 cases are actually unique so should meet threshold
+        assert(constraintStatuses(3) == ConstraintStatus.Success)
+        assert(constraintStatuses(4) == ConstraintStatus.Success)
+        // Nulls are duplicated so this will not be unique
+        assert(constraintStatuses(5) == ConstraintStatus.Success)
     }
 
     "return the correct check status for size" in withSparkSession { sparkSession =>
