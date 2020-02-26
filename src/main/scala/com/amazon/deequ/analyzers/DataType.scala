@@ -152,7 +152,8 @@ object DataTypeHistogram {
 case class DataType(
     column: String,
     where: Option[String] = None)
-  extends ScanShareableAnalyzer[DataTypeHistogram, HistogramMetric] {
+  extends ScanShareableAnalyzer[DataTypeHistogram, HistogramMetric]
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     stateful_datatype(conditionalSelection(column, where)) :: Nil
@@ -180,4 +181,6 @@ case class DataType(
   override def preconditions: Seq[StructType => Unit] = {
     hasColumn(column) +: super.preconditions
   }
+
+  override def filterCondition: Option[String] = where
 }

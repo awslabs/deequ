@@ -67,7 +67,8 @@ case class Correlation(
     secondColumn: String,
     where: Option[String] = None)
   extends StandardScanShareableAnalyzer[CorrelationState]("Correlation",
-    s"$firstColumn,$secondColumn", Entity.Mutlicolumn) {
+    s"$firstColumn,$secondColumn", Entity.Mutlicolumn)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
 
@@ -102,4 +103,6 @@ case class Correlation(
     hasColumn(firstColumn) :: isNumeric(firstColumn) :: hasColumn(secondColumn) ::
       isNumeric(secondColumn) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
