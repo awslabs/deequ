@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.checks.ColumnCondition.isEachNonNull
+import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 
 import scala.util.matching.Regex
 
@@ -138,11 +138,11 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isCombinedComplete(
+  def areComplete(
       columns: Seq[String],
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNonNull(columns), "Combined Completeness", Check.IsOne, hint)
+    satisfies(isEachNotNull(columns), "Combined Completeness", Check.IsOne, hint)
   }
 
   /**
@@ -153,12 +153,12 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasCombinedCompleteness(
+  def haveCompleteness(
       columns: Seq[String],
       assertion: Double => Boolean,
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNonNull(columns), "Combined Completeness", assertion, hint)
+    satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint)
   }
 
   /**

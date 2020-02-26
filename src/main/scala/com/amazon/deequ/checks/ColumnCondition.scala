@@ -16,19 +16,14 @@
 
 package com.amazon.deequ.checks
 
-object ColumnCondition {
-  def isNonNull(col: String): String = {
-    s"$col IS NOT NULL"
-  }
+import org.apache.spark.sql.functions.{col}
 
-  def isEachNonNull(cols: Seq[String]): String = {
+private[checks] object ColumnCondition {
+
+  def isEachNotNull(cols: Seq[String]): String = {
     cols
-      .map(isNonNull(_))
-      .map(inBrackets(_))
-      .mkString(" AND ")
-  }
-
-  private def inBrackets(text: String): String = {
-    s"($text)"
+      .map(col(_).isNotNull)
+      .reduce(_ and _)
+      .toString()
   }
 }

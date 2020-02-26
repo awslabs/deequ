@@ -22,16 +22,10 @@ class ColumnConditionTest extends WordSpec {
 
   "ColumnCondition" should {
 
-    "return the correct isNonNull condition" in {
-
-      assert(ColumnCondition.isNonNull("att1") == "att1 IS NOT NULL")
-    }
-
-    "return the correct isEachNonNull condition" in {
-
+    "return the correct isEachNotNull condition" in {
       assert(
-        ColumnCondition.isEachNonNull(Seq("att1", "att2", "att3")) ==
-        "(att1 IS NOT NULL) AND (att2 IS NOT NULL) AND (att3 IS NOT NULL)"
+        ColumnCondition.isEachNotNull(Seq("att1", "att2", "att3")) ==
+        "(((att1 IS NOT NULL) AND (att2 IS NOT NULL)) AND (att3 IS NOT NULL))"
       )
     }
   }
