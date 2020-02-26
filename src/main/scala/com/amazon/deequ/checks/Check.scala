@@ -157,7 +157,7 @@ case class Check(
       columns: Seq[String],
       assertion: Double => Boolean,
       hint: Option[String] = None)
-  : CheckWithLastConstraintFilterable = {
+    : CheckWithLastConstraintFilterable = {
     satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint)
   }
 
