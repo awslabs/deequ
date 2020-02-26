@@ -138,7 +138,10 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isCombinedComplete(columns: Seq[String], hint: Option[String] = None): CheckWithLastConstraintFilterable = {
+  def isCombinedComplete(
+      columns: Seq[String],
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
     satisfies(isEachNonNull(columns), "Combined Completeness", Check.IsOne, hint)
   }
 
@@ -151,9 +154,9 @@ case class Check(
     * @return
     */
   def hasCombinedCompleteness(
-                               columns: Seq[String],
-                               assertion: Double => Boolean,
-                               hint: Option[String] = None)
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
     satisfies(isEachNonNull(columns), "Combined Completeness", assertion, hint)
   }
