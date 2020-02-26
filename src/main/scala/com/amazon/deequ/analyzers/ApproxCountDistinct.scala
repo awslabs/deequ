@@ -45,7 +45,8 @@ case class ApproxCountDistinctState(words: Array[Long])
   * @param column Which column to compute this aggregation on.
   */
 case class ApproxCountDistinct(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[ApproxCountDistinctState]("ApproxCountDistinct", column) {
+  extends StandardScanShareableAnalyzer[ApproxCountDistinctState]("ApproxCountDistinct", column)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     stateful_approx_count_distinct(conditionalSelection(column, where)) :: Nil
@@ -61,4 +62,6 @@ case class ApproxCountDistinct(column: String, where: Option[String] = None)
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
