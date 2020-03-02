@@ -531,7 +531,7 @@ case class Check(
       column: String,
       assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter => meanConstraint(column, assertion, filter, hint) }
   }
@@ -650,7 +650,7 @@ case class Check(
       assertion: Double => Boolean = Check.IsOne,
       name: Option[String] = None,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
       Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint)
@@ -669,7 +669,7 @@ case class Check(
       column: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
     hasPattern(column, Patterns.CREDITCARD, assertion, Some(s"containsCreditCardNumber($column)"),
       hint)
@@ -687,7 +687,7 @@ case class Check(
       column: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
     hasPattern(column, Patterns.EMAIL, assertion, Some(s"containsEmail($column)"), hint)
   }
@@ -704,7 +704,7 @@ case class Check(
       column: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
     hasPattern(column, Patterns.URL, assertion, Some(s"containsURL($column)"), hint)
   }
@@ -722,7 +722,7 @@ case class Check(
       column: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
     hasPattern(column, Patterns.SOCIAL_SECURITY_NUMBER_US, assertion,
       Some(s"containsSocialSecurityNumber($column)"), hint)
