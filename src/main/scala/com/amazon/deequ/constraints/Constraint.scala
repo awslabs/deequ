@@ -362,16 +362,18 @@ object Constraint {
     * @param quantile Which quantile to assert on
     * @param assertion Function that receives a double input parameter (the computed quantile)
     *                  and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def approxQuantileConstraint(
       column: String,
       quantile: Double,
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val approxQuantile = ApproxQuantile(column, quantile)
+    val approxQuantile = ApproxQuantile(column, quantile, where = where)
 
     val constraint = AnalysisBasedConstraint[ApproxQuantileState, Double, Double](
       approxQuantile, assertion, hint = hint)

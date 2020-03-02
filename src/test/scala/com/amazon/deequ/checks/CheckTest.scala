@@ -479,6 +479,19 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertSuccess(meanCheckWithFilter, context)
     }
 
+    "correctly evaluate hasApproxQuantile constraints" in withSparkSession { sparkSession =>
+      val hasApproxQuantileCheck = Check(CheckLevel.Error, "a")
+        .hasApproxQuantile("att1", quantile = 0.5, _ == 3.0)
+      val hasApproxQuantileCheckWithFilter = Check(CheckLevel.Error, "a")
+        .hasApproxQuantile("att1", quantile = 0.5, _ == 5.0).where("att2 > 0")
+
+      val context = runChecks(getDfWithNumericValues(sparkSession), hasApproxQuantileCheck,
+        hasApproxQuantileCheckWithFilter)
+
+      assertSuccess(hasApproxQuantileCheck, context)
+      assertSuccess(hasApproxQuantileCheckWithFilter, context)
+    }
+
     "yield correct results for minimum and maximum length stats" in
       withSparkSession { sparkSession =>
         val baseCheck = Check(CheckLevel.Error, description = "a description")

@@ -18,11 +18,11 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
 import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
+import com.amazon.deequ.analyzers.Analyzers.conditionalSelection
 import com.amazon.deequ.metrics.DoubleMetric
 import org.apache.spark.sql.{DeequFunctions, Row}
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile.PercentileDigest
-import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 
 case class ApproxQuantileState(percentileDigest: PercentileDigest)
@@ -45,8 +45,13 @@ case class ApproxQuantileState(percentileDigest: PercentileDigest)
   *                 median.
   * @param relativeError Relative target precision to achieve in the quantile computation.
   *                      Must be in the interval [0, 1].
+  * @param where Additional filter to apply before the analyzer is run.
   */
-case class ApproxQuantile(column: String, quantile: Double, relativeError: Double = 0.01)
+case class ApproxQuantile(
+  column: String,
+  quantile: Double,
+  relativeError: Double = 0.01,
+  where: Option[String] = None)
   extends ScanShareableAnalyzer[ApproxQuantileState, DoubleMetric] {
 
   val PARAM_CHECKS: StructType => Unit = { _ =>
@@ -61,7 +66,8 @@ case class ApproxQuantile(column: String, quantile: Double, relativeError: Doubl
   }
 
   override private[deequ] def aggregationFunctions() = {
-    DeequFunctions.stateful_approx_quantile(col(column), relativeError) :: Nil
+    DeequFunctions
+      .stateful_approx_quantile(conditionalSelection(column, where), relativeError) :: Nil
   }
 
   override private[deequ] def fromAggregationResult(

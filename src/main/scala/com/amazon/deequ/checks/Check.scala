@@ -446,9 +446,10 @@ case class Check(
       quantile: Double,
       assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(approxQuantileConstraint(column, quantile, assertion, hint))
+    addFilterableConstraint( filter =>
+      approxQuantileConstraint(column, quantile, assertion, filter, hint))
   }
 
   /**
