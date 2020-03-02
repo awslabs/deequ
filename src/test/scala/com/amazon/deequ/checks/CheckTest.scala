@@ -466,6 +466,19 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         contextUninformative)
     }
 
+    "correctly evaluate mean constraints" in withSparkSession { sparkSession =>
+      val meanCheck = Check(CheckLevel.Error, "a")
+        .hasMean("att1", _ == 3.5)
+      val meanCheckWithFilter = Check(CheckLevel.Error, "a")
+        .hasMean("att1", _ == 5.0).where("att2 > 0")
+
+      val context = runChecks(getDfWithNumericValues(sparkSession), meanCheck,
+        meanCheckWithFilter)
+
+      assertSuccess(meanCheck, context)
+      assertSuccess(meanCheckWithFilter, context)
+    }
+
     "yield correct results for minimum and maximum length stats" in
       withSparkSession { sparkSession =>
         val baseCheck = Check(CheckLevel.Error, description = "a description")
@@ -506,6 +519,24 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
+    "work on regular expression patterns with filtering" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("someone@somewhere.org", "valid"),
+        ("someone@else", "invalid")
+      ).toDF("value", "type")
+
+      val check = Check(CheckLevel.Error, "some description")
+        .hasPattern("value", Patterns.EMAIL, _ == 0.5)
+      val checkWithFilter = Check(CheckLevel.Error, "some description")
+        .hasPattern("value", Patterns.EMAIL, _ == 1.0).where("type = 'valid'")
+
+      val context = runChecks(df, check, checkWithFilter)
+
+      assertEvaluatesTo(check, context, CheckStatus.Success)
+      assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
+    }
+
     "fail on mixed data for URL pattern with default assertion" in withSparkSession {
       sparkSession =>
       val col = "some"
@@ -517,42 +548,75 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     }
 
     "isCreditCard" in withSparkSession { sparkSession =>
-      val col = "some"
-      val df = dataFrameWithColumn(col, StringType, sparkSession, Row("4111 1111 1111 1111"),
-        Row("9999888877776666"))
+      import sparkSession.implicits._
+      val df = Seq(
+        ("4111 1111 1111 1111", "valid"),
+        ("9999888877776666", "invalid")
+      ).toDF("value", "type")
+
       val check = Check(CheckLevel.Error, "some description")
-        .containsCreditCardNumber(col, _ == 0.5)
-      val context = runChecks(df, check)
+        .containsCreditCardNumber("value", _ == 0.5)
+      val checkWithFilter = Check(CheckLevel.Error, "some description")
+        .containsCreditCardNumber("value", _ == 1.0).where("type = 'valid'")
+
+      val context = runChecks(df, check, checkWithFilter)
+
       assertEvaluatesTo(check, context, CheckStatus.Success)
+      assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
     }
 
     "define is E-Mail" in withSparkSession { sparkSession =>
-      val col = "some"
-      val df = dataFrameWithColumn(col, StringType, sparkSession, Row("someone@somewhere.org"),
-        Row("someone@else"))
-      val check = Check(CheckLevel.Error, "some description").containsEmail(col, _ == 0.5)
-      val context = runChecks(df, check)
+      import sparkSession.implicits._
+      val df = Seq(
+        ("someone@somewhere.org", "valid"),
+        ("someone@else", "invalid")
+      ).toDF("value", "type")
+
+      val check = Check(CheckLevel.Error, "some description")
+        .containsEmail("value", _ == 0.5)
+      val checkWithFilter = Check(CheckLevel.Error, "some description")
+        .containsEmail("value", _ == 1.0).where("type = 'valid'")
+
+      val context = runChecks(df, check, checkWithFilter)
+
       assertEvaluatesTo(check, context, CheckStatus.Success)
+      assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
     }
 
     "define is US social security number" in withSparkSession { sparkSession =>
-      val col = "some"
-      val df = dataFrameWithColumn(col, StringType, sparkSession, Row("111-05-1130"),
-        Row("something else"))
+      import sparkSession.implicits._
+      val df = Seq(
+        ("111-05-1130", "valid"),
+        ("something else", "invalid")
+      ).toDF("value", "type")
+
       val check = Check(CheckLevel.Error, "some description")
-        .containsSocialSecurityNumber(col, _ == 0.5)
-      val context = runChecks(df, check)
+        .containsSocialSecurityNumber("value", _ == 0.5)
+      val checkWithFilter = Check(CheckLevel.Error, "some description")
+        .containsSocialSecurityNumber("value", _ == 1.0).where("type = 'valid'")
+
+      val context = runChecks(df, check, checkWithFilter)
+
       assertEvaluatesTo(check, context, CheckStatus.Success)
+      assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
     }
 
     "define is URL" in withSparkSession { sparkSession =>
-      val col = "some"
-      val df = dataFrameWithColumn(col, StringType, sparkSession,
-        Row("https://www.example.com/foo/?bar=baz&inga=42&quux"), Row("http:// shouldfail.com"))
+      import sparkSession.implicits._
+      val df = Seq(
+        ("https://www.example.com/foo/?bar=baz&inga=42&quux", "valid"),
+        ("http:// shouldfail.com", "invalid")
+      ).toDF("value", "type")
+
       val check = Check(CheckLevel.Error, "some description")
-        .containsURL(col, _ == 0.5)
-      val context = runChecks(df, check)
+        .containsURL("value", _ == 0.5)
+      val checkWithFilter = Check(CheckLevel.Error, "some description")
+        .containsURL("value", _ == 1.0).where("type = 'valid'")
+
+      val context = runChecks(df, check, checkWithFilter)
+
       assertEvaluatesTo(check, context, CheckStatus.Success)
+      assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
     }
 
     "define has data type" in withSparkSession { sparkSession =>
