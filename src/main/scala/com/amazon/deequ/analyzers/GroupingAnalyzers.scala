@@ -52,7 +52,8 @@ object FrequencyBasedAnalyzer {
     */
   def computeFrequencies(
       data: DataFrame,
-      groupingColumns: Seq[String])
+      groupingColumns: Seq[String],
+      where: Option[String] = None)
     : FrequenciesAndNumRows = {
 
     val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
@@ -66,6 +67,7 @@ object FrequencyBasedAnalyzer {
     val frequencies = data
       .select(columnsToGroupBy: _*)
       .where(atLeastOneNonNullGroupingColumn)
+      .transform(filterOptional(where))
       .groupBy(columnsToGroupBy: _*)
       .agg(count(lit(1)).alias(COUNT_COL))
       .select(projectionColumns: _*)
@@ -73,9 +75,14 @@ object FrequencyBasedAnalyzer {
     val numRows = data
         .select(columnsToGroupBy: _*)
         .where(atLeastOneNonNullGroupingColumn)
+        .transform(filterOptional(where))
         .count()
 
     FrequenciesAndNumRows(frequencies, numRows)
+  }
+
+  private def filterOptional(where: Option[String])(df: DataFrame) : DataFrame = {
+    if (where.isDefined) df.filter(where.get) else df
   }
 }
 

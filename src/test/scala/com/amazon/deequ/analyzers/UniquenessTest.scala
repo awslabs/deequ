@@ -18,6 +18,8 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+import com.amazon.deequ.checks.CheckTest.{assertEvaluatesTo, runChecks}
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -60,5 +62,29 @@ class UniquenessTest extends WordSpec with Matchers with SparkContextSpec with F
       assert(result.metric(uniquenessA1).get.asInstanceOf[DoubleMetric].value.get == 1.0)
       assert(result.metric(uniquenessA13).get.asInstanceOf[DoubleMetric].value.get == 1.0)
     }
+  }
+
+  "Filtered Uniqueness" in withSparkSession { sparkSession =>
+    import sparkSession.implicits._
+    val df = Seq(
+      ("1", "unique"),
+      ("2", "unique"),
+      ("3", "duplicate"),
+      ("3", "duplicate"),
+      ("4", "unique")
+    ).toDF("value", "type")
+
+
+    val stateStore = InMemoryStateProvider()
+
+    val uniqueness = Uniqueness("value")
+    val uniquenessWithFilter = Uniqueness(Seq("value"), Some("type = 'unique'"))
+
+    val analysis = Analysis(Seq(uniqueness, uniquenessWithFilter))
+
+    val result = AnalysisRunner.run(df, analysis, saveStatesWith = Some(stateStore))
+
+    assert(result.metric(uniqueness).get.asInstanceOf[DoubleMetric].value.get == 0.6)
+    assert(result.metric(uniquenessWithFilter).get.asInstanceOf[DoubleMetric].value.get == 1.0)
   }
 }
