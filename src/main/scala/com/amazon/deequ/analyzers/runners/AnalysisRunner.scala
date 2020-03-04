@@ -183,8 +183,9 @@ object AnalysisRunner {
       .foreach { case (groupingColumns, analyzersForGrouping) =>
 
         val (numRows, metrics) =
-          runNonFilteredGroupingAnalyzers(data, groupingColumns, analyzersForGrouping, aggregateWith,
-            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
+          runNonFilteredGroupingAnalyzers(data, groupingColumns, analyzersForGrouping,
+            aggregateWith, saveStatesWith, storageLevelOfGroupedDataForMultiplePasses,
+            numRowsOfData)
 
         nonFilteredGroupedMetrics = nonFilteredGroupedMetrics ++ metrics
 
@@ -291,8 +292,7 @@ object AnalysisRunner {
     /* Compute the frequencies of the request groups once */
     var frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(
       data,
-      groupingColumns,
-      if (analyzers.head.isInstanceOf[FilterableAnalyzer])  analyzers.head.asInstanceOf[FilterableAnalyzer].filterCondition else None
+      groupingColumns
     )
 
     /* Pick one analyzer to store the state for */
@@ -325,8 +325,8 @@ object AnalysisRunner {
       analyzer.asInstanceOf[FilterableAnalyzer].filterCondition
     )
 
-    val results = runAnalyzersForParticularGrouping(frequenciesAndNumRows, Seq(analyzer), saveStatesTo,
-      storageLevelOfGroupedDataForMultiplePasses)
+    val results = runAnalyzersForParticularGrouping(frequenciesAndNumRows, Seq(analyzer),
+      saveStatesTo, storageLevelOfGroupedDataForMultiplePasses)
 
     frequenciesAndNumRows.numRows -> results
   }
