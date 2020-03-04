@@ -52,7 +52,8 @@ case class ApproxQuantile(
   quantile: Double,
   relativeError: Double = 0.01,
   where: Option[String] = None)
-  extends ScanShareableAnalyzer[ApproxQuantileState, DoubleMetric] {
+  extends ScanShareableAnalyzer[ApproxQuantileState, DoubleMetric]
+  with FilterableAnalyzer {
 
   val PARAM_CHECKS: StructType => Unit = { _ =>
     if (quantile < 0.0 || quantile > 1.0) {
@@ -106,4 +107,6 @@ case class ApproxQuantile(
   override def preconditions: Seq[StructType => Unit] = {
     PARAM_CHECKS :: hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
