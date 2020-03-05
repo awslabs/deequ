@@ -178,10 +178,9 @@ object AnalysisRunner {
       .foreach { case ((groupingColumns, filterCondition), analyzersForGrouping) =>
 
         val (numRows, metrics) =
-//          runGroupingAnalyzers(data, groupingColumns, analyzersForGrouping, aggregateWith,
-//            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
-          runGroupingAnalyzers(data, groupingColumns, filterCondition, analyzersForGrouping, aggregateWith,
-            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
+          runGroupingAnalyzers(data, groupingColumns, filterCondition, analyzersForGrouping,
+            aggregateWith, saveStatesWith, storageLevelOfGroupedDataForMultiplePasses,
+            numRowsOfData)
 
         groupedMetrics = groupedMetrics ++ metrics
 
