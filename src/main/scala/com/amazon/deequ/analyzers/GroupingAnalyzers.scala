@@ -51,10 +51,10 @@ object FrequencyBasedAnalyzer {
     * GROUP BY colA, colB, ...
     */
   def computeFrequencies(
-    data: DataFrame,
-    groupingColumns: Seq[String],
-    where: Option[String] = None)
-  : FrequenciesAndNumRows = {
+      data: DataFrame,
+      groupingColumns: Seq[String],
+      where: Option[String] = None)
+    : FrequenciesAndNumRows = {
 
     val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
