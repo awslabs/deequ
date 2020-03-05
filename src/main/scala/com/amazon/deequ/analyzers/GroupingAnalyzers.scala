@@ -44,17 +44,17 @@ abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
 object FrequencyBasedAnalyzer {
 
   /** Compute the frequencies of groups in the data, essentially via a query like
-    *
-    * SELECT colA, colB, ..., COUNT(*)
-    * FROM DATA
-    * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
-    * GROUP BY colA, colB, ...
-    */
+   *
+   * SELECT colA, colB, ..., COUNT(*)
+   * FROM DATA
+   * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
+   * GROUP BY colA, colB, ...
+   */
   def computeFrequencies(
-      data: DataFrame,
-      groupingColumns: Seq[String],
-      where: Option[String] = None)
-    : FrequenciesAndNumRows = {
+    data: DataFrame,
+    groupingColumns: Seq[String],
+    where: Option[String] = None)
+  : FrequenciesAndNumRows = {
 
     val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
@@ -73,10 +73,10 @@ object FrequencyBasedAnalyzer {
       .select(projectionColumns: _*)
 
     val numRows = data
-        .select(columnsToGroupBy: _*)
-        .where(atLeastOneNonNullGroupingColumn)
-        .transform(filterOptional(where))
-        .count()
+      .select(columnsToGroupBy: _*)
+      .where(atLeastOneNonNullGroupingColumn)
+      .transform(filterOptional(where))
+      .count()
 
     FrequenciesAndNumRows(frequencies, numRows)
   }

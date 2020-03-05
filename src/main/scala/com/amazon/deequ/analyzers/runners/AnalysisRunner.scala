@@ -148,11 +148,6 @@ object AnalysisRunner {
     val (groupingAnalyzers, allScanningAnalyzers) =
       passedAnalyzers.partition { _.isInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
 
-    val (filteredGroupingAnalyzers, nonFilteredGroupingAnalyzers) =
-      groupingAnalyzers.partition {
-        a => a.isInstanceOf[FilterableAnalyzer] &&
-          a.asInstanceOf[FilterableAnalyzer].filterCondition.isDefined
-      }
 
     val (kllAnalyzers, scanningAnalyzers) =
       allScanningAnalyzers.partition { _.isInstanceOf[KLLSketch] }
@@ -174,20 +169,21 @@ object AnalysisRunner {
       case DoubleMetric(_, _, _, Success(value: Double)) => value.toLong
     }
 
-    var nonFilteredGroupedMetrics = AnalyzerContext.empty
+    var groupedMetrics = AnalyzerContext.empty
 
     /* Run grouping analyzers based on the columns which they need to group on */
-    nonFilteredGroupingAnalyzers
+    groupingAnalyzers
       .map { _.asInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
-      .groupBy { _.groupingColumns().sorted }
-      .foreach { case (groupingColumns, analyzersForGrouping) =>
+      .groupBy { a => (a.groupingColumns().sorted, getFilterCondition(a)) }
+      .foreach { case ((groupingColumns, filterCondition), analyzersForGrouping) =>
 
         val (numRows, metrics) =
-          runNonFilteredGroupingAnalyzers(data, groupingColumns, analyzersForGrouping,
-            aggregateWith, saveStatesWith, storageLevelOfGroupedDataForMultiplePasses,
-            numRowsOfData)
+//          runGroupingAnalyzers(data, groupingColumns, analyzersForGrouping, aggregateWith,
+//            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
+          runGroupingAnalyzers(data, groupingColumns, filterCondition, analyzersForGrouping, aggregateWith,
+            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
 
-        nonFilteredGroupedMetrics = nonFilteredGroupedMetrics ++ metrics
+        groupedMetrics = groupedMetrics ++ metrics
 
         /* if we don't know the size of the data yet, we know it after the first pass */
         if (numRowsOfData.isEmpty) {
@@ -195,25 +191,8 @@ object AnalysisRunner {
         }
       }
 
-    var filteredGroupedMetrics = AnalyzerContext.empty
-
-    /* Run grouping analyzers based on the columns which they need to group on */
-    filteredGroupingAnalyzers
-      .map { _.asInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
-      .foreach(
-        a => {
-          val metrics = runFilteredGroupingAnalyzer(
-            data,
-            a,
-            saveStatesWith,
-            storageLevelOfGroupedDataForMultiplePasses)._2
-
-          filteredGroupedMetrics = filteredGroupedMetrics ++ metrics
-        }
-      )
-
     val resultingAnalyzerContext = resultsComputedPreviously ++ preconditionFailures ++
-      nonGroupedMetrics ++ nonFilteredGroupedMetrics ++ filteredGroupedMetrics ++ kllMetrics
+      nonGroupedMetrics ++ groupedMetrics ++ kllMetrics
 
     saveOrAppendResultsIfNecessary(
       resultingAnalyzerContext,
@@ -223,6 +202,13 @@ object AnalysisRunner {
     saveJsonOutputsToFilesystemIfNecessary(fileOutputOptions, resultingAnalyzerContext)
 
     resultingAnalyzerContext
+  }
+
+  private[this] def getFilterCondition(analyzer: Analyzer[State[_], Metric[_]]): Option[String] = {
+    analyzer match {
+      case a : FilterableAnalyzer => a.filterCondition
+      case _ => None
+    }
   }
 
   private[this] def saveOrAppendResultsIfNecessary(
@@ -279,9 +265,10 @@ object AnalysisRunner {
     AnalyzerContext(failures)
   }
 
-  private[this] def runNonFilteredGroupingAnalyzers(
+  private[this] def runGroupingAnalyzers(
       data: DataFrame,
       groupingColumns: Seq[String],
+      filterCondition: Option[String],
       analyzers: Seq[GroupingAnalyzer[State[_], Metric[_]]],
       aggregateWith: Option[StateLoader],
       saveStatesTo: Option[StatePersister],
@@ -290,10 +277,8 @@ object AnalysisRunner {
     : (Long, AnalyzerContext) = {
 
     /* Compute the frequencies of the request groups once */
-    var frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(
-      data,
-      groupingColumns
-    )
+    var frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns,
+      filterCondition)
 
     /* Pick one analyzer to store the state for */
     val sampleAnalyzer = analyzers.head.asInstanceOf[Analyzer[FrequenciesAndNumRows, Metric[_]]]
@@ -308,25 +293,6 @@ object AnalysisRunner {
 
     val results = runAnalyzersForParticularGrouping(frequenciesAndNumRows, analyzers, saveStatesTo,
         storageLevelOfGroupedDataForMultiplePasses)
-
-    frequenciesAndNumRows.numRows -> results
-  }
-
-  private[this] def runFilteredGroupingAnalyzer(
-    data: DataFrame,
-    analyzer: GroupingAnalyzer[State[_], Metric[_]],
-    saveStatesTo: Option[StatePersister],
-    storageLevelOfGroupedDataForMultiplePasses: StorageLevel)
-  : (Long, AnalyzerContext) = {
-
-    val frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(
-      data,
-      analyzer.groupingColumns,
-      analyzer.asInstanceOf[FilterableAnalyzer].filterCondition
-    )
-
-    val results = runAnalyzersForParticularGrouping(frequenciesAndNumRows, Seq(analyzer),
-      saveStatesTo, storageLevelOfGroupedDataForMultiplePasses)
 
     frequenciesAndNumRows.numRows -> results
   }

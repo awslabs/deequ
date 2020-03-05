@@ -75,10 +75,10 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
           val expectedJson =
             """[
               |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
+              |{"entity":"Mutlicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
               |{"entity":"Dataset","instance":"*","name":"Size (where: att2 == 'd')","value":1.0},
-              |{"entity":"Dataset","instance":"*","name":"Size","value":4.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25}
+              |{"entity":"Dataset","instance":"*","name":"Size","value":4.0}
               |]"""
               .stripMargin.replaceAll("\n", "")
 
