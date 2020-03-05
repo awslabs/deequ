@@ -22,8 +22,9 @@ import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{col, count, lit, sum}
 import org.apache.spark.sql.types.DoubleType
 
-case class UniqueValueRatio(columns: Seq[String])
-  extends ScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns) {
+case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
+  extends ScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
     sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) :: count("*") :: Nil
@@ -35,6 +36,8 @@ case class UniqueValueRatio(columns: Seq[String])
 
     toSuccessMetric(numUniqueValues / numDistinctValues)
   }
+
+  override def filterCondition: Option[String] = where
 }
 
 object UniqueValueRatio {

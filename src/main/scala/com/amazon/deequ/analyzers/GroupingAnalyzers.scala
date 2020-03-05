@@ -44,16 +44,17 @@ abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
 object FrequencyBasedAnalyzer {
 
   /** Compute the frequencies of groups in the data, essentially via a query like
-    *
-    * SELECT colA, colB, ..., COUNT(*)
-    * FROM DATA
-    * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
-    * GROUP BY colA, colB, ...
-    */
+   *
+   * SELECT colA, colB, ..., COUNT(*)
+   * FROM DATA
+   * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
+   * GROUP BY colA, colB, ...
+   */
   def computeFrequencies(
-      data: DataFrame,
-      groupingColumns: Seq[String])
-    : FrequenciesAndNumRows = {
+    data: DataFrame,
+    groupingColumns: Seq[String],
+    where: Option[String] = None)
+  : FrequenciesAndNumRows = {
 
     val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
@@ -66,16 +67,22 @@ object FrequencyBasedAnalyzer {
     val frequencies = data
       .select(columnsToGroupBy: _*)
       .where(atLeastOneNonNullGroupingColumn)
+      .transform(filterOptional(where))
       .groupBy(columnsToGroupBy: _*)
       .agg(count(lit(1)).alias(COUNT_COL))
       .select(projectionColumns: _*)
 
     val numRows = data
-        .select(columnsToGroupBy: _*)
-        .where(atLeastOneNonNullGroupingColumn)
-        .count()
+      .select(columnsToGroupBy: _*)
+      .where(atLeastOneNonNullGroupingColumn)
+      .transform(filterOptional(where))
+      .count()
 
     FrequenciesAndNumRows(frequencies, numRows)
+  }
+
+  private def filterOptional(where: Option[String])(df: DataFrame) : DataFrame = {
+    if (where.isDefined) df.filter(where.get) else df
   }
 }
 
