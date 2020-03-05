@@ -44,12 +44,12 @@ abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
 object FrequencyBasedAnalyzer {
 
   /** Compute the frequencies of groups in the data, essentially via a query like
-   *
-   * SELECT colA, colB, ..., COUNT(*)
-   * FROM DATA
-   * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
-   * GROUP BY colA, colB, ...
-   */
+    *
+    * SELECT colA, colB, ..., COUNT(*)
+    * FROM DATA
+    * WHERE colA IS NOT NULL OR colB IS NOT NULL OR ...
+    * GROUP BY colA, colB, ...
+    */
   def computeFrequencies(
     data: DataFrame,
     groupingColumns: Seq[String],
