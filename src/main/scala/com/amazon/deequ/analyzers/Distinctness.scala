@@ -41,8 +41,4 @@ object Distinctness {
   def apply(column: String): Distinctness = {
     new Distinctness(column :: Nil)
   }
-
-  def apply(column: String, where: Option[String]): Distinctness = {
-    new Distinctness(column :: Nil, where)
-  }
 }

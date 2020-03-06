@@ -135,8 +135,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
       val check = Check(CheckLevel.Error, "distinctness-check")
         .hasDistinctness(Seq("att1"), _ == 3.0 / 5)
-        .hasDistinctness(Seq("att1", "att2"), _ == 4.0 / 6)
         .hasDistinctness(Seq("att1"), _ == 2.0 / 3).where("att2 is not null")
+        .hasDistinctness(Seq("att1", "att2"), _ == 4.0 / 6)
         .hasDistinctness(Seq("att2"), _ == 1.0)
 
       val context = runChecks(getDfWithDistinctValues(sparkSession), check)
