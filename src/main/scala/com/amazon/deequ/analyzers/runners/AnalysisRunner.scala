@@ -174,12 +174,13 @@ object AnalysisRunner {
     /* Run grouping analyzers based on the columns which they need to group on */
     groupingAnalyzers
       .map { _.asInstanceOf[GroupingAnalyzer[State[_], Metric[_]]] }
-      .groupBy { _.groupingColumns().sorted }
-      .foreach { case (groupingColumns, analyzersForGrouping) =>
+      .groupBy { a => (a.groupingColumns().sorted, getFilterCondition(a)) }
+      .foreach { case ((groupingColumns, filterCondition), analyzersForGrouping) =>
 
         val (numRows, metrics) =
-          runGroupingAnalyzers(data, groupingColumns, analyzersForGrouping, aggregateWith,
-            saveStatesWith, storageLevelOfGroupedDataForMultiplePasses, numRowsOfData)
+          runGroupingAnalyzers(data, groupingColumns, filterCondition, analyzersForGrouping,
+            aggregateWith, saveStatesWith, storageLevelOfGroupedDataForMultiplePasses,
+            numRowsOfData)
 
         groupedMetrics = groupedMetrics ++ metrics
 
@@ -200,6 +201,13 @@ object AnalysisRunner {
     saveJsonOutputsToFilesystemIfNecessary(fileOutputOptions, resultingAnalyzerContext)
 
     resultingAnalyzerContext
+  }
+
+  private[this] def getFilterCondition(analyzer: Analyzer[State[_], Metric[_]]): Option[String] = {
+    analyzer match {
+      case a : FilterableAnalyzer => a.filterCondition
+      case _ => None
+    }
   }
 
   private[this] def saveOrAppendResultsIfNecessary(
@@ -259,6 +267,7 @@ object AnalysisRunner {
   private[this] def runGroupingAnalyzers(
       data: DataFrame,
       groupingColumns: Seq[String],
+      filterCondition: Option[String],
       analyzers: Seq[GroupingAnalyzer[State[_], Metric[_]]],
       aggregateWith: Option[StateLoader],
       saveStatesTo: Option[StatePersister],
@@ -267,7 +276,8 @@ object AnalysisRunner {
     : (Long, AnalyzerContext) = {
 
     /* Compute the frequencies of the request groups once */
-    var frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns)
+    var frequenciesAndNumRows = FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns,
+      filterCondition)
 
     /* Pick one analyzer to store the state for */
     val sampleAnalyzer = analyzers.head.asInstanceOf[Analyzer[FrequenciesAndNumRows, Metric[_]]]

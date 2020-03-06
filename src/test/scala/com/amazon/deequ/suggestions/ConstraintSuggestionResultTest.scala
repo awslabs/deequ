@@ -264,7 +264,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "code_for_constraint": ".isNonNegative(\"item\")"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "'item' is unique",
@@ -351,7 +351,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "\u0027item\u0027 is unique",
@@ -438,7 +438,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item)))",
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "\u0027item\u0027 is unique",
