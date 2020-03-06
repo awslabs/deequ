@@ -219,15 +219,17 @@ object Constraint {
     * @param columns   Columns to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
     */
   def distinctnessConstraint(
       columns: Seq[String],
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val distinctness = Distinctness(columns)
+    val distinctness = Distinctness(columns, where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       distinctness, assertion, hint = hint)

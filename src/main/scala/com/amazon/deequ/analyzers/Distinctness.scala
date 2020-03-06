@@ -26,16 +26,23 @@ import org.apache.spark.sql.Column
   *
   * @param columns  the column(s) for which to compute distinctness
   */
-case class Distinctness(columns: Seq[String])
-  extends ScanShareableFrequencyBasedAnalyzer("Distinctness", columns) {
+case class Distinctness(columns: Seq[String], where: Option[String] = None)
+  extends ScanShareableFrequencyBasedAnalyzer("Distinctness", columns)
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
     (sum(col(COUNT_COL).geq(1).cast(DoubleType)) / numRows) :: Nil
   }
+
+  override def filterCondition: Option[String] = where
 }
 
 object Distinctness {
   def apply(column: String): Distinctness = {
     new Distinctness(column :: Nil)
+  }
+
+  def apply(column: String, where: Option[String]): Uniqueness = {
+    new Uniqueness(column :: Nil, where)
   }
 }
