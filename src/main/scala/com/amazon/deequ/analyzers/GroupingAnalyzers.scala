@@ -81,8 +81,12 @@ object FrequencyBasedAnalyzer {
     FrequenciesAndNumRows(frequencies, numRows)
   }
 
-  private def filterOptional(where: Option[String])(df: DataFrame) : DataFrame = {
-    if (where.isDefined) df.filter(where.get) else df
+  private def filterOptional(where: Option[String])(data: DataFrame) : DataFrame = {
+    if (where.isDefined) {
+      data.filter(where.get)
+    } else {
+      data
+    }
   }
 }
 
