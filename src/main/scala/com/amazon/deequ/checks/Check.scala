@@ -168,8 +168,9 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isUnique(column: String, hint: Option[String] = None): Check = {
-    addConstraint(uniquenessConstraint(Seq(column), Check.IsOne, hint))
+  def isUnique(column: String, hint: Option[String] = None): CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter =>
+      uniquenessConstraint(Seq(column), Check.IsOne, filter, hint) }
   }
 
   /**
@@ -180,8 +181,9 @@ case class Check(
     * @param column Columns to run the assertion on
     * @return
     */
-  def isPrimaryKey(column: String, columns: String*): Check = {
-    addConstraint(uniquenessConstraint(column :: columns.toList, Check.IsOne))
+  def isPrimaryKey(column: String, columns: String*): CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter =>
+      uniquenessConstraint(column :: columns.toList, Check.IsOne, filter) }
   }
 
   /**
@@ -193,8 +195,10 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isPrimaryKey(column: String, hint: Option[String], columns: String*): Check = {
-    addConstraint(uniquenessConstraint(column :: columns.toList, Check.IsOne, hint))
+  def isPrimaryKey(column: String, hint: Option[String], columns: String*)
+    : CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter =>
+      uniquenessConstraint(column :: columns.toList, Check.IsOne, filter, hint) }
   }
 
   /**
@@ -205,8 +209,9 @@ case class Check(
     *                  Refers to the fraction of unique values
     * @return
     */
-  def hasUniqueness(columns: Seq[String], assertion: Double => Boolean): Check = {
-    addConstraint(uniquenessConstraint(columns, assertion))
+  def hasUniqueness(columns: Seq[String], assertion: Double => Boolean)
+    : CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter => uniquenessConstraint(columns, assertion, filter) }
   }
 
   /**
@@ -222,9 +227,9 @@ case class Check(
       columns: Seq[String],
       assertion: Double => Boolean,
       hint: Option[String])
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(uniquenessConstraint(columns, assertion, hint))
+    addFilterableConstraint { filter => uniquenessConstraint(columns, assertion, filter, hint) }
   }
 
   /**
@@ -235,7 +240,8 @@ case class Check(
     *                  Refers to the fraction of unique values.
     * @return
     */
-  def hasUniqueness(column: String, assertion: Double => Boolean): Check = {
+  def hasUniqueness(column: String, assertion: Double => Boolean)
+    : CheckWithLastConstraintFilterable = {
     hasUniqueness(Seq(column), assertion)
   }
 
@@ -248,7 +254,8 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def hasUniqueness(column: String, assertion: Double => Boolean, hint: Option[String]): Check = {
+  def hasUniqueness(column: String, assertion: Double => Boolean, hint: Option[String])
+    : CheckWithLastConstraintFilterable = {
     hasUniqueness(Seq(column), assertion, hint)
   }
 
@@ -282,9 +289,10 @@ case class Check(
       columns: Seq[String],
       assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(uniqueValueRatioConstraint(columns, assertion, hint))
+    addFilterableConstraint { filter =>
+      uniqueValueRatioConstraint(columns, assertion, filter, hint) }
   }
 
   /**
@@ -446,9 +454,10 @@ case class Check(
       quantile: Double,
       assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(approxQuantileConstraint(column, quantile, assertion, hint))
+    addFilterableConstraint( filter =>
+      approxQuantileConstraint(column, quantile, assertion, filter, hint))
   }
 
   /**

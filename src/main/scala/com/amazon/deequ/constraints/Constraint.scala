@@ -195,15 +195,17 @@ object Constraint {
     * @param columns   Columns to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
     */
   def uniquenessConstraint(
       columns: Seq[String],
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val uniqueness = Uniqueness(columns)
+    val uniqueness = Uniqueness(columns, where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueness, assertion, hint = hint)
@@ -239,15 +241,17 @@ object Constraint {
     * @param columns   Columns to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
     */
   def uniqueValueRatioConstraint(
       columns: Seq[String],
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val uniqueValueRatio = UniqueValueRatio(columns)
+    val uniqueValueRatio = UniqueValueRatio(columns, where)
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueValueRatio, assertion, hint = hint)
 
@@ -362,16 +366,18 @@ object Constraint {
     * @param quantile Which quantile to assert on
     * @param assertion Function that receives a double input parameter (the computed quantile)
     *                  and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def approxQuantileConstraint(
       column: String,
       quantile: Double,
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val approxQuantile = ApproxQuantile(column, quantile)
+    val approxQuantile = ApproxQuantile(column, quantile, where = where)
 
     val constraint = AnalysisBasedConstraint[ApproxQuantileState, Double, Double](
       approxQuantile, assertion, hint = hint)
