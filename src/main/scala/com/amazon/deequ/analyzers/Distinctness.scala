@@ -42,7 +42,7 @@ object Distinctness {
     new Distinctness(column :: Nil)
   }
 
-  def apply(column: String, where: Option[String]): Uniqueness = {
-    new Uniqueness(column :: Nil, where)
+  def apply(column: String, where: Option[String]): Distinctness = {
+    new Distinctness(column :: Nil, where)
   }
 }
