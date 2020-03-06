@@ -38,4 +38,8 @@ object Uniqueness {
   def apply(column: String): Uniqueness = {
     new Uniqueness(column :: Nil)
   }
+
+  def apply(column: String, where: Option[String]): Uniqueness = {
+    new Uniqueness(column :: Nil, where)
+  }
 }

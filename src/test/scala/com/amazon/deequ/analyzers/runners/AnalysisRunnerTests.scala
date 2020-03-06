@@ -117,6 +117,76 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         assert(separateResults == runnerResults)
       }
 
+    "join column grouping analyzers for column analyzers with the same filter condition" in
+      withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
+
+        val df = getDfWithNumericValues(sparkSession)
+
+        val analyzers = Uniqueness("att1", Some("att3 > 0")) ::
+          UniqueValueRatio(Seq("att1"), Some("att3 > 0")) :: Nil
+
+        val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
+          val results = analyzers.map { _.calculate(df) }.toSet
+          (results, stat.jobCount)
+        }
+
+        val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
+          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          (results, stat.jobCount)
+        }
+
+        assert(numSeparateJobs == analyzers.length * 2)
+        assert(numCombinedJobs == 2)
+        assert(separateResults == runnerResults)
+      }
+
+    "join column grouping analyzers for multi column analyzers with the same filter condition" in
+      withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
+
+        val df = getDfWithNumericValues(sparkSession)
+
+        val analyzers = Uniqueness(Seq("att1", "att2"), Some("att3 > 0")) ::
+          UniqueValueRatio(Seq("att1", "att2"), Some("att3 > 0")) :: Nil
+
+        val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
+          val results = analyzers.map { _.calculate(df) }.toSet
+          (results, stat.jobCount)
+        }
+
+        val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
+          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          (results, stat.jobCount)
+        }
+
+        assert(numSeparateJobs == analyzers.length * 2)
+        assert(numCombinedJobs == 2)
+        assert(separateResults == runnerResults)
+      }
+
+    "does not join column grouping analyzers for column analyzers with different " +
+      "filter condition" in withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
+
+        val df = getDfWithNumericValues(sparkSession)
+
+        val analyzers = Uniqueness("att1", Some("att3 > 0")) ::
+          Uniqueness("att1", Some("att3 = 0")) ::
+          UniqueValueRatio(Seq("att1")) :: Nil
+
+        val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
+          val results = analyzers.map { _.calculate(df) }.toSet
+          (results, stat.jobCount)
+        }
+
+        val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
+          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          (results, stat.jobCount)
+        }
+
+        assert(numSeparateJobs == analyzers.length * 2)
+        assert(numCombinedJobs == analyzers.length * 2)
+        assert(separateResults == runnerResults)
+      }
+
     "reuse existing results" in
       withMonitorableSparkSession { (sparkSession, sparkMonitor) =>
 

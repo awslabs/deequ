@@ -44,4 +44,8 @@ object UniqueValueRatio {
   def apply(column: String): UniqueValueRatio = {
     new UniqueValueRatio(column :: Nil)
   }
+
+  def apply(column: String, where: Option[String]): UniqueValueRatio = {
+    new UniqueValueRatio(column :: Nil, where)
+  }
 }
