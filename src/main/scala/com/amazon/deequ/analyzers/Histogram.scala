@@ -41,8 +41,9 @@ import scala.util.{Failure, Try}
 case class Histogram(
     column: String,
     binningUdf: Option[UserDefinedFunction] = None,
-    maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins)
-  extends Analyzer[FrequenciesAndNumRows, HistogramMetric] {
+    maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
+    where: Option[String] = None)
+  extends Analyzer[FrequenciesAndNumRows, HistogramMetric] with FilterableAnalyzer {
 
   private[this] val PARAM_CHECK: StructType => Unit = { _ =>
     if (maxDetailBins > Histogram.MaximumAllowedDetailBins) {
@@ -56,15 +57,14 @@ case class Histogram(
     // TODO figure out a way to pass this in if its known before hand
     val totalCount = data.count()
 
-    val frequencies = (binningUdf match {
-      case Some(bin) => data.withColumn(column, bin(col(column)))
-      case _ => data
-    })
-    .select(col(column).cast(StringType))
-    .na.fill(Histogram.NullFieldReplacement)
-    .groupBy(column)
-    .count()
-    .withColumnRenamed("count", Analyzers.COUNT_COL)
+    val frequencies = data
+      .transform(filterOptional(where))
+      .transform(binOptional(binningUdf))
+      .select(col(column).cast(StringType))
+      .na.fill(Histogram.NullFieldReplacement)
+      .groupBy(column)
+      .count()
+      .withColumnRenamed("count", Analyzers.COUNT_COL)
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))
   }
@@ -102,6 +102,22 @@ case class Histogram(
 
   override def preconditions: Seq[StructType => Unit] = {
     PARAM_CHECK :: Preconditions.hasColumn(column) :: Nil
+  }
+
+  override def filterCondition: Option[String] = where
+
+  private def filterOptional(where: Option[String])(data: DataFrame): DataFrame = {
+    where match {
+      case Some(condition) => data.filter(condition)
+      case _ => data
+    }
+  }
+
+  private def binOptional(binningUdf: Option[UserDefinedFunction])(data: DataFrame): DataFrame = {
+    binningUdf match {
+      case Some(bin) => data.withColumn(column, bin(col(column)))
+      case _ => data
+    }
   }
 }
 
