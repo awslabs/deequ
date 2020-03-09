@@ -416,9 +416,9 @@ case class Check(
       column: String,
       assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(entropyConstraint(column, assertion, hint))
+    addFilterableConstraint { filter => entropyConstraint(column, assertion, filter, hint) }
   }
 
   /**
