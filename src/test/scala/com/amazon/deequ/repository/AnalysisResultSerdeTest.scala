@@ -222,6 +222,8 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
 
       val expected =
         """[{"dataset_date":1507975810,"entity":"Column","region":"EU",
+          |"instance":"item","name":"Distinctness","value":1.0},
+          |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att2","name":"Completeness","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att1","name":"Completeness","value":1.0},
@@ -229,16 +231,14 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
           |"instance":"att1","name":"MinLength","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att1","name":"MaxLength","value":1.0},
-          |{"dataset_date":1507975810,"entity":"Column","region":"EU",
-          |"instance":"item","name":"Distinctness","value":1.0},
           |{"dataset_date":1507975810,"entity":"Dataset","region":"EU",
           |"instance":"*","name":"Size","value":4.0},
-          |{"dataset_date":1507975810,"entity":"Column","region":"EU",
-          |"instance":"att1","name":"Distinctness","value":0.5},
           |{"dataset_date":1507975810,"entity":"Mutlicolumn","region":"EU",
           |"instance":"att1,att2","name":"MutualInformation","value":0.5623351446188083},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att1","name":"Uniqueness","value":0.25},
+          |{"dataset_date":1507975810,"entity":"Column","region":"EU",
+          |"instance":"att1","name":"Distinctness","value":0.5},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att2","name":"Uniqueness","value":0.25}]"""
             .stripMargin.replaceAll("\n", "")
