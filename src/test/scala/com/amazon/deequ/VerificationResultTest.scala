@@ -127,7 +127,8 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
             "Value: 4 does not meet the constraint requirement! Should be greater than 5!"),
           ("group-2-E", "Error", "Error", "CompletenessConstraint(Completeness(att1,None))",
             "Success", ""),
-          ("group-2-W", "Warning", "Warning", "DistinctnessConstraint(Distinctness(List(item)))",
+          ("group-2-W", "Warning", "Warning",
+            "DistinctnessConstraint(Distinctness(List(item),None))",
             "Failure", "Value: 1.0 does not meet the constraint requirement! " +
             "Should be smaller than 0.8!")
         )
@@ -160,9 +161,10 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
               |"constraint_status":"Success","constraint_message":""},
               |
               |{"check":"group-2-W","check_level":"Warning","check_status":"Warning",
-              |"constraint":"DistinctnessConstraint(Distinctness(List(item)))","constraint_status":
-              |"Failure","constraint_message":"Value: 1.0 does not meet the constraint
-              | requirement! Should be smaller than 0.8!"}]"""
+              |"constraint":"DistinctnessConstraint(Distinctness(List(item),None))",
+              |"constraint_status":"Failure",
+              |"constraint_message":"Value: 1.0 does not meet the constraint requirement!
+              | Should be smaller than 0.8!"}]"""
               .stripMargin.replaceAll("\n", "")
 
           assertSameResultsJson(checkResultsAsJson, expectedJson)

@@ -271,9 +271,9 @@ case class Check(
   def hasDistinctness(
       columns: Seq[String], assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(distinctnessConstraint(columns, assertion, hint))
+    addFilterableConstraint { filter => distinctnessConstraint(columns, assertion, filter, hint) }
   }
 
   /**
