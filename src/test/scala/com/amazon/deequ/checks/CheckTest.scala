@@ -490,12 +490,16 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         .hasEntropy("att1", _ == expectedValue)
 
       val check2 = Check(CheckLevel.Error, "group-1")
+        .hasEntropy("att1", _ == 0).where("att2 = 'c'")
+
+      val check3 = Check(CheckLevel.Error, "group-1")
         .hasEntropy("att1", _ != expectedValue)
 
-      val context = runChecks(getDfFull(sparkSession), check1, check2)
+      val context = runChecks(getDfFull(sparkSession), check1, check2, check3)
 
       assertEvaluatesTo(check1, context, CheckStatus.Success)
-      assertEvaluatesTo(check2, context, CheckStatus.Error)
+      assertEvaluatesTo(check2, context, CheckStatus.Success)
+      assertEvaluatesTo(check3, context, CheckStatus.Error)
     }
 
     "yield correct results for basic stats" in withSparkSession { sparkSession =>
