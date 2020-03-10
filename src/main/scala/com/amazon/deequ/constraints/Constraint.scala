@@ -321,15 +321,17 @@ object Constraint {
     * @param column    Column to run the assertion on
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def entropyConstraint(
       column: String,
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val entropy = Entropy(column)
+    val entropy = Entropy(column, where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       entropy, assertion, hint = hint)
