@@ -598,6 +598,7 @@ object Constraint {
     * @param column Column to compute the data type distribution for.
     * @param dataType The data type that should be checked in the assertion.
     * @param assertion Function from the ratio of the data type in the specified column to boolean.
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
@@ -605,6 +606,7 @@ object Constraint {
       column: String,
       dataType: ConstrainableDataTypes.Value,
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
@@ -622,8 +624,8 @@ object Constraint {
       }
     }
 
-    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column), assertion,
-      Some(valuePicker), hint)
+    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column, where),
+      assertion, Some(valuePicker), hint)
   }
 
   /**

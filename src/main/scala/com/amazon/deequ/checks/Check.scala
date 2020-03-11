@@ -752,9 +752,10 @@ case class Check(
       dataType: ConstrainableDataTypes.Value,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(Constraint.dataTypeConstraint(column, dataType, assertion, hint))
+    addFilterableConstraint { filter =>
+      Constraint.dataTypeConstraint(column, dataType, assertion, filter, hint) }
   }
 
   /**
