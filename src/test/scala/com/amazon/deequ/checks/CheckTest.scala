@@ -714,12 +714,21 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
     }
 
     "define has data type" in withSparkSession { sparkSession =>
-      val col = "some"
-      val df = dataFrameWithColumn(col, StringType, sparkSession, Row("2"), Row("1.0"))
+      import sparkSession.implicits._
+      val df = Seq(
+        ("2", "integral"),
+        ("1.0", "fractional")
+      ).toDF("value", "type")
+
       val check = Check(CheckLevel.Error, "some description")
-        .hasDataType(col, ConstrainableDataTypes.Integral, _ == 0.5)
-      val context = runChecks(df, check)
+        .hasDataType("value", ConstrainableDataTypes.Integral, _ == 0.5)
+      val checkWithFilter = Check(CheckLevel.Error, "some description")
+        .hasDataType("value", ConstrainableDataTypes.Integral, _ == 1.0).where("type = 'integral'")
+
+      val context = runChecks(df, check, checkWithFilter)
+
       assertEvaluatesTo(check, context, CheckStatus.Success)
+      assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
     }
 
     "find credit card numbers embedded in text" in withSparkSession { sparkSession =>
