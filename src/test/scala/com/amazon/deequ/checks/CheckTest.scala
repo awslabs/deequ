@@ -502,6 +502,20 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertEvaluatesTo(check3, context, CheckStatus.Error)
     }
 
+    "return the correct check status for mutual information constraints" in
+      withSparkSession { sparkSession =>
+
+        val check = Check(CheckLevel.Error, "check")
+          .hasMutualInformation("att1", "att2", _ === 0.5623 +- 0.0001)
+        val checkWithFilter = Check(CheckLevel.Error, "check")
+          .hasMutualInformation("att1", "att2", _ == 0).where("att2 = 'c'")
+
+        val context = runChecks(getDfFull(sparkSession), check, checkWithFilter)
+
+        assertEvaluatesTo(check, context, CheckStatus.Success)
+        assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
+      }
+
     "yield correct results for basic stats" in withSparkSession { sparkSession =>
       val baseCheck = Check(CheckLevel.Error, description = "a description")
       val dfNumeric = getDfWithNumericValues(sparkSession)

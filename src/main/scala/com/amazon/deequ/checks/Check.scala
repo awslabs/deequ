@@ -435,9 +435,10 @@ case class Check(
       columnB: String,
       assertion: Double => Boolean,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(mutualInformationConstraint(columnA, columnB, assertion, hint))
+    addFilterableConstraint { filter =>
+      mutualInformationConstraint(columnA, columnB, assertion, filter, hint) }
   }
 
   /**
