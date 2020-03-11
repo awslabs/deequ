@@ -43,7 +43,8 @@ case class Histogram(
     binningUdf: Option[UserDefinedFunction] = None,
     maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
     where: Option[String] = None)
-  extends Analyzer[FrequenciesAndNumRows, HistogramMetric] with FilterableAnalyzer {
+  extends Analyzer[FrequenciesAndNumRows, HistogramMetric]
+  with FilterableAnalyzer {
 
   private[this] val PARAM_CHECK: StructType => Unit = { _ =>
     if (maxDetailBins > Histogram.MaximumAllowedDetailBins) {
