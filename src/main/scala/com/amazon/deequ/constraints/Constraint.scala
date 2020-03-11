@@ -346,16 +346,18 @@ object Constraint {
     * @param columnB   The other column that mutual information will be calculated upon
     * @param assertion Function that receives a double input parameter
     *                  (since the metric is double metric) and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def mutualInformationConstraint(
       columnA: String,
       columnB: String,
       assertion: Double => Boolean,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val mutualInformation = MutualInformation(Seq(columnA, columnB))
+    val mutualInformation = MutualInformation(Seq(columnA, columnB), where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       mutualInformation, assertion, hint = hint)

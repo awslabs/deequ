@@ -32,8 +32,9 @@ import com.amazon.deequ.analyzers.runners.MetricCalculationException
   * another and vice versa, then all information of the two columns are shared, and mutual
   * information is the entropy of each column.
   */
-case class MutualInformation(columns: Seq[String])
-  extends FrequencyBasedAnalyzer(columns) {
+case class MutualInformation(columns: Seq[String], where: Option[String] = None)
+  extends FrequencyBasedAnalyzer(columns)
+    with FilterableAnalyzer {
 
   override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): DoubleMetric = {
 
@@ -94,6 +95,8 @@ case class MutualInformation(columns: Seq[String])
   override def toFailureMetric(exception: Exception): DoubleMetric = {
     metricFromFailure(exception, "MutualInformation", columns.mkString(","), Entity.Mutlicolumn)
   }
+
+  override def filterCondition: Option[String] = where
 }
 
 object MutualInformation {
