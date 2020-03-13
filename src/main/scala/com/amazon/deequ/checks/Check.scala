@@ -312,9 +312,10 @@ case class Check(
       binningUdf: Option[UserDefinedFunction] = None,
       maxBins: Integer = Histogram.MaximumAllowedDetailBins,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(histogramBinConstraint(column, assertion, binningUdf, maxBins, hint))
+    addFilterableConstraint { filter =>
+      histogramBinConstraint(column, assertion, binningUdf, maxBins, filter, hint) }
   }
 
   /**
@@ -338,9 +339,10 @@ case class Check(
       binningUdf: Option[UserDefinedFunction] = None,
       maxBins: Integer = Histogram.MaximumAllowedDetailBins,
       hint: Option[String] = None)
-    : Check = {
+    : CheckWithLastConstraintFilterable = {
 
-    addConstraint(histogramConstraint(column, assertion, binningUdf, maxBins, hint))
+    addFilterableConstraint { filter =>
+      histogramConstraint(column, assertion, binningUdf, maxBins, filter, hint) }
   }
 
   /**

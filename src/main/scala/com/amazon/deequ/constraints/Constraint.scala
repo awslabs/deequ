@@ -102,6 +102,7 @@ object Constraint {
     *                   E.g "_.ratios("a") <= 0.7)"
     * @param binningUdf Optional binning function to bin the values
     * @param maxBins    Optional maximum bin count to limit the number of metrics created
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
     */
   def histogramConstraint(
@@ -109,10 +110,11 @@ object Constraint {
       assertion: Distribution => Boolean,
       binningUdf: Option[UserDefinedFunction] = None,
       maxBins: Integer = Histogram.MaximumAllowedDetailBins,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val histogram = Histogram(column, binningUdf, maxBins)
+    val histogram = Histogram(column, binningUdf, maxBins, where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Distribution](
       histogram, assertion, hint = hint)
@@ -128,6 +130,7 @@ object Constraint {
     * @param assertion  Function that receives a long input parameter and returns a boolean
     * @param binningUdf Optional binning function to bin the values
     * @param maxBins    Optional maximum bin count to limit the number of metrics created
+    * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
     */
   def histogramBinConstraint(
@@ -135,10 +138,11 @@ object Constraint {
       assertion: Long => Boolean,
       binningUdf: Option[UserDefinedFunction] = None,
       maxBins: Integer = Histogram.MaximumAllowedDetailBins,
+      where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val histogram = Histogram(column, binningUdf, maxBins)
+    val histogram = Histogram(column, binningUdf, maxBins, where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Long](
       histogram, assertion, Some(_.numberOfBins), hint)

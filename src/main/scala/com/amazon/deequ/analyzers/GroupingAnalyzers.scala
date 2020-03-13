@@ -82,10 +82,9 @@ object FrequencyBasedAnalyzer {
   }
 
   private def filterOptional(where: Option[String])(data: DataFrame) : DataFrame = {
-    if (where.isDefined) {
-      data.filter(where.get)
-    } else {
-      data
+    where match {
+      case Some(condition) => data.filter(condition)
+      case _ => data
     }
   }
 }
