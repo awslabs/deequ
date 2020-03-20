@@ -163,8 +163,8 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         assertProfilesEqual(expectedColumnProfile,
           actualColumnProfile.asInstanceOf[NumericColumnProfile])
     }
-    "return correct NumericColumnProfiles for numeric String DataType columns when kllProfiling disabled" in
-      withSparkSession { session =>
+    "return correct NumericColumnProfiles for numeric String DataType columns when " +
+      "kllProfiling disabled" in withSparkSession { session =>
 
         val data = getDfCompleteAndInCompleteColumns(session)
 
@@ -203,8 +203,8 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           actualColumnProfile.asInstanceOf[NumericColumnProfile])
       }
 
-    "return correct NumericColumnProfiles for numeric String DataType columns when kllProfiling enabled" in
-      withSparkSession { session =>
+    "return correct NumericColumnProfiles for numeric String DataType columns when " +
+      " kllProfiling enabled" in withSparkSession { session =>
 
         val data = getDfCompleteAndInCompleteColumns(session)
 
