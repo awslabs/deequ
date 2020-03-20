@@ -163,6 +163,45 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         assertProfilesEqual(expectedColumnProfile,
           actualColumnProfile.asInstanceOf[NumericColumnProfile])
     }
+    "return correct NumericColumnProfiles for numeric String DataType columns when kllProfiling disabled" in
+      withSparkSession { session =>
+
+        val data = getDfCompleteAndInCompleteColumns(session)
+
+        val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("item")), false, 1)
+          .profiles("item")
+
+        val expectedColumnProfile = NumericColumnProfile(
+          "item",
+          1.0,
+          6,
+          DataTypeInstances.Integral,
+          true,
+          Map(
+            "Boolean" -> 0,
+            "Fractional" -> 0,
+            "Integral" -> 6,
+            "Unknown" -> 0,
+            "String" -> 0
+          ),
+          None,
+          None,
+          Some(3.5),
+          Some(6.0),
+          Some(1.0),
+          Some(21.0),
+          Some(1.707825127659933),
+          Some(Seq(1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
+            3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+            4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
+            5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 6.0, 6.0, 6.0, 6.0, 6.0,
+            6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0)))
+
+        assertProfilesEqual(expectedColumnProfile,
+          actualColumnProfile.asInstanceOf[NumericColumnProfile])
+      }
 
     "return correct NumericColumnProfiles for numeric String DataType columns when kllProfiling enabled" in
       withSparkSession { session =>

@@ -113,7 +113,7 @@ class ColumnProfilerRunBuilder(val data: DataFrame) {
   /**
    * Enable KLL Sketches profiling on Numerical columns, disabled by default.
    */
-  def enableKLLProfiling(): this.type = {
+  def withKLLProfiling(): this.type = {
     this.kllProfiling = true
     this
   }
