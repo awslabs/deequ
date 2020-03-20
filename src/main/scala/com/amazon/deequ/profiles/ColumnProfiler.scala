@@ -98,6 +98,7 @@ object ColumnProfiler {
       reuseExistingResultsUsingKey: Option[ResultKey] = None,
       failIfResultsForReusingMissing: Boolean = false,
       saveInMetricsRepositoryUsingKey: Option[ResultKey] = None,
+      kllProfiling: Boolean = false,
       kllParameters: Option[KLLParameters] = None,
       predefinedTypes: Map[String, DataTypeInstances.Value] = Map.empty)
     : ColumnProfiles = {
@@ -155,7 +156,7 @@ object ColumnProfiler {
 
     // We compute mean, stddev, min, max for all numeric columns
     val analyzersForSecondPass = getAnalyzersForSecondPass(relevantColumns,
-      genericStatistics, kllParameters)
+      genericStatistics, kllProfiling, kllParameters)
 
     var analysisRunnerSecondPass = AnalysisRunner
       .onData(castedDataForSecondPass)
@@ -240,15 +241,30 @@ object ColumnProfiler {
    private[this] def getAnalyzersForSecondPass(
       relevantColumnNames: Seq[String],
       genericStatistics: GenericColumnStatistics,
+      kllProfiling: Boolean,
       kllParameters: Option[KLLParameters] = None)
     : Seq[Analyzer[_, Metric[_]]] = {
       relevantColumnNames
         .filter { name => Set(Integral, Fractional).contains(genericStatistics.typeOf(name)) }
-        .flatMap { name =>
-          Seq(Minimum(name), Maximum(name), Mean(name), StandardDeviation(name),
-            Sum(name), KLLSketch(name, kllParameters = kllParameters))
-        }
+        .flatMap { name => getNumericColAnalyzers(name, kllProfiling, kllParameters) }
     }
+
+  private[this] def getNumericColAnalyzers(
+      column: String,
+      kllProfiling: Boolean,
+      kllParameters: Option[KLLParameters])
+    : Seq[Analyzer[_, Metric[_]]] = {
+      val mandatoryAnalyzers = Seq(Minimum(column), Maximum(column), Mean(column),
+        StandardDeviation(column), Sum(column))
+
+      val optionalAnalyzers = if (kllProfiling) {
+        Seq(KLLSketch(column, kllParameters))
+      } else {
+        Seq.empty
+      }
+
+      mandatoryAnalyzers ++ optionalAnalyzers
+  }
 
   private[this] def setMetricsRepositoryConfigurationIfNecessary(
       analysisRunBuilder: AnalysisRunBuilder,

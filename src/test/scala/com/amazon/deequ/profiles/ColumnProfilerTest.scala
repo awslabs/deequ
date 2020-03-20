@@ -19,7 +19,7 @@ package com.amazon.deequ.profiles
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.DataTypeInstances
 import com.amazon.deequ.analyzers.Histogram.NullFieldReplacement
-import com.amazon.deequ.metrics.{Distribution, DistributionValue}
+import com.amazon.deequ.metrics.{BucketDistribution, BucketValue, Distribution, DistributionValue}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
@@ -38,6 +38,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
     assert(expected.isDataTypeInferred == expected.isDataTypeInferred)
     assert(expected.typeCounts == actual.typeCounts)
     assert(expected.histogram == actual.histogram)
+    assert(expected.kll == actual.kll)
     assert(expected.mean == actual.mean)
     assert(expected.maximum == actual.maximum)
     assert(expected.minimum == actual.minimum)
@@ -162,6 +163,82 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         assertProfilesEqual(expectedColumnProfile,
           actualColumnProfile.asInstanceOf[NumericColumnProfile])
     }
+
+    "return correct NumericColumnProfiles for numeric String DataType columns when kllProfiling enabled" in
+      withSparkSession { session =>
+
+        val data = getDfCompleteAndInCompleteColumns(session)
+
+        val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("item")), false, 1, kllProfiling = true)
+          .profiles("item")
+
+        val expectedColumnProfile = NumericColumnProfile(
+          "item",
+          1.0,
+          6,
+          DataTypeInstances.Integral,
+          true,
+          Map(
+            "Boolean" -> 0,
+            "Fractional" -> 0,
+            "Integral" -> 6,
+            "Unknown" -> 0,
+            "String" -> 0
+          ),
+          None,
+          Some(BucketDistribution(
+            List(BucketValue(1.0,1.05,1), BucketValue(1.05,1.1,0), BucketValue(1.1,1.15,0),
+              BucketValue (1.15,1.2,0), BucketValue(1.2,1.25,0), BucketValue(1.25,1.3,0),
+              BucketValue(1.3,1.35,0), BucketValue(1.35,1.4,0), BucketValue(1.4,1.45,0),
+              BucketValue(1.45,1.5,0), BucketValue(1.5,1.55,0), BucketValue(1.55,1.6,0),
+              BucketValue(1.6,1.65,0), BucketValue(1.65,1.7,0), BucketValue(1.7,1.75,0),
+              BucketValue(1.75,1.8,0), BucketValue(1.8,1.85,0), BucketValue(1.85,1.9,0),
+              BucketValue(1.9,1.95,0), BucketValue(1.95,2.0,0), BucketValue(2.0,2.05,1),
+              BucketValue(2.05,2.1,0), BucketValue(2.1,2.15,0), BucketValue(2.15,2.2,0),
+              BucketValue(2.2,2.25,0), BucketValue(2.25,2.3,0), BucketValue(2.3,2.35,0),
+              BucketValue(2.35,2.4,0), BucketValue(2.4,2.45,0), BucketValue(2.45,2.5,0),
+              BucketValue(2.5,2.55,0), BucketValue(2.55,2.6,0), BucketValue(2.6,2.65,0),
+              BucketValue(2.65,2.7,0), BucketValue(2.7,2.75,0), BucketValue(2.75,2.8,0),
+              BucketValue(2.8,2.85,0), BucketValue(2.85,2.9,0), BucketValue(2.9,2.95,0),
+              BucketValue(2.95,3.0,0), BucketValue(3.0,3.05,1), BucketValue(3.05,3.1,0),
+              BucketValue(3.1,3.15,0), BucketValue(3.15,3.2,0), BucketValue(3.2,3.25,0),
+              BucketValue(3.25,3.3,0), BucketValue(3.3,3.35,0), BucketValue(3.35,3.4,0),
+              BucketValue(3.4,3.45,0), BucketValue(3.45,3.5,0), BucketValue(3.5,3.55,0),
+              BucketValue(3.55,3.6,0), BucketValue(3.6,3.65,0), BucketValue(3.65,3.7,0),
+              BucketValue(3.7,3.75,0), BucketValue(3.75,3.8,0), BucketValue(3.8,3.85,0),
+              BucketValue(3.85,3.9,0), BucketValue(3.9,3.95,0), BucketValue(3.95,4.0,0),
+              BucketValue(4.0,4.05,1), BucketValue(4.05,4.1,0), BucketValue(4.1,4.15,0),
+              BucketValue(4.15,4.2,0), BucketValue(4.2,4.25,0), BucketValue(4.25,4.3,0),
+              BucketValue(4.3,4.35,0), BucketValue(4.35,4.4,0), BucketValue(4.4,4.45,0),
+              BucketValue(4.45,4.5,0), BucketValue(4.5,4.55,0), BucketValue(4.55,4.6,0),
+              BucketValue(4.6,4.65,0), BucketValue(4.65,4.7,0), BucketValue(4.7,4.75,0),
+              BucketValue(4.75,4.8,0), BucketValue(4.8,4.85,0), BucketValue(4.85,4.9,0),
+              BucketValue(4.9,4.95,0), BucketValue(4.95,5.0,0), BucketValue(5.0,5.05,1),
+              BucketValue(5.05,5.1,0), BucketValue(5.1,5.15,0), BucketValue(5.15,5.2,0),
+              BucketValue(5.2,5.25,0), BucketValue(5.25,5.3,0), BucketValue(5.3,5.35,0),
+              BucketValue(5.35,5.4,0), BucketValue(5.4,5.45,0), BucketValue(5.45,5.5,0),
+              BucketValue(5.5,5.55,0), BucketValue(5.55,5.6,0), BucketValue(5.6,5.65,0),
+              BucketValue(5.65,5.7,0), BucketValue(5.7,5.75,0), BucketValue(5.75,5.8,0),
+              BucketValue(5.8,5.85,0), BucketValue(5.85,5.9,0), BucketValue(5.9,5.95,0),
+              BucketValue(5.95,6.0,1)),
+            List(0.64, 2048.0),
+            Array(Array(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)))),
+          Some(3.5),
+          Some(6.0),
+          Some(1.0),
+          Some(21.0),
+          Some(1.707825127659933),
+          Some(Seq(1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
+            3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+            4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
+            5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 6.0, 6.0, 6.0, 6.0, 6.0,
+            6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0)))
+
+        assertProfilesEqual(expectedColumnProfile,
+          actualColumnProfile.asInstanceOf[NumericColumnProfile])
+      }
 
     "return correct NumericColumnProfiles for numeric columns with correct DataType" in
       withSparkSession { session =>
