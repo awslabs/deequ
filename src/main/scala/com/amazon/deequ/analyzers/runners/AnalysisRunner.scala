@@ -339,7 +339,7 @@ object AnalysisRunner {
 
     /* Run non-shareable analyzers separately */
     val otherMetrics = others
-      .map { analyzer => analyzer -> analyzer.calculate(data) }
+      .map { analyzer => analyzer -> analyzer.calculate(data, aggregateWith, saveStatesTo) }
       .toMap[Analyzer[_, Metric[_]], Metric[_]]
 
     sharedResults ++ AnalyzerContext(otherMetrics)
