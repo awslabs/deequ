@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.{DataFrame, SparkSession, AnalysisException}
 import org.scalatest.{Matchers, WordSpec}
@@ -144,6 +145,23 @@ class StateProviderTest extends WordSpec with Matchers with SparkContextSpec wit
       assertCorrectlyRestoresFrequencyBasedState(provider, provider, uniquenessAtt1Analyzer, data)
       assertCorrectlyRestoresFrequencyBasedState(provider, provider, uniquenessAtt1Analyzer,
         filteredData)
+    }
+
+    "should store Histogram result to InMemoryStateProvider" in withSparkSession { session =>
+
+      val provider = InMemoryStateProvider()
+
+      val data = someData(session)
+      val histogramCountAnalyzer = Histogram("count")
+
+      val analysis = Analysis().addAnalyzer(histogramCountAnalyzer)
+
+      AnalysisRunner.run(
+        data = data,
+        analysis = analysis,
+        saveStatesWith = Some(provider))
+
+      assert(provider.load(histogramCountAnalyzer).isDefined)
     }
   }
 
