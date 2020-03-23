@@ -287,6 +287,8 @@ object Preconditions {
   private[this] val numericDataTypes =
     Set(ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
 
+  private[this] val nestedDataTypes = Set(StructType, MapType, ArrayType)
+
   /* Return the first (potential) exception thrown by a precondition */
   def findFirstFailing(
       schema: StructType,
@@ -318,6 +320,18 @@ object Preconditions {
     if (columns.size != n) {
       throw new NumberOfSpecifiedColumnsException(s"$n columns have to be specified! " +
         s"Currently, columns contains only ${columns.size} column(s): ${columns.mkString(",")}!")
+    }
+  }
+
+  def isNotNested(column: String): StructType => Unit = { schema =>
+    if (schema.fieldNames.contains(column)) {
+      val columnDataType = schema(column).dataType
+      columnDataType match {
+        case _ : StructType | _ : MapType | _ : ArrayType =>
+          throw new WrongColumnTypeException(
+            s"Unsupported nested column type of column $column: $columnDataType!")
+        case _ =>
+      }
     }
   }
 
