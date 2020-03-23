@@ -88,6 +88,7 @@ object ColumnProfiler {
    *
    * @return the profile of columns
    */
+  //scalastyle:off parameter.number
   private[deequ] def profile(
       data: DataFrame,
       restrictToColumns: Option[Seq[String]] = None,
