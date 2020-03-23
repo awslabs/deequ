@@ -60,8 +60,7 @@ class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextS
             (results, stat.jobCount)
           }
 
-        // assert(jobNumberAllCalculations == 3)
-        assert(jobNumberAllCalculations == 4)
+        assert(jobNumberAllCalculations == 3)
         assert(jobNumberReusing == 0)
         assertConstraintSuggestionResultsEquals(separateResults, resultsReusingMetrics)
       }
@@ -173,6 +172,32 @@ class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextS
           .run()
       )
     }
+
+    "should not run KLL Analyzer by default" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+
+      val results = ColumnProfilerRunner()
+        .onData(df)
+        .run()
+
+      assert(results.profiles("att1").asInstanceOf[NumericColumnProfile].kll.isEmpty)
+      assert(results.profiles("att2").asInstanceOf[NumericColumnProfile].kll.isEmpty)
+      assert(results.profiles("att3").asInstanceOf[NumericColumnProfile].kll.isEmpty)
+    }
+
+    "should run KLL Analyzer when enabled" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+
+      val results = ColumnProfilerRunner()
+        .onData(df)
+        .withKLLProfiling()
+        .run()
+
+      assert(results.profiles("att1").asInstanceOf[NumericColumnProfile].kll.isDefined)
+      assert(results.profiles("att2").asInstanceOf[NumericColumnProfile].kll.isDefined)
+      assert(results.profiles("att3").asInstanceOf[NumericColumnProfile].kll.isDefined)
+    }
+
   }
 
   private[this] def assertConstraintSuggestionResultsEquals(
