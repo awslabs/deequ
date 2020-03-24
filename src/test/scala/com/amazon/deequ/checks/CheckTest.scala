@@ -742,8 +742,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
           List(
             StructField("integerCol", IntegerType, true),
             StructField("structCol", StructType(
-              List(StructField("integerCol",IntegerType,true),
-                   StructField("stringCol",StringType,true))), true),
+              List(StructField("integerCol", IntegerType, true),
+                   StructField("stringCol", StringType, true))), true),
             StructField("mapCol", MapType(StringType, StringType, true), true),
             StructField("arrayCol", ArrayType(StringType), true),
             StructField("stringCol", StringType, true)
