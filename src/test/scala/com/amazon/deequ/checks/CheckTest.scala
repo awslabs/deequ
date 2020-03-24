@@ -30,7 +30,7 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.util.{Success, Try}
+import scala.util.Try
 
 class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
   with MockFactory {
@@ -734,6 +734,49 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
       assertEvaluatesTo(check, context, CheckStatus.Success)
       assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
+    }
+
+    "correctly evaluate hasDataType constraints on supported and unsupported column types" in
+      withSparkSession {sparkSession =>
+        val schema = StructType(
+          List(
+            StructField("integerCol", IntegerType, true),
+            StructField("structCol", StructType(
+              List(StructField("integerCol",IntegerType,true),
+                   StructField("stringCol",StringType,true))), true),
+            StructField("mapCol", MapType(StringType, StringType, true), true),
+            StructField("arrayCol", ArrayType(StringType), true),
+            StructField("stringCol", StringType, true)
+        ))
+
+        val rowData = Seq(
+          Row(1, Row(1, "a"), Map("a" -> "a"), Array("a", "a"), "a"),
+          Row(2, Row(2, "b"), Map("b" -> "b"), Array("b", "b"), "b")
+        )
+
+        val rdd = sparkSession.sparkContext.parallelize(rowData)
+        val data = sparkSession.createDataFrame(rdd, schema)
+
+        val checkIntegerCol = Check(CheckLevel.Error, "some description")
+          .hasDataType("integerCol", ConstrainableDataTypes.Integral)
+        val checkStructCol = Check(CheckLevel.Error, "some description")
+          .hasDataType("structCol", ConstrainableDataTypes.String)
+        val checkMapCol = Check(CheckLevel.Error, "some description")
+          .hasDataType("mapCol", ConstrainableDataTypes.String)
+        val checkArrayCol = Check(CheckLevel.Error, "some description")
+          .hasDataType("arrayCol", ConstrainableDataTypes.String)
+        val checkStringCol = Check(CheckLevel.Error, "some description")
+          .hasDataType("stringCol", ConstrainableDataTypes.String)
+
+
+        val context = runChecks(data, checkIntegerCol, checkStructCol, checkMapCol, checkArrayCol,
+          checkStringCol)
+
+        assertEvaluatesTo(checkIntegerCol, context, CheckStatus.Success)
+        assertEvaluatesTo(checkStringCol, context, CheckStatus.Success)
+        assertEvaluatesTo(checkStructCol, context, CheckStatus.Error)
+        assertEvaluatesTo(checkMapCol, context, CheckStatus.Error)
+        assertEvaluatesTo(checkArrayCol, context, CheckStatus.Error)
     }
 
     "find credit card numbers embedded in text" in withSparkSession { sparkSession =>

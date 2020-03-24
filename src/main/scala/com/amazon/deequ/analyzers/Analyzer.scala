@@ -286,6 +286,8 @@ object Preconditions {
 
   private[this] val numericDataTypes =
     Set(ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
+  private[this] val supportedDataTypes = Set(ByteType, ShortType, IntegerType,
+    LongType, FloatType, DoubleType, DecimalType, BooleanType, TimestampType, StringType)
 
   /* Return the first (potential) exception thrown by a precondition */
   def findFirstFailing(
@@ -354,6 +356,21 @@ object Preconditions {
     if (!hasStringType) {
       throw new WrongColumnTypeException(s"Expected type of column $column to be " +
         s"StringType, but found $columnDataType instead!")
+    }
+  }
+
+  /** Specified column has supported type */
+  def isSupportedType(column: String): StructType => Unit = { schema =>
+    val columnDataType = schema(column).dataType
+    val hasSupportedType = columnDataType match {
+      case ByteType | ShortType | IntegerType | LongType | FloatType |
+           DoubleType | _ : DecimalType | BooleanType | TimestampType | StringType => true
+      case _ => false
+    }
+
+    if (!hasSupportedType) {
+      throw new WrongColumnTypeException(s"Expected type of column $column be one of " +
+        s"${supportedDataTypes.mkString(",")}, but found $columnDataType instead!")
     }
   }
 }
