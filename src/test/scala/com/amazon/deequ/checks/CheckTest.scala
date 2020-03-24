@@ -768,7 +768,6 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
         val checkStringCol = Check(CheckLevel.Error, "some description")
           .hasDataType("stringCol", ConstrainableDataTypes.String)
 
-
         val context = runChecks(data, checkIntegerCol, checkStructCol, checkMapCol, checkArrayCol,
           checkStringCol)
 
