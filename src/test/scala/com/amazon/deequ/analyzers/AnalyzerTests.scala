@@ -302,6 +302,12 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       Distribution(distributionValues, numberOfBins = dataTypes.size)
     }
 
+    "fail for non-atomic columns" in withSparkSession { sparkSession =>
+      val df = getDfWithNestedColumn(sparkSession)
+
+      assert(DataType("source").calculate(df).value.isFailure)
+    }
+
     "fall back to String in case no known data type matched" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
 
