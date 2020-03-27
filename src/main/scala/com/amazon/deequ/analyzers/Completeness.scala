@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import Analyzers._
@@ -42,7 +42,7 @@ case class Completeness(column: String, where: Option[String] = None) extends
   }
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
-    hasColumn(column) :: Nil
+    hasColumn(column) :: isNotNested(column) :: Nil
   }
 
   override def filterCondition: Option[String] = where

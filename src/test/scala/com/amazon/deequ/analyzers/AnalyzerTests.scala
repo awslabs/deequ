@@ -17,7 +17,7 @@
 package com.amazon.deequ
 package analyzers
 
-import com.amazon.deequ.analyzers.runners.NoSuchColumnException
+import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, WrongColumnTypeException}
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
@@ -43,10 +43,11 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   }
 
   "Completeness analyzer" should {
+
     "compute correct metrics" in withSparkSession { sparkSession =>
       val dfMissing = getDfMissing(sparkSession)
 
-      assert(Completeness("someMissingColumn").preconditions.size == 1,
+      assert(Completeness("someMissingColumn").preconditions.size == 2,
         "should check column name availability")
       assert(Completeness("att1").calculate(dfMissing) == DoubleMetric(Entity.Column,
         "Completeness", "att1", Success(0.5)))
@@ -54,6 +55,7 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
         "Completeness", "att2", Success(0.75)))
 
     }
+
     "fail on wrong column input" in withSparkSession { sparkSession =>
       val dfMissing = getDfMissing(sparkSession)
 
@@ -64,6 +66,15 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
           assert(metric.instance == "someMissingColumn")
           assert(metric.value.isFailure)
       }
+    }
+
+    "fail on nested column input" in withSparkSession { sparkSession =>
+
+      val df = getDfWithNestedColumn(sparkSession)
+
+      val result: DoubleMetric = Completeness("source").calculate(df)
+
+      assert(result.value.isFailure)
     }
 
     "work with filtering" in withSparkSession { sparkSession =>
@@ -289,6 +300,12 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
       val distributionValues = Map(zeros ++ nonZeroValuesWithStringKeys: _*)
 
       Distribution(distributionValues, numberOfBins = dataTypes.size)
+    }
+
+    "fail for non-atomic columns" in withSparkSession { sparkSession =>
+      val df = getDfWithNestedColumn(sparkSession)
+
+      assert(DataType("source").calculate(df).value.isFailure)
     }
 
     "fall back to String in case no known data type matched" in withSparkSession { sparkSession =>
@@ -661,10 +678,14 @@ class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with Fi
   "Pattern compliance analyzer" should {
     val someColumnName = "some"
 
-    "match doubles in nullable column" in withSparkSession { sparkSession =>
-      val df = dataFrameWithColumn(someColumnName, DoubleType, sparkSession, Row(1.1),
-        Row(null), Row(3.2), Row(4.4))
-      PatternMatch(someColumnName, """\d\.\d""".r).calculate(df).value shouldBe Success(0.75)
+    "not match doubles in nullable column" in withSparkSession { sparkSession =>
+
+       val df = dataFrameWithColumn(someColumnName, DoubleType, sparkSession, Row(1.1),
+          Row(null), Row(3.2), Row(4.4))
+
+      val result: DoubleMetric = PatternMatch(someColumnName, """\d\.\d""".r).calculate(df)
+
+      assert(result.value.isFailure)
     }
 
     "match integers in a String column" in withSparkSession { sparkSession =>
