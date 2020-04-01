@@ -19,7 +19,7 @@ package com.amazon.deequ.analyzers
 import java.nio.ByteBuffer
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import com.amazon.deequ.analyzers.runners.MetricCalculationException
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
 import org.apache.spark.sql.DeequFunctions.stateful_datatype
@@ -179,7 +179,7 @@ case class DataType(
   }
 
   override def preconditions: Seq[StructType => Unit] = {
-    hasColumn(column) +: super.preconditions
+    hasColumn(column) +: isNotNested(column) +: super.preconditions
   }
 
   override def filterCondition: Option[String] = where

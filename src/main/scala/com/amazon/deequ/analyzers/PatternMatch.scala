@@ -17,9 +17,10 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{col, lit, regexp_extract, sum, when}
-import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.{IntegerType, StructType}
 
 import scala.util.matching.Regex
 
@@ -55,6 +56,10 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
   }
 
   override def filterCondition: Option[String] = where
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    hasColumn(column) :: isString(column) :: Nil
+  }
 }
 
 object Patterns {

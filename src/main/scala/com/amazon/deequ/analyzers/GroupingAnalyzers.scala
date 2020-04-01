@@ -37,7 +37,8 @@ abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
 
   /** We need at least one grouping column, and all specified columns must exist */
   override def preconditions: Seq[StructType => Unit] = {
-    Seq(atLeastOne(columnsToGroupOn)) ++ columnsToGroupOn.map { hasColumn } ++ super.preconditions
+    Seq(atLeastOne(columnsToGroupOn)) ++ columnsToGroupOn.map { hasColumn } ++
+      columnsToGroupOn.map { isNotNested } ++ super.preconditions
   }
 }
 
