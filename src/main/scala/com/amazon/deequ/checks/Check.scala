@@ -169,8 +169,8 @@ case class Check(
    * @return
    */
   def areAnyComplete(
-                   columns: Seq[String],
-                   hint: Option[String] = None)
+      columns: Seq[String],
+      hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
     satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint)
   }
@@ -184,9 +184,9 @@ case class Check(
    * @return
    */
   def haveAnyCompleteness(
-                        columns: Seq[String],
-                        assertion: Double => Boolean,
-                        hint: Option[String] = None)
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
     satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint)
   }
