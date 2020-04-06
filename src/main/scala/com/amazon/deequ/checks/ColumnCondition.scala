@@ -13,9 +13,10 @@
  * permissions and limitations under the License.
  *
  */
+
 package com.amazon.deequ.checks
 
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col}
 
 private[checks] object ColumnCondition {
 
