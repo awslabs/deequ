@@ -28,6 +28,13 @@ class ColumnConditionTest extends WordSpec {
         "(((att1 IS NOT NULL) AND (att2 IS NOT NULL)) AND (att3 IS NOT NULL))"
       )
     }
+
+    "return the correct isAnyNotNull condition" in {
+      assert(
+        ColumnCondition.isAnyNotNull(Seq("att1", "att2", "att3")) ==
+          "(((att1 IS NOT NULL) OR (att2 IS NOT NULL)) OR (att3 IS NOT NULL))"
+      )
+    }
   }
 
 }

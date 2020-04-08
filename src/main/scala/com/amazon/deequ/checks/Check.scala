@@ -25,7 +25,7 @@ import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
+import com.amazon.deequ.checks.ColumnCondition.{isEachNotNull, isAnyNotNull}
 
 import scala.util.matching.Regex
 
@@ -159,6 +159,36 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
     satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint)
+  }
+
+  /**
+   * Creates a constraint that asserts on completion in combined set of columns.
+   *
+   * @param columns Columns to run the assertion on
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def areAnyComplete(
+      columns: Seq[String],
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+    satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint)
+  }
+
+  /**
+   * Creates a constraint that assert on completion in combined set of columns.
+   *
+   * @param columns Columns to run the assertion on
+   * @param assertion Function that receives a double input parameter and returns a boolean
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def haveAnyCompleteness(
+      columns: Seq[String],
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+    satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint)
   }
 
   /**
