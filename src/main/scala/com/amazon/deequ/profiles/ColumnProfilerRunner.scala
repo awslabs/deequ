@@ -48,6 +48,7 @@ class ColumnProfilerRunner {
       cacheInputs: Boolean,
       fileOutputOptions: ColumnProfilerRunBuilderFileOutputOptions,
       metricsRepositoryOptions: ColumnProfilerRunBuilderMetricsRepositoryOptions,
+      kllProfiling: Boolean,
       kllParameters: Option[KLLParameters],
       predefinedTypes: Map[String, DataTypeInstances.Value])
     : ColumnProfiles = {
@@ -66,6 +67,7 @@ class ColumnProfilerRunner {
         metricsRepositoryOptions.reuseExistingResultsKey,
         metricsRepositoryOptions.failIfResultsForReusingMissing,
         metricsRepositoryOptions.saveOrAppendResultsKey,
+        kllProfiling,
         kllParameters,
         predefinedTypes
       )

@@ -16,8 +16,9 @@
 
 package com.amazon.deequ.utils
 
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DoubleType, LongType, MapType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+
 import scala.util.Random
 
 
@@ -39,6 +40,51 @@ trait FixtureSupport {
       .toList
       .map { index => (s"$index", s"c1-r$index", s"c2-r$index")}
       .toDF("c0", "c1", "c2")
+  }
+
+  def getDfWithNestedColumn(sparkSession: SparkSession): DataFrame = {
+
+    import sparkSession.implicits._
+
+//    val schema = new StructType()
+//      .add("dc_id", StringType)
+//      .add("lang", StringType)
+//      .add("source",
+//        MapType(
+//          StringType,
+//          new StructType()
+//            .add("description", StringType)
+//            .add("weblink", StringType)
+//            .add("ip", StringType)
+//            .add("id", LongType)
+//            .add("temp", LongType)
+//            .add("c02_level", LongType)
+//            .add("geo",
+//              new StructType()
+//                .add("lat", DoubleType)
+//                .add("long", DoubleType)
+//            )
+//        )
+//      )
+
+    // Create a single entry with id and its complex and nested data types
+    Seq("""
+      {
+      "dc_id": "dc-101",
+      "lang":"en-us",
+      "source": {
+          "sensor-igauge": {
+            "id": 10,
+            "ip": "68.28.91.22",
+            "description": "Sensor attached to the container ceilings",
+            "weblink": "http://www.testing-url.dk/",
+            "temp":35,
+            "c02_level": 1475,
+            "geo": {"lat":38.00, "long":97.00}
+            }
+          }
+        }
+      }""").toDF()
   }
 
 

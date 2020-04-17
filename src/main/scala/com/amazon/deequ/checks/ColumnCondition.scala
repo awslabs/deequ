@@ -26,4 +26,11 @@ private[checks] object ColumnCondition {
       .reduce(_ and _)
       .toString()
   }
+
+  def isAnyNotNull(cols: Seq[String]): String = {
+    cols
+      .map(col(_).isNotNull)
+      .reduce(_ or _)
+      .toString()
+  }
 }
