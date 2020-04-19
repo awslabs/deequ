@@ -111,6 +111,9 @@ object AnalysisRunner {
     }
 
     val allAnalyzers = analyzers.map { _.asInstanceOf[Analyzer[State[_], Metric[_]]] }
+    val distinctAnalyzer = allAnalyzers.distinct
+    require(distinctAnalyzer.size == allAnalyzers.size,
+      s"Duplicate analyzers found: ${allAnalyzers.diff(distinctAnalyzer).distinct}")
 
     /* We do not want to recalculate calculated metrics in the MetricsRepository */
     val resultsComputedPreviously: AnalyzerContext =
