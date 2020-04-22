@@ -116,7 +116,7 @@ class VerificationSuite {
         VerificationFileOutputOptions())
     : VerificationResult = {
 
-    val analyzers = (requiredAnalyzers ++ checks.flatMap { _.requiredAnalyzers() }).distinct
+    val analyzers = requiredAnalyzers ++ checks.flatMap { _.requiredAnalyzers() }
 
     val analysisResults = AnalysisRunner.doAnalysisRun(
       data,
