@@ -59,7 +59,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .hasCompleteness("att2", _ > 0.8)
 
         val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
-          .hasCompleteness("att2", _ > 0.8)
+          .hasCompleteness("item", _ < 0.8)
 
 
         assertStatusFor(df, checkToSucceed)(CheckStatus.Success)
@@ -256,7 +256,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val analyzers = Completeness("item") :: Nil
 
-        val verificationResult = VerificationSuite()
+        val verificationResultOne = VerificationSuite()
           .onData(df)
           .useRepository(repository)
           .addRequiredAnalyzers(analyzers)
@@ -266,23 +266,39 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
             Size(),
             Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
           )
+          .run()
+
+        val verificationResultTwo = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
           .addAnomalyCheck(
             AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
             Size(),
             Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
               Map.empty, Some(0), Some(11)))
           )
+          .run()
+
+        val verificationResultThree = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
           .addAnomalyCheck(
             AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
             Size()
           )
           .run()
 
-        val checkResults = verificationResult.checkResults.toSeq
+        val checkResultsOne = verificationResultOne.checkResults.head._2.status
+        val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+        val checkResultsThree = verificationResultThree.checkResults.head._2.status
 
-        assert(checkResults(0)._2.status == CheckStatus.Warning)
-        assert(checkResults(1)._2.status == CheckStatus.Success)
-        assert(checkResults(2)._2.status == CheckStatus.Success)
+        assert(checkResultsOne == CheckStatus.Warning)
+        assert(checkResultsTwo == CheckStatus.Success)
+        assert(checkResultsThree == CheckStatus.Success)
       }
     }
 

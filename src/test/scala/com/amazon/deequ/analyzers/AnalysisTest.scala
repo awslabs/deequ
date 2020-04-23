@@ -54,19 +54,6 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
       assertSameRows(successMetricsAsDataFrame, expected)
     }
 
-    "run an individual analyzer only once" in withSparkSession { sparkSession =>
-      val df = getDfFull(sparkSession)
-
-      val analysis = Analysis()
-        .addAnalyzer(Size())
-        .addAnalyzer(Size())
-        .addAnalyzer(Size())
-
-      val analysisResult = analysis.run(df)
-      assert(analysisResult.allMetrics.length == 1)
-      assert(analysisResult.metric(Size()).get.value.get == 4)
-    }
-
     "return basic statistics" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
 

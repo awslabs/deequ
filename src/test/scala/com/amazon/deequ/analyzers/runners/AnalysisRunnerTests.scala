@@ -341,5 +341,32 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         inputStream => assert(inputStream.read() > 0)
       }
     }
+
+    "should give error for duplicate analyzers" in withSparkSession { sparkSession =>
+
+      val df = getDfWithNumericValues(sparkSession)
+
+      val analyzers = Size() :: Completeness("item") :: Size() :: Nil
+
+      intercept[IllegalArgumentException] {
+        AnalysisRunner.onData(df)
+          .addAnalyzers(analyzers)
+          .useSparkSession(sparkSession)
+          .run()
+      }
+    }
+
+    "should not give error for different analyzers with filtering options" in withSparkSession {
+      sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val analyzers = Size() :: Size(Some("att1 = 0")) :: Size(Some("att2 > 0")) :: Nil
+
+      noException shouldBe thrownBy {
+        AnalysisRunner.onData(df)
+          .addAnalyzers(analyzers)
+          .useSparkSession(sparkSession)
+          .run()
+      }
+    }
   }
 }
