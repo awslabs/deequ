@@ -16,12 +16,10 @@
 
 package com.amazon.deequ.repository
 
-import com.amazon.deequ.analyzers.Analyzer
-import com.amazon.deequ.metrics.Metric
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import com.amazon.deequ.analyzers.AnalyzerId
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.Column
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 
 trait MetricsRepositoryMultipleResultsLoader {
 
@@ -37,7 +35,7 @@ trait MetricsRepositoryMultipleResultsLoader {
     *
     * @param analyzers A sequence of analyers who's resulting metrics you want to load
     */
-  def forAnalyzers(analyzers: Seq[Analyzer[_, Metric[_]]]): MetricsRepositoryMultipleResultsLoader
+  def forAnalyzers(analyzers: Seq[AnalyzerId]): MetricsRepositoryMultipleResultsLoader
 
   /**
     * Convenience method to only look at AnalysisResults with a history key with a greater value

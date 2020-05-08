@@ -27,7 +27,7 @@ case class AnalysisResult(
     analyzerContext: AnalyzerContext
 )
 
-private[repository] object AnalysisResult {
+object AnalysisResult {
 
   private val DATASET_DATE_FIELD = "dataset_date"
 

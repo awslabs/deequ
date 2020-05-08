@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.AnalyzerName.AnalyzerName
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import org.apache.spark.sql.functions._
@@ -52,8 +53,24 @@ trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
   def metricValue(): Double
 }
 
+/** Data type instances */
+object AnalyzerName extends Enumeration {
+
+  type AnalyzerName = Value
+  val Histogram, Size, DataType, ApproxCountDistinct, Completeness, Mean, StandardDeviation, Maximum, Minimum, Sum,
+  KLLSketch = Value
+}
+
+case class AnalyzerId(name: AnalyzerName, instance: String)
+
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
 trait Analyzer[S <: State[_], +M <: Metric[_]] {
+
+  def id = AnalyzerId(name, instance)
+
+  def name: AnalyzerName = AnalyzerName.Histogram // TODO: Remove this and implement in sub-typed
+
+  def instance: String = "" // TODO: Remove this and implement in sub-typed
 
   /**
     * Compute the state (sufficient statistics) from the data

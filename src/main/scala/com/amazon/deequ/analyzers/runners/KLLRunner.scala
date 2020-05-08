@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.runners
 
-import com.amazon.deequ.analyzers.{Analyzer, KLLParameters, KLLSketch, KLLState, QuantileNonSample, State, StateLoader, StatePersister}
+import com.amazon.deequ.analyzers.{Analyzer, AnalyzerId, KLLParameters, KLLSketch, KLLState, QuantileNonSample, State, StateLoader, StatePersister}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.types.{ByteType, DoubleType, FloatType, IntegerType, LongType, ShortType, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
@@ -115,10 +115,10 @@ object KLLRunner {
       val kllState = sketchPerColumn(analyzer.column).asKLLState()
       val metric = analyzer.calculateMetric(Some(kllState), aggregateWith, saveStatesTo)
 
-      analyzer -> metric
+      analyzer.id -> metric
     }
 
-    AnalyzerContext(metricsByAnalyzer.toMap[Analyzer[_, Metric[_]], Metric[_]])
+    AnalyzerContext(metricsByAnalyzer.toMap[AnalyzerId, Metric[_]])
   }
 
   private[this] def emptySketches(

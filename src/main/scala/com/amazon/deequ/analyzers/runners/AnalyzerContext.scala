@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.analyzers.runners
 
-import com.amazon.deequ.analyzers.{Analyzer, FilterableAnalyzer}
+import com.amazon.deequ.analyzers.{Analyzer, AnalyzerId, FilterableAnalyzer}
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -26,7 +26,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
   *
   * @param metricMap Analyzers and their Metric results
   */
-case class AnalyzerContext(metricMap: Map[Analyzer[_, Metric[_]], Metric[_]]) {
+case class AnalyzerContext(metricMap: Map[AnalyzerId, Metric[_]]) {
 
   def allMetrics: Seq[Metric[_]] = {
     metricMap.values.toSeq
@@ -37,7 +37,7 @@ case class AnalyzerContext(metricMap: Map[Analyzer[_, Metric[_]], Metric[_]]) {
   }
 
   def metric(analyzer: Analyzer[_, Metric[_]]): Option[Metric[_]] = {
-    metricMap.get(analyzer)
+    metricMap.get(analyzer.id)
   }
 }
 

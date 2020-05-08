@@ -16,10 +16,11 @@
 
 package com.amazon.deequ.constraints
 
-import com.amazon.deequ.analyzers.{Analyzer, State}
+import com.amazon.deequ.analyzers.{Analyzer, AnalyzerId, State}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
-import scala.util.{Failure, Success, Try}
+
+import scala.util.{Failure, Success}
 
 /**
   * Common trait for all analysis based constraints that provides unified way to access
@@ -48,14 +49,14 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
 
   private[deequ] def calculateAndEvaluate(data: DataFrame) = {
     val metric = analyzer.calculate(data)
-    evaluate(Map(analyzer -> metric))
+    evaluate(Map(analyzer.id -> metric))
   }
 
   override def evaluate(
-      analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
+      analysisResults: Map[AnalyzerId, Metric[_]])
     : ConstraintResult = {
 
-    val metric = analysisResults.get(analyzer).map(_.asInstanceOf[Metric[M]])
+    val metric = analysisResults.get(analyzer.id).map(_.asInstanceOf[Metric[M]])
 
     metric.map(pickValueAndAssert).getOrElse(
       // Analysis is missing

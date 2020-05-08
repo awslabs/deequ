@@ -1090,7 +1090,7 @@ object Check {
     afterDate.foreach { afterDate =>
       repositoryLoader = repositoryLoader.after(afterDate) }
 
-    repositoryLoader = repositoryLoader.forAnalyzers(Seq(analyzer))
+    repositoryLoader = repositoryLoader.forAnalyzers(Seq(analyzer.id))
 
     val analysisResults = repositoryLoader.get()
 
