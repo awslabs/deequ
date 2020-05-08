@@ -31,6 +31,8 @@ case class CountDistinct(columns: Seq[String])
   override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
     toSuccessMetric(result.getLong(offset).toDouble)
   }
+
+  override def name: AnalyzerName = AnalyzerName.CountDistinct(columns)
 }
 
 object CountDistinct {

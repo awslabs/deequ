@@ -53,4 +53,6 @@ case class Maximum(column: String, where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  override def name: AnalyzerName = AnalyzerName.Maximum(column, filterCondition)
 }

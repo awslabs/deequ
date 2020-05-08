@@ -34,7 +34,7 @@ case class ConstraintResult(
 
 /** Common trait for all data quality constraints */
 trait Constraint {
-  def evaluate(analysisResults: Map[AnalyzerId, Metric[_]]): ConstraintResult
+  def evaluate(analysisResults: Map[AnalyzerName, Metric[_]]): ConstraintResult
 }
 
 /** Common trait for constraint decorators */
@@ -47,7 +47,7 @@ class ConstraintDecorator(protected val _inner: Constraint) extends Constraint {
   }
 
   override def evaluate(
-      analysisResults: Map[AnalyzerId, Metric[_]])
+      analysisResults: Map[AnalyzerName, Metric[_]])
     : ConstraintResult = {
 
     // most of the constraints are of type NamedConstraint

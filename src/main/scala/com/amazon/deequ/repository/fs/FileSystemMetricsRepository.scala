@@ -16,16 +16,16 @@
 
 package com.amazon.deequ.repository.fs
 
-import com.amazon.deequ.analyzers.Analyzer
+import java.io.{BufferedInputStream, BufferedOutputStream}
+import java.util.UUID.randomUUID
+
+import com.amazon.deequ.analyzers.AnalyzerName
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.metrics.Metric
-import com.amazon.deequ.repository.{AnalysisResult, AnalysisResultSerde, MetricsRepository, MetricsRepositoryMultipleResultsLoader, ResultKey}
+import com.amazon.deequ.repository._
+import com.google.common.io.Closeables
+import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.SparkSession
-import java.util.UUID.randomUUID
-import com.google.common.io.Closeables
-import java.io.{BufferedInputStream, BufferedOutputStream}
-import org.apache.commons.io.IOUtils
 
 
 /** A Repository implementation using a file system */
@@ -77,7 +77,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
   session: SparkSession, path: String) extends MetricsRepositoryMultipleResultsLoader {
 
   private[this] var tagValues: Option[Map[String, String]] = None
-  private[this] var forAnalyzers: Option[Seq[Analyzer[_, Metric[_]]]] = None
+  private[this] var forAnalyzers: Option[Seq[AnalyzerName]] = None
   private[this] var before: Option[Long] = None
   private[this] var after: Option[Long] = None
 
@@ -96,7 +96,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
     *
     * @param analyzers A sequence of analyers who's resulting metrics you want to load
     */
-  def forAnalyzers(analyzers: Seq[Analyzer[_, Metric[_]]])
+  def forAnalyzers(analyzers: Seq[AnalyzerName])
     : MetricsRepositoryMultipleResultsLoader = {
 
     this.forAnalyzers = Option(analyzers)

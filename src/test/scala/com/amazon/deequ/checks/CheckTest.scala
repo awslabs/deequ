@@ -1043,8 +1043,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
     (1 to 2).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        Size() -> DoubleMetric(Entity.Column, "", "", Success(timeStamp)),
-        Distinctness(Seq("c0", "c1")) -> DoubleMetric(Entity.Column, "", "",
+        AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "", "", Success(timeStamp)),
+        AnalyzerName.Distinctness(Seq("c0", "c1"), None) -> DoubleMetric(Entity.Column, "", "",
           Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "EU")), analyzerContext)
@@ -1052,8 +1052,8 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
 
     (3 to 4).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        Size() -> DoubleMetric(Entity.Column, "", "", Success(timeStamp)),
-        Distinctness(Seq("c0", "c1")) -> DoubleMetric(Entity.Column, "", "",
+        AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "", "", Success(timeStamp)),
+        AnalyzerName.Distinctness(Seq("c0", "c1"), None) -> DoubleMetric(Entity.Column, "", "",
           Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "NA")), analyzerContext)

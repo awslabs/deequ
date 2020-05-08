@@ -127,7 +127,7 @@ object AnalysisRunner {
 
     val analyzersAlreadyRan = resultsComputedPreviously.metricMap.keys.toSet
 
-    val analyzersToRun = allAnalyzers.filterNot(analyzer => analyzersAlreadyRan.contains(analyzer.id))
+    val analyzersToRun = allAnalyzers.filterNot(analyzer => analyzersAlreadyRan.contains(analyzer.name))
 
     /* Throw an error if all needed metrics should have gotten calculated before but did not */
     if (metricsRepositoryOptions.failIfResultsForReusingMissing && analyzersToRun.nonEmpty) {
@@ -260,9 +260,9 @@ object AnalysisRunner {
       val firstException = Preconditions
         .findFirstFailing(schema, analyzer.preconditions).get
 
-      analyzer.id -> analyzer.toFailureMetric(firstException)
+      analyzer.name -> analyzer.toFailureMetric(firstException)
     }
-    .toMap[AnalyzerId, Metric[_]]
+    .toMap[AnalyzerName, Metric[_]]
 
     AnalyzerContext(failures)
   }
@@ -326,24 +326,24 @@ object AnalysisRunner {
         val results = data.agg(aggregations.head, aggregations.tail: _*).collect().head
 
         shareableAnalyzers.zip(offsets).map { case (analyzer, offset) =>
-          analyzer.id ->
+          analyzer.name ->
             successOrFailureMetricFrom(analyzer, results, offset, aggregateWith, saveStatesTo)
         }
 
       } catch {
         case error: Exception =>
-          shareableAnalyzers.map { analyzer => analyzer.id -> analyzer.toFailureMetric(error) }
+          shareableAnalyzers.map { analyzer => analyzer.name -> analyzer.toFailureMetric(error) }
       }
 
-      AnalyzerContext(metricsByAnalyzer.toMap[AnalyzerId, Metric[_]])
+      AnalyzerContext(metricsByAnalyzer.toMap[AnalyzerName, Metric[_]])
     } else {
       AnalyzerContext.empty
     }
 
     /* Run non-shareable analyzers separately */
     val otherMetrics = others
-      .map { analyzer => analyzer.id -> analyzer.calculate(data, aggregateWith, saveStatesTo) }
-      .toMap[AnalyzerId, Metric[_]]
+      .map { analyzer => analyzer.name -> analyzer.calculate(data, aggregateWith, saveStatesTo) }
+      .toMap[AnalyzerName, Metric[_]]
 
     sharedResults ++ AnalyzerContext(otherMetrics)
   }
@@ -444,9 +444,9 @@ object AnalysisRunner {
         /* Store aggregated state if a 'saveStatesWith' has been provided */
         saveStatesWith.foreach { persister => analyzer.copyStateTo(aggregatedStates, persister) }
 
-        metrics.map { metric => analyzer.id -> metric }
+        metrics.map { metric => analyzer.name -> metric }
       }
-      .toMap[AnalyzerId, Metric[_]]
+      .toMap[AnalyzerName, Metric[_]]
 
 
     val groupedResults = if (groupingAnalyzers.isEmpty) {
@@ -528,12 +528,12 @@ object AnalysisRunner {
 
         shareableAnalyzers.zip(offsets)
           .map { case (analyzer, offset) =>
-            analyzer.id -> successOrFailureMetricFrom(analyzer, results, offset)
+            analyzer.name -> successOrFailureMetricFrom(analyzer, results, offset)
           }
       } catch {
         case error: Exception =>
           shareableAnalyzers
-            .map { analyzer => analyzer.id -> analyzer.toFailureMetric(error) }
+            .map { analyzer => analyzer.name -> analyzer.toFailureMetric(error) }
       }
 
     } else {
@@ -544,12 +544,12 @@ object AnalysisRunner {
     val otherMetrics = try {
       others
         .map { _.asInstanceOf[FrequencyBasedAnalyzer] }
-        .map { analyzer => analyzer.id ->
+        .map { analyzer => analyzer.name ->
           analyzer.computeMetricFrom(Option(frequenciesAndNumRows))
         }
     } catch {
       case error: Exception =>
-        others.map { analyzer => analyzer.id -> analyzer.toFailureMetric(error) }
+        others.map { analyzer => analyzer.name -> analyzer.toFailureMetric(error) }
     }
 
     /* Potentially store states */
@@ -557,7 +557,7 @@ object AnalysisRunner {
 
     frequenciesAndNumRows.frequencies.unpersist()
 
-    AnalyzerContext((metricsByAnalyzer ++ otherMetrics).toMap[AnalyzerId, Metric[_]])
+    AnalyzerContext((metricsByAnalyzer ++ otherMetrics).toMap[AnalyzerName, Metric[_]])
   }
 
 }

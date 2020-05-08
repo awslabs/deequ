@@ -16,12 +16,13 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.analyzers.{Analyzer, AnalyzerId}
+import com.amazon.deequ.analyzers.{Analyzer, AnalyzerName}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.AnalyzerContext.SimpleMetricOutput
 import com.amazon.deequ.checks.{Check, CheckResult, CheckStatus}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
 /**
   * The result returned from the VerificationSuite
@@ -33,15 +34,14 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 case class VerificationResult(
     status: CheckStatus.Value,
     checkResults: Map[Check, CheckResult],
-    metrics: Map[AnalyzerId, Metric[_]])
+    metrics: Map[AnalyzerName, Metric[_]])
 
 object VerificationResult {
 
   def successMetricsAsDataFrame(
       sparkSession: SparkSession,
       verificationResult: VerificationResult,
-      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty)
-    : DataFrame = {
+      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty): Dataset[SimpleMetricOutput] = {
 
     val metricsAsAnalyzerContext = AnalyzerContext(verificationResult.metrics)
 

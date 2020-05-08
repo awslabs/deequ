@@ -21,7 +21,7 @@ import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.{Matchers, WordSpec}
 
 class VerificationResultTest extends WordSpec with Matchers with SparkContextSpec
@@ -209,8 +209,8 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
     checkToSucceed :: checkToErrorOut :: checkToWarn :: Nil
   }
 
-  private[this] def assertSameRows(dataframeA: DataFrame, dataframeB: DataFrame): Unit = {
-    assert(dataframeA.collect().toSet == dataframeB.collect().toSet)
+  private[this] def assertSameRows(dataframeA: Dataset[_], dataframeB: Dataset[_]): Unit = {
+    assert(dataframeA.toDF.collect().toSet == dataframeB.toDF.collect().toSet)
   }
 
   private[this] def assertSameResultsJson(jsonA: String, jsonB: String): Unit = {

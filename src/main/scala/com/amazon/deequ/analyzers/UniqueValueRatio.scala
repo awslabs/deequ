@@ -38,6 +38,8 @@ case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  override def name: AnalyzerName = AnalyzerName.UniqueValueRatio(columns, filterCondition)
 }
 
 object UniqueValueRatio {

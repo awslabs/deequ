@@ -21,7 +21,7 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.{Matchers, WordSpec}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.repository.SimpleResultSerde
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
 class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
@@ -125,8 +125,8 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
       .addAnalyzer(Uniqueness(Seq("att1", "att2")))
   }
 
-  private[this] def assertSameRows(dataframeA: DataFrame, dataframeB: DataFrame): Unit = {
-    assert(dataframeA.collect().toSet == dataframeB.collect().toSet)
+  private[this] def assertSameRows(dataframeA: Dataset[_], dataframeB: Dataset[_]): Unit = {
+    assert(dataframeA.toDF.collect().toSet == dataframeB.toDF.collect().toSet)
   }
 
   private[this] def assertSameJson(jsonA: String, jsonB: String): Unit = {

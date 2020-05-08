@@ -60,6 +60,8 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isString(column) :: Nil
   }
+
+  override def name: AnalyzerName = AnalyzerName.PatternMatch(column, filterCondition, pattern.toString)
 }
 
 object Patterns {

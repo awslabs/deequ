@@ -97,6 +97,8 @@ case class MutualInformation(columns: Seq[String], where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  override def name: AnalyzerName = AnalyzerName.MutualInformation(columns, filterCondition)
 }
 
 object MutualInformation {

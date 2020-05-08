@@ -5,7 +5,7 @@
  * use this file except in compliance with the License. A copy of the License
  * is located at
  *
- *     http://aws.amazon.com/apache2.0/
+ * http://aws.amazon.com/apache2.0/
  *
  * or in the "license" file accompanying this file. This file is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
@@ -23,28 +23,28 @@ import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import org.apache.spark.sql.functions.lit
 
 case class AnalysisResult(
-    resultKey: ResultKey,
-    analyzerContext: AnalyzerContext
-)
+                           resultKey: ResultKey,
+                           analyzerContext: AnalyzerContext
+                         )
 
 object AnalysisResult {
 
   private val DATASET_DATE_FIELD = "dataset_date"
 
   /**
-    * Get a AnalysisResult as DataFrame containing the success metrics
-    *
-    * @param analysisResult      The AnalysisResult to convert
-    * @param forAnalyzers Only include metrics for these Analyzers in the DataFrame
-    * @param withTags            Only include these Tags in the DataFrame
-    */
+   * Get a AnalysisResult as DataFrame containing the success metrics
+   *
+   * @param analysisResult The AnalysisResult to convert
+   * @param forAnalyzers   Only include metrics for these Analyzers in the DataFrame
+   * @param withTags       Only include these Tags in the DataFrame
+   */
   def getSuccessMetricsAsDataFrame(
-      sparkSession: SparkSession,
-      analysisResult: AnalysisResult,
-      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty,
-      withTags: Seq[String] = Seq.empty)
-    : DataFrame = {
-
+                                    sparkSession: SparkSession,
+                                    analysisResult: AnalysisResult,
+                                    forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty,
+                                    withTags: Seq[String] = Seq.empty)
+  : DataFrame = {
+    import sparkSession.implicits.newProductEncoder
     var analyzerContextDF = AnalyzerContext
       .successMetricsAsDataFrame(sparkSession, analysisResult.analyzerContext, forAnalyzers)
       .withColumn(DATASET_DATE_FIELD, lit(analysisResult.resultKey.dataSetDate))
@@ -61,20 +61,20 @@ object AnalysisResult {
   }
 
   /**
-    * Get a AnalysisResult as Json containing the success metrics
-    *
-    * @param analysisResult      The AnalysisResult to convert
-    * @param forAnalyzers Only include metrics for these Analyzers in the DataFrame
-    * @param withTags            Only include these Tags in the DataFrame
-    */
+   * Get a AnalysisResult as Json containing the success metrics
+   *
+   * @param analysisResult The AnalysisResult to convert
+   * @param forAnalyzers   Only include metrics for these Analyzers in the DataFrame
+   * @param withTags       Only include these Tags in the DataFrame
+   */
   def getSuccessMetricsAsJson(
-      analysisResult: AnalysisResult,
-      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty,
-      withTags: Seq[String] = Seq.empty)
-    : String = {
+                               analysisResult: AnalysisResult,
+                               forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty,
+                               withTags: Seq[String] = Seq.empty)
+  : String = {
 
     var serializableResult = SimpleResultSerde.deserialize(
-        AnalyzerContext.successMetricsAsJson(analysisResult.analyzerContext, forAnalyzers))
+      AnalyzerContext.successMetricsAsJson(analysisResult.analyzerContext, forAnalyzers))
       .asInstanceOf[Seq[Map[String, Any]]]
 
     serializableResult = addColumnToSerializableResult(
@@ -83,7 +83,8 @@ object AnalysisResult {
     analysisResult.resultKey.tags
       .filterKeys(tagName => withTags.isEmpty || withTags.contains(tagName))
       .map { case (tagName, tagValue) =>
-        (formatTagColumnNameInJson(tagName, serializableResult), tagValue)}
+        (formatTagColumnNameInJson(tagName, serializableResult), tagValue)
+      }
       .foreach { case (key, value) => serializableResult = addColumnToSerializableResult(
         serializableResult, key, value)
       }
@@ -92,10 +93,10 @@ object AnalysisResult {
   }
 
   private[this] def addColumnToSerializableResult(
-      serializableResult: Seq[Map[String, Any]],
-      tagName: String,
-      serializableTagValue: Any)
-    : Seq[Map[String, Any]] = {
+                                                   serializableResult: Seq[Map[String, Any]],
+                                                   tagName: String,
+                                                   serializableTagValue: Any)
+  : Seq[Map[String, Any]] = {
 
     if (serializableResult.headOption.nonEmpty &&
       !serializableResult.head.keySet.contains(tagName)) {
@@ -109,9 +110,9 @@ object AnalysisResult {
   }
 
   private[this] def formatTagColumnNameInDataFrame(
-      tagName : String,
-      dataFrame: DataFrame)
-    : String = {
+                                                    tagName: String,
+                                                    dataFrame: DataFrame)
+  : String = {
 
     var tagColumnName = tagName.replaceAll("[^A-Za-z0-9_]", "").toLowerCase
     if (dataFrame.columns.contains(tagColumnName)) {
@@ -121,9 +122,9 @@ object AnalysisResult {
   }
 
   private[this] def formatTagColumnNameInJson(
-      tagName : String,
-      serializableResult : Seq[Map[String, Any]])
-    : String = {
+                                               tagName: String,
+                                               serializableResult: Seq[Map[String, Any]])
+  : String = {
 
     var tagColumnName = tagName.replaceAll("[^A-Za-z0-9_]", "").toLowerCase
 

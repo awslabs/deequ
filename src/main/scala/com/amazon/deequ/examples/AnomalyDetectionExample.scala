@@ -17,12 +17,12 @@
 package com.amazon.deequ.examples
 
 import com.amazon.deequ.VerificationSuite
-import com.amazon.deequ.analyzers.Size
+import com.amazon.deequ.analyzers.{AnalyzerName, Size}
 import com.amazon.deequ.anomalydetection.RelativeRateOfChangeStrategy
+import com.amazon.deequ.checks.CheckStatus._
 import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.checks.CheckStatus._
 
 private[examples] object AnomalyDetectionExample extends App {
 
@@ -85,7 +85,7 @@ private[examples] object AnomalyDetectionExample extends App {
       /* Lets have a look at the actual metrics. */
       metricsRepository
         .load()
-        .forAnalyzers(Seq(Size()))
+        .forAnalyzers(Seq(AnalyzerName.Size(None)))
         .getSuccessMetricsAsDataFrame(session)
         .show()
     }

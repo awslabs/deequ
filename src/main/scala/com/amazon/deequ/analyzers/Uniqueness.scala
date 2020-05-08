@@ -32,6 +32,8 @@ case class Uniqueness(columns: Seq[String], where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  override def name: AnalyzerName = AnalyzerName.Uniqueness(columns, filterCondition)
 }
 
 object Uniqueness {

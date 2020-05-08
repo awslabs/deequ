@@ -23,7 +23,7 @@ import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.scalatest.WordSpec
 import AnalyzerContext._
 import com.amazon.deequ.SparkContextSpec
@@ -59,9 +59,9 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
 
     "save should ignore failed result metrics when saving" in withSparkSession { session =>
 
-      val metrics: Map[Analyzer[_, Metric[_]], Metric[_]] = Map(
-        Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
-        Completeness("ColumnA") ->
+      val metrics: Map[AnalyzerName, Metric[_]] = Map(
+        AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
+        AnalyzerName.Completeness("ColumnA", None) ->
           DoubleMetric(Entity.Column, "Completeness", "ColumnA",
             Failure(new RuntimeException("error"))))
 
@@ -174,7 +174,7 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
 
           val analysisResultsAsDataFrame = repository.load()
             .after(DATE_ONE)
-            .forAnalyzers(Seq(Completeness("att1"), Uniqueness(Seq("att1", "att2"))))
+            .forAnalyzers(Seq(AnalyzerName.Completeness("att1", None), AnalyzerName.Uniqueness(Seq("att1", "att2"), None)))
             .getSuccessMetricsAsDataFrame(sparkSession)
 
           import sparkSession.implicits._
@@ -256,7 +256,7 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
     new InMemoryMetricsRepository()
   }
 
-  private[this] def assertSameRows(dataFrameA: DataFrame, dataFrameB: DataFrame): Unit = {
-    assert(dataFrameA.collect().toSet == dataFrameB.collect().toSet)
+  private[this] def assertSameRows(dataFrameA: Dataset[_], dataFrameB: Dataset[_]): Unit = {
+    assert(dataFrameA.toDF.collect().toSet == dataFrameB.toDF.collect().toSet)
   }
 }

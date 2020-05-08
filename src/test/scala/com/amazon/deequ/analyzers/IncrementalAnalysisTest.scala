@@ -77,8 +77,8 @@ class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSp
         analysis.run(initial, saveStatesWith = Some(initialStates))
         val results = analysis.run(delta, aggregateWith = Some(initialStates))
 
-        results.metricMap.foreach { case (analyzer, metric) =>
-          val nonIncrementalMetric = analyzer.calculate(everything)
+        results.metricMap.foreach { case (analyzerName, metric) =>
+          val nonIncrementalMetric = analyzers.find(_.name == analyzerName).get.calculate(everything)
           assert(nonIncrementalMetric == metric)
         }
       }
@@ -90,15 +90,16 @@ class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSp
         val delta = deltaData(session)
         val everything = initial.union(delta)
 
-        val analysis = Analysis(Uniqueness("value") :: Entropy("value") :: Nil)
+        val analyzers = Uniqueness("value") :: Entropy("value") :: Nil
+        val analysis = Analysis(analyzers)
 
         val initialStates = InMemoryStateProvider()
 
         analysis.run(initial, saveStatesWith = Some(initialStates))
         val results = analysis.run(delta, aggregateWith = Some(initialStates))
 
-        results.metricMap.foreach { case (analyzer, metric) =>
-          val nonIncrementalMetric = analyzer.calculate(everything)
+        results.metricMap.foreach { case (analyzerName, metric) =>
+          val nonIncrementalMetric = analyzers.find(_.name == analyzerName).head.calculate(everything)
           assert(nonIncrementalMetric == metric)
         }
       }

@@ -34,7 +34,7 @@ import Analyzers._
   * @param predicate SQL-predicate to apply per row
   * @param where Additional filter to apply before the analyzer is run.
   */
-case class Compliance(override val instance: String, predicate: String, where: Option[String] = None)
+case class Compliance(instance: String, predicate: String, where: Option[String] = None)
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
   with FilterableAnalyzer {
 
@@ -53,4 +53,6 @@ case class Compliance(override val instance: String, predicate: String, where: O
   }
 
   override def filterCondition: Option[String] = where
+
+  override def name: AnalyzerName = AnalyzerName.Compliance(instance, filterCondition, predicate)
 }

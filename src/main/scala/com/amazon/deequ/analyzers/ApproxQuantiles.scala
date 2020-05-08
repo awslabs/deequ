@@ -39,6 +39,8 @@ import scala.util.{Failure, Success}
 case class ApproxQuantiles(column: String, quantiles: Seq[Double], relativeError: Double = 0.01)
   extends ScanShareableAnalyzer[ApproxQuantileState, KeyedDoubleMetric] {
 
+  override def name: AnalyzerName = AnalyzerName.ApproxQuantiles(column, quantiles, relativeError)
+
   val PARAM_CHECKS: StructType => Unit = { _ =>
     quantiles.foreach { quantile =>
       if (quantile < 0.0 || quantile > 1.0) {
