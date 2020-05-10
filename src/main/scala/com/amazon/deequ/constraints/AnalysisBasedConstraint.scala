@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.constraints
 
-import com.amazon.deequ.analyzers.{Analyzer, AnalyzerName, State}
+import com.amazon.deequ.analyzers.{Analyzer, AnalyzerId, State}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 
@@ -49,14 +49,14 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
 
   private[deequ] def calculateAndEvaluate(data: DataFrame) = {
     val metric = analyzer.calculate(data)
-    evaluate(Map(analyzer.name -> metric))
+    evaluate(Map(analyzer.id -> metric))
   }
 
   override def evaluate(
-      analysisResults: Map[AnalyzerName, Metric[_]])
+      analysisResults: Map[AnalyzerId, Metric[_]])
     : ConstraintResult = {
 
-    val metric = analysisResults.get(analyzer.name).map(_.asInstanceOf[Metric[M]])
+    val metric = analysisResults.get(analyzer.id).map(_.asInstanceOf[Metric[M]])
 
     metric.map(pickValueAndAssert).getOrElse(
       // Analysis is missing

@@ -41,7 +41,7 @@ private[repository] object JsonSerializationConstants {
   val STRING_LIST_TYPE: Type = new TypeToken[JList[String]]() {}.getType
 
   val ANALYZER_FIELD = "analyzer"
-  val ANALYZER_ID_FIELD = "name"
+  val ANALYZER_ID_FIELD = "analyzerId"
   val ANALYZER_NAME_FIELD = "analyzerName"
   val FIRST_COLUMN_FIELD = "firstColumn"
   val SECOND_COLUMN_FIELD = "secondColumn"
@@ -61,8 +61,6 @@ private[repository] object JsonSerializationConstants {
   val TAGS_FIELD = "tags"
   val RESULT_KEY_FIELD = "resultKey"
   val ANALYZER_CONTEXT_FIELD = "analyzerContext"
-
-  // Constants for AnalyzerName
 }
 
 private[deequ] object SimpleResultSerde {
@@ -93,7 +91,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalyzerContext], AnalyzerContextSerializer)
       .registerTypeAdapter(classOf[Analyzer[State[_], Metric[_]]],
         AnalyzerSerializer)
-      .registerTypeAdapter(classOf[AnalyzerName], AnalyzerNameSerializer)
+      .registerTypeAdapter(classOf[AnalyzerId], AnalyzerIdSerializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricSerializer)
       .registerTypeAdapter(classOf[Distribution], DistributionSerializer)
       .setPrettyPrinting()
@@ -108,7 +106,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalysisResult], AnalysisResultDeserializer)
       .registerTypeAdapter(classOf[AnalyzerContext], AnalyzerContextDeserializer)
       .registerTypeAdapter(classOf[Analyzer[State[_], Metric[_]]], AnalyzerDeserializer)
-      .registerTypeAdapter(classOf[AnalyzerName], AnalyzerNameDeserializer)
+      .registerTypeAdapter(classOf[AnalyzerId], AnalyzerIdDeserializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricDeserializer)
       .registerTypeAdapter(classOf[Distribution], DistributionDeserializer)
       .create
@@ -189,12 +187,10 @@ private[deequ] object AnalyzerContextSerializer extends JsonSerializer[AnalyzerC
 
     val metricMap = new JsonArray()
 
-    context.serialize(AnalyzerName.Size(None), classOf[AnalyzerName])
-
-    analyzerContext.metricMap.foreach { case (analyzerName, metric) =>
+    analyzerContext.metricMap.foreach { case (analyzerId, metric) =>
       val entry = new JsonObject()
 
-      entry.add(ANALYZER_ID_FIELD, context.serialize(analyzerName, classOf[AnalyzerName]))
+      entry.add(ANALYZER_ID_FIELD, context.serialize(analyzerId, classOf[AnalyzerId]))
       entry.add(METRIC_FIELD, context.serialize(metric, classOf[Metric[_]]))
 
       metricMap.add(entry)
@@ -218,15 +214,15 @@ private[deequ] object AnalyzerContextDeserializer extends JsonDeserializer[Analy
 
         val serializedAnalyzer = entry.getAsJsonObject.get(ANALYZER_ID_FIELD)
 
-        val analyzerName = context.deserialize(serializedAnalyzer,
-          classOf[AnalyzerName]).asInstanceOf[AnalyzerName]
+        val analyzerId = context.deserialize(serializedAnalyzer,
+          classOf[AnalyzerId]).asInstanceOf[AnalyzerId]
 
         val metric = context.deserialize(entry.getAsJsonObject.get(METRIC_FIELD),
           classOf[Metric[_]]).asInstanceOf[Metric[_]]
 
-        analyzerName -> metric
+        analyzerId -> metric
       }
-      .asInstanceOf[Seq[(AnalyzerName, Metric[_])]]
+      .asInstanceOf[Seq[(AnalyzerId, Metric[_])]]
       .toMap
 
     AnalyzerContext(metricMap)
@@ -373,59 +369,59 @@ private[deequ] object AnalyzerSerializer
   }
 }
 
-private[deequ] object AnalyzerNameSerializer
-  extends JsonSerializer[AnalyzerName] {
+private[deequ] object AnalyzerIdSerializer
+  extends JsonSerializer[AnalyzerId] {
 
-  override def serialize(analyzerName: AnalyzerName, t: Type,
+  override def serialize(analyzerId: AnalyzerId, t: Type,
                          context: JsonSerializationContext): JsonElement = {
 
     val result = new JsonObject()
 
-    result.addProperty(ANALYZER_NAME_FIELD, analyzerName.name)
+    result.addProperty(ANALYZER_NAME_FIELD, analyzerId.name)
 
-    analyzerName match {
-      case name: AnalyzerName.Filterable => result.addProperty(WHERE_FIELD, name.filterCondition.orNull)
+    analyzerId match {
+      case name: AnalyzerId.Filterable => result.addProperty(WHERE_FIELD, name.filterCondition.orNull)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.SingleColumn => result.addProperty(COLUMN_FIELD, name.column)
+    analyzerId match {
+      case name: AnalyzerId.SingleColumn => result.addProperty(COLUMN_FIELD, name.column)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.InstanceBased => result.addProperty(INSTANCE_FIELD, name.instance)
+    analyzerId match {
+      case name: AnalyzerId.InstanceBased => result.addProperty(INSTANCE_FIELD, name.instance)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.PredicateBased => result.addProperty(PREDICATE_FIELD, name.predicate)
+    analyzerId match {
+      case name: AnalyzerId.PredicateBased => result.addProperty(PREDICATE_FIELD, name.predicate)
       case _ =>
     }
 
-    analyzerName match {
-      case name: AnalyzerName.PatternBased => result.addProperty(PATTERN_FIELD, name.pattern)
+    analyzerId match {
+      case name: AnalyzerId.PatternBased => result.addProperty(PATTERN_FIELD, name.pattern)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.MultiColumn => result.add(COLUMNS_FIELD, context.serialize(name.columns.asJava, new TypeToken[JList[String]]() {}.getType))
+    analyzerId match {
+      case name: AnalyzerId.MultiColumn => result.add(COLUMNS_FIELD, context.serialize(name.columns.asJava, new TypeToken[JList[String]]() {}.getType))
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.Binned => result.addProperty(MAX_DETAIL_BINS_FIELD, name.maxDetailBins)
+    analyzerId match {
+      case name: AnalyzerId.Binned => result.addProperty(MAX_DETAIL_BINS_FIELD, name.maxDetailBins)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.TwoColumn =>
+    analyzerId match {
+      case name: AnalyzerId.TwoColumn =>
         result.addProperty(FIRST_COLUMN_FIELD, name.column1)
         result.addProperty(SECOND_COLUMN_FIELD, name.column2)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.Quantile =>
+    analyzerId match {
+      case name: AnalyzerId.Quantile =>
         result.addProperty(QUANTILE_FIELD, name.quantile)
         result.addProperty(RELATIVE_ERROR_FIELD, name.relativeError)
       case _ =>
     }
-    analyzerName match {
-      case name: AnalyzerName.Quantiles =>
+    analyzerId match {
+      case name: AnalyzerId.Quantiles =>
         result.addProperty(QUANTILES_FIELD, name.quantiles.mkString(","))
         result.addProperty(RELATIVE_ERROR_FIELD, name.relativeError)
       case _ =>
@@ -557,8 +553,8 @@ private[deequ] object AnalyzerDeserializer
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
-      case analyzerName =>
-        throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerName.")
+      case analyzerId =>
+        throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerId.")
     }
 
     analyzer.asInstanceOf[Analyzer[State[_], Metric[_]]]
@@ -573,8 +569,8 @@ private[deequ] object AnalyzerDeserializer
   }
 }
 
-private[deequ] object AnalyzerNameDeserializer
-  extends JsonDeserializer[AnalyzerName] {
+private[deequ] object AnalyzerIdDeserializer
+  extends JsonDeserializer[AnalyzerId] {
 
   private[this] def getColumnsAsSeq(context: JsonDeserializationContext,
     json: JsonObject): Seq[String] = {
@@ -584,92 +580,92 @@ private[deequ] object AnalyzerNameDeserializer
   }
 
   override def deserialize(jsonElement: JsonElement, t: Type,
-    context: JsonDeserializationContext): AnalyzerName = {
+    context: JsonDeserializationContext): AnalyzerId = {
 
     val json = jsonElement.getAsJsonObject
 
     val analyzer = json.get(ANALYZER_NAME_FIELD).getAsString match {
 
       case "Size" =>
-        AnalyzerName.Size(getOptionalWhereParam(json))
+        AnalyzerId.Size(getOptionalWhereParam(json))
 
       case "Completeness" =>
-        AnalyzerName.Completeness(json.get(COLUMN_FIELD).getAsString, getOptionalWhereParam(json))
+        AnalyzerId.Completeness(json.get(COLUMN_FIELD).getAsString, getOptionalWhereParam(json))
 
       case "Compliance" =>
-        AnalyzerName.Compliance(
+        AnalyzerId.Compliance(
           json.get("instance").getAsString,
           getOptionalWhereParam(json),
           json.get("predicate").getAsString)
 
       case "PatternMatch" =>
-        AnalyzerName.PatternMatch(
+        AnalyzerId.PatternMatch(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json),
           json.get("pattern").getAsString)
 
       case "Sum" =>
-        AnalyzerName.Sum(
+        AnalyzerId.Sum(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "Mean" =>
-        AnalyzerName.Mean(
+        AnalyzerId.Mean(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "Minimum" =>
-        AnalyzerName.Minimum(
+        AnalyzerId.Minimum(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "Maximum" =>
-        AnalyzerName.Maximum(
+        AnalyzerId.Maximum(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "CountDistinct" =>
-        AnalyzerName.CountDistinct(getColumnsAsSeq(context, json))
+        AnalyzerId.CountDistinct(getColumnsAsSeq(context, json))
 
       case "Distinctness" =>
-        AnalyzerName.Distinctness(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
+        AnalyzerId.Distinctness(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
 
       case "Entropy" =>
-        AnalyzerName.Entropy(json.get(COLUMN_FIELD).getAsString, getOptionalWhereParam(json))
+        AnalyzerId.Entropy(json.get(COLUMN_FIELD).getAsString, getOptionalWhereParam(json))
 
       case "MutualInformation" =>
-        AnalyzerName.MutualInformation(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
+        AnalyzerId.MutualInformation(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
 
       case "UniqueValueRatio" =>
-        AnalyzerName.UniqueValueRatio(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
+        AnalyzerId.UniqueValueRatio(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
 
       case "Uniqueness" =>
-        AnalyzerName.Uniqueness(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
+        AnalyzerId.Uniqueness(getColumnsAsSeq(context, json), getOptionalWhereParam(json))
 
       case "Histogram" =>
-        AnalyzerName.Histogram(
+        AnalyzerId.Histogram(
           json.get(COLUMN_FIELD).getAsString,
           None,
           json.get("maxDetailBins").getAsInt)
 
       case "DataType" =>
-        AnalyzerName.DataType(
+        AnalyzerId.DataType(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "ApproxCountDistinct" =>
-        AnalyzerName.ApproxCountDistinct(
+        AnalyzerId.ApproxCountDistinct(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "Correlation" =>
-        AnalyzerName.Correlation(
+        AnalyzerId.Correlation(
           json.get("firstColumn").getAsString,
           json.get("secondColumn").getAsString,
           getOptionalWhereParam(json))
 
       case "StandardDeviation" =>
-        AnalyzerName.StandardDeviation(
+        AnalyzerId.StandardDeviation(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
@@ -677,26 +673,26 @@ private[deequ] object AnalyzerNameDeserializer
         val column = json.get(COLUMN_FIELD).getAsString
         val quantile = json.get("quantile").getAsDouble
         val relativeError = json.get("relativeError").getAsDouble
-        AnalyzerName.ApproxQuantile(column, getOptionalWhereParam(json), quantile, relativeError)
+        AnalyzerId.ApproxQuantile(column, getOptionalWhereParam(json), quantile, relativeError)
 
       case "ApproxQuantiles" =>
         val column = json.get(COLUMN_FIELD).getAsString
         val quantile = json.get("quantiles").getAsString.split(",").map { _.toDouble }
         val relativeError = json.get("relativeError").getAsDouble
-        AnalyzerName.ApproxQuantiles(column, quantile, relativeError)
+        AnalyzerId.ApproxQuantiles(column, quantile, relativeError)
 
       case "MinLength" =>
-        AnalyzerName.MinLength(
+        AnalyzerId.MinLength(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
       case "MaxLength" =>
-        AnalyzerName.MaxLength(
+        AnalyzerId.MaxLength(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
-      case analyzerName =>
-        throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerName.")
+      case analyzerId =>
+        throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerId.")
     }
 
     analyzer

@@ -108,7 +108,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
       val analyzerContext = analysis.run(df)
 
-      assert(analyzerContext.metricMap(AnalyzerName.Mean("nonExistingColumnName", None)).value.compareFailureTypes(
+      assert(analyzerContext.metricMap(AnalyzerId.Mean("nonExistingColumnName", None)).value.compareFailureTypes(
         Failure(new NoSuchColumnException(""))))
     }
 
@@ -121,7 +121,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.Mean("att2", None)).value.compareFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Mean("att2", None)).value.compareFailureTypes(
           Failure(new WrongColumnTypeException(""))))
       }
 
@@ -134,7 +134,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.Distinctness(Seq.empty, None)).value.compareFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Distinctness(Seq.empty, None)).value.compareFailureTypes(
           Failure(new NoColumnsSpecifiedException(""))))
       }
 
@@ -147,7 +147,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.MutualInformation(Seq("att2"), None)).value.compareFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.MutualInformation(Seq("att2"), None)).value.compareFailureTypes(
           Failure(new NumberOfSpecifiedColumnsException(""))))
       }
 
@@ -160,7 +160,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.Histogram("att2", None, Integer.MAX_VALUE))
+        assert(analyzerContext.metricMap(AnalyzerId.Histogram("att2", None, Integer.MAX_VALUE))
           .value.compareFailureTypes(Failure(new IllegalAnalyzerParameterException(""))))
       }
 
@@ -173,7 +173,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.ApproxQuantile("att2", None, 1.1, 0.01))
+        assert(analyzerContext.metricMap(AnalyzerId.ApproxQuantile("att2", None, 1.1, 0.01))
           .value.compareFailureTypes(Failure(new IllegalAnalyzerParameterException(""))))
       }
 
@@ -186,7 +186,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.ApproxQuantile("att2", None, 0.5, -0.1))
+        assert(analyzerContext.metricMap(AnalyzerId.ApproxQuantile("att2", None, 0.5, -0.1))
           .value.compareFailureTypes(Failure(new IllegalAnalyzerParameterException(""))))
       }
 
@@ -205,7 +205,7 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(failingMean.name).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(failingMean.id).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(meanException))))
       }
   }
@@ -230,13 +230,13 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(AnalyzerName.Mean("att1", None)).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Mean("att1", None)).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(meanException))))
 
-        analyzerContext.metricMap(AnalyzerName.Minimum("att1", None)).value should be
+        analyzerContext.metricMap(AnalyzerId.Minimum("att1", None)).value should be
           DoubleMetric(Entity.Column, "Minimum", "att1", Success(1.0))
 
-        analyzerContext.metricMap(AnalyzerName.Maximum("att1", None)).value should be
+        analyzerContext.metricMap(AnalyzerId.Maximum("att1", None)).value should be
           DoubleMetric(Entity.Column, "Maximum", "att1", Success(6.0))
     }
 
@@ -256,13 +256,13 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(aggFailingMean.name).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(aggFailingMean.id).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(AnalyzerName.Minimum("att1", None)).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Minimum("att1", None)).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(AnalyzerName.Maximum("att1", None)).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Maximum("att1", None)).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
       }
@@ -288,14 +288,14 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(failingDistinctness.name).value
+        assert(analyzerContext.metricMap(failingDistinctness.id).value
           .compareOuterAndInnerFailureTypes(Failure(
             new MetricCalculationRuntimeException(distinctnessException))))
 
-        analyzerContext.metricMap(AnalyzerName.Entropy("att1", None)).value should be
+        analyzerContext.metricMap(AnalyzerId.Entropy("att1", None)).value should be
           DoubleMetric(Entity.Column, "Uniqueness", "att1", Success(1.0))
 
-        analyzerContext.metricMap(AnalyzerName.Uniqueness("att1", None)).value should be
+        analyzerContext.metricMap(AnalyzerId.Uniqueness("att1", None)).value should be
           DoubleMetric(Entity.Column, "Maximum", "att1", Success(6.0))
       }
 
@@ -315,14 +315,14 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
 
         val analyzerContext = analysis.run(df)
 
-        assert(analyzerContext.metricMap(failingDistinctness.name).value
+        assert(analyzerContext.metricMap(failingDistinctness.id).value
           .compareOuterAndInnerFailureTypes(Failure(
             new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(AnalyzerName.Entropy("att1", None)).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Entropy("att1", None)).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
 
-        assert(analyzerContext.metricMap(AnalyzerName.Uniqueness("att1", None)).value.compareOuterAndInnerFailureTypes(
+        assert(analyzerContext.metricMap(AnalyzerId.Uniqueness("att1", None)).value.compareOuterAndInnerFailureTypes(
           Failure(new MetricCalculationRuntimeException(aggregationException))))
       }
   }

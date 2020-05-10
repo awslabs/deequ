@@ -44,7 +44,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
     * Sample analyzer that returns a 1.0 value if the given column exists and fails otherwise.
     */
   case class SampleAnalyzer(column: String) extends Analyzer[NumMatches, DoubleMetric] {
-    override def name: AnalyzerName = AnalyzerName.CustomAnalyzerName("SampleAnalyzer", column)
+    override def id: AnalyzerId = AnalyzerId.CustomAnalyzerId("SampleAnalyzer", column)
 
     override def toFailureMetric(exception: Exception): DoubleMetric = {
       DoubleMetric(Entity.Column, "sample", column, Failure(MetricCalculationException
@@ -129,10 +129,10 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
     "get the analysis from the context, if provided" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
 
-      val emptyResults = Map.empty[AnalyzerName, Metric[_]]
-      val validResults = Map[AnalyzerName, Metric[_]](
-        AnalyzerName.CustomAnalyzerName("SampleAnalyzer", "att1") -> SampleAnalyzer("att1").calculate(df),
-        AnalyzerName.CustomAnalyzerName("SampleAnalyzer", "someMissingColumn") -> SampleAnalyzer("someMissingColumn").calculate(df)
+      val emptyResults = Map.empty[AnalyzerId, Metric[_]]
+      val validResults = Map[AnalyzerId, Metric[_]](
+        AnalyzerId.CustomAnalyzerId("SampleAnalyzer", "att1") -> SampleAnalyzer("att1").calculate(df),
+        AnalyzerId.CustomAnalyzerId("SampleAnalyzer", "someMissingColumn") -> SampleAnalyzer("someMissingColumn").calculate(df)
       )
 
       // Analysis result should equal to 1.0 for an existing column
@@ -158,8 +158,8 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
     "execute value picker on the analysis result value retrieved from context, if provided" in
       withSparkSession { sparkSession =>
         val df = getDfMissing(sparkSession)
-        val validResults = Map[AnalyzerName, Metric[_]](
-          AnalyzerName.CustomAnalyzerName("SampleAnalyzer", "att1") -> SampleAnalyzer("att1").calculate(df))
+        val validResults = Map[AnalyzerId, Metric[_]](
+          AnalyzerId.CustomAnalyzerId("SampleAnalyzer", "att1") -> SampleAnalyzer("att1").calculate(df))
 
         assert(AnalysisBasedConstraint[NumMatches, Double, Double](
             SampleAnalyzer("att1"), _ == 2.0, Some(valueDoubler))
@@ -174,9 +174,9 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
       val df = getDfMissing(sparkSession)
 
-      val emptyResults = Map.empty[AnalyzerName, Metric[_]]
-      val validResults = Map[AnalyzerName, Metric[_]](
-        AnalyzerName.CustomAnalyzerName("SampleAnalyzer", "att1") -> SampleAnalyzer("att1").calculate(df))
+      val emptyResults = Map.empty[AnalyzerId, Metric[_]]
+      val validResults = Map[AnalyzerId, Metric[_]](
+        AnalyzerId.CustomAnalyzerId("SampleAnalyzer", "att1") -> SampleAnalyzer("att1").calculate(df))
 
       val constraint = AnalysisBasedConstraint[NumMatches, Double, Double](
           SampleAnalyzer("att1"), _ == 1.0, Some(problematicValuePicker))

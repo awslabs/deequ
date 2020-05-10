@@ -47,5 +47,5 @@ case class Completeness(column: String, where: Option[String] = None) extends
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Completeness(column, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Completeness(column, filterCondition)
 }

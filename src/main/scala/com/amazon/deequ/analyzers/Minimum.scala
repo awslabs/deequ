@@ -54,5 +54,5 @@ case class Minimum(column: String, where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Minimum(column, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Minimum(column, filterCondition)
 }

@@ -49,5 +49,5 @@ case class Size(where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Size(filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Size(filterCondition)
 }

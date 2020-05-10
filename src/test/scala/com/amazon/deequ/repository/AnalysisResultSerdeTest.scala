@@ -33,55 +33,55 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
   "analysis results serialization with successful Values" should "work" in {
 
     val analyzerContextWithAllSuccValues = new AnalyzerContext(Map(
-      AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
-      AnalyzerName.Completeness("ColumnA", None) ->
+      AnalyzerId.Size(None) -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
+      AnalyzerId.Completeness("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Compliance("rule1", None, "att1 > 3") ->
+      AnalyzerId.Compliance("rule1", None, "att1 > 3") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.ApproxCountDistinct("columnA", None) ->
+      AnalyzerId.ApproxCountDistinct("columnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.CountDistinct(Seq("columnA", "columnB")) ->
+      AnalyzerId.CountDistinct(Seq("columnA", "columnB")) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Distinctness(Seq("columnA", "columnB"), None) ->
+      AnalyzerId.Distinctness(Seq("columnA", "columnB"), None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Correlation("firstColumn", "secondColumn", None) ->
+      AnalyzerId.Correlation("firstColumn", "secondColumn", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.UniqueValueRatio(Seq("columnA", "columnB"), None) ->
+      AnalyzerId.UniqueValueRatio(Seq("columnA", "columnB"), None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Correlation("firstColumn", "secondColumn", None) ->
+      AnalyzerId.Correlation("firstColumn", "secondColumn", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Uniqueness(Seq("ColumnA"), None) ->
+      AnalyzerId.Uniqueness(Seq("ColumnA"), None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Uniqueness(Seq("ColumnA", "ColumnB"), None) ->
+      AnalyzerId.Uniqueness(Seq("ColumnA", "ColumnB"), None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Histogram("ColumnA", None, Histogram.MaximumAllowedDetailBins) ->
+      AnalyzerId.Histogram("ColumnA", None, Histogram.MaximumAllowedDetailBins) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5)), 10))),
-      AnalyzerName.Histogram ("ColumnA", None, Histogram.MaximumAllowedDetailBins) ->
+      AnalyzerId.Histogram ("ColumnA", None, Histogram.MaximumAllowedDetailBins) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5), "other" -> DistributionValue(0, 0)), 10))),
-      AnalyzerName.Histogram("ColumnA", None, Histogram.MaximumAllowedDetailBins) ->
+      AnalyzerId.Histogram("ColumnA", None, Histogram.MaximumAllowedDetailBins) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5)), 10))),
-      AnalyzerName.Entropy("ColumnA", None) ->
+      AnalyzerId.Entropy("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.MutualInformation(Seq("ColumnA", "ColumnB"), None) ->
+      AnalyzerId.MutualInformation(Seq("ColumnA", "ColumnB"), None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Minimum("ColumnA", None) ->
+      AnalyzerId.Minimum("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Maximum("ColumnA", None) ->
+      AnalyzerId.Maximum("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Mean("ColumnA", None) ->
+      AnalyzerId.Mean("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.Sum("ColumnA", None) ->
+      AnalyzerId.Sum("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.StandardDeviation("ColumnA", None) ->
+      AnalyzerId.StandardDeviation("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.DataType("ColumnA", None) ->
+      AnalyzerId.DataType("ColumnA", None) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      AnalyzerName.MinLength("ColumnA", None) ->
+      AnalyzerId.MinLength("ColumnA", None) ->
         DoubleMetric(Entity.Column, "MinLength", "ColumnA", Success(5.0)),
-      AnalyzerName.MaxLength("ColumnA", None) ->
+      AnalyzerId.MaxLength("ColumnA", None) ->
         DoubleMetric(Entity.Column, "MaxLength", "ColumnA", Success(5.0))
     ))
 
@@ -106,13 +106,13 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     val analyzer = PatternMatch("patternRule1", Patterns.EMAIL)
     val metric = DoubleMetric(Entity.Column, "PatternMatch", "ColumnA", Success(5.0))
 
-    val result = AnalysisResult(resultKeyOne, AnalyzerContext(Map(analyzer.name -> metric)))
+    val result = AnalysisResult(resultKeyOne, AnalyzerContext(Map(analyzer.id -> metric)))
 
     val clonedResult = deserialize(serialize(Seq(result))).head
 
     val (clonedAnalyzer, clonedMetric) = clonedResult.analyzerContext.metricMap
-      .collect { case (analyzerName: AnalyzerName.PatternMatch, metric: DoubleMetric) =>
-        analyzerName -> metric
+      .collect { case (patternMatchAnalyzerId: AnalyzerId.PatternMatch, metric: DoubleMetric) =>
+        patternMatchAnalyzerId -> metric
       }
       .head
 
@@ -128,8 +128,8 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     val analyzerContextWithMixedValues = new AnalyzerContext(
       Map(
-        AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
-        AnalyzerName.Completeness("ColumnA", None) ->
+        AnalyzerId.Size(None) -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
+        AnalyzerId.Completeness("ColumnA", None) ->
             DoubleMetric(Entity.Column, "Completeness", "ColumnA", Failure(sampleException))
       )
     )
@@ -151,7 +151,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     val analyzer = ApproxQuantile("col", 0.5, relativeError = 0.2)
     val metric = DoubleMetric(Entity.Column, "ApproxQuantile", "col", Success(0.5))
-    val context = AnalyzerContext(Map(analyzer.name -> metric))
+    val context = AnalyzerContext(Map(analyzer.id -> metric))
     val result = new AnalysisResult(ResultKey(0), context)
 
     assertCorrectlyConvertsAnalysisResults(Seq(result))
@@ -166,7 +166,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     val analyzer = ApproxQuantiles("col", Seq(0.25, 0.5, 0.75), relativeError = 0.2)
     val metric = KeyedDoubleMetric(Entity.Column, "ApproxQuantiles", "col", Success(quartiles))
-    val context = AnalyzerContext(Map(analyzer.name -> metric))
+    val context = AnalyzerContext(Map(analyzer.id -> metric))
     val result = new AnalysisResult(ResultKey(0), context)
 
     assertCorrectlyConvertsAnalysisResults(Seq(result))

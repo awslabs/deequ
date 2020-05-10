@@ -18,7 +18,7 @@ package com.amazon.deequ.repository.memory
 
 import java.util.concurrent.ConcurrentHashMap
 
-import com.amazon.deequ.analyzers.AnalyzerName
+import com.amazon.deequ.analyzers.AnalyzerId
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.repository._
 
@@ -69,7 +69,7 @@ class LimitedInMemoryMetricsRepositoryMultipleResultsLoader(
 
 
   private[this] var tagValues: Option[Map[String, String]] = None
-  private[this] var forAnalyzers: Option[Seq[AnalyzerName]] = None
+  private[this] var forAnalyzers: Option[Seq[AnalyzerId]] = None
   private[this] var before: Option[Long] = None
   private[this] var after: Option[Long] = None
 
@@ -88,7 +88,7 @@ class LimitedInMemoryMetricsRepositoryMultipleResultsLoader(
     *
     * @param analyzers A sequence of analyers who's resulting metrics you want to load
     */
-  def forAnalyzers(analyzers: Seq[AnalyzerName])
+  def forAnalyzers(analyzers: Seq[AnalyzerId])
     : MetricsRepositoryMultipleResultsLoader = {
 
     this.forAnalyzers = Option(analyzers)

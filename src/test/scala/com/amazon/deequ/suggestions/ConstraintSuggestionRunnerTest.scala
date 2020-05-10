@@ -151,7 +151,7 @@ class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkCo
         .addAnalyzers(analyzers)
         .run()
 
-      val resultWhichShouldBeOverwritten = AnalyzerContext(Map(AnalyzerName.Size(None) -> DoubleMetric(
+      val resultWhichShouldBeOverwritten = AnalyzerContext(Map(AnalyzerId.Size(None) -> DoubleMetric(
         Entity.Dataset, "", "", Try(100.0))))
 
       repository.save(resultKey, resultWhichShouldBeOverwritten)

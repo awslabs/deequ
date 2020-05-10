@@ -236,7 +236,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
             .addRequiredAnalyzers(analyzers).run()
         val expectedAnalyzerContextOnLoadByKey = AnalyzerContext(actualResult.metrics)
 
-        val resultWhichShouldBeOverwritten = AnalyzerContext(Map(AnalyzerName.Size(None) -> DoubleMetric(
+        val resultWhichShouldBeOverwritten = AnalyzerContext(Map(AnalyzerId.Size(None) -> DoubleMetric(
           Entity.Dataset, "", "", util.Try(100.0))))
 
         repository.save(resultKey, resultWhichShouldBeOverwritten)
@@ -371,8 +371,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         .aggregateWith(stateLoaderStub)
         .run()
 
-      assert(results.metrics(AnalyzerName.Sum("att2", None)).value.get == 18.0 * 2)
-      assert(results.metrics(AnalyzerName.Completeness("att1", None)).value.get == 0.5)
+      assert(results.metrics(AnalyzerId.Sum("att2", None)).value.get == 18.0 * 2)
+      assert(results.metrics(AnalyzerId.Completeness("att1", None)).value.get == 0.5)
     }
 
     "keep order of check constraints and their results" in withSparkSession { sparkSession =>
@@ -413,14 +413,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     (1 to 2).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
+        AnalyzerId.Size(None) -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "EU")), analyzerContext)
     }
 
     (3 to 4).foreach { timeStamp =>
       val analyzerContext = new AnalyzerContext(Map(
-        AnalyzerName.Size(None) -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
+        AnalyzerId.Size(None) -> DoubleMetric(Entity.Column, "", "", util.Success(timeStamp))
       ))
       repository.save(ResultKey(timeStamp, Map("Region" -> "NA")), analyzerContext)
     }

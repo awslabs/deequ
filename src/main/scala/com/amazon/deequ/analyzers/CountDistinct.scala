@@ -32,7 +32,7 @@ case class CountDistinct(columns: Seq[String])
     toSuccessMetric(result.getLong(offset).toDouble)
   }
 
-  override def name: AnalyzerName = AnalyzerName.CountDistinct(columns)
+  override def id: AnalyzerId = AnalyzerId.CountDistinct(columns)
 }
 
 object CountDistinct {

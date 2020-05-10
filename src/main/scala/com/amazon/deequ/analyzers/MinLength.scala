@@ -42,5 +42,5 @@ case class MinLength(column: String, where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.MinLength(column, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.MinLength(column, filterCondition)
 }

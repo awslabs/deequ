@@ -55,5 +55,5 @@ case class Mean(column: String, where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Mean(column, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Mean(column, filterCondition)
 }

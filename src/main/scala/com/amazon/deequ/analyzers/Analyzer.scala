@@ -52,42 +52,42 @@ trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
   def metricValue(): Double
 }
 
-sealed trait AnalyzerName {
+sealed trait AnalyzerId {
   def name: String = productPrefix
   protected def productPrefix: String
 }
 
-object AnalyzerName {
-  sealed trait Filterable extends AnalyzerName {
+object AnalyzerId {
+  sealed trait Filterable extends AnalyzerId {
     def filterCondition: Option[String]
   }
-  sealed trait SingleColumn extends AnalyzerName {
+  sealed trait SingleColumn extends AnalyzerId {
     def column: String
   }
-  sealed trait MultiColumn extends AnalyzerName {
+  sealed trait MultiColumn extends AnalyzerId {
     def columns: Seq[String]
   }
-  sealed trait Binned extends AnalyzerName {
+  sealed trait Binned extends AnalyzerId {
     def maxDetailBins: Int
   }
-  sealed trait InstanceBased extends AnalyzerName {
+  sealed trait InstanceBased extends AnalyzerId {
     def instance: String
   }
-  sealed trait PredicateBased extends AnalyzerName {
+  sealed trait PredicateBased extends AnalyzerId {
     def predicate: String
   }
-  sealed trait PatternBased extends AnalyzerName {
+  sealed trait PatternBased extends AnalyzerId {
     def pattern: String
   }
-  sealed trait TwoColumn extends AnalyzerName {
+  sealed trait TwoColumn extends AnalyzerId {
     def column1: String
     def column2: String
   }
-  sealed trait Quantile extends AnalyzerName {
+  sealed trait Quantile extends AnalyzerId {
     def quantile: Double
     def relativeError: Double
   }
-  sealed trait Quantiles extends AnalyzerName {
+  sealed trait Quantiles extends AnalyzerId {
     def quantiles: Seq[Double]
     def relativeError: Double
   }
@@ -124,7 +124,7 @@ object AnalyzerName {
   case class Correlation(column1: String, column2: String, filterCondition: Option[String]) extends Filterable with TwoColumn
 
   // Analyzer names with a column parameter
-  case class KLLSketch(column: String) extends AnalyzerName
+  case class KLLSketch(column: String) extends AnalyzerId
 
   case class ApproxQuantiles(column: String, quantiles: Seq[Double], relativeError: Double) extends SingleColumn with Quantiles
   // Grouping Analyzer Names
@@ -134,14 +134,18 @@ object AnalyzerName {
   case class Compliance(instance: String, filterCondition: Option[String], predicate: String) extends Filterable with InstanceBased with PredicateBased
 
   // Custom Analyzer Name to enable extensibility
-  case class CustomAnalyzerName[T](override val name: String, instance: T) extends AnalyzerName
+  case class CustomAnalyzerId[T](override val name: String, instance: T) extends AnalyzerId
 
 }
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
 trait Analyzer[S <: State[_], +M <: Metric[_]] {
 
-  def name: AnalyzerName
+  /**
+   * Identifier for the Analyzer
+   * @return
+   */
+  def id: AnalyzerId
 
   /**
     * Compute the state (sufficient statistics) from the data

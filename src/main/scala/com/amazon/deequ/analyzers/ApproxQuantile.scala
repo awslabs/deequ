@@ -55,7 +55,7 @@ case class ApproxQuantile(
   extends ScanShareableAnalyzer[ApproxQuantileState, DoubleMetric]
   with FilterableAnalyzer {
 
-  override def name: AnalyzerName = AnalyzerName.ApproxQuantile(column, filterCondition, quantile, relativeError)
+  override def id: AnalyzerId = AnalyzerId.ApproxQuantile(column, filterCondition, quantile, relativeError)
 
   val PARAM_CHECKS: StructType => Unit = { _ =>
     if (quantile < 0.0 || quantile > 1.0) {

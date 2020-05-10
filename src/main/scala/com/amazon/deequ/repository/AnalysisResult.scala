@@ -44,7 +44,6 @@ object AnalysisResult {
                                     forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty,
                                     withTags: Seq[String] = Seq.empty)
   : DataFrame = {
-    import sparkSession.implicits.newProductEncoder
     var analyzerContextDF = AnalyzerContext
       .successMetricsAsDataFrame(sparkSession, analysisResult.analyzerContext, forAnalyzers)
       .withColumn(DATASET_DATE_FIELD, lit(analysisResult.resultKey.dataSetDate))

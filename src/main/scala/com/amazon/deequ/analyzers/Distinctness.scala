@@ -36,7 +36,7 @@ case class Distinctness(columns: Seq[String], where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Distinctness(columns, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Distinctness(columns, filterCondition)
 }
 
 object Distinctness {

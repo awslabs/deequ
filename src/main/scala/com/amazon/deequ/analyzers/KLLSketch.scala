@@ -168,7 +168,7 @@ case class KLLSketch(
     PARAM_CHECK :: hasColumn(column) :: isNumeric(column) :: Nil
   }
 
-  override def name: AnalyzerName = AnalyzerName.KLLSketch(column)
+  override def id: AnalyzerId = AnalyzerId.KLLSketch(column)
 }
 
 object KLLSketch {

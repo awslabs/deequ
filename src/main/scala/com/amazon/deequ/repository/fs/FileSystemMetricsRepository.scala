@@ -19,7 +19,7 @@ package com.amazon.deequ.repository.fs
 import java.io.{BufferedInputStream, BufferedOutputStream}
 import java.util.UUID.randomUUID
 
-import com.amazon.deequ.analyzers.AnalyzerName
+import com.amazon.deequ.analyzers.AnalyzerId
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.repository._
 import com.google.common.io.Closeables
@@ -77,7 +77,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
   session: SparkSession, path: String) extends MetricsRepositoryMultipleResultsLoader {
 
   private[this] var tagValues: Option[Map[String, String]] = None
-  private[this] var forAnalyzers: Option[Seq[AnalyzerName]] = None
+  private[this] var forAnalyzers: Option[Seq[AnalyzerId]] = None
   private[this] var before: Option[Long] = None
   private[this] var after: Option[Long] = None
 
@@ -96,7 +96,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
     *
     * @param analyzers A sequence of analyers who's resulting metrics you want to load
     */
-  def forAnalyzers(analyzers: Seq[AnalyzerName])
+  def forAnalyzers(analyzers: Seq[AnalyzerId])
     : MetricsRepositoryMultipleResultsLoader = {
 
     this.forAnalyzers = Option(analyzers)

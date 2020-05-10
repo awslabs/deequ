@@ -106,5 +106,5 @@ case class Correlation(
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Correlation(firstColumn, secondColumn, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Correlation(firstColumn, secondColumn, filterCondition)
 }

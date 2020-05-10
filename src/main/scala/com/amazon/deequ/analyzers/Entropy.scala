@@ -43,5 +43,5 @@ case class Entropy(column: String, where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  override def name: AnalyzerName = AnalyzerName.Entropy(column, filterCondition)
+  override def id: AnalyzerId = AnalyzerId.Entropy(column, filterCondition)
 }

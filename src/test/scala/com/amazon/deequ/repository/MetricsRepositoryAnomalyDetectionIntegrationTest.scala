@@ -106,14 +106,14 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Mat
      (1 to 30).foreach { pastDay =>
 
       val pastResultsEU = Map(
-        AnalyzerName.Size(None) -> DoubleMetric(Entity.Dataset, "*", "Size", Success(math.floor(pastDay / 3))),
-        AnalyzerName.Mean("sales", None) -> DoubleMetric(Entity.Column, "sales", "Mean", Success(pastDay * 7))
-      ).asInstanceOf[Map[AnalyzerName, Metric[_]]]
+        AnalyzerId.Size(None) -> DoubleMetric(Entity.Dataset, "*", "Size", Success(math.floor(pastDay / 3))),
+        AnalyzerId.Mean("sales", None) -> DoubleMetric(Entity.Column, "sales", "Mean", Success(pastDay * 7))
+      ).asInstanceOf[Map[AnalyzerId, Metric[_]]]
 
       val pastResultsNA = Map(
-        AnalyzerName.Size(None) -> DoubleMetric(Entity.Dataset, "*", "Size", Success(pastDay)),
-        AnalyzerName.Mean("sales", None) -> DoubleMetric(Entity.Column, "sales", "Mean", Success(pastDay * 9))
-      ).asInstanceOf[Map[AnalyzerName, Metric[_]]]
+        AnalyzerId.Size(None) -> DoubleMetric(Entity.Dataset, "*", "Size", Success(pastDay)),
+        AnalyzerId.Mean("sales", None) -> DoubleMetric(Entity.Column, "sales", "Mean", Success(pastDay * 9))
+      ).asInstanceOf[Map[AnalyzerId, Metric[_]]]
 
       val analyzerContextEU = new AnalyzerContext(pastResultsEU)
       val analyzerContextNA = new AnalyzerContext(pastResultsNA)

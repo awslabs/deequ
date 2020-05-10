@@ -191,7 +191,7 @@ object ColumnProfiler {
     )
 
     // The columns we need to calculate the histograms for
-    val existingHistCols = analyzerContextExistingValues.metricMap.collect { case (AnalyzerName.Histogram(c, _, _), _) => c}.toSeq
+    val existingHistCols = analyzerContextExistingValues.metricMap.collect { case (AnalyzerId.Histogram(c, _, _), _) => c}.toSeq
     val nonExistingHistogramColumns = targetColumnsForHistograms
       .filter { column => !existingHistCols.contains(column) }
 
@@ -313,7 +313,7 @@ object ColumnProfiler {
 
           val relevantEntries = analyzerContextWithAllPreviousResults.metricMap
             .filterKeys {
-              case AnalyzerName.Histogram(column, _, _) =>
+              case AnalyzerId.Histogram(column, _, _) =>
                 targetColumnsForHistograms.contains(column)
               case _ => false
             }
@@ -327,7 +327,7 @@ object ColumnProfiler {
 
   private[this] def convertColumnNamesAndDistributionToHistogramWithMetric(
     columnNamesAndDistribution: Map[String, Distribution])
-  : Map[AnalyzerName, Metric[_]] = {
+  : Map[AnalyzerId, Metric[_]] = {
 
     columnNamesAndDistribution
       .map { case (columnName, distribution) =>
@@ -335,7 +335,7 @@ object ColumnProfiler {
         val analyzer = Histogram(columnName)
         val metric = HistogramMetric(columnName, Success(distribution))
 
-        analyzer.name -> metric
+        analyzer.id -> metric
       }
   }
 
@@ -379,39 +379,39 @@ object ColumnProfiler {
     : GenericColumnStatistics = {
 
     val numRecords = results.metricMap
-      .collect { case (AnalyzerName.Size(None), metric: DoubleMetric) => metric.value.get }
+      .collect { case (AnalyzerId.Size(None), metric: DoubleMetric) => metric.value.get }
       .head
       .toLong
 
 
     val inferredTypes = results.metricMap
       .filterNot{
-        case (AnalyzerName.DataType(column, None), _) => predefinedTypes.contains(column)
+        case (AnalyzerId.DataType(column, _), _) => predefinedTypes.contains(column)
         case _ => true
       }
-      .collect { case (AnalyzerName.DataType(column, None), metric: HistogramMetric) =>
+      .collect { case (AnalyzerId.DataType(column, _), metric: HistogramMetric) =>
           val typeHistogram = metric.value.get
           column -> DataTypeHistogram.determineType(typeHistogram)
       }
 
     val typeDetectionHistograms = results.metricMap
       .filterNot{
-        case (AnalyzerName.DataType(column, None), _) => predefinedTypes.contains(column)
+        case (AnalyzerId.DataType(column, _), _) => predefinedTypes.contains(column)
         case _ => true
       }
-      .collect { case (AnalyzerName.DataType(column, None), metric: HistogramMetric) =>
+      .collect { case (AnalyzerId.DataType(column, _), metric: HistogramMetric) =>
           val typeCounts = metric.value.get.values
             .map { case (key, distValue) => key -> distValue.absolute }
           column -> typeCounts
       }
 
     val approximateNumDistincts = results.metricMap
-      .collect { case (AnalyzerName.ApproxCountDistinct(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.ApproxCountDistinct(column, _), metric: DoubleMetric) =>
         column -> metric.value.get.toLong
       }
 
     val completenesses = results.metricMap
-      .collect { case (AnalyzerName.Completeness(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.Completeness(column, _), metric: DoubleMetric) =>
         column -> metric.value.get
       }
 
@@ -465,7 +465,7 @@ object ColumnProfiler {
   private[this] def extractNumericStatistics(results: AnalyzerContext): NumericColumnStatistics = {
 
     val means = results.metricMap
-      .collect { case (AnalyzerName.Mean(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.Mean(column, _), metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(column -> metricValue)
           case _ => None
@@ -475,7 +475,7 @@ object ColumnProfiler {
       .toMap
 
     val stdDevs = results.metricMap
-      .collect { case (AnalyzerName.StandardDeviation(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.StandardDeviation(column, _), metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(column -> metricValue)
           case _ => None
@@ -485,7 +485,7 @@ object ColumnProfiler {
       .toMap
 
     val maxima = results.metricMap
-      .collect { case (AnalyzerName.Maximum(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.Maximum(column, _), metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(column -> metricValue)
           case _ => None
@@ -495,7 +495,7 @@ object ColumnProfiler {
       .toMap
 
     val minima = results.metricMap
-      .collect { case (AnalyzerName.Minimum(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.Minimum(column, _), metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(column -> metricValue)
           case _ => None
@@ -505,7 +505,7 @@ object ColumnProfiler {
       .toMap
 
     val sums = results.metricMap
-      .collect { case (AnalyzerName.Sum(column, None), metric: DoubleMetric) =>
+      .collect { case (AnalyzerId.Sum(column, _), metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(column -> metricValue)
           case _ => None
@@ -516,7 +516,7 @@ object ColumnProfiler {
 
 
     val kll = results.metricMap
-      .collect { case (AnalyzerName.KLLSketch(column), metric: KLLMetric) if metric.value.isSuccess =>
+      .collect { case (AnalyzerId.KLLSketch(column), metric: KLLMetric) if metric.value.isSuccess =>
         metric.value match {
           case Success(bucketDistribution) =>
             Some(column -> bucketDistribution)
@@ -527,7 +527,7 @@ object ColumnProfiler {
       .toMap
 
     val approxPercentiles = results.metricMap
-      .collect {  case (AnalyzerName.KLLSketch(column), metric: KLLMetric) =>
+      .collect {  case (AnalyzerId.KLLSketch(column), metric: KLLMetric) =>
         metric.value match {
           case Success(bucketDistribution) =>
 
@@ -657,7 +657,7 @@ object ColumnProfiler {
 
       // Return overall results using the more simple Distribution format
       analyzerContext.metricMap
-        .map { case (AnalyzerName.Histogram(column, _, _), metric: HistogramMetric) if metric.value.isSuccess =>
+        .map { case (AnalyzerId.Histogram(column, _, _), metric: HistogramMetric) if metric.value.isSuccess =>
           column -> metric.value.get
         }
     } else {
@@ -666,7 +666,7 @@ object ColumnProfiler {
         println("### PROFILING: Skipping pass (3/3), no new histograms need to be calculated.")
       }
       analyzerContextExistingValues.metricMap
-        .map { case (AnalyzerName.Histogram(column, _, _), metric: HistogramMetric) if metric.value.isSuccess =>
+        .map { case (AnalyzerId.Histogram(column, _, _), metric: HistogramMetric) if metric.value.isSuccess =>
           column -> metric.value.get
         }
     }
