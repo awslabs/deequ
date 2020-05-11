@@ -290,13 +290,8 @@ object Preconditions {
   private[this] val nestedDataTypes = Set(StructType, MapType, ArrayType)
 
   private[this] val caseSensitive = {
-    val sparkSession = SparkSession.builder().getOrCreate()
-    try {
-      sparkSession.sqlContext.getConf("spark.sql.caseSensitive").equalsIgnoreCase("true")
-    } catch {
-      case e: java.util.NoSuchElementException =>
-        true
-    }
+    SparkSession.builder().getOrCreate()
+    .sqlContext.getConf("spark.sql.caseSensitive").equalsIgnoreCase("true")
   }
 
   def structField(column: String, schema: StructType): StructField = {
