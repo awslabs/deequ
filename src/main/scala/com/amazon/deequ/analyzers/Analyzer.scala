@@ -20,7 +20,7 @@ import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Column, DataFrame, Row}
+import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
 
 import scala.language.existentials
@@ -289,6 +289,29 @@ object Preconditions {
 
   private[this] val nestedDataTypes = Set(StructType, MapType, ArrayType)
 
+  private[this] val caseSensitive = {
+    SparkSession.builder().getOrCreate()
+    .sqlContext.getConf("spark.sql.caseSensitive").equalsIgnoreCase("true")
+  }
+
+  def structField(column: String, schema: StructType): StructField = {
+    if (caseSensitive) {
+      schema(column)
+    } else {
+      schema.find(_.name.equalsIgnoreCase(column)).getOrElse {
+        throw new IllegalArgumentException(s"Field {$column} doesn't not exist" )
+      }
+    }
+  }
+
+  def hasColumn(column: String, schema: StructType): Boolean = {
+    if (caseSensitive) {
+      schema.fieldNames.contains(column)
+    } else {
+      schema.fieldNames.find(_.equalsIgnoreCase(column)).isDefined
+    }
+  }
+
   /* Return the first (potential) exception thrown by a precondition */
   def findFirstFailing(
       schema: StructType,
@@ -324,8 +347,8 @@ object Preconditions {
   }
 
   def isNotNested(column: String): StructType => Unit = { schema =>
-    if (schema.fieldNames.contains(column)) {
-      val columnDataType = schema(column).dataType
+    if (hasColumn(column, schema)) {
+      val columnDataType = structField(column, schema).dataType
       columnDataType match {
         case _ : StructType | _ : MapType | _ : ArrayType =>
           throw new WrongColumnTypeException(
@@ -337,14 +360,14 @@ object Preconditions {
 
   /** Specified column exists in the data */
   def hasColumn(column: String): StructType => Unit = { schema =>
-    if (!schema.fieldNames.contains(column)) {
+    if (!hasColumn(column, schema)) {
       throw new NoSuchColumnException(s"Input data does not include column $column!")
     }
   }
 
   /** Specified column has a numeric type */
   def isNumeric(column: String): StructType => Unit = { schema =>
-    val columnDataType = schema(column).dataType
+    val columnDataType = structField(column, schema).dataType
     val hasNumericType = columnDataType match {
       case ByteType | ShortType | IntegerType | LongType | FloatType |
            DoubleType | _ : DecimalType => true
@@ -359,7 +382,7 @@ object Preconditions {
 
   /** Specified column has string type */
   def isString(column: String): StructType => Unit = { schema =>
-    val columnDataType = schema(column).dataType
+    val columnDataType = structField(column, schema).dataType
     val hasStringType = columnDataType match {
       case StringType => true
       case _ => false

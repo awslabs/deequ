@@ -33,8 +33,8 @@ As a result, we get a profile for each column in the data, which allows us to in
 the approximate number of distinct values and the inferred datatype:
 
 ```scala
-result.profiles.foreach { case (productName, profile) =>
-  println(s"Column '$productName':\n " +
+result.profiles.foreach { case (colName, profile) =>
+  println(s"Column '$colName':\n " +
     s"\tcompleteness: ${profile.completeness}\n" +
     s"\tapproximate number of distinct values: ${profile.approximateNumDistinctValues}\n" +
     s"\tdatatype: ${profile.dataType}\n")

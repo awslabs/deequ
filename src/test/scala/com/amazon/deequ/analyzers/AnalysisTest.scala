@@ -54,18 +54,32 @@ class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with Fix
       assertSameRows(successMetricsAsDataFrame, expected)
     }
 
-    "run an individual analyzer only once" in withSparkSession { sparkSession =>
-      val df = getDfFull(sparkSession)
+    "return results for configured analyzers in case insensitive manner" in
+      withSparkSession { sparkSession =>
 
-      val analysis = Analysis()
-        .addAnalyzer(Size())
-        .addAnalyzer(Size())
-        .addAnalyzer(Size())
+        sparkSession.sqlContext.setConf("spark.sql.caseSensitive", "false")
 
-      val analysisResult = analysis.run(df)
-      assert(analysisResult.allMetrics.length == 1)
-      assert(analysisResult.metric(Size()).get.value.get == 4)
-    }
+        val df = getDfFull(sparkSession)
+
+        val analysisResult = Analysis()
+          .addAnalyzer(Size())
+          .addAnalyzer(Distinctness("ITEM"))
+          .addAnalyzer(Completeness("ATT1"))
+          .addAnalyzer(Uniqueness(Seq("ATT1", "ATT2")))
+          .run(df)
+
+        val successMetricsAsDataFrame = AnalyzerContext
+          .successMetricsAsDataFrame(sparkSession, analysisResult)
+
+        import sparkSession.implicits._
+        val expected = Seq(
+          ("Dataset", "*", "Size", 4.0),
+          ("Column", "ITEM", "Distinctness", 1.0),
+          ("Column", "ATT1", "Completeness", 1.0),
+          ("Mutlicolumn", "ATT1,ATT2", "Uniqueness", 0.25))
+          .toDF("entity", "instance", "name", "value")
+        assertSameRows(successMetricsAsDataFrame, expected)
+      }
 
     "return basic statistics" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
