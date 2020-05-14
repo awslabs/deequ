@@ -101,6 +101,7 @@ object AnalyzerContext {
     metric.copy(name = newName)
   }
 
+
   /**
     * Describe the DoubleMetric, using the name of the metric and analyzer filtering condition
     * It helps us to show more readable success metrics
