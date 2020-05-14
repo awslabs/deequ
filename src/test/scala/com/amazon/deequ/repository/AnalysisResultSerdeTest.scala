@@ -18,17 +18,65 @@ package com.amazon.deequ.repository
 
 import java.time.{LocalDate, ZoneOffset}
 
-import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, Maximum, Mean, Minimum, MutualInformation, StandardDeviation, Uniqueness, _}
-import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.metrics._
-import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest._
-import AnalysisResultSerde._
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, Maximum, Mean, Minimum, MutualInformation, StandardDeviation, Uniqueness, _}
+import com.amazon.deequ.metrics._
+import com.amazon.deequ.repository.AnalysisResultSerde._
+import com.amazon.deequ.utils.FixtureSupport
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+import org.scalatest._
 
 import scala.util.{Failure, Success}
 
 class AnalysisResultSerdeTest extends FlatSpec with Matchers {
+
+  "analyzer id serialization and deserialization" should "give the same JSON as the equivalent analyzer serialization" +
+    "and deserialization" in {
+    // This test to to ensure backwards compatibility with previous repository implementations which serialized the
+    // analyzer objects directly
+    val analyzers = Seq(
+      Size(),
+      Completeness("ColumnA"),
+      Compliance("rule1", "att1 > 3"),
+      ApproxCountDistinct("columnA", Some("test")),
+      CountDistinct(Seq("columnA", "columnB")),
+      Distinctness(Seq("columnA", "columnB")),
+      Correlation("firstColumn", "secondColumn", Some("test")),
+      UniqueValueRatio(Seq("columnA", "columnB")),
+      Correlation("firstColumn", "secondColumn", Some("test")),
+      Uniqueness("ColumnA"),
+      Uniqueness(Seq("ColumnA", "ColumnB")),
+      Histogram("ColumnA"),
+      Histogram ("ColumnA", None),
+      Histogram("ColumnA", None, 5),
+      Entropy("ColumnA"),
+      MutualInformation(Seq("ColumnA", "ColumnB")),
+      Minimum("ColumnA"),
+      Maximum("ColumnA"),
+      Mean("ColumnA"),
+      Sum("ColumnA"),
+      StandardDeviation("ColumnA"),
+      DataType("ColumnA"),
+      MinLength("ColumnA"),
+      MaxLength("ColumnA")
+    )
+
+    val analyzerSerializer = new GsonBuilder().registerTypeAdapter(classOf[Analyzer[State[_], Metric[_]]], AnalyzerSerializer).create()
+    val analyzerDeserializer = new GsonBuilder().registerTypeAdapter(classOf[Analyzer[State[_], Metric[_]]], AnalyzerDeserializer).create()
+    val analyzerIdSerializer = new GsonBuilder().registerTypeAdapter(classOf[AnalyzerId], AnalyzerIdSerializer).create()
+    val analyzerIdDeserializer = new GsonBuilder().registerTypeAdapter(classOf[AnalyzerId], AnalyzerIdDeserializer).create()
+
+    analyzers.foreach {analyzer =>
+      val analyzerJson = analyzerSerializer.toJson(analyzer, new TypeToken[Analyzer[State[_], Metric[_]]]() {}.getType)
+      val analyzerIdJson = analyzerIdSerializer.toJson(analyzer.id, new TypeToken[AnalyzerId]() {}.getType)
+      analyzerIdJson shouldBe analyzerJson
+      val deserializedAnalyzer = analyzerDeserializer.fromJson(analyzerJson, classOf[Analyzer[State[_], Metric[_]]])
+      val deserializedAnalyzerId = analyzerIdDeserializer.fromJson(analyzerJson, classOf[AnalyzerId])
+      deserializedAnalyzer.id shouldBe deserializedAnalyzerId
+    }
+  }
 
   "analysis results serialization with successful Values" should "work" in {
 

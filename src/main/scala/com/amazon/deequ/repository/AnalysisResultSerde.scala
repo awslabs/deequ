@@ -41,7 +41,6 @@ private[repository] object JsonSerializationConstants {
   val STRING_LIST_TYPE: Type = new TypeToken[JList[String]]() {}.getType
 
   val ANALYZER_FIELD = "analyzer"
-  val ANALYZER_ID_FIELD = "analyzerId"
   val ANALYZER_NAME_FIELD = "analyzerName"
   val FIRST_COLUMN_FIELD = "firstColumn"
   val SECOND_COLUMN_FIELD = "secondColumn"
@@ -190,7 +189,7 @@ private[deequ] object AnalyzerContextSerializer extends JsonSerializer[AnalyzerC
     analyzerContext.metricMap.foreach { case (analyzerId, metric) =>
       val entry = new JsonObject()
 
-      entry.add(ANALYZER_ID_FIELD, context.serialize(analyzerId, classOf[AnalyzerId]))
+      entry.add(ANALYZER_FIELD, context.serialize(analyzerId, classOf[AnalyzerId]))
       entry.add(METRIC_FIELD, context.serialize(metric, classOf[Metric[_]]))
 
       metricMap.add(entry)
@@ -212,7 +211,7 @@ private[deequ] object AnalyzerContextDeserializer extends JsonDeserializer[Analy
     val metricMap = jsonObject.get(METRIC_MAP_FIELD).getAsJsonArray.asScala
       .map { entry =>
 
-        val serializedAnalyzer = entry.getAsJsonObject.get(ANALYZER_ID_FIELD)
+        val serializedAnalyzer = entry.getAsJsonObject.get(ANALYZER_FIELD)
 
         val analyzerId = context.deserialize(serializedAnalyzer,
           classOf[AnalyzerId]).asInstanceOf[AnalyzerId]
@@ -380,10 +379,6 @@ private[deequ] object AnalyzerIdSerializer
     result.addProperty(ANALYZER_NAME_FIELD, analyzerId.name)
 
     analyzerId match {
-      case name: AnalyzerId.Filterable => result.addProperty(WHERE_FIELD, name.filterCondition.orNull)
-      case _ =>
-    }
-    analyzerId match {
       case name: AnalyzerId.SingleColumn => result.addProperty(COLUMN_FIELD, name.column)
       case _ =>
     }
@@ -424,6 +419,10 @@ private[deequ] object AnalyzerIdSerializer
       case name: AnalyzerId.Quantiles =>
         result.addProperty(QUANTILES_FIELD, name.quantiles.mkString(","))
         result.addProperty(RELATIVE_ERROR_FIELD, name.relativeError)
+      case _ =>
+    }
+    analyzerId match {
+      case name: AnalyzerId.Filterable => result.addProperty(WHERE_FIELD, name.filterCondition.orNull)
       case _ =>
     }
 
