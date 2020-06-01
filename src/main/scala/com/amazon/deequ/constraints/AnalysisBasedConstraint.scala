@@ -110,6 +110,9 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
       case e: Exception => throw AnalysisBasedConstraint.ConstraintAssertionException(e.getMessage)
     }
 
+  // 'assertion' and 'valuePicker' are lambdas we have to represent them like '<function1>'
+  override def toString: String =
+    s"AnalysisBasedConstraint($analyzer,<function1>,${valuePicker.map(_ => "<function1>")},$hint)"
 }
 
 private[deequ] object AnalysisBasedConstraint {
