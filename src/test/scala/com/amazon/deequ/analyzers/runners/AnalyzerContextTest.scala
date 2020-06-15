@@ -34,11 +34,16 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
 
         import session.implicits._
         val expected = Seq(
+          ("Column", "att1", "Histogram.abs.a", 3.0),
           ("Dataset", "*", "Size", 4.0),
-          ("Dataset", "*", "Size (where: att2 == 'd')", 1.0),
-          ("Column", "item", "Distinctness", 1.0),
+          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25),
+          ("Column", "att1", "Histogram.bins", 2.0),
           ("Column", "att1", "Completeness", 1.0),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+          ("Column", "item", "Distinctness", 1.0),
+          ("Column", "att1", "Histogram.abs.b", 1.0),
+          ("Column", "att1", "Histogram.ratio.a", 0.75),
+          ("Dataset", "*", "Size (where: att2 == 'd')", 1.0),
+          ("Column", "att1", "Histogram.ratio.b", 0.25))
             .toDF("entity", "instance", "name", "value")
 
         assertSameRows(successMetricsAsDataFrame, expected)
@@ -77,6 +82,11 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
               |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
               |{"entity":"Mutlicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
+              |{"entity":"Column","instance":"att1","name":"Histogram.bins","value":2.0},
+              |{"entity":"Column","instance":"att1","name":"Histogram.abs.a","value":3.0},
+              |{"entity":"Column","instance":"att1","name":"Histogram.ratio.a","value":0.75},
+              |{"entity":"Column","instance":"att1","name":"Histogram.abs.b","value":1.0},
+              |{"entity":"Column","instance":"att1","name":"Histogram.ratio.b","value":0.25},
               |{"entity":"Dataset","instance":"*","name":"Size (where: att2 == 'd')","value":1.0},
               |{"entity":"Dataset","instance":"*","name":"Size","value":4.0}
               |]"""
@@ -123,6 +133,7 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
       .addAnalyzer(Distinctness("item"))
       .addAnalyzer(Completeness("att1"))
       .addAnalyzer(Uniqueness(Seq("att1", "att2")))
+      .addAnalyzer(Histogram("att1"))
   }
 
   private[this] def assertSameRows(dataframeA: DataFrame, dataframeB: DataFrame): Unit = {
