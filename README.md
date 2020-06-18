@@ -17,13 +17,13 @@ __Maven__
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
 </dependency>
 ```
 
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.3"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.4"
 ```
 
 ## Example
