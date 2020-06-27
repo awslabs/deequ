@@ -7,9 +7,9 @@ Our constraint suggestion first [profiles the data](https://github.com/awslabs/d
 Let's first generate some example data:
 ```scala
 case class RawData(
-  productName: String, 
-  count: String, 
-  status: String, 
+  productName: String,
+  totalNumber: String,
+  status: String,
   valuable: String
 )
 
@@ -62,16 +62,16 @@ Constraint suggestion for 'valuable': 'valuable' has less than 62% missing value
 The corresponding scala code is .hasCompleteness("valuable", _ >= 0.38, Some("It should be above 0.38!"))
 ```
 
-Next we look at the `count` column. **Deequ** identified that this column is actually a numeric column 'disguised' as string column and therefore suggests a constraint on a fractional datatype (such as float or double). Furthermore, it saw that this column contains some missing values and suggests a constraint that checks that the ratio of missing values should not increase in the future. Additionally, it suggests that values in this column should always be positive (as it did not see any negative values in the example data), which probably makes a lot of sense for count-like data.
+Next we look at the `totalNumber` column. **Deequ** identified that this column is actually a numeric column 'disguised' as string column and therefore suggests a constraint on a fractional datatype (such as float or double). Furthermore, it saw that this column contains some missing values and suggests a constraint that checks that the ratio of missing values should not increase in the future. Additionally, it suggests that values in this column should always be positive (as it did not see any negative values in the example data), which probably makes a lot of sense for this count-like data.
 ```
-Constraint suggestion for 'count': 'count' has type Fractional
-The corresponding scala code is .hasDataType("count", ConstrainableDataTypes.Fractional)
+Constraint suggestion for 'totalNumber': 'totalNumber' has type Fractional
+The corresponding scala code is .hasDataType("totalNumber", ConstrainableDataTypes.Fractional)
 
-Constraint suggestion for 'count': 'count' has less than 47% missing values
-The corresponding scala code is .hasCompleteness("count", _ >= 0.53, Some("It should be above 0.53!"))
+Constraint suggestion for 'totalNumber': 'totalNumber' has less than 47% missing values
+The corresponding scala code is .hasCompleteness("totalNumber", _ >= 0.53, Some("It should be above 0.53!"))
 
-Constraint suggestion for 'count': 'count' has only values that are equal to or greater than 0
-The corresponding scala code is .isNonNegative("count")
+Constraint suggestion for 'totalNumber': 'totalNumber' has no negative values
+The corresponding scala code is .isNonNegative("totalNumber")
 ```
 
 Finally, we look at the suggestions for the `productName` and `status` columns. Both of them did not have a single missing value in the example data, so an `isComplete` constraint is suggested for them. Furthermore, both of them only have a small set of possible values, therefore an `isContainedIn` constraint is suggested, which would check that future values are also contained in the range of observed values.
@@ -92,5 +92,3 @@ The corresponding scala code is .isContainedIn("status", Array("DELAYED", "UNKNO
 Currently, we leave it up to the user to decide whether they want to apply the suggested constraints or not, and provide the corresponding Scala code for convenience. For larger datasets, it makes sense to evaluate the suggested constraints on some held-out portion of the data to see whether they hold or not. You can test this by adding an invocation of `.useTrainTestSplitWithTestsetRatio(0.1)` to the `ConstraintSuggestionRunner`. With this configuration, it would compute constraint suggestions on 90% of the data and evaluate the suggested constraints on the remaining 10%.
 
 Finally, we would also like to note that the constraint suggestion code provides access to the underlying [column profiles](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/data_profiling_example.md) that it computed via `suggestionResult.columnProfiles`.
-
-

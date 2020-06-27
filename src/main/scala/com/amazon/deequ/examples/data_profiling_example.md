@@ -6,9 +6,9 @@ Very often we are faced with large, raw datasets and struggle to make sense of t
 Assume we have raw data that is string typed (such as the data you would get from a CSV file). For the sake of simplicity, we use the following toy data in this example:
 
 ```scala
-case class RawData(productName: String, count: String, status: String, valuable: String)
+case class RawData(productName: String, totalNumber: String, status: String, valuable: String)
 
-val rows = spark.parallelize(Seq(
+val rows = session.sparkContext.parallelize(Seq(
   RawData("thingA", "13.0", "IN_TRANSIT", "true"),
   RawData("thingA", "5", "DELAYED", "false"),
   RawData("thingB", null,  "DELAYED", null),
@@ -20,7 +20,7 @@ val rows = spark.parallelize(Seq(
 ))
 
 val rawData = session.createDataFrame(rows)
-``` 
+```
 
 It only takes a single method invocation to make **deequ** profile this data. Note that it will execute the three passes over the data and avoid any shuffles in order to easily scale to large data.
 ```scala
@@ -41,7 +41,7 @@ result.profiles.foreach { case (colName, profile) =>
 }
 ```
 
-In case of our toy data, we would get the following profiling results. Note that **deequ** detected that `count` is a fractional column (and could be casted to float or double type) and that `valuable` is a boolean column. 
+In case of our toy data, we would get the following profiling results. Note that **deequ** detected that `totalNumber` is a fractional column (and could be casted to float or double type) and that `valuable` is a boolean column.
 
 ```
 Column 'productName':
@@ -49,7 +49,7 @@ Column 'productName':
 	approximate number of distinct values: 5
 	datatype: String
 
-Column 'count':
+Column 'totalNumber':
  	completeness: 0.75
 	approximate number of distinct values: 5
 	datatype: Fractional
@@ -67,18 +67,18 @@ Column 'valuable':
 
 For numeric columns, we get an extended profile which also contains descriptive statistics:
 ```scala
-val countProfile = result.profiles("count").asInstanceOf[NumericColumnProfile]
+val totalNumberProfile = result.profiles("totalNumber").asInstanceOf[NumericColumnProfile]
 
-println(s"Statistics of 'count':\n" +
-  s"\tminimum: ${countProfile.minimum.get}\n" +
-  s"\tmaximum: ${countProfile.maximum.get}\n" +
-  s"\tmean: ${countProfile.mean.get}\n" +
-  s"\tstandard deviation: ${countProfile.stdDev.get}\n")
+println(s"Statistics of 'totalNumber':\n" +
+  s"\tminimum: ${totalNumberProfile.minimum.get}\n" +
+  s"\tmaximum: ${totalNumberProfile.maximum.get}\n" +
+  s"\tmean: ${totalNumberProfile.mean.get}\n" +
+  s"\tstandard deviation: ${totalNumberProfile.stdDev.get}\n")
 ```
 
-For the `count` column we can inspect its minimum, maximum, mean and standard deviation:
+For the `totalNumber` column we can inspect its minimum, maximum, mean and standard deviation:
 ```
-Statistics of 'count':
+Statistics of 'totalNumber':
 	minimum: 1.0
 	maximum: 20.0
 	mean: 8.25
