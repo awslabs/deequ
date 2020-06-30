@@ -30,7 +30,8 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
   extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
-    val hasHistogram = profile.histogram.isDefined && profile.dataType == DataTypeInstances.String
+    val hasHistogram = profile.histogram.isDefined &&
+      (profile.dataType == DataTypeInstances.String || profile.dataType == DataTypeInstances.Integral)
 
     if (hasHistogram) {
       val entries = profile.histogram.get.values
