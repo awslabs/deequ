@@ -19,7 +19,7 @@ package com.amazon.deequ.examples
 import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
 import com.amazon.deequ.profiles.NumericColumnProfile
-import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
+import com.amazon.deequ.profiles.ColumnProfilerRunner
 
 private[examples] object KLLExample extends App {
 
@@ -32,13 +32,13 @@ private[examples] object KLLExample extends App {
       Item(4, "Thingy D", "checkout https://thingd.ca", "low", 10),
       Item(5, "Thingy E", null, "high", 12))
 
-    val suggestionResult = ConstraintSuggestionRunner()
+    val profileResult = ColumnProfilerRunner()
       .onData(df)
-      .addConstraintRules(Rules.DEFAULT)
-      .setKLLParameters(KLLParameters(2, 0.64, 2))
+      .withKLLProfiling()
+      .setKLLParameters(Some(KLLParameters(2, 0.64, 2)))
       .run()
 
-    val columnProfiles = suggestionResult.columnProfiles
+    val columnProfiles = profileResult.profiles
 
     println("Observed statistics:")
     columnProfiles.foreach { case (name, profile) =>
@@ -107,4 +107,3 @@ private[examples] object KLLExample extends App {
     }
   }
 }
-

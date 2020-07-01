@@ -30,7 +30,7 @@ val stateStore = InMemoryStateProvider()
 val metricsForData = AnalysisRunner.run(
   data = data,
   analysis = analysis,
-  saveStatesWith = Some(stateStore)) 
+  saveStatesWith = Some(stateStore))
 ```
 
 We can now inspect the metrics for the current version of the data:
@@ -51,7 +51,7 @@ Completeness(productName,None): 1.0
 Completeness(description,None): 0.6666666666666666
 ```
 
-Now lets assume we somehow gathered more data that we want to add to our dataset. We would now like to know the updated metrics for the whole dataset, but we do not want to read the old data again. Fortunately, **deequ** allows us to continue from the internal state of the computation and update the metrics from the stored states without having to access the previous data! 
+Now lets assume we somehow gathered more data that we want to add to our dataset. We would now like to know the updated metrics for the whole dataset, but we do not want to read the old data again. Fortunately, **deequ** allows us to continue from the internal state of the computation and update the metrics from the stored states without having to access the previous data!
 
 ```scala
 val moreData = ExampleUtils.itemsAsDataframe(spark,
@@ -61,7 +61,7 @@ val moreData = ExampleUtils.itemsAsDataframe(spark,
 val metricsAfterAddingMoreData = AnalysisRunner.run(
   data = moreData,
   analysis = analysis,
-  aggregateWith = Some(stateStore) 
+  aggregateWith = Some(stateStore)
 )
 
 println("\nMetrics after adding 2 more records:\n")
@@ -102,8 +102,8 @@ And we have the following metrics (defined by a check) that we're interested in 
 
 ```scala
 val check = Check(CheckLevel.Warning, "a check")
-  .isComplete("productName")
-  .containsURL("productName", _ == 0.0)
+  .isComplete("manufacturerName")
+  .containsURL("manufacturerName", _ == 0.0)
   .isContainedIn("countryCode", Array("DE", "US", "CN"))
 ```
 
@@ -121,7 +121,7 @@ AnalysisRunner.run(usManufacturers, analysis, saveStatesWith = Some(usStates))
 AnalysisRunner.run(cnManufacturers, analysis, saveStatesWith = Some(cnStates))
 
 val tableMetrics = AnalysisRunner.runOnAggregatedStates(
-  deManufacturers.schema, 
+  deManufacturers.schema,
   analysis,
   Seq(deStates, usStates, cnStates)
 )
@@ -133,9 +133,9 @@ tableMetrics.metricMap.foreach { case (analyzer, metric) =>
 ```
 
 ```
-Completeness(productName,None): 1.0
-PatternMatch(productName,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.0
-Compliance("countryCode contained in DE,US,CN", 
+Completeness(manufacturerName,None): 1.0
+PatternMatch(manufacturerName,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.0
+Compliance("countryCode contained in DE,US,CN",
   countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
 ```
 
@@ -146,17 +146,17 @@ val updatedUsManufacturers = ExampleUtils.manufacturersAsDataframe(spark,
   Manufacturer(3, "ManufacturerDNew", "US"),
   Manufacturer(4, null, "US"),
   Manufacturer(5, "ManufacturerFNew http://clickme.com", "US"))
-  
+
 val updatedUsStates = InMemoryStateProvider()
 
 AnalysisRunner.run(
-  updatedUsManufacturers, 
-  analysis, 
+  updatedUsManufacturers,
+  analysis,
   saveStatesWith = Some(updatedUsStates)
 )
 
 val updatedTableMetrics = AnalysisRunner.runOnAggregatedStates(
-  deManufacturers.schema, 
+  deManufacturers.schema,
   analysis,
   Seq(deStates, updatedUsStates, cnStates)
 )
@@ -170,9 +170,9 @@ updatedTableMetrics.metricMap.foreach { case (analyzer, metric) =>
 This code will only operate on the updated partition and the states, but will still return the correct metrics for the table as a whole:
 
 ```
-Completeness(productName,None): 0.8571428571428571
-PatternMatch(productName,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.14285714285714285
-Compliance("countryCode contained in DE,US,CN", 
+Completeness(manufacturerName,None): 0.8571428571428571
+PatternMatch(manufacturerName,(https?|ftp)://[^\s/$.?#].[^\s]*,None): 0.14285714285714285
+Compliance("countryCode contained in DE,US,CN",
   countryCode IS NULL OR countryCode IN ('DE','US','CN'),None): 1.0
 ```
 
