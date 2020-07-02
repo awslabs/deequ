@@ -315,23 +315,65 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         "d" -> DistributionValue(1, 0.05)),
         4)
 
+      val nonSkewedIntegralDist = Distribution(Map(
+        "1" -> DistributionValue(5, 0.0),
+        "2" -> DistributionValue(10, 0.0),
+        "3" -> DistributionValue(1, 0.0),
+        "4" -> DistributionValue(4, 0.0),
+        "5" -> DistributionValue(4, 0.0),
+        "6" -> DistributionValue(4, 0.0),
+        "7" -> DistributionValue(4, 0.0),
+        "8" -> DistributionValue(4, 0.0),
+        "9" -> DistributionValue(4, 0.0),
+        "10" -> DistributionValue(4, 0.0),
+        "11" -> DistributionValue(4, 0.0)),
+        11)
+
+      val skewedintegralDist = Distribution(Map(
+        "1" -> DistributionValue(17, 0.85),
+        "2" -> DistributionValue(1, 0.05),
+        "3" -> DistributionValue(1, 0.05),
+        "4" -> DistributionValue(1, 0.05)),
+        4)
+
+      val flgDist = Distribution(Map(
+        "0" -> DistributionValue(6, 0.6),
+        "1" -> DistributionValue(4, 0.4)),
+        2)
+
       val noDistribution = Distribution(Map.empty, 0)
 
       val stringWithNonSkewedDist = StandardColumnProfile("col1", 1.0, 100, String, false,
         Map.empty, Some(nonSkewedDist))
+      val integralWithNonSkewedDist = StandardColumnProfile("col1", 1.0,
+        100, DataTypeInstances.Integral, false, Map.empty, Some(nonSkewedIntegralDist))
+      val stringWithFlgDist = StandardColumnProfile("flg", 1.0,
+        2, String, false, Map.empty, Some(flgDist))
+      val integralWithFlgDist = StandardColumnProfile("flg", 1.0,
+        2, DataTypeInstances.Integral, false, Map.empty, Some(flgDist))
+
       val stringWithSkewedDist = StandardColumnProfile("col1", 1.0, 100, String, false,
         Map.empty, Some(skewedDist))
       val stringNoDist = StandardColumnProfile("col1", 1.0, 95, String, false, Map.empty, None)
       val boolNoDist = StandardColumnProfile("col1", 1.0, 94, Boolean, false, Map.empty, None)
       val boolWithEmptyDist = StandardColumnProfile("col1", 1.0, 20, Boolean, false, Map.empty,
         Some(noDistribution))
+      val integralWithSkewedDist = StandardColumnProfile("col1", 1.0,
+        100, DataTypeInstances.Integral, false, Map.empty, Some(skewedDist))
+      val integralNoDist = StandardColumnProfile("col1", 1.0,
+        95, DataTypeInstances.Integral, false, Map.empty, None)
 
       assert(CategoricalRangeRule().shouldBeApplied(stringWithNonSkewedDist, 100))
+      assert(CategoricalRangeRule().shouldBeApplied(integralWithNonSkewedDist, 100))
+      assert(CategoricalRangeRule().shouldBeApplied(stringWithFlgDist, 10))
+      assert(CategoricalRangeRule().shouldBeApplied(integralWithFlgDist, 10))
 
       assert(!CategoricalRangeRule().shouldBeApplied(stringWithSkewedDist, 100))
       assert(!CategoricalRangeRule().shouldBeApplied(stringNoDist, 100))
       assert(!CategoricalRangeRule().shouldBeApplied(boolNoDist, 100))
       assert(!CategoricalRangeRule().shouldBeApplied(boolWithEmptyDist, 100))
+      assert(!CategoricalRangeRule().shouldBeApplied(integralWithSkewedDist, 100))
+      assert(!CategoricalRangeRule().shouldBeApplied(integralNoDist, 100))
     }
 
     "return evaluable constraint candidates" in
@@ -454,6 +496,31 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
         "d" -> DistributionValue(1, 0.07)),
         4)
 
+      val nonSkewedIntegralDistWithFractionalCategoricalRange = Distribution(Map(
+        "1" -> DistributionValue(42, 0.42),
+        "11" -> DistributionValue(1, 0.01),
+        "0" -> DistributionValue(57, 0.57)),
+        3)
+
+      val nonSkewedIntegralDistWithActualCategoricalRange = Distribution(Map(
+        "1" -> DistributionValue(5, 0.4),
+        "0" -> DistributionValue(10, 0.6)),
+        2)
+
+      val somewhatSkewedIntegralDist = Distribution(Map(
+        "1" -> DistributionValue(85, 0.85),
+        "2" -> DistributionValue(7, 0.07),
+        "3" -> DistributionValue(2, 0.07),
+        "4" -> DistributionValue(1, 0.01)),
+        4)
+
+      val skewedIntegralDist = Distribution(Map(
+        "1" -> DistributionValue(17, 0.79),
+        "2" -> DistributionValue(1, 0.07),
+        "3" -> DistributionValue(1, 0.07),
+        "4" -> DistributionValue(1, 0.07)),
+        4)
+
       val noDistribution = Distribution(Map.empty, 0)
 
       val stringWithNonSkewedDistWithFractionalCategoricalRange = StandardColumnProfile("col1", 1.0,
@@ -469,10 +536,25 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val boolWithEmptyDist = StandardColumnProfile("col1", 1.0, 20, Boolean, false, Map.empty,
         Some(noDistribution))
 
+      val integralWithNonSkewedDistWithFractionalCategoricalRange = StandardColumnProfile("col1",
+        1.0, 100, DataTypeInstances.Integral, false, Map.empty,
+        Some(nonSkewedIntegralDistWithFractionalCategoricalRange))
+      val integralWithNonSkewedDistWithActualCategoricalRange = StandardColumnProfile("col1", 1.0,
+        100, DataTypeInstances.Integral, false, Map.empty,
+        Some(nonSkewedIntegralDistWithActualCategoricalRange))
+      val integralWithSomewhatSkewedDist = StandardColumnProfile("col1", 1.0,
+        100, DataTypeInstances.Integral, false, Map.empty, Some(somewhatSkewedIntegralDist))
+      val integralWithSkewedDist = StandardColumnProfile("col1", 1.0,
+        100, DataTypeInstances.Integral, false, Map.empty, Some(skewedIntegralDist))
+      val integralNoDist = StandardColumnProfile("col1", 1.0,
+        95, DataTypeInstances.Integral, false, Map.empty, None)
 
       assert(FractionalCategoricalRangeRule().shouldBeApplied(stringWithSomewhatSkewedDist, 100))
       assert(FractionalCategoricalRangeRule().shouldBeApplied(
         stringWithNonSkewedDistWithFractionalCategoricalRange, 100))
+      assert(FractionalCategoricalRangeRule().shouldBeApplied(integralWithSomewhatSkewedDist, 100))
+      assert(FractionalCategoricalRangeRule().shouldBeApplied(
+        integralWithNonSkewedDistWithFractionalCategoricalRange, 100))
 
       assert(!FractionalCategoricalRangeRule().shouldBeApplied(stringWithSkewedDist, 100))
       assert(!FractionalCategoricalRangeRule().shouldBeApplied(
@@ -480,6 +562,10 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(!FractionalCategoricalRangeRule().shouldBeApplied(stringNoDist, 100))
       assert(!FractionalCategoricalRangeRule().shouldBeApplied(boolNoDist, 100))
       assert(!FractionalCategoricalRangeRule().shouldBeApplied(boolWithEmptyDist, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(integralWithSkewedDist, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(
+        integralWithNonSkewedDistWithActualCategoricalRange, 100))
+      assert(!FractionalCategoricalRangeRule().shouldBeApplied(integralNoDist, 100))
     }
 
     "return evaluable constraint candidates" in
