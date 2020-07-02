@@ -27,8 +27,10 @@ import org.apache.commons.lang3.StringEscapeUtils
 case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
-    val hasHistogram = profile.histogram.isDefined &&
-      (profile.dataType == DataTypeInstances.String || profile.dataType == DataTypeInstances.Integral)
+    val hasHistogram = profile.histogram.isDefined && (
+      profile.dataType == DataTypeInstances.String ||
+      profile.dataType == DataTypeInstances.Integral
+    )
 
     if (hasHistogram) {
       val entries = profile.histogram.get.values
