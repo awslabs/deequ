@@ -121,6 +121,7 @@ class RowLevelSchemaValidatorTest extends WordSpec with SparkContextSpec {
       import sparkSession.implicits._
 
       val data = Seq(
+        "11.00",
         "1.23",
         "123",
         "N/A",
@@ -136,9 +137,10 @@ class RowLevelSchemaValidatorTest extends WordSpec with SparkContextSpec {
 
       val result = RowLevelSchemaValidator.validate(data, schema)
 
-      assert(result.numValidRows == 3)
+      assert(result.numValidRows == 4)
       val validIds = result.validRows.select("id").collect.map { _.getInt(0) }.toSet
       assert(validIds.size == result.numValidRows)
+      assert(validIds.contains(11))
       assert(validIds.contains(123))
       assert(validIds.contains(456))
       assert(validIds.contains(-9))
