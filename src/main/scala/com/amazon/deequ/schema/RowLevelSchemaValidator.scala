@@ -69,7 +69,7 @@ private[this] case class TimestampColumnDefinition(
 }
 
 
-/** A simple schema definition for relational data in Andes */
+/** A simple schema definition for relational data */
 case class RowLevelSchema(columnDefinitions: Seq[ColumnDefinition] = Seq.empty) {
 
   /**
@@ -237,10 +237,12 @@ object RowLevelSchemaValidator {
 
         case intDef: IntColumnDefinition =>
 
-          val colAsInt = col(intDef.name).cast(IntegerType)
+          /* cast to decimal instead of int to avoid column equality in case fractional part exists */
+          val colAsInt = col(intDef.name).cast(DecimalType(38, 0))
+          val noFractionalLost = colAsInt === col(intDef.name)
 
           /* null or successfully casted */
-          nextCnf = nextCnf.and(colIsNull.or(colAsInt.isNotNull))
+          nextCnf = nextCnf.and(colIsNull.or(colAsInt.isNotNull.and(noFractionalLost)))
 
           intDef.minValue.foreach { value =>
             nextCnf = nextCnf.and(colIsNull.isNull.or(colAsInt.geq(value)))
