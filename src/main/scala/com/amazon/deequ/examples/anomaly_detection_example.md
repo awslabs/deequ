@@ -18,7 +18,7 @@ val yesterdaysDataset = itemsAsDataframe(session,
 
 We test for anomalies in the size of the data, and want to enforce that it should not increase by more than 2x. We define a check for this by using the [RateOfChangeStrategy](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/anomalydetection/RateOfChangeStrategy.scala) for detecting anomalies. Note that we store the resulting metrics in our repository via `useRepository` and `saveOrAppendResult` under a result key `yesterdaysKey` with yesterdays timestamp.
 ```scala
-val yesterdaysKey = ResultKey(System.currentTimeMillis() - 24 * 60 * 1000)
+val yesterdaysKey = ResultKey(System.currentTimeMillis() - 24 * 60 * 60 * 1000)
 
 VerificationSuite()
   .onData(yesterdaysDataset)
