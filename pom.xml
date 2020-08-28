@@ -59,7 +59,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
         <scala.major.version>2.11</scala.major.version>
-        <scala.version>${scala.major.version}.5</scala.version>
+        <scala.version>${scala.major.version}.6</scala.version>
         <scala-maven-plugin.version>3.4.4</scala-maven-plugin.version>
         <spark.version>2.2.2</spark.version>
     </properties>
@@ -149,13 +149,6 @@
             <artifactId>scala-reflect</artifactId>
             <version>${scala.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-actors</artifactId>
-            <version>${scala.version}</version>
-        </dependency>
-
 
     </dependencies>
 
