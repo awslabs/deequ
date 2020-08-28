@@ -25,9 +25,9 @@ import com.amazon.deequ.profiles._
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 
-class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContextSpec
+class ConstraintRulesTest extends AnyWordSpec with FixtureSupport with SparkContextSpec
   with MockFactory{
 
 

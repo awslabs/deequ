@@ -22,11 +22,12 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import org.apache.spark.sql.{DataFrame, Row}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.{Failure, Success}
 
-class AnalysisTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "Analysis" should {
     "return results for configured analyzers" in withSparkSession { sparkSession =>

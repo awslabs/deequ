@@ -18,9 +18,10 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class StatesTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class StatesTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "FrequenciesAndNumRows" should {
     "merge correctly" in withSparkSession { session =>

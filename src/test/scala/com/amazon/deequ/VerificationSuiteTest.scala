@@ -29,11 +29,12 @@ import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 
 
-class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
+class VerificationSuiteTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport with MockFactory {
 
   "Verification Suite" should {

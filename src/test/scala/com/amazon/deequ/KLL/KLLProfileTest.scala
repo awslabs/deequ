@@ -23,9 +23,10 @@ import com.amazon.deequ.profiles.{ColumnProfiler, NumericColumnProfile}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
+class KLLProfileTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   def assertProfilesEqual(expected: NumericColumnProfile, actual: NumericColumnProfile): Unit = {

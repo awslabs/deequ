@@ -19,10 +19,11 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import org.apache.spark.sql.functions.col
 
-class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSpec
+class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "An IncrementalAnalysisRunner" should {

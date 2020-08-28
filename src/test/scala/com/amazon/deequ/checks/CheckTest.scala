@@ -28,11 +28,12 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.{Success, Try}
 
-class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
+class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport
   with MockFactory {
 
   import CheckTest._
@@ -1067,7 +1068,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
   }
 }
 
-object CheckTest extends WordSpec with Matchers {
+object CheckTest extends AnyWordSpec with Matchers {
 
   def assertSuccess(check: Check, context: AnalyzerContext): Unit = {
     check.evaluate(context).status shouldBe CheckStatus.Success

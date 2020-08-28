@@ -22,9 +22,10 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class VerificationResultTest extends WordSpec with Matchers with SparkContextSpec
+class VerificationResultTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "VerificationResult getSuccessMetrics" should {

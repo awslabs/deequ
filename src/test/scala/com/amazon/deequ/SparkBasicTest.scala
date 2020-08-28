@@ -16,9 +16,10 @@
 
 package com.amazon.deequ
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class SparkBasicTest extends WordSpec with Matchers with SparkContextSpec {
+class SparkBasicTest extends AnyWordSpec with Matchers with SparkContextSpec {
   "check that initializing a spark context and a basic example works" in
     withSparkSession { sparkSession =>
       val sc = sparkSession.sparkContext

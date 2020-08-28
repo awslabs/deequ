@@ -24,13 +24,13 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import AnalyzerContext._
 import com.amazon.deequ.SparkContextSpec
 
 import scala.util.{Failure, Success}
 
-class FileSystemMetricsRepositoryTest extends WordSpec with SparkContextSpec with FixtureSupport {
+class FileSystemMetricsRepositoryTest extends AnyWordSpec with SparkContextSpec with FixtureSupport {
 
   private[this] val DATE_ONE = createDate(2017, 10, 14)
   private[this] val DATE_TWO = createDate(2017, 10, 15)

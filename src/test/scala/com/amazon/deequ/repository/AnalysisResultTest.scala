@@ -20,12 +20,13 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-class AnalysisResultTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class AnalysisResultTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   private[this] val DATE_ONE = createDate(2017, 10, 14)
 

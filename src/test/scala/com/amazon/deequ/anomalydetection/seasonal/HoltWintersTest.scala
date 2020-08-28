@@ -17,9 +17,12 @@
 package com.amazon.deequ.anomalydetection.seasonal
 
 import com.amazon.deequ.anomalydetection.Anomaly
-import org.scalatest.{Matchers, ShouldMatchers, WordSpec}
+//import org.scalatest.{Matchers, ShouldMatchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
+
+class HoltWintersTest extends AnyWordSpec with Matchers {
 
   import HoltWintersTest._
 

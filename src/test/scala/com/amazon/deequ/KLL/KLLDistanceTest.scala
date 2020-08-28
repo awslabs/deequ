@@ -19,9 +19,10 @@ package com.amazon.deequ.KLL
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class KLLDistanceTest extends WordSpec with Matchers with SparkContextSpec
+class KLLDistanceTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport{
 
   "KLL distance calculator should compute correct linf_simple" in {

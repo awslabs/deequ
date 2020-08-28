@@ -18,9 +18,9 @@ package com.amazon.deequ.schema
 
 import com.amazon.deequ.SparkContextSpec
 import org.apache.spark.sql.types.{IntegerType, StringType, TimestampType}
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 
-class RowLevelSchemaValidatorTest extends WordSpec with SparkContextSpec {
+class RowLevelSchemaValidatorTest extends AnyWordSpec with SparkContextSpec {
 
   "row level schema validation" should {
 

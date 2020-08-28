@@ -30,11 +30,12 @@ import java.time.{LocalDate, ZoneOffset}
 
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.Success
 
-class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Matchers
+class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with Matchers
   with SparkContextSpec with FixtureSupport {
 
   "Anomaly Detection" should {

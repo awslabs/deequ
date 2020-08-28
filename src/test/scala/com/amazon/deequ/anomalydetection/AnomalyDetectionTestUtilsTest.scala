@@ -16,9 +16,10 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
-class AnomalyDetectionTestUtilsTest extends WordSpec with Matchers {
+class AnomalyDetectionTestUtilsTest extends AnyWordSpec with Matchers {
 
   "AnomalyDetectionTestUtilsTest" should {
 
