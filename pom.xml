@@ -58,9 +58,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
-        <scala.major.version>2.12</scala.major.version>
-        <scala.version>${scala.major.version}.6</scala.version>
+        <scala.major.version>2.11</scala.major.version>
+        <scala.version>${scala.major.version}.5</scala.version>
         <scala-maven-plugin.version>3.4.4</scala-maven-plugin.version>
+        <spark.version>2.2.2</spark.version>
     </properties>
 
     <dependencies>
@@ -73,13 +74,13 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.major.version}</artifactId>
-            <version>3.0.0</version>
+            <version>${spark.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.major.version}</artifactId>
-            <version>3.0.0</version>
+            <version>${spark.version}</version>
         </dependency>
 
         <dependency>
@@ -97,7 +98,7 @@
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.major.version}</artifactId>
-            <version>3.2.2</version>
+            <version>3.1.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -141,6 +142,18 @@
             <artifactId>datasketches-java</artifactId>
             <version>1.1.0-incubating</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-reflect</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-actors</artifactId>
+            <version>${scala.version}</version>
         </dependency>
 
 
