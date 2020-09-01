@@ -17,9 +17,9 @@
 package com.amazon.deequ.anomalydetection.seasonal
 
 import com.amazon.deequ.anomalydetection.Anomaly
-import org.scalatest.{Matchers, ShouldMatchers, WordSpec}
+import org.scalatest.{Matchers, WordSpec}
 
-class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
+class HoltWintersTest extends WordSpec with Matchers {
 
   import HoltWintersTest._
 
@@ -177,8 +177,8 @@ class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
     "work on an additional series with yearly seasonality" in {
       // https://datamarket.com/data/set/22n4/monthly-car-sales-in-quebec-1960-1968
       val monthlyCarSalesQuebec = Vector[Double](
-         6550, 8728, 12026, 14395, 14587, 13791, 9498, 8251, 7049, 9545, 9364, 8456,
-         7237, 9374, 11837, 13784, 15926, 13821, 11143, 7975, 7610, 10015, 12759, 8816,
+        6550, 8728, 12026, 14395, 14587, 13791, 9498, 8251, 7049, 9545, 9364, 8456,
+        7237, 9374, 11837, 13784, 15926, 13821, 11143, 7975, 7610, 10015, 12759, 8816,
         10677, 10947, 15200, 17010, 20900, 16205, 12143, 8997, 5568, 11474, 12256, 10583,
         10862, 10965, 14405, 20379, 20128, 17816, 12268, 8642, 7962, 13932, 15936, 12628,
         12267, 12470, 18944, 21259, 22015, 18581, 15175, 10306, 10792, 14752, 13754, 11738,
@@ -211,7 +211,7 @@ class HoltWintersTest extends WordSpec with ShouldMatchers with Matchers {
 object HoltWintersTest {
 
   def dailyMetricsWithWeeklySeasonalityAnomalies(
-    series: Vector[Double], interval: (Int, Int)): Seq[(Int, Anomaly)] = {
+                                                  series: Vector[Double], interval: (Int, Int)): Seq[(Int, Anomaly)] = {
 
     val strategy = new HoltWinters(
       HoltWinters.MetricInterval.Daily,
