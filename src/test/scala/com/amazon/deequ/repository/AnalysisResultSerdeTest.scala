@@ -19,10 +19,11 @@ package com.amazon.deequ.repository
 import java.time.{LocalDate, ZoneOffset}
 
 import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, Maximum, Mean, Minimum, MutualInformation, StandardDeviation, Uniqueness, _}
-import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
 import AnalysisResultSerde._
 import com.amazon.deequ.SparkContextSpec
 
@@ -210,7 +211,7 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
         .addAnalyzer(MinLength("att1"))
         .addAnalyzer(MaxLength("att1"))
 
-      val analysisContext = analysis.run(df)
+      val analysisContext = AnalysisRunner.run(df, analysis)
 
       val date = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
         .toEpochSecond(ZoneOffset.UTC)

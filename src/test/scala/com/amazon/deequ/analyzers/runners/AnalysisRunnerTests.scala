@@ -23,11 +23,15 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
+import org.scalatest.PrivateMethodTester
 import org.apache.spark.sql.functions.udf
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+
 import scala.util.Try
 
-class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
+
+class AnalysisRunnerTests extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport
   with PrivateMethodTester {
 
   "AnalysisRunner" should {
@@ -42,7 +46,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
       val directlyCalculated = analyzer.calculate(data)
 
-      val calculatedViaAnalysis = Analysis(analyzer :: Nil).run(data).metric(analyzer)
+      val calculatedViaAnalysis = AnalysisRunner.onData(data).addAnalyzer(analyzer).run().metric(analyzer)
 
       assert(calculatedViaAnalysis.contains(directlyCalculated))
     }
@@ -64,7 +68,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         }
 
         val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
           (results, stat.jobCount)
         }
 
@@ -86,7 +90,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
           }
 
           val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-            val results = Analysis(analyzers).run(df).allMetrics.toSet
+            val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
             (results, stat.jobCount)
           }
 
@@ -108,7 +112,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         }
 
         val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
           (results, stat.jobCount)
         }
 
@@ -131,7 +135,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         }
 
         val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
           (results, stat.jobCount)
         }
 
@@ -154,7 +158,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         }
 
         val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
           (results, stat.jobCount)
         }
 
@@ -178,7 +182,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
         }
 
         val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = Analysis(analyzers).run(df).allMetrics.toSet
+          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
           (results, stat.jobCount)
         }
 
@@ -194,7 +198,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
         val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
 
-        val analysisResult = Analysis().addAnalyzer(analyzerToTestReusingResults).run(df)
+        val analysisResult = AnalysisRunner.onData(df).addAnalyzer(analyzerToTestReusingResults).run()
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
         repository.save(resultKey, analysisResult)
@@ -226,7 +230,7 @@ class AnalysisRunnerTests extends WordSpec with Matchers with SparkContextSpec w
 
         val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
 
-        val analysisResult = Analysis().addAnalyzer(analyzerToTestReusingResults).run(df)
+        val analysisResult = AnalysisRunner.onData(df).addAnalyzer(analyzerToTestReusingResults).run()
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
         repository.save(resultKey, analysisResult)

@@ -20,9 +20,9 @@ package checks
 import com.amazon.deequ.analyzers.applicability.Applicability
 import com.amazon.deequ.analyzers.{Completeness, Compliance, Maximum, Minimum}
 import org.apache.spark.sql.types._
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 
-class ApplicabilityTest extends WordSpec with SparkContextSpec {
+class ApplicabilityTest extends AnyWordSpec with SparkContextSpec {
 
   private[this] val schema = StructType(Array(
       StructField("stringCol", StringType, nullable = true),

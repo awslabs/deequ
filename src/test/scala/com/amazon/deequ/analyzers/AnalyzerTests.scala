@@ -24,11 +24,12 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.{Failure, Success}
 
-class AnalyzerTests extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "Size analyzer" should {
     "compute correct metrics" in withSparkSession { sparkSession =>

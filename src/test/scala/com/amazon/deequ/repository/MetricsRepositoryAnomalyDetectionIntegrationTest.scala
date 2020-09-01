@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.repository
 
-import com.amazon.deequ.anomalydetection.{OnlineNormalStrategy, AbsoluteChangeStrategy}
+import com.amazon.deequ.anomalydetection.{AbsoluteChangeStrategy, OnlineNormalStrategy}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
@@ -30,11 +30,12 @@ import java.time.{LocalDate, ZoneOffset}
 
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.Success
 
-class MetricsRepositoryAnomalyDetectionIntegrationTest extends WordSpec with Matchers
+class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with Matchers
   with SparkContextSpec with FixtureSupport {
 
   "Anomaly Detection" should {

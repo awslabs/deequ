@@ -19,9 +19,11 @@ package checks
 
 import com.amazon.deequ.analyzers.{Completeness, Compliance}
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class FilterableCheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+
+class FilterableCheckTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "Filterable checks" should {
     "build correctly" in {

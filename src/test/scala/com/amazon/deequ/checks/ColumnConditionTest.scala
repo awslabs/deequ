@@ -16,9 +16,10 @@
 
 package com.amazon.deequ.checks
 
-import org.scalatest.WordSpec
 
-class ColumnConditionTest extends WordSpec {
+import org.scalatest.wordspec.AnyWordSpec
+
+class ColumnConditionTest extends AnyWordSpec {
 
   "ColumnCondition" should {
 

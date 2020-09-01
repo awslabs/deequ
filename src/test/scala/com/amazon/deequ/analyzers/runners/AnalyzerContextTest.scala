@@ -18,12 +18,13 @@ package com.amazon.deequ.analyzers.runners
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class AnalyzerContextTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "AnalyzerContext" should {
     "correctly return a DataFrame that is formatted as expected" in withSparkSession { session =>
@@ -121,13 +122,13 @@ class AnalyzerContextTest extends WordSpec with Matchers with SparkContextSpec w
 
     val data = getDfFull(session)
 
-    val results = createAnalysis().run(data)
+    val results = createAnalysis(data).run()
 
     test(results)
   }
 
-  private[this] def createAnalysis(): Analysis = {
-    Analysis()
+  private[this] def createAnalysis(df: DataFrame): AnalysisRunBuilder = {
+    AnalysisRunner.onData(df)
       .addAnalyzer(Size())
       .addAnalyzer(Size(where = Some("att2 == 'd'")))
       .addAnalyzer(Distinctness("item"))

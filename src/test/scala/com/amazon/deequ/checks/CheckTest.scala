@@ -28,11 +28,12 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.{Success, Try}
 
-class CheckTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport
+class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport
   with MockFactory {
 
   import CheckTest._
@@ -550,12 +551,12 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
       val dfUninformative = getDfWithConditionallyUninformativeColumns(sparkSession)
 
-      val numericAnalysis = Analysis().addAnalyzers(Seq(
+      val numericAnalysis = AnalysisRunner.onData(dfNumeric).addAnalyzers(Seq(
         Minimum("att1"), Maximum("att1"), Mean("att1"), Sum("att1"),
         StandardDeviation("att1"), ApproxCountDistinct("att1"),
         ApproxQuantile("att1", quantile = 0.5)))
 
-      val contextNumeric = numericAnalysis.run(dfNumeric)
+      val contextNumeric = numericAnalysis.run()
 
       assertSuccess(baseCheck.hasMin("att1", _ == 1.0), contextNumeric)
       assertSuccess(baseCheck.hasMax("att1", _ == 6.0), contextNumeric)
@@ -565,10 +566,11 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
       assertSuccess(baseCheck.hasApproxCountDistinct("att1", _ == 6.0), contextNumeric)
       assertSuccess(baseCheck.hasApproxQuantile("att1", quantile = 0.5, _ == 3.0), contextNumeric)
 
-      val correlationAnalysis = Analysis().addAnalyzer(Correlation("att1", "att2"))
+      val correlationAnalysisInformative = AnalysisRunner.onData(dfInformative).addAnalyzer(Correlation("att1", "att2"))
+      val correlationAnalysisUninformative = AnalysisRunner.onData(dfUninformative).addAnalyzer(Correlation("att1", "att2"))
 
-      val contextInformative = correlationAnalysis.run(dfInformative)
-      val contextUninformative = correlationAnalysis.run(dfUninformative)
+      val contextInformative = correlationAnalysisInformative.run()
+      val contextUninformative = correlationAnalysisUninformative.run()
 
       assertSuccess(baseCheck.hasCorrelation("att1", "att2", _ == 1.0), contextInformative)
       assertSuccess(baseCheck.hasCorrelation("att1", "att2", java.lang.Double.isNaN),
@@ -909,9 +911,9 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
           // Get test AnalyzerContexts
           val analysis = Analysis().addAnalyzers(Seq(Size(), Distinctness(Seq("c0", "c1"))))
 
-          val context11Rows = analysis.run(getDfWithNRows(sparkSession, 11))
-          val context4Rows = analysis.run(getDfWithNRows(sparkSession, 4))
-          val contextNoRows = analysis.run(getDfEmpty(sparkSession))
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
 
           // Check isNewestPointNonAnomalous using Size
           val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
@@ -952,9 +954,9 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
           // Get test AnalyzerContexts
           val analysis = Analysis().addAnalyzer(Size())
 
-          val context11Rows = analysis.run(getDfWithNRows(sparkSession, 11))
-          val context4Rows = analysis.run(getDfWithNRows(sparkSession, 4))
-          val contextNoRows = analysis.run(getDfEmpty(sparkSession))
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
 
           // Check isNewestPointNonAnomalous using Size
           val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
@@ -986,9 +988,9 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
           // Get test AnalyzerContexts
           val analysis = Analysis().addAnalyzer(Size())
 
-          val context11Rows = analysis.run(getDfWithNRows(sparkSession, 11))
-          val context4Rows = analysis.run(getDfWithNRows(sparkSession, 4))
-          val contextNoRows = analysis.run(getDfEmpty(sparkSession))
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
 
           // Check isNewestPointNonAnomalous using Size
           val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
@@ -1020,9 +1022,9 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
           // Get test AnalyzerContexts
           val analysis = Analysis().addAnalyzer(Size())
 
-          val context11Rows = analysis.run(getDfWithNRows(sparkSession, 11))
-          val context4Rows = analysis.run(getDfWithNRows(sparkSession, 4))
-          val contextNoRows = analysis.run(getDfEmpty(sparkSession))
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
 
           // Check isNewestPointNonAnomalous using Size
           val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
@@ -1067,7 +1069,7 @@ class CheckTest extends WordSpec with Matchers with SparkContextSpec with Fixtur
   }
 }
 
-object CheckTest extends WordSpec with Matchers {
+object CheckTest extends AnyWordSpec with Matchers {
 
   def assertSuccess(check: Check, context: AnalyzerContext): Unit = {
     check.evaluate(context).status shouldBe CheckStatus.Success
@@ -1085,7 +1087,7 @@ object CheckTest extends WordSpec with Matchers {
   def runChecks(data: DataFrame, check: Check, checks: Check*): AnalyzerContext = {
     val analyzers = (check.requiredAnalyzers() ++ checks.flatMap { _.requiredAnalyzers() }).toSeq
 
-    Analysis(analyzers).run(data)
+    AnalysisRunner.run(data, Analysis(analyzers))
   }
 
   private[this] def runAndAssertSuccessFor[T](
