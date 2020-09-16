@@ -84,10 +84,14 @@ object AnalyzerContext {
       // Get matching analyzers
       .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
       // Get analyzers with successful results
-      .filter({ case (_, metrics) => metrics.value.isSuccess })
+      .filter { case (_, metrics) => metrics.value.isSuccess }
       // Get metrics as Double and replace simple name with description
-      .flatMap({ case (analyzer, metrics) =>
-        metrics.flatten().map(renameMetric(_, describeAnalyzer(analyzer))) })
+      .flatMap { case (analyzer, metrics) =>
+        metrics.flatten().map { metric =>
+          val description = describeMetric(analyzer, metric)
+          renameMetric(metric, description)
+        }
+      }
       // Simplify metrics
       .map(SimpleMetricOutput(_))
       .toSeq
@@ -98,16 +102,16 @@ object AnalyzerContext {
   }
 
   /**
-    * Describe the Analyzer, using the name of the class, including the value of `where` field
-    * if exists.
+    * Describe the DoubleMetric, using the name of the metric and analyzer filtering condition
     * It helps us to show more readable success metrics
     * (see https://github.com/awslabs/deequ/issues/177 for details)
     *
     * @param analyzer the Analyzer to be described
-    * @return the description of the Analyzer
+    * @param metric the DoubleMetric to be described
+    * @return the description of the DoubleMetric
     */
-  private[this] def describeAnalyzer(analyzer: Any): String = {
-    val name = analyzer.getClass.getSimpleName
+  private[this] def describeMetric(analyzer: Any, metric: DoubleMetric): String = {
+    val name = metric.name
 
     val filterCondition: Option[String] = analyzer match {
       case x : FilterableAnalyzer => x.filterCondition

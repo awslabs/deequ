@@ -114,7 +114,7 @@ class VerificationRunBuilder(val data: DataFrame) {
   }
 
   /**
-    * Can be used to enforce the calculation of some some metric regardless of if there is a
+    * Can be used to enforce the calculation of some metric regardless of if there is a
     * constraint on it (optional)
     *
     * @param requiredAnalyzer The analyzer to be used to calculate the metric during the run
@@ -125,7 +125,7 @@ class VerificationRunBuilder(val data: DataFrame) {
   }
 
    /**
-    * Can be used to enforce the calculation of some some metrics regardless of if there are
+    * Can be used to enforce the calculation of some metrics regardless of if there are
     * constraints on them (optional)
     *
     * @param requiredAnalyzers The analyzers to be used to calculate the metrics during the run
