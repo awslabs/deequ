@@ -19,7 +19,7 @@ package com.amazon.deequ.metrics
 import scala.util.{Failure, Success, Try}
 
 object Entity extends Enumeration {
-  val Dataset, Column, Mutlicolumn = Value
+  val Dataset, Column, MultiColumn = Value
 }
 
 /** Common trait for all data quality metrics */
