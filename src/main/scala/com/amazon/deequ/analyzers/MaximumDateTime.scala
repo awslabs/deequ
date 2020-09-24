@@ -44,7 +44,6 @@ case class MaximumDateTime(column: String, where: Option[String] = None)
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxTimestampState] = {
     ifNoNullsIn(result, offset) { _ =>
-        println("getting " + result.getTimestamp(offset))
         MaxTimestampState(result.getTimestamp(offset))
     }
   }

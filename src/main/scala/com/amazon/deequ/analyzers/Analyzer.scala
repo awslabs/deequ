@@ -336,6 +336,8 @@ object Preconditions {
     }
   }
 
+
+
   def hasColumn(column: String, schema: StructType): Boolean = {
     if (caseSensitive) {
       schema.fieldNames.contains(column)
