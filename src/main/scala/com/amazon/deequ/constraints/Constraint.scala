@@ -495,7 +495,7 @@ object Constraint {
 
     val minimum = MinimumDateTime(column, where)
 
-    val constraint = AnalysisBasedConstraint[MinTimestampState, Timestamp, Timestamp](minimum, assertion,
+    val constraint = AnalysisBasedConstraint[MinDateTimeState, Timestamp, Timestamp](minimum, assertion,
       hint = hint)
 
     new NamedConstraint(constraint, s"MinimumTimestampConstraint($minimum)")
@@ -510,7 +510,7 @@ object Constraint {
 
     val maximum = MaximumDateTime(column, where)
 
-    val constraint = AnalysisBasedConstraint[MaxTimestampState, Timestamp, Timestamp](maximum, assertion,
+    val constraint = AnalysisBasedConstraint[MaxDateTimeState, Timestamp, Timestamp](maximum, assertion,
       hint = hint)
 
     new NamedConstraint(constraint, s"MaximumTimestampConstraint($maximum)")

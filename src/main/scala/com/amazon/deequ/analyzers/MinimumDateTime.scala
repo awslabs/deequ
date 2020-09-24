@@ -23,14 +23,14 @@ import org.apache.spark.sql.types.{TimestampType, StructType}
 import Analyzers._
 import java.sql.Timestamp
 
-trait TimestampValuedState[S <: TimestampValuedState[S]] extends State[S] {
+trait DateTimeValuedState[S <: DateTimeValuedState[S]] extends State[S] {
   def metricValue(): Timestamp
 }
 
-case class MinTimestampState(minValue: Timestamp) extends TimestampValuedState[MinTimestampState] {
+case class MinDateTimeState(minValue: Timestamp) extends DateTimeValuedState[MinDateTimeState] {
 
-  override def sum(other: MinTimestampState): MinTimestampState = {
-    MinTimestampState(if(minValue.compareTo(other.minValue) < 0) minValue else other.minValue)
+  override def sum(other: MinDateTimeState): MinDateTimeState = {
+    MinDateTimeState(if(minValue.compareTo(other.minValue) < 0) minValue else other.minValue)
   }
 
   override def metricValue(): Timestamp = {
@@ -39,16 +39,16 @@ case class MinTimestampState(minValue: Timestamp) extends TimestampValuedState[M
 }
 
 case class MinimumDateTime(column: String, where: Option[String] = None)
-  extends TimestampScanShareableAnalyzer[MinTimestampState]("Minimum Date Time", column)
+  extends TimestampScanShareableAnalyzer[MinDateTimeState]("Minimum Date Time", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     min(conditionalSelection(column, where)).cast(TimestampType) :: Nil
   }
 
-  override def fromAggregationResult(result: Row, offset: Int): Option[MinTimestampState] = {
+  override def fromAggregationResult(result: Row, offset: Int): Option[MinDateTimeState] = {
     ifNoNullsIn(result, offset) { _ =>
-        MinTimestampState(result.getTimestamp(offset))
+        MinDateTimeState(result.getTimestamp(offset))
     }
   }
 

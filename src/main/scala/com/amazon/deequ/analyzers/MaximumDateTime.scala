@@ -23,10 +23,10 @@ import org.apache.spark.sql.types.{TimestampType, StructType}
 import Analyzers._
 import java.sql.Timestamp
 
-case class MaxTimestampState(maxValue: Timestamp) extends TimestampValuedState[MaxTimestampState] {
+case class MaxDateTimeState(maxValue: Timestamp) extends DateTimeValuedState[MaxDateTimeState] {
 
-  override def sum(other: MaxTimestampState): MaxTimestampState = {
-    MaxTimestampState(if(maxValue.compareTo(other.maxValue) > 0) maxValue else other.maxValue)
+  override def sum(other: MaxDateTimeState): MaxDateTimeState = {
+    MaxDateTimeState(if(maxValue.compareTo(other.maxValue) > 0) maxValue else other.maxValue)
   }
 
   override def metricValue(): Timestamp = {
@@ -35,16 +35,16 @@ case class MaxTimestampState(maxValue: Timestamp) extends TimestampValuedState[M
 }
 
 case class MaximumDateTime(column: String, where: Option[String] = None)
-  extends TimestampScanShareableAnalyzer[MaxTimestampState]("Maximum Date Time", column)
+  extends TimestampScanShareableAnalyzer[MaxDateTimeState]("Maximum Date Time", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
     max(conditionalSelection(column, where)).cast(TimestampType) :: Nil
   }
 
-  override def fromAggregationResult(result: Row, offset: Int): Option[MaxTimestampState] = {
+  override def fromAggregationResult(result: Row, offset: Int): Option[MaxDateTimeState] = {
     ifNoNullsIn(result, offset) { _ =>
-        MaxTimestampState(result.getTimestamp(offset))
+        MaxDateTimeState(result.getTimestamp(offset))
     }
   }
 

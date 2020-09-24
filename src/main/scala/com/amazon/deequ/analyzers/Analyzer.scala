@@ -16,12 +16,15 @@
 
 package com.amazon.deequ.analyzers
 
+import java.math.BigDecimal
+
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric, TimestampMetric}
+import com.amazon.deequ.metrics.{BigDecimalMetric, DoubleMetric, Entity, Metric, DateTimeMetric}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
+
 import scala.language.existentials
 import scala.util.{Failure, Success}
 
@@ -49,6 +52,11 @@ trait State[S <: State[S]] {
 /** A state which produces a double valued metric  */
 trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
   def metricValue(): Double
+}
+
+/** A state which produces a BigDecimalValued metric  */
+trait BigDecimalValuedState[S <: BigDecimalValuedState[S]] extends State[S] {
+  def metricValue(): BigDecimal
 }
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
@@ -224,24 +232,56 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
   }
 }
 
-abstract class TimestampScanShareableAnalyzer[S <: TimestampValuedState[_]](
+/** A scan-shareable analyzer that produces a DateTimeMetric */
+abstract class TimestampScanShareableAnalyzer[S <: DateTimeValuedState[_]](
     name: String,
     instance: String,
     entity: Entity.Value = Entity.Column)
-  extends ScanShareableAnalyzer[S, TimestampMetric] {
+  extends ScanShareableAnalyzer[S, DateTimeMetric] {
 
-  override def computeMetricFrom(state: Option[S]): TimestampMetric = {
+  override def computeMetricFrom(state: Option[S]): DateTimeMetric = {
     state match {
       case Some(theState) =>
-        TimestampMetric(entity, name, instance, Success(theState.metricValue()))
+        DateTimeMetric(entity, name, instance, Success(theState.metricValue()))
       case _ =>
-        TimestampMetric(entity, name, instance, Failure(
+        DateTimeMetric(entity, name, instance, Failure(
           MetricCalculationException.wrapIfNecessary(emptyStateException(this))))
     }
   }
 
-  override private[deequ] def toFailureMetric(exception: Exception): TimestampMetric = {
-    TimestampMetric(entity, name, instance, Failure(
+  override private[deequ] def toFailureMetric(exception: Exception): DateTimeMetric = {
+    DateTimeMetric(entity, name, instance, Failure(
+      MetricCalculationException.wrapIfNecessary(exception)))
+  }
+
+  override def preconditions: Seq[StructType => Unit] = {
+    additionalPreconditions() ++ super.preconditions
+  }
+
+  protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    Seq.empty
+  }
+}
+
+/** A scan-shareable analyzer that produces a BigDecimalMetric */
+abstract class BigDecimalScanShareableAnalyzer[S <: BigDecimalValuedState[_]](
+    name: String,
+    instance: String,
+    entity: Entity.Value = Entity.Column)
+  extends ScanShareableAnalyzer[S, BigDecimalMetric] {
+
+  override def computeMetricFrom(state: Option[S]): BigDecimalMetric = {
+    state match {
+      case Some(theState) =>
+        BigDecimalMetric(entity, name, instance, Success(theState.metricValue()))
+      case _ =>
+        BigDecimalMetric(entity, name, instance, Failure(
+          MetricCalculationException.wrapIfNecessary(emptyStateException(this))))
+    }
+  }
+
+  override private[deequ] def toFailureMetric(exception: Exception): BigDecimalMetric = {
+    BigDecimalMetric(entity, name, instance, Failure(
       MetricCalculationException.wrapIfNecessary(exception)))
   }
 
@@ -414,6 +454,10 @@ object Preconditions {
     }
   }
 
+  /** Asserts if Specified column is a DateType or TimestampType type throw Exception if not
+   * @param column for which assertion is performed
+   * @return
+   * */
   def isDateType(column: String): StructType => Unit = { schema =>
     val columnDataType = structField(column, schema).dataType
     val hasDateType = columnDataType match {
@@ -423,6 +467,23 @@ object Preconditions {
     if (!hasDateType) {
       throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
         s"(${dateTypes.mkString(",")}), but found $columnDataType instead!")
+    }
+  }
+
+  /** Asserts if Specified column is a Decimal type throw Exception if not
+   * @param column for which assertion is performed
+   * @return
+   * */
+  def isDecimalType(column: String): StructType => Unit = { schema =>
+    val columnDataType = structField(column, schema).dataType
+    val hasNumericType = columnDataType match {
+      case _ : DecimalType => true
+      case _ => false
+    }
+
+    if (!hasNumericType) {
+      throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
+        s"(${numericDataTypes.mkString(",")}), but found $columnDataType instead!")
     }
   }
 

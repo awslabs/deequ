@@ -16,7 +16,9 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
+import java.math.BigDecimal
+
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isDecimalType, isNumeric}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.apache.spark.sql.{Column, Row}
@@ -49,6 +51,38 @@ case class Sum(column: String, where: Option[String] = None)
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
+  }
+
+  override def filterCondition: Option[String] = where
+}
+
+case class BigDecimalSumState(sum: BigDecimal) extends BigDecimalValuedState[BigDecimalSumState] {
+
+  override def sum(other: BigDecimalSumState): BigDecimalSumState = {
+    BigDecimalSumState(sum.add(other.sum))
+  }
+
+  override def metricValue(): BigDecimal = {
+    sum
+  }
+}
+
+case class BigDecimalSum(column: String, where: Option[String] = None)
+  extends BigDecimalScanShareableAnalyzer[BigDecimalSumState]("BigDecimal Sum", column)
+    with FilterableAnalyzer {
+
+  override def aggregationFunctions(): Seq[Column] = {
+    sum(conditionalSelection(column, where)) :: Nil
+  }
+
+  override def fromAggregationResult(result: Row, offset: Int): Option[BigDecimalSumState] = {
+    ifNoNullsIn(result, offset) { _ =>
+      BigDecimalSumState(result.getDecimal(offset))
+    }
+  }
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    hasColumn(column) :: isDecimalType(column) :: Nil
   }
 
   override def filterCondition: Option[String] = where

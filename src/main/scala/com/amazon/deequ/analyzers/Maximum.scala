@@ -16,9 +16,11 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
+import java.math.BigDecimal
+
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isDecimalType, isNumeric}
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.max
+import org.apache.spark.sql.functions.{max, min}
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import Analyzers._
 
@@ -50,6 +52,39 @@ case class Maximum(column: String, where: Option[String] = None)
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
+  }
+
+  override def filterCondition: Option[String] = where
+}
+
+case class MaxBigDecimalState(minValue: BigDecimal) extends BigDecimalValuedState[MaxBigDecimalState] {
+
+  override def sum(other: MaxBigDecimalState): MaxBigDecimalState = {
+    MaxBigDecimalState(minValue.max(other.minValue))
+  }
+
+  override def metricValue(): BigDecimal = {
+    minValue
+  }
+}
+
+case class MaximumBigDecimal(column: String, where: Option[String] = None)
+  extends BigDecimalScanShareableAnalyzer[MaxBigDecimalState]("Maximum BigDecimal", column)
+    with FilterableAnalyzer {
+
+  override def aggregationFunctions(): Seq[Column] = {
+    max(conditionalSelection(column, where)) :: Nil
+  }
+
+
+  override def fromAggregationResult(result: Row, offset: Int): Option[MaxBigDecimalState] = {
+    ifNoNullsIn(result, offset) { _ =>
+      MaxBigDecimalState(result.getDecimal(offset))
+    }
+  }
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    hasColumn(column) :: isDecimalType(column) :: Nil
   }
 
   override def filterCondition: Option[String] = where

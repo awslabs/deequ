@@ -16,10 +16,12 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
+import java.math.BigDecimal
+
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isDecimalType, isNumeric}
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{count, sum}
-import org.apache.spark.sql.types.{DoubleType, StructType, LongType}
+import org.apache.spark.sql.types.{DoubleType, LongType, StructType}
 import Analyzers._
 
 case class MeanState(sum: Double, count: Long) extends DoubleValuedState[MeanState] {
@@ -51,6 +53,40 @@ case class Mean(column: String, where: Option[String] = None)
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
+  }
+
+  override def filterCondition: Option[String] = where
+}
+
+case class BigDecimalMeanState(sum: BigDecimal, count: Long) extends BigDecimalValuedState[BigDecimalMeanState] {
+
+  override def sum(other: BigDecimalMeanState): BigDecimalMeanState = {
+    BigDecimalMeanState(sum.add(other.sum), count + other.count)
+  }
+
+  override def metricValue(): BigDecimal = {
+    if (count == 0L) null else sum.divide(new BigDecimal(count))
+  }
+}
+
+case class BigDecimalMean(column: String, where: Option[String] = None)
+  extends BigDecimalScanShareableAnalyzer[BigDecimalMeanState]("BigDecimal Mean", column)
+    with FilterableAnalyzer {
+
+  override def aggregationFunctions(): Seq[Column] = {
+    sum(conditionalSelection(column, where)) ::
+      count(conditionalSelection(column, where)).cast(LongType) :: Nil
+  }
+
+  override def fromAggregationResult(result: Row, offset: Int): Option[BigDecimalMeanState] = {
+
+    ifNoNullsIn(result, offset, howMany = 2) { _ =>
+      BigDecimalMeanState(result.getDecimal(offset), result.getLong(offset + 1))
+    }
+  }
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    hasColumn(column) :: isDecimalType(column) :: Nil
   }
 
   override def filterCondition: Option[String] = where

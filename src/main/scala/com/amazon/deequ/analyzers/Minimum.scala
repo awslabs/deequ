@@ -16,7 +16,9 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
+import java.math.BigDecimal
+
+import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isDecimalType, isNumeric}
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.min
 import org.apache.spark.sql.types.{DoubleType, StructType}
@@ -50,6 +52,39 @@ case class Minimum(column: String, where: Option[String] = None)
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isNumeric(column) :: Nil
+  }
+
+  override def filterCondition: Option[String] = where
+}
+
+case class MinBigDecimalState(minValue: BigDecimal) extends BigDecimalValuedState[MinBigDecimalState] {
+
+  override def sum(other: MinBigDecimalState): MinBigDecimalState = {
+    MinBigDecimalState(minValue.min(other.minValue))
+  }
+
+  override def metricValue(): BigDecimal = {
+    minValue
+  }
+}
+
+case class MinimumBigDecimal(column: String, where: Option[String] = None)
+  extends BigDecimalScanShareableAnalyzer[MinBigDecimalState]("Minimum BigDecimal", column)
+    with FilterableAnalyzer {
+
+  override def aggregationFunctions(): Seq[Column] = {
+    min(conditionalSelection(column, where)) :: Nil
+  }
+
+
+  override def fromAggregationResult(result: Row, offset: Int): Option[MinBigDecimalState] = {
+    ifNoNullsIn(result, offset) { _ =>
+      MinBigDecimalState(result.getDecimal(offset))
+    }
+  }
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    hasColumn(column) :: isDecimalType(column) :: Nil
   }
 
   override def filterCondition: Option[String] = where

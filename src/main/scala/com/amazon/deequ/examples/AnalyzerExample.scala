@@ -5,7 +5,7 @@ import java.sql.Timestamp
 
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
-import com.amazon.deequ.analyzers.{MaximumDateTime, MinimumDateTime}
+import com.amazon.deequ.analyzers.{MaximumDateTime, MinimumDateTime, Sum, BigDecimalSum, Mean, BigDecimalMean}
 import com.amazon.deequ.examples.ExampleUtils.{ordersAsDataframe, withSpark}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext.successMetricsAsDataFrame
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
@@ -26,6 +26,10 @@ private[examples] object AnalyzerExample extends App {
       .onData(data)
       .addAnalyzer(MinimumDateTime("orderDate"))
       .addAnalyzer(MaximumDateTime("orderDate"))
+      .addAnalyzer(Sum("amount"))
+      .addAnalyzer(BigDecimalSum("amount"))
+      .addAnalyzer(Mean("amount"))
+      .addAnalyzer(BigDecimalMean("amount"))
       .run()
     }
 
