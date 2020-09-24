@@ -17,12 +17,11 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
+import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric, TimestampMetric}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
-
 import scala.language.existentials
 import scala.util.{Failure, Success}
 
@@ -225,6 +224,36 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
   }
 }
 
+abstract class TimestampScanShareableAnalyzer[S <: TimestampValuedState[_]](
+    name: String,
+    instance: String,
+    entity: Entity.Value = Entity.Column)
+  extends ScanShareableAnalyzer[S, TimestampMetric] {
+
+  override def computeMetricFrom(state: Option[S]): TimestampMetric = {
+    state match {
+      case Some(theState) =>
+        TimestampMetric(entity, name, instance, Success(theState.metricValue()))
+      case _ =>
+        TimestampMetric(entity, name, instance, Failure(
+          MetricCalculationException.wrapIfNecessary(emptyStateException(this))))
+    }
+  }
+
+  override private[deequ] def toFailureMetric(exception: Exception): TimestampMetric = {
+    TimestampMetric(entity, name, instance, Failure(
+      MetricCalculationException.wrapIfNecessary(exception)))
+  }
+
+  override def preconditions: Seq[StructType => Unit] = {
+    additionalPreconditions() ++ super.preconditions
+  }
+
+  protected def additionalPreconditions(): Seq[StructType => Unit] = {
+    Seq.empty
+  }
+}
+
 /** A state for computing ratio-based metrics,
   * contains #rows that match a predicate and overall #rows */
 case class NumMatchesAndCount(numMatches: Long, count: Long)
@@ -286,6 +315,9 @@ object Preconditions {
 
   private[this] val numericDataTypes =
     Set(ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
+
+  private[this] val dateTypes =
+    Set(TimestampType, DateType)
 
   private[this] val nestedDataTypes = Set(StructType, MapType, ArrayType)
 
@@ -377,6 +409,18 @@ object Preconditions {
     if (!hasNumericType) {
       throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
         s"(${numericDataTypes.mkString(",")}), but found $columnDataType instead!")
+    }
+  }
+
+  def isDateType(column: String): StructType => Unit = { schema =>
+    val columnDataType = structField(column, schema).dataType
+    val hasDateType = columnDataType match {
+      case TimestampType | DateType => true
+      case _ => false
+    }
+    if (!hasDateType) {
+      throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
+        s"(${dateTypes.mkString(",")}), but found $columnDataType instead!")
     }
   }
 
