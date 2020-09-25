@@ -926,6 +926,22 @@ case class Check(
     isContainedIn(column, allowedValues, Check.IsOne, None)
   }
 
+  /**
+   * Asserts that every non-null value in a column is contained in a set of predefined values
+   *for providing isContained availble for numeric types as well
+   *
+   * @param column Column to run the assertion on
+   * @param allowedValues allowed values for the column
+   * @return
+   */
+  def isContainedIn[T <: AnyVal](
+      column: String,
+      allowedValues: Array[T])
+  : CheckWithLastConstraintFilterable = {
+
+    isContainedIn(column, allowedValues, Check.IsOne, None)
+  }
+
   // We can't use default values here as you can't combine default values and overloading in Scala
   /**
     * Asserts that every non-null value in a column is contained in a set of predefined values
@@ -940,6 +956,15 @@ case class Check(
       allowedValues: Array[String],
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
+
+    isContainedIn(column, allowedValues, Check.IsOne, hint)
+  }
+
+  def isContainedIn[T <: AnyVal](
+      column: String,
+      allowedValues: Array[T],
+      hint: Option[String])
+  : CheckWithLastConstraintFilterable = {
 
     isContainedIn(column, allowedValues, Check.IsOne, hint)
   }
@@ -973,20 +998,30 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isContainedIn(
+  def isContainedIn[T](
       column: String,
-      allowedValues: Array[String],
+      allowedValues: Array[T],
       assertion: Double => Boolean,
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
 
-
-    val valueList = allowedValues
-      .map { _.replaceAll("'", "''") }
-      .mkString("'", "','", "'")
+    val valueList = getValueList(allowedValues)
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
+  }
+
+
+  def getValueList[T](allowedValues: Array[_]): String = {
+    allowedValues match {
+      case allowedValues : Array[String] => allowedValues
+        .map {
+          _.toString.replaceAll("'", "''")
+        }
+        .mkString("'", "','", "'")
+      case allowedValues : Array[Char] => allowedValues.mkString("'", "','", "'")
+      case _ => allowedValues.mkString(",")
+    }
   }
 
   /**
@@ -1247,4 +1282,5 @@ object Check {
 
     detectedAnomalies.anomalies.isEmpty
   }
+
 }
