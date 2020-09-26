@@ -17,11 +17,11 @@
 package com.amazon.deequ.analyzers.catalyst
 
 import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
-import org.apache.spark.sql.{Row}
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
 
- class DateTimeAggregation(frequency: Long) extends UserDefinedAggregateFunction {
+class DateTimeAggregation(frequency: Long) extends UserDefinedAggregateFunction {
 
   override def inputSchema: StructType = StructType(StructField("value", TimestampType) :: Nil)
 
@@ -40,15 +40,15 @@ import org.apache.spark.sql.types._
     if (!input.isNullAt(0)) {
       val datetime = input.getTimestamp(0).getTime
       val batchTime = datetime - (datetime % frequency)
-      var bufferMap = buffer(0).asInstanceOf[Map[Long, Long]]
-      buffer(0) = bufferMap + (batchTime -> (bufferMap.getOrElse(batchTime, 0l)+ 1l))
+      val bufferMap = buffer(0).asInstanceOf[Map[Long, Long]]
+      buffer(0) = bufferMap + (batchTime -> (bufferMap.getOrElse(batchTime, 0L)+ 1L))
     }
   }
 
   override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
-    var bufferMap1 = buffer1(0).asInstanceOf[Map[Long, Long]]
-    var bufferMap2 = buffer2(0).asInstanceOf[Map[Long, Long]]
-    buffer1(0) = bufferMap1 ++ bufferMap2.map { case (k, v) => k -> (v + bufferMap1.getOrElse(k, 0l)) }
+    val bufferMap1 = buffer1(0).asInstanceOf[Map[Long, Long]]
+    val bufferMap2 = buffer2(0).asInstanceOf[Map[Long, Long]]
+    buffer1(0) = bufferMap1 ++ bufferMap2.map { case (k, v) => k -> (v + bufferMap1.getOrElse(k, 0L)) }
   }
 
   override def evaluate(buffer: Row): Any = {

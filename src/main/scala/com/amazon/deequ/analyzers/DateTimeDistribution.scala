@@ -36,7 +36,7 @@ case class DateTimeDistributionState(distribution : Map[(Timestamp, Timestamp), 
 
   override def sum(other: DateTimeDistributionState): DateTimeDistributionState = {
 
-    DateTimeDistributionState(distribution ++ other.distribution.map { case (k, v) => k -> (v + distribution.getOrElse(k, 0l)) })
+    DateTimeDistributionState(distribution ++ other.distribution.map { case (k, v) => k -> (v + distribution.getOrElse(k, 0L)) })
   }
 }
 
@@ -44,12 +44,12 @@ object  DateTimeDistributionState {
 
   def computeStateFromResult(result: Map[Long, Long], frequency: Long): Map[(Timestamp, Timestamp), Long] = {
     result.map({
-      case (x, y) => (new Timestamp(x), new Timestamp(x + frequency - 1l)) -> y
+      case (x, y) => (new Timestamp(x), new Timestamp(x + frequency - 1L)) -> y
     })
   }
 
   def toDistribution(histogram: DateTimeDistributionState): Distribution = {
-    val totalCount = histogram.distribution.foldLeft(0l)(_ + _._2)
+    val totalCount = histogram.distribution.foldLeft(0L)(_ + _._2)
     Distribution(histogram.distribution.map({
       case (x, y) => ("(" + x._1.toString + " to " + x._2.toString + ")") -> DistributionValue(y, y.toDouble/totalCount)
     }), totalCount)
@@ -111,10 +111,10 @@ object  DateTimeDistribution {
 
   def getDateTimeAggIntervalValue(interval: DistributionInterval.Value) : Long = {
     interval match {
-      case DistributionInterval.QUARTER_HOUR => 900000l    // 15 Minutes
-      case DistributionInterval.HOURLY => 3600000l         // 60 Minutes
-      case DistributionInterval.DAILY => 86400000          // 24 Hours
-      case _ => 604800000l                                  // 7 * 24 Hours
+      case DistributionInterval.QUARTER_HOUR => 900000L   // 15 Minutes
+      case DistributionInterval.HOURLY => 3600000L        // 60 Minutes
+      case DistributionInterval.DAILY => 86400000L         // 24 Hours
+      case _ => 604800000L                                  // 7 * 24 Hours
     }
   }
 
