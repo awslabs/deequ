@@ -29,7 +29,6 @@ private[examples] object AnalyzerExample extends App {
       .addAnalyzer(BigDecimalSum("amount"))
       .addAnalyzer(Mean("amount"))
       .addAnalyzer(BigDecimalMean("amount"))
-      .addAnalyzer(BigDecimalMean("amount"))
       .run()
     }
 
