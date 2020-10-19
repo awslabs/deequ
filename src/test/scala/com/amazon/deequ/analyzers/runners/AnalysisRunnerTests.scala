@@ -31,7 +31,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import scala.util.Try
 
 
-class AnalysisRunnerTests extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport
+class AnalysisRunnerTests extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport
   with PrivateMethodTester {
 
   "AnalysisRunner" should {
@@ -46,7 +49,11 @@ class AnalysisRunnerTests extends AnyWordSpec with Matchers with SparkContextSpe
 
       val directlyCalculated = analyzer.calculate(data)
 
-      val calculatedViaAnalysis = AnalysisRunner.onData(data).addAnalyzer(analyzer).run().metric(analyzer)
+      val calculatedViaAnalysis = AnalysisRunner
+        .onData(data)
+        .addAnalyzer(analyzer)
+        .run()
+        .metric(analyzer)
 
       assert(calculatedViaAnalysis.contains(directlyCalculated))
     }
@@ -198,7 +205,10 @@ class AnalysisRunnerTests extends AnyWordSpec with Matchers with SparkContextSpe
 
         val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
 
-        val analysisResult = AnalysisRunner.onData(df).addAnalyzer(analyzerToTestReusingResults).run()
+        val analysisResult = AnalysisRunner
+          .onData(df)
+          .addAnalyzer(analyzerToTestReusingResults)
+          .run()
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
         repository.save(resultKey, analysisResult)
@@ -230,7 +240,10 @@ class AnalysisRunnerTests extends AnyWordSpec with Matchers with SparkContextSpe
 
         val analyzerToTestReusingResults = Distinctness(Seq("att1", "att2"))
 
-        val analysisResult = AnalysisRunner.onData(df).addAnalyzer(analyzerToTestReusingResults).run()
+        val analysisResult = AnalysisRunner
+          .onData(df)
+          .addAnalyzer(analyzerToTestReusingResults)
+          .run()
         val repository = new InMemoryMetricsRepository
         val resultKey = ResultKey(0, Map.empty)
         repository.save(resultKey, analysisResult)

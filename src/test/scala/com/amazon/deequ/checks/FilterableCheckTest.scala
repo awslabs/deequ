@@ -23,7 +23,10 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 
-class FilterableCheckTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class FilterableCheckTest extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport {
 
   "Filterable checks" should {
     "build correctly" in {

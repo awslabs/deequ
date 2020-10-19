@@ -27,7 +27,10 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.util.Success
 
-class NullHandlingTests extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class NullHandlingTests extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport {
 
   private[this] def dataWithNullColumns(session: SparkSession): DataFrame = {
 

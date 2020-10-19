@@ -30,8 +30,15 @@ org.mockito:mockito-core:2.28.2,org.openjdk.jmh:jmh-core:1.23,org.openjdk.jmh:jm
 --jars <local_git_repo>/target/deequ-1.1.0-SNAPSHOT.jar,<local_git_repo>/target/spark-deequ-testing/deequ-1.1.0-SNAPSHOT-tests.jar
  */
 
+import com.amazon.deequ.analyzers.{AnalysisTest, AnalyzerTests, IncrementalAnalysisTest}
+import com.amazon.deequ.analyzers.runners.{AnalysisRunnerTests, AnalyzerContextTest}
 import com.amazon.deequ.{VerificationResultTest, VerificationSuiteTest}
 
 (new VerificationSuiteTest).execute()
 (new VerificationResultTest).execute()
+(new AnalysisRunnerTests).execute()
+(new AnalyzerContextTest).execute()
+(new AnalysisTest).execute()
+(new AnalyzerTests).execute()
+(new IncrementalAnalysisTest).execute()
 //Add additional test classes as needed

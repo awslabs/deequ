@@ -30,7 +30,9 @@ import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.{Failure, Success}
 
-class FileSystemMetricsRepositoryTest extends AnyWordSpec with SparkContextSpec with FixtureSupport {
+class FileSystemMetricsRepositoryTest extends AnyWordSpec
+  with SparkContextSpec
+  with FixtureSupport {
 
   private[this] val DATE_ONE = createDate(2017, 10, 14)
   private[this] val DATE_TWO = createDate(2017, 10, 15)

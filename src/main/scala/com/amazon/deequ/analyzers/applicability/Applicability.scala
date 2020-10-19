@@ -142,7 +142,7 @@ private[deequ] object Applicability {
       null
     } else {
       val Low = 100
-      val High =1500
+      val High = 1500
       val Result = Random.nextInt(High - Low) + Low
       val ResultSec = Random.nextInt(High - Low) + Low
       val calendar = Calendar.getInstance()

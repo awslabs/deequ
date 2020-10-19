@@ -24,7 +24,10 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class AnalyzerContextTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class AnalyzerContextTest extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport {
 
   "AnalyzerContext" should {
     "correctly return a DataFrame that is formatted as expected" in withSparkSession { session =>

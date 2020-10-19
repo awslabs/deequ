@@ -212,7 +212,8 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
 object HoltWintersTest {
 
   def dailyMetricsWithWeeklySeasonalityAnomalies(
-                                                  series: Vector[Double], interval: (Int, Int)): Seq[(Int, Anomaly)] = {
+                                                  series: Vector[Double],
+                                                  interval: (Int, Int)): Seq[(Int, Anomaly)] = {
 
     val strategy = new HoltWinters(
       HoltWinters.MetricInterval.Daily,

@@ -24,7 +24,10 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 
-class StateProviderTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class StateProviderTest extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport {
 
   "Analyzers" should {
 

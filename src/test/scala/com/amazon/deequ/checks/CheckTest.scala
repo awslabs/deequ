@@ -566,8 +566,10 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertSuccess(baseCheck.hasApproxCountDistinct("att1", _ == 6.0), contextNumeric)
       assertSuccess(baseCheck.hasApproxQuantile("att1", quantile = 0.5, _ == 3.0), contextNumeric)
 
-      val correlationAnalysisInformative = AnalysisRunner.onData(dfInformative).addAnalyzer(Correlation("att1", "att2"))
-      val correlationAnalysisUninformative = AnalysisRunner.onData(dfUninformative).addAnalyzer(Correlation("att1", "att2"))
+      val correlationAnalysisInformative = AnalysisRunner.onData(dfInformative)
+        .addAnalyzer(Correlation("att1", "att2"))
+      val correlationAnalysisUninformative = AnalysisRunner.onData(dfUninformative)
+        .addAnalyzer(Correlation("att1", "att2"))
 
       val contextInformative = correlationAnalysisInformative.run()
       val contextUninformative = correlationAnalysisUninformative.run()

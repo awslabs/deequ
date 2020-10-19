@@ -45,7 +45,8 @@ class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContex
       val initialStates = InMemoryStateProvider()
 
       AnalysisRunner.run(initial, analysis, saveStatesWith = Some(initialStates))
-      val incrementalResults = AnalysisRunner.run(delta, analysis, aggregateWith = Some(initialStates))
+      val incrementalResults = AnalysisRunner
+        .run(delta, analysis, aggregateWith = Some(initialStates))
 
       val nonIncrementalResults = AnalysisRunner.run(everything, analysis)
 

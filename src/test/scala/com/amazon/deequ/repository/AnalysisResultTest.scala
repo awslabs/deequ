@@ -26,7 +26,10 @@ import com.amazon.deequ.analyzers.runners.{AnalysisRunBuilder, AnalysisRunner, A
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.wordspec.AnyWordSpec
 
-class AnalysisResultTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class AnalysisResultTest extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport {
 
   private[this] val DATE_ONE = createDate(2017, 10, 14)
 
