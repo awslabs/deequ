@@ -40,10 +40,10 @@ import scala.util.{Failure, Success, Try}
   *
   */
 private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
-                                                                        analyzer: Analyzer[S, Metric[M]],
-                                                                        private[deequ] val assertion: V => Boolean,
-                                                                        private[deequ] val valuePicker: Option[M => V] = None,
-                                                                        private[deequ] val hint: Option[String] = None)
+                          analyzer: Analyzer[S, Metric[M]],
+                          private[deequ] val assertion: V => Boolean,
+                          private[deequ] val valuePicker: Option[M => V] = None,
+                          private[deequ] val hint: Option[String] = None)
   extends Constraint {
 
   private[deequ] def calculateAndEvaluate(data: DataFrame) = {
