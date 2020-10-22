@@ -24,6 +24,19 @@ import scala.util.Random
 
 trait FixtureSupport {
 
+  def getEmptyColumnDataDf(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("", "a", "f"),
+      ("", "b", "d"),
+      ("", "a", null),
+      ("", "a", "f"),
+      ("", "b", null),
+      ("", "a", "f")
+    ).toDF("att1", "att2", "att3")
+  }
+
   def getDfEmpty(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
     val column1 = $"column1".string

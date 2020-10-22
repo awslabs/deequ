@@ -33,8 +33,8 @@ private[sql] class StatefulDataType extends UserDefinedAggregateFunction {
   val BOOLEAN_POS = 3
   val STRING_POS = 4
 
-  val FRACTIONAL: Regex = """^(-|\+)? ?\d*\.\d*$""".r
-  val INTEGRAL: Regex = """^(-|\+)? ?\d*$""".r
+  val FRACTIONAL: Regex = """^(-|\+)? ?\d*\.\d+$""".r
+  val INTEGRAL: Regex = """^(-|\+)? ?\d+$""".r
   val BOOLEAN: Regex = """^(true|false)$""".r
 
   override def inputSchema: StructType = StructType(StructField("value", StringType) :: Nil)
