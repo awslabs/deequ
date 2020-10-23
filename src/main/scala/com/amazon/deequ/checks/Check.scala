@@ -1052,15 +1052,7 @@ case class Check(
 
     satisfies(predicate, s"`$column` between $lowerBound and $upperBound", hint = hint)
   }
-
-  /**
-   * Creates a constraint that asserts a minimum Timestamp
-   *
-   * @param column – Column to run the assertion on
-   * @param assertion – Function that receives a Timestamp input parameter and returns a boolean
-   * @param hint – A hint to provide additional context why a constraint could have failed
-   * @return
-   */
+  
   def hasMinTimestamp(
       column: String,
       assertion: Timestamp => Boolean,
@@ -1070,14 +1062,6 @@ case class Check(
     addFilterableConstraint { filter => minTimestampConstraint(column, assertion, filter, hint) }
   }
 
-  /**
-   * Creates a constraint that asserts a maximum java.sql.Timestamp
-   *
-   * @param column – Column to run the assertion on
-   * @param assertion – Function that receives a Timestamp input parameter and returns a boolean
-   * @param hint – A hint to provide additional context why a constraint could have failed
-   * @return
-   */
   def hasMaxTimestamp(
       column: String,
       assertion: Timestamp => Boolean,
@@ -1088,7 +1072,6 @@ case class Check(
   }
 
   /**
-   *
    * Asserts that, in each row, the value of column (DateType or TimestampType)
    * is less than the given datetime (Timestamp)
    *
