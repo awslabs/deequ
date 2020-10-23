@@ -1016,7 +1016,7 @@ case class Check(
     allowedValues match {
       case allowedValues : Array[String] => allowedValues
         .map {
-          _.toString.replaceAll("'", "''")
+          _.replaceAll("'", "''")
         }
         .mkString("'", "','", "'")
       case allowedValues : Array[Char] => allowedValues.mkString("'", "','", "'")
@@ -1054,10 +1054,10 @@ case class Check(
   }
 
   /**
-   * Creates a constraint that asserts a minimum java.sql.Timestamp
+   * Creates a constraint that asserts a minimum Timestamp
    *
    * @param column – Column to run the assertion on
-   * @param assertion – Function that receives a java.sql.Timestamp input parameter and returns a boolean
+   * @param assertion – Function that receives a Timestamp input parameter and returns a boolean
    * @param hint – A hint to provide additional context why a constraint could have failed
    * @return
    */
@@ -1074,7 +1074,7 @@ case class Check(
    * Creates a constraint that asserts a maximum java.sql.Timestamp
    *
    * @param column – Column to run the assertion on
-   * @param assertion – Function that receives a java.sql.Timestamp input parameter and returns a boolean
+   * @param assertion – Function that receives a Timestamp input parameter and returns a boolean
    * @param hint – A hint to provide additional context why a constraint could have failed
    * @return
    */
@@ -1089,7 +1089,8 @@ case class Check(
 
   /**
    *
-   * Asserts that, in each row, the value of column (DateType or TimestampType) is less than the given datetime (Timestamp)
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * is less than the given datetime (Timestamp)
    *
    * @param column Column to run the assertion on
    * @param datetime value of Timestamp to run assert
@@ -1111,7 +1112,8 @@ case class Check(
 
   /**
    *
-   * Asserts that, in each row, the value of column (DateType or TimestampType) is greater than the given datetime (Timestamp)
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * is greater than the given datetime (Timestamp)
    *
    * @param column Column to run the assertion on
    * @param datetime value of Timestamp to run assert
@@ -1153,7 +1155,8 @@ case class Check(
 
   /**
    *
-   * Asserts that, in each row, the value of column (DateType or TimestampType) contains a future date
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * contains a future date
    *
    * @param column Column to run the assertion on
    * @param assertion Function that receives a Timestamp input parameter and returns a boolean
