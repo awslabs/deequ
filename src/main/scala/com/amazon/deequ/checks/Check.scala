@@ -1052,7 +1052,7 @@ case class Check(
 
     satisfies(predicate, s"`$column` between $lowerBound and $upperBound", hint = hint)
   }
-  
+
   def hasMinTimestamp(
       column: String,
       assertion: Timestamp => Boolean,
