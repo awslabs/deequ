@@ -57,7 +57,8 @@ case class Minimum(column: String, where: Option[String] = None)
   override def filterCondition: Option[String] = where
 }
 
-case class MinBigDecimalState(minValue: BigDecimal) extends BigDecimalValuedState[MinBigDecimalState] {
+case class MinBigDecimalState(minValue: BigDecimal)
+  extends BigDecimalValuedState[MinBigDecimalState] {
 
   override def sum(other: MinBigDecimalState): MinBigDecimalState = {
     MinBigDecimalState(minValue.min(other.minValue))

@@ -58,7 +58,8 @@ case class Mean(column: String, where: Option[String] = None)
   override def filterCondition: Option[String] = where
 }
 
-case class BigDecimalMeanState(sum: BigDecimal, count: Long) extends BigDecimalValuedState[BigDecimalMeanState] {
+case class BigDecimalMeanState(sum: BigDecimal, count: Long)
+  extends BigDecimalValuedState[BigDecimalMeanState] {
 
   override def sum(other: BigDecimalMeanState): BigDecimalMeanState = {
     BigDecimalMeanState(sum.add(other.sum), count + other.count)

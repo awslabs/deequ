@@ -1050,7 +1050,7 @@ case class Check(
     val predicate = s"`$column` IS NULL OR " +
       s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
+    satisfies(predicate, s"`$column` between $lowerBound and $upperBound", hint = hint)
   }
 
   /**

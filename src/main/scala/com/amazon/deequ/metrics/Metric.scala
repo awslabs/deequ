@@ -77,7 +77,7 @@ case class DateTimeMetric(
   extends Metric[Timestamp] {
 
   override def flatten(): Seq[DoubleMetric] = {
-    if(value.isSuccess) {
+    if (value.isSuccess) {
       Seq(DoubleMetric(entity, "Timestamp milliseconds", instance,
         Success(value.get.getTime.toDouble)))
     } else {
@@ -94,7 +94,7 @@ case class BigDecimalMetric(
   extends Metric[BigDecimal] {
 
   override def flatten(): Seq[DoubleMetric] = {
-    if(value.isSuccess) {
+    if (value.isSuccess) {
       Seq(DoubleMetric(entity, "BigDecimal", instance, Success(value.get.toDouble)))
     } else {
       Seq(DoubleMetric(entity, "BigDecimal", instance, Failure(value.failed.get)))

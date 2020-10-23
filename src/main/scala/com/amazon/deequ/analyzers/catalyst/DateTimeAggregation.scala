@@ -25,7 +25,8 @@ class DateTimeAggregation(frequency: Long) extends UserDefinedAggregateFunction 
 
   override def inputSchema: StructType = StructType(StructField("value", TimestampType) :: Nil)
 
-  override def bufferSchema: StructType = StructType(StructField("map", DataTypes.createMapType(LongType, LongType)) :: Nil)
+  override def bufferSchema: StructType = StructType(StructField("map",
+    DataTypes.createMapType(LongType, LongType)) :: Nil)
 
   override def dataType: DataType = DataTypes.createMapType(LongType, LongType)
 
@@ -41,14 +42,16 @@ class DateTimeAggregation(frequency: Long) extends UserDefinedAggregateFunction 
       val datetime = input.getTimestamp(0).getTime
       val batchTime = datetime - (datetime % frequency)
       val bufferMap = buffer(0).asInstanceOf[Map[Long, Long]]
-      buffer(0) = bufferMap + (batchTime -> (bufferMap.getOrElse(batchTime, 0L)+ 1L))
+      buffer(0) = bufferMap + (batchTime -> (bufferMap.getOrElse(batchTime, 0L) + 1L))
     }
   }
 
   override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
     val bufferMap1 = buffer1(0).asInstanceOf[Map[Long, Long]]
     val bufferMap2 = buffer2(0).asInstanceOf[Map[Long, Long]]
-    buffer1(0) = bufferMap1 ++ bufferMap2.map { case (k, v) => k -> (v + bufferMap1.getOrElse(k, 0L)) }
+    buffer1(0) = bufferMap1 ++ bufferMap2.map {
+      case (k, v) => k -> (v + bufferMap1.getOrElse(k, 0L))
+    }
   }
 
   override def evaluate(buffer: Row): Any = {

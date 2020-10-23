@@ -26,7 +26,7 @@ import java.sql.Timestamp
 case class MaxDateTimeState(maxValue: Timestamp) extends DateTimeValuedState[MaxDateTimeState] {
 
   override def sum(other: MaxDateTimeState): MaxDateTimeState = {
-    MaxDateTimeState(if(maxValue.compareTo(other.maxValue) > 0) maxValue else other.maxValue)
+    MaxDateTimeState(if (maxValue.compareTo(other.maxValue) > 0) maxValue else other.maxValue)
   }
 
   override def metricValue(): Timestamp = {

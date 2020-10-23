@@ -30,7 +30,7 @@ trait DateTimeValuedState[S <: DateTimeValuedState[S]] extends State[S] {
 case class MinDateTimeState(minValue: Timestamp) extends DateTimeValuedState[MinDateTimeState] {
 
   override def sum(other: MinDateTimeState): MinDateTimeState = {
-    MinDateTimeState(if(minValue.compareTo(other.minValue) < 0) minValue else other.minValue)
+    MinDateTimeState(if (minValue.compareTo(other.minValue) < 0) minValue else other.minValue)
   }
 
   override def metricValue(): Timestamp = {
