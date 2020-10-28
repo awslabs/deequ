@@ -20,13 +20,14 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-class MetricsRepositoryMultipleResultsLoaderTest extends WordSpec with Matchers
+class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matchers
   with SparkContextSpec with FixtureSupport {
 
   private[this] val DATE_ONE = createDate(2017, 10, 14)
@@ -236,7 +237,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends WordSpec with Matchers
     : Unit = {
 
     val data = getDfFull(session)
-    val results = createAnalysis().run(data)
+    val results = AnalysisRunner.run(data, createAnalysis())
     val repository = createRepository()
 
     test(results, repository)

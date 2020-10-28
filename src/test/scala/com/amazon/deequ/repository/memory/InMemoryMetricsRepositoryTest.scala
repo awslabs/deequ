@@ -19,18 +19,18 @@ package com.amazon.deequ.repository.memory
 import java.time.{LocalDate, ZoneOffset}
 
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.WordSpec
 import AnalyzerContext._
 import com.amazon.deequ.SparkContextSpec
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.{Failure, Success}
 
-class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with FixtureSupport {
+class InMemoryMetricsRepositoryTest extends AnyWordSpec with SparkContextSpec with FixtureSupport {
 
   private[this] val DATE_ONE = createDate(2017, 10, 14)
   private[this] val DATE_TWO = createDate(2017, 10, 15)
@@ -233,7 +233,7 @@ class InMemoryMetricsRepositoryTest extends WordSpec with SparkContextSpec with 
 
     val data = getDfFull(session)
 
-    val results = createAnalysis().run(data)
+    val results = AnalysisRunner.run(data, createAnalysis())
 
     val repository = createRepository()
 

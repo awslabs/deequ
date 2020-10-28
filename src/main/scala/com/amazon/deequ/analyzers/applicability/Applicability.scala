@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers.applicability
 
 import java.sql.Timestamp
+import java.util.Calendar
 
 import com.amazon.deequ.analyzers.{Analyzer, State}
 import com.amazon.deequ.checks.Check
@@ -140,7 +141,14 @@ private[deequ] object Applicability {
     if (shouldBeNull(nullable)) {
       null
     } else {
-      new Timestamp(Random.nextLong())
+      val Low = 100
+      val High = 1500
+      val Result = Random.nextInt(High - Low) + Low
+      val ResultSec = Random.nextInt(High - Low) + Low
+      val calendar = Calendar.getInstance()
+      calendar.add(Calendar.MINUTE, - Result)
+      calendar.add(Calendar.SECOND, - ResultSec)
+      new Timestamp(calendar.getTimeInMillis())
     }
   }
 

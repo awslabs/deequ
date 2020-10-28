@@ -17,12 +17,14 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
 import org.apache.spark.sql.functions.col
+import org.scalatest.wordspec.AnyWordSpec
 
-class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSpec
+class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "An IncrementalAnalysisRunner" should {
@@ -42,10 +44,11 @@ class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSp
 
       val initialStates = InMemoryStateProvider()
 
-      analysis.run(initial, saveStatesWith = Some(initialStates))
-      val incrementalResults = analysis.run(delta, aggregateWith = Some(initialStates))
+      AnalysisRunner.run(initial, analysis, saveStatesWith = Some(initialStates))
+      val incrementalResults = AnalysisRunner
+        .run(delta, analysis, aggregateWith = Some(initialStates))
 
-      val nonIncrementalResults = analysis.run(everything)
+      val nonIncrementalResults = AnalysisRunner.run(everything, analysis)
 
       nonIncrementalResults.allMetrics.foreach { println }
       println("\n")
@@ -74,8 +77,8 @@ class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSp
 
         val analysis = Analysis(analyzers)
 
-        analysis.run(initial, saveStatesWith = Some(initialStates))
-        val results = analysis.run(delta, aggregateWith = Some(initialStates))
+        AnalysisRunner.run(initial, analysis, saveStatesWith = Some(initialStates))
+        val results = AnalysisRunner.run(delta, analysis, aggregateWith = Some(initialStates))
 
         results.metricMap.foreach { case (analyzer, metric) =>
           val nonIncrementalMetric = analyzer.calculate(everything)
@@ -94,8 +97,8 @@ class IncrementalAnalysisTest extends WordSpec with Matchers with SparkContextSp
 
         val initialStates = InMemoryStateProvider()
 
-        analysis.run(initial, saveStatesWith = Some(initialStates))
-        val results = analysis.run(delta, aggregateWith = Some(initialStates))
+        AnalysisRunner.run(initial, analysis, saveStatesWith = Some(initialStates))
+        val results = AnalysisRunner.run(delta, analysis, aggregateWith = Some(initialStates))
 
         results.metricMap.foreach { case (analyzer, metric) =>
           val nonIncrementalMetric = analyzer.calculate(everything)

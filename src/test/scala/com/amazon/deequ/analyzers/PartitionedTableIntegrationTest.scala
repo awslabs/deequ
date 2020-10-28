@@ -22,12 +22,12 @@ import com.amazon.deequ.repository.fs.FileSystemMetricsRepository
 import com.amazon.deequ.utils.TempFileUtils
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import org.scalatest.WordSpec
 import TempFileUtils._
 import com.amazon.deequ.{SparkContextSpec, VerificationResult, VerificationSuite}
 import com.amazon.deequ.constraints.ConstraintStatus
+import org.scalatest.wordspec.AnyWordSpec
 
-class PartitionedTableIntegrationTest extends WordSpec with SparkContextSpec {
+class PartitionedTableIntegrationTest extends AnyWordSpec with SparkContextSpec {
 
   private val SCHEMA = StructType(
     StructField("item", StringType, nullable = false) ::

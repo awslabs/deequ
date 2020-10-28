@@ -1,18 +1,18 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not
- * use this file except in compliance with the License. A copy of the License
- * is located at
- *
- *     http://aws.amazon.com/apache2.0/
- *
- * or in the "license" file accompanying this file. This file is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- *
- */
+  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+  * use this file except in compliance with the License. A copy of the License
+  * is located at
+  *
+  *     http://aws.amazon.com/apache2.0/
+  *
+  * or in the "license" file accompanying this file. This file is distributed on
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+  * express or implied. See the License for the specific language governing
+  * permissions and limitations under the License.
+  *
+  */
 
 package com.amazon.deequ.constraints
 
@@ -40,10 +40,10 @@ import scala.util.{Failure, Success, Try}
   *
   */
 private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
-    analyzer: Analyzer[S, Metric[M]],
-    private[deequ] val assertion: V => Boolean,
-    private[deequ] val valuePicker: Option[M => V] = None,
-    private[deequ] val hint: Option[String] = None)
+                          analyzer: Analyzer[S, Metric[M]],
+                          private[deequ] val assertion: V => Boolean,
+                          private[deequ] val valuePicker: Option[M => V] = None,
+                          private[deequ] val hint: Option[String] = None)
   extends Constraint {
 
   private[deequ] def calculateAndEvaluate(data: DataFrame) = {
@@ -52,8 +52,8 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
   }
 
   override def evaluate(
-      analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
-    : ConstraintResult = {
+                         analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]])
+  : ConstraintResult = {
 
     val metric = analysisResults.get(analyzer).map(_.asInstanceOf[Metric[M]])
 
@@ -110,6 +110,9 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
       case e: Exception => throw AnalysisBasedConstraint.ConstraintAssertionException(e.getMessage)
     }
 
+  // 'assertion' and 'valuePicker' are lambdas we have to represent them like '<function1>'
+  override def toString: String =
+    s"AnalysisBasedConstraint($analyzer,<function1>,${valuePicker.map(_ => "<function1>")},$hint)"
 }
 
 private[deequ] object AnalysisBasedConstraint {

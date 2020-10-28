@@ -19,12 +19,13 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.Success
 
 
-class IncrementalAnalyzerTest extends WordSpec with Matchers with SparkContextSpec
+class IncrementalAnalyzerTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "Size analyzer" should {

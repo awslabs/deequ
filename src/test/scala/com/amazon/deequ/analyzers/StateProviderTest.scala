@@ -19,10 +19,15 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.apache.spark.sql.{DataFrame, SparkSession, AnalysisException}
-import org.scalatest.{Matchers, WordSpec}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SparkSession}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class StateProviderTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+
+class StateProviderTest extends AnyWordSpec
+  with Matchers
+  with SparkContextSpec
+  with FixtureSupport {
 
   "Analyzers" should {
 

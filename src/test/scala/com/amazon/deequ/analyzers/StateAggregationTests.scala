@@ -20,10 +20,11 @@ import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
 import org.apache.spark.sql.functions.{expr, rand}
+import org.scalatest.wordspec.AnyWordSpec
 
-class StateAggregationTests extends WordSpec with Matchers with SparkContextSpec
+class StateAggregationTests extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "State aggregation outside" should {

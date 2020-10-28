@@ -21,9 +21,10 @@ import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class UniquenessTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   def uniquenessSampleData(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
