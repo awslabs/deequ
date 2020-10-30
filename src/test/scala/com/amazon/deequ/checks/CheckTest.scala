@@ -747,6 +747,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
 
     "define has data type" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
+
       val df = Seq(
         ("2", "integral"),
         ("1.0", "fractional")
@@ -761,6 +762,26 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
 
       assertEvaluatesTo(check, context, CheckStatus.Success)
       assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
+    }
+
+    "correctly handle fractional values represented in scientific notations" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(
+        ("1.0"),
+        ("1.0000"),
+        ("1.0001"),
+        ("1.0E-3"),
+        ("1.0e-3"),
+        ("1E-3")
+      ).toDF("val")
+
+      val check = Check(CheckLevel.Error, "they're all fractional")
+        .hasDataType("val", ConstrainableDataTypes.Fractional, _ == 1.0)
+
+      val context = runChecks(df, check)
+
+      assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
     "find credit card numbers embedded in text" in withSparkSession { sparkSession =>
