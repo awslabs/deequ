@@ -33,7 +33,7 @@ private[sql] class StatefulDataType extends UserDefinedAggregateFunction {
   val BOOLEAN_POS = 3
   val STRING_POS = 4
 
-  val FRACTIONAL: Regex = """^(-|\+)? ?\d+(\.\d+|(?:\.\d+)?[Ee][-+]?\d+)$""".r
+  val FRACTIONAL: Regex = """^(-|\+)? ?\d+((\.\d+)|((?:\.\d+)?[Ee][-+]?\d+))$""".r
   val INTEGRAL: Regex = """^(-|\+)? ?\d+$""".r
   val BOOLEAN: Regex = """^(true|false)$""".r
 
