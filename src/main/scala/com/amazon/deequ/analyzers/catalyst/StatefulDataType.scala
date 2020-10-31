@@ -61,9 +61,9 @@ private[sql] class StatefulDataType extends UserDefinedAggregateFunction {
     } else {
       input.getString(0) match {
         case FRACTIONAL(_*) => buffer(FRACTIONAL_POS) = buffer.getLong(FRACTIONAL_POS) + 1L
-        case INTEGRAL(_*)   => buffer(INTEGRAL_POS) = buffer.getLong(INTEGRAL_POS) + 1L
-        case BOOLEAN(_*)    => buffer(BOOLEAN_POS) = buffer.getLong(BOOLEAN_POS) + 1L
-        case _              => buffer(STRING_POS) = buffer.getLong(STRING_POS) + 1L
+        case INTEGRAL(_*) => buffer(INTEGRAL_POS) = buffer.getLong(INTEGRAL_POS) + 1L
+        case BOOLEAN(_*) => buffer(BOOLEAN_POS) = buffer.getLong(BOOLEAN_POS) + 1L
+        case _ => buffer(STRING_POS) = buffer.getLong(STRING_POS) + 1L
       }
     }
   }

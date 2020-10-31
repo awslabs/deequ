@@ -764,7 +764,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertEvaluatesTo(checkWithFilter, context, CheckStatus.Success)
     }
 
-    "correctly handle fractional values represented in scientific notations" in withSparkSession { sparkSession =>
+    "handle fractional values in scientific notations" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
 
       val df = Seq(
