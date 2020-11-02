@@ -804,8 +804,14 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($column, 0.0) >= 0", s"$column is non-negative", assertion, hint = hint)
+    satisfies(
+      // coalescing column to not count NULL values as non-compliant
+      // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
+      s"COALESCE(CAST($column as DECIMAL(20,10)), 0.0) >= 0",
+      s"$column is non-negative",
+      assertion,
+      hint = hint
+    )
   }
 
   /**
@@ -822,7 +828,13 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
     // coalescing column to not count NULL values as non-compliant
-    satisfies(s"COALESCE($column, 1.0) > 0", s"$column is positive", assertion, hint)
+    // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
+    satisfies(
+      s"COALESCE(CAST($column as DECIMAL(20,10)), 1.0) > 0",
+      s"$column is positive",
+      assertion,
+      hint
+    )
   }
 
   /**

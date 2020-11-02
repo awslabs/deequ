@@ -776,12 +776,15 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         ("1E-3")
       ).toDF("val")
 
-      val check = Check(CheckLevel.Error, "they're all fractional")
+      val datatypeCheck = Check(CheckLevel.Error, "they're all fractional")
         .hasDataType("val", ConstrainableDataTypes.Fractional, _ == 1.0)
+      val datatypeContext = runChecks(df, datatypeCheck)
+      assertEvaluatesTo(datatypeCheck, datatypeContext, CheckStatus.Success)
 
-      val context = runChecks(df, check)
-
-      assertEvaluatesTo(check, context, CheckStatus.Success)
+      val nonNegativeCheck = Check(CheckLevel.Error, "they're positive")
+        .isNonNegative("val")
+      val nonNegativeContext = runChecks(df, nonNegativeCheck)
+      assertEvaluatesTo(nonNegativeCheck, nonNegativeContext, CheckStatus.Success)
     }
 
     "find credit card numbers embedded in text" in withSparkSession { sparkSession =>
