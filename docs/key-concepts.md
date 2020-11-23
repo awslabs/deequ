@@ -16,9 +16,9 @@ are based on metrics which describe the data. In order to perform the checks the
 following process:
 * First deequ figures out which Analyzers are required
 * Metrics are calculated using those Analyzers
-** Metrics are also stored if a MetricsRepository is provided 
-** Intermediate state is stored if a StatePersister is provided
-** Intermediate state is used for metric calculations if a StateLoader is provided
+  * Metrics are also stored if a MetricsRepository is provided 
+  * Intermediate state is stored if a StatePersister is provided
+  * Intermediate state is used for metric calculations if a StateLoader is provided
 * Checks are evaluated using the calculated Metrics
 
 The reason it works this way is for performance, primarily because calculating metrics at the same time gives the
