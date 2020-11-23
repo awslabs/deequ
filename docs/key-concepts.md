@@ -46,4 +46,4 @@ like the data source (e.g. table name) with the tags. The resultKey can be used 
 * An analyzerContext, which consists of a map of Analyzers to Metrics
 
 ### State
-Please consult the examples or the codebase for more details on State. 
+Please consult the examples or the codebase for more details on State.

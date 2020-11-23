@@ -3,3 +3,10 @@
 **/*.iml
 target/.travis/public-signing-key.gpg
 target/
+.metals/
+.vscode/
+.bloop/
+**/.DS_Store
+**/metals.log
+.DS_Store
+

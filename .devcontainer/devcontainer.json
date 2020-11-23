@@ -1,0 +1,46 @@
+// If you want to run as a non-root user in the container, see .devcontainer/docker-compose.yml.
+{
+	"name": "Spark Scala Dev",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			"SPARK_MODE":"master"
+		}
+	},
+
+	// The 'service' property is the name of the service for the container that VS Code should
+	// use. Update this value and .devcontainer/docker-compose.yml to the real service name.
+	// Not needed as we are using dockerfile (one container)
+	//"service": "spark-master",
+
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		// "terminal.integrated.shell.linux": "sh"
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"scalameta.metals",
+		"vscjava.vscode-java-pack",
+		"ms-vscode.makefile-tools"
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [
+		8080
+	],
+
+	// Uncomment the next line if you want start specific services in your Docker Compose config.
+	// "runServices": [],
+
+	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
+	// "shutdownAction": "none",
+	
+	"overrideCommand":false
+	
+	// Uncomment the next line to run commands after the container is created - for example installing curl.
+    //"postCreateCommand": "/opt/bitnami/scripts/spark/run.sh",
+
+	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
+	// "remoteUser": "vscode"
+}

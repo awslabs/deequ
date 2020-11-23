@@ -1,7 +1,7 @@
 # Deequ - Unit Tests for Data
 [![GitHub license](https://img.shields.io/github/license/awslabs/deequ.svg)](https://github.com/awslabs/deequ/blob/master/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/awslabs/deequ.svg)](https://github.com/awslabs/deequ/issues)
-[![Build Status](https://travis-ci.org/awslabs/deequ.svg?branch=master)](https://travis-ci.org/awslabs/deequ)
+[![Build Status](https://travis-ci.com/awslabs/deequ.svg?branch=master)](https://travis-ci.com/awslabs/deequ)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ)
 
 Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets. We are happy to receive feedback and [contributions](CONTRIBUTING.md).
@@ -10,22 +10,23 @@ Python users may also be interested in PyDeequ, a Python interface for Deequ. Yo
 
 ## Requirements and Installation
 
-__Deequ__ depends on Java 8. We provide releases compatible with Apache Spark versions 2.2.x to 3.0.x. The Spark 2.2.x and 2.3.x releases depend on Scala 2.11 and the Spark 2.4.x and 3.0.x releases depend on Scala 2.12.
+__Deequ__ depends on Java 8. Deequ version 2.x only runs with Spark 3.1, and vice versa. If you rely on a previous Spark version, please use a Deequ 1.x version (legacy version is maintained in legacy-spark-3.0 branch). We provide legacy releases compatible with Apache Spark versions 2.2.x to 3.0.x. The Spark 2.2.x and 2.3.x releases depend on Scala 2.11 and the Spark 2.4.x, 3.0.x, and 3.1.x releases depend on Scala 2.12. 
 
 Available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). 
 
-Choose the latest release that matches your Spark version from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example for spark 3.0.x:
+Choose the latest release that matches your Spark version from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example, for Spark 3.1.x:
+
 __Maven__
 ```
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>1.2.2-spark-3.0</version>
+  <version>2.0.0-spark-3.1</version>
 </dependency>
 ```
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.2.2-spark-3.0"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "2.0.0-spark-3.1"
 ```
 
 ## Example

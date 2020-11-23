@@ -60,6 +60,23 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isString(column) :: Nil
   }
+
+  // PatternMatch hasCode is different with the same-parameter objects
+  // because Regex compares by address
+  // fix this by tuple with pattern string
+  private val internalObj = (column, pattern.toString(), where)
+
+  override def hashCode(): Int = {
+    internalObj.hashCode()
+  }
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case o: PatternMatch => internalObj.equals(o.asInstanceOf[PatternMatch].internalObj)
+      case _ => false
+    }
+  }
+
 }
 
 object Patterns {
