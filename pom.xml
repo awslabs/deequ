@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.amazon.deequ</groupId>
-    <artifactId>deequ${artifact.scala.version}</artifactId>
+    <artifactId>deequ${artifact.scala.version}${artifact.spark.version}</artifactId>
     <version>1.1.0-SNAPSHOT</version>
 
     <name>deequ</name>
@@ -58,17 +58,22 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
-        <scala.major.version>2.11</scala.major.version>
+
+        <!-- Scala -->
+        <scala.major.version>${scala-211.major.version}</scala.major.version>
         <scala.version>${scala.major.version}.10</scala.version>
+        <scala-211.major.version>2.11</scala-211.major.version>
+        <scala-212.major.version>2.12</scala-212.major.version>
         <artifact.scala.version></artifact.scala.version>
         <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
-        <!-- Spark -->
 
+        <!-- Spark -->
         <spark.version>${spark-24.version}</spark.version>
         <spark-22.version>2.2.2</spark-22.version>
         <spark-23.version>2.3.2</spark-23.version>
         <spark-24.version>2.4.2</spark-24.version>
         <spark-30.version>3.0.0</spark-30.version>
+        <artifact.spark.version></artifact.spark.version>
     </properties>
 
     <dependencies>
@@ -399,35 +404,43 @@
             </build>
         </profile>
         <profile>
-            <id>scala-2.12</id>
-            <properties>
-                <scala.major.version>2.12</scala.major.version>
-                <scala.version>${scala.major.version}.10</scala.version>
-                <artifact.scala.version>_${scala.major.version}</artifact.scala.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>spark-2.2</id>
+            <id>spark-2.2-scala-2.11</id>
             <properties>
                 <spark.version>${spark-22.version}</spark.version>
+                <scala.major.version>${scala-211.major.version}</scala.major.version>
+                <scala.version>${scala.major.version}.10</scala.version>
+                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
+                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
             </properties>
         </profile>
         <profile>
-            <id>spark-2.3</id>
+            <id>spark-2.3-scala-2.11</id>
             <properties>
                 <spark.version>${spark-23.version}</spark.version>
+                <scala.major.version>${scala-211.major.version}</scala.major.version>
+                <scala.version>${scala.major.version}.10</scala.version>
+                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
+                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
             </properties>
         </profile>
         <profile>
-            <id>spark-2.4</id>
+            <id>spark-2.4-scala-2.11</id>
             <properties>
                 <spark.version>${spark-24.version}</spark.version>
+                <scala.major.version>${scala-211.major.version}</scala.major.version>
+                <scala.version>${scala.major.version}.10</scala.version>
+                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
+                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
             </properties>
         </profile>
         <profile>
-            <id>spark-3.0</id>
+            <id>spark-3.0-scala-2.12</id>
             <properties>
                 <spark.version>${spark-30.version}</spark.version>
+                <scala.major.version>${scala-212.major.version}</scala.major.version>
+                <scala.version>${scala.major.version}.10</scala.version>
+                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
+                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
             </properties>
         </profile>
     </profiles>
