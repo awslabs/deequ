@@ -302,7 +302,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       }
     }
 
-    "addAnomalyCheck with duplicate analyzer in check should work" in withSparkSession { sparkSession =>
+    "addAnomalyCheck with duplicate check analyzer should work" in
+      withSparkSession { sparkSession =>
       evaluateWithRepositoryWithHistory { repository =>
 
         val df = getDfWithNRows(sparkSession, 11)
@@ -312,7 +313,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val verificationResultOne = VerificationSuite()
           .onData(df)
-          .addCheck( Check(CheckLevel.Error, "group-1").hasSize(_ == 11))
+          .addCheck(Check(CheckLevel.Error, "group-1").hasSize(_ == 11))
           .useRepository(repository)
           .addRequiredAnalyzers(analyzers)
           .saveOrAppendResult(saveResultsWithKey)
