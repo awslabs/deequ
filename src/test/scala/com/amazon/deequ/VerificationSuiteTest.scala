@@ -302,6 +302,61 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       }
     }
 
+    "addAnomalyCheck with duplicate analyzer in check should work" in withSparkSession { sparkSession =>
+      evaluateWithRepositoryWithHistory { repository =>
+
+        val df = getDfWithNRows(sparkSession, 11)
+        val saveResultsWithKey = ResultKey(5, Map.empty)
+
+        val analyzers = Completeness("item") :: Nil
+
+        val verificationResultOne = VerificationSuite()
+          .onData(df)
+          .addCheck( Check(CheckLevel.Error, "group-1").hasSize(_ == 11))
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
+          .addAnomalyCheck(
+            AbsoluteChangeStrategy(Some(-2.0), Some(2.0)),
+            Size(),
+            Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
+          )
+          .run()
+
+        val verificationResultTwo = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
+          .addAnomalyCheck(
+            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
+            Size(),
+            Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
+              Map.empty, Some(0), Some(11)))
+          )
+          .run()
+
+        val verificationResultThree = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
+          .addAnomalyCheck(
+            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
+            Size()
+          )
+          .run()
+
+        val checkResultsOne = verificationResultOne.checkResults.values.toSeq(1).status
+        val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+        val checkResultsThree = verificationResultThree.checkResults.head._2.status
+
+        assert(checkResultsOne == CheckStatus.Warning)
+        assert(checkResultsTwo == CheckStatus.Success)
+        assert(checkResultsThree == CheckStatus.Success)
+      }
+    }
+
     "write output files to specified locations" in withSparkSession { sparkSession =>
 
       val df = getDfWithNumericValues(sparkSession)

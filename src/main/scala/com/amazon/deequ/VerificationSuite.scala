@@ -120,7 +120,7 @@ class VerificationSuite {
 
     val analysisResults = AnalysisRunner.doAnalysisRun(
       data,
-      analyzers,
+      analyzers.distinct,
       aggregateWith,
       saveStatesWith,
       metricsRepositoryOptions = AnalysisRunnerRepositoryOptions(
