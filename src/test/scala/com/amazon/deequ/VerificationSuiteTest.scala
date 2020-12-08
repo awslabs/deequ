@@ -336,24 +336,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           )
           .run()
 
-        val verificationResultThree = VerificationSuite()
-          .onData(df)
-          .useRepository(repository)
-          .addRequiredAnalyzers(analyzers)
-          .saveOrAppendResult(saveResultsWithKey)
-          .addAnomalyCheck(
-            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
-            Size()
-          )
-          .run()
-
         val checkResultsOne = verificationResultOne.checkResults.values.toSeq(1).status
         val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
-        val checkResultsThree = verificationResultThree.checkResults.head._2.status
 
         assert(checkResultsOne == CheckStatus.Warning)
         assert(checkResultsTwo == CheckStatus.Success)
-        assert(checkResultsThree == CheckStatus.Success)
       }
     }
 
