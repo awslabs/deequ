@@ -1,0 +1,1341 @@
+2020.11.20 13:22:25 INFO  Started: Metals version 0.9.6 in workspace '/Users/noahpaige/Desktop/deequ' for client vscode.
+2020.11.20 13:22:30 INFO  time: initialize in 5.38s
+2020.11.20 13:22:32 WARN  Build server is not auto-connectable.
+2020.11.20 13:22:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/rowvalidator/RowValidator.scala
+2020.11.20 13:22:40 INFO  no build target: using presentation compiler with only scala-library
+2020.11.20 13:23:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala
+Nov 23, 2020 9:14:47 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 45
+2020.11.23 09:37:30 INFO  skipping build import with status 'Requested'
+2020.11.23 09:37:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/TestValidator.scala
+2020.11.23 09:38:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/TestValidator.scala
+2020.11.23 09:39:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/TestValidator.scala
+2020.11.23 09:39:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+something's wrong: no file:///Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala in Seq[com.amazon.deequ.schema.ColumnDefinition]RangePosition(file:///Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala, 2185, 2185, 2206)
+2020.11.23 09:45:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/rowvalidator/RowValidator.scala' because it doesn't belong to a build target.
+2020.11.23 09:45:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/rowvalidator/RowValidator.scala' because it doesn't belong to a build target.
+2020.11.23 09:45:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala' because it doesn't belong to a build target.
+2020.11.23 09:45:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala' because it doesn't belong to a build target.
+2020.11.23 09:46:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala' because it doesn't belong to a build target.
+2020.11.23 09:50:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidatorCopy.scala
+2020.11.23 09:50:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 09:50:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala' because it doesn't belong to a build target.
+2020.11.23 09:51:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 09:52:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+Nov 23, 2020 9:53:28 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 654
+2020.11.23 09:55:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 09:57:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+Nov 23, 2020 9:58:10 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 901
+2020.11.23 09:59:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:03:15 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:03:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:04:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:04:55 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 10:04:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:05:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:05:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:06:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+Nov 23, 2020 10:06:31 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 1066
+2020.11.23 10:06:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 10:06:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:06:57 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 10:07:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 10:21:38 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 10:22:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 11:27:40 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:35:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:38:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 11:49:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:49:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:50:58 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:51:18 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:51:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:52:25 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:58:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 11:58:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:59:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:59:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 11:59:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 11:59:33 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 11:59:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:21:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:25:01 INFO  shutting down Metals
+2020.11.23 12:30:44 INFO  Started: Metals version 0.9.6 in workspace '/Users/noahpaige/Desktop/deequ' for client vscode.
+2020.11.23 12:30:49 INFO  time: initialize in 4.92s
+2020.11.23 12:30:50 WARN  Build server is not auto-connectable.
+2020.11.23 12:30:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/rowvalidator/RowValidator.scala
+2020.11.23 12:30:50 INFO  skipping build import with status 'Requested'
+2020.11.23 12:31:00 INFO  no build target: using presentation compiler with only scala-library
+2020.11.23 12:35:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 12:35:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:38:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:38:40 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:39:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala
+2020.11.23 12:40:09 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:40:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:42:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:43:18 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:43:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:44:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:44:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:45:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:46:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:46:11 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:46:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:50:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:50:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:50:52 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:51:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:52:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:52:19 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:55:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:56:27 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:56:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:56:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:56:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:56:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:56:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:56:55 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:56:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:57:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:58:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 12:58:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 12:59:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 13:05:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 13:06:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 13:07:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 13:07:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 13:08:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala.scala
+2020.11.23 13:08:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala.scala
+2020.11.23 13:09:14 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala
+2020.11.23 13:14:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala
+2020.11.23 13:14:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 13:14:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala
+something's wrong: no file:///Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala in Option[Int]RangePosition(file:///Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala, 4603, 4603, 4614)
+2020.11.23 13:30:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 13:30:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 13:30:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 13:30:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 13:30:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 13:33:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+Nov 23, 2020 4:12:24 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 1789
+2020.11.23 16:14:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:20:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+Nov 23, 2020 4:20:39 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 2347
+Nov 23, 2020 4:21:03 PM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 15775, count -2, length 22846
+java.lang.StringIndexOutOfBoundsException: offset 15775, count -2, length 22846
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+2020.11.23 16:21:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:21:16 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:21:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+Nov 23, 2020 4:21:36 PM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 15778, count -2, length 22873
+java.lang.StringIndexOutOfBoundsException: offset 15778, count -2, length 22873
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+Nov 23, 2020 4:23:04 PM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 15778, count -2, length 22881
+java.lang.StringIndexOutOfBoundsException: offset 15778, count -2, length 22881
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+2020.11.23 16:24:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:25:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:25:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:25:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:26:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:28:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:28:58 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:29:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:29:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:29:28 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:29:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:29:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:29:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:29:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:29:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:29:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:29:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:30:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:32:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:32:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:32:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:33:14 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:33:14 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:33:14 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:33:38 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:25 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:34:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:35:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:36:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:37:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:38:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:44:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:44:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:45:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:45:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:46:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:47:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:48:27 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:51:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 16:57:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:58:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 16:58:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:00:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:02:30 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:03:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:03:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:03:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:03:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:05:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:28 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:05:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:05:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:06:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:09:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:09:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:11:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:11:57 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:12:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:12:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:12:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:12:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:12:50 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:12:50 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:13:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:13:57 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:13:57 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:14:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:14:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:14:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:14:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:15:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:15:06 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:15:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:15:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:15:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:16:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:16:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:16:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala' because it doesn't belong to a build target.
+2020.11.23 17:16:11 WARN  no build target for: /Users/noahpaige/Desktop/deequ/RowLevelSchemaValidatorCopy.scala
+2020.11.23 17:21:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:21:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:25:25 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:25:25 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:26:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+Nov 23, 2020 5:31:36 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 5458
+2020.11.23 17:34:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:36:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:37:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:37:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:37:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+Nov 23, 2020 5:39:00 PM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 16406, count -2, length 24323
+java.lang.StringIndexOutOfBoundsException: offset 16406, count -2, length 24323
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+Nov 23, 2020 5:39:15 PM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 16406, count -2, length 24328
+java.lang.StringIndexOutOfBoundsException: offset 16406, count -2, length 24328
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+2020.11.23 17:45:44 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:45:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:46:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:46:22 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:49:48 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:49:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:49:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:50:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:50:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:51:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:51:19 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:51:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:57:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:57:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:58:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:58:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:58:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:58:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:59:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:59:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 17:59:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:59:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 17:59:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 18:00:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 18:01:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 18:01:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 18:01:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 18:02:08 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 18:02:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.23 18:02:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 18:15:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 18:15:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.23 18:15:49 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+Nov 23, 2020 8:36:12 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 7324
+2020.11.23 20:37:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 21:06:16 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+Nov 23, 2020 9:07:10 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 7448
+2020.11.23 21:07:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 21:08:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 21:08:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 21:10:25 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+Nov 23, 2020 9:10:59 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 7585
+2020.11.23 21:11:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.23 21:14:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 21:15:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.23 21:23:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+something's wrong: no file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala in Option[com.amazon.deequ.schema.RowLevelChecks]RangePosition(file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala, 15930, 15930, 15951)
+2020.11.24 16:34:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:34:16 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 16:34:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:34:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:34:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:35:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:35:25 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+Nov 24, 2020 4:38:28 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 7933
+Nov 24, 2020 4:39:10 PM scala.meta.internal.pc.CompletionProvider expected$1
+WARNING: offset 16207, count -1, length 24795
+Nov 24, 2020 4:39:55 PM scala.meta.internal.pc.CompletionProvider expected$1
+WARNING: offset 16238, count -1, length 24835
+Nov 24, 2020 4:41:12 PM scala.meta.internal.pc.CompletionProvider expected$1
+WARNING: offset 17235, count -1, length 25157
+2020.11.24 16:41:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:42:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:45:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:45:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 16:46:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:46:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:46:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:47:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:47:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:48:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 16:49:33 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 17:06:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 17:08:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:18:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:18:36 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 17:20:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+Nov 24, 2020 5:30:58 PM scala.meta.internal.pc.CompletionProvider expected$1
+WARNING: offset 17024, count -1, length 26823
+2020.11.24 17:31:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+Nov 24, 2020 5:31:34 PM scala.meta.internal.pc.CompletionProvider expected$1
+WARNING: offset 17067, count -1, length 26866
+2020.11.24 17:32:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+Nov 24, 2020 5:33:21 PM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 17245, count -2, length 27115
+java.lang.StringIndexOutOfBoundsException: offset 17245, count -2, length 27115
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+2020.11.24 17:33:25 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:33:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:33:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:34:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:34:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:34:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:36:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:36:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:36:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:36:54 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:37:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:37:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 17:37:08 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.24 17:47:37 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.24 17:47:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+something's wrong: no file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala in Option[com.amazon.deequ.schema.RowLevelSchema]RangePosition(file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala, 15880, 15880, 15902)
+Nov 24, 2020 5:55:41 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 11104
+2020.11.25 12:12:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 12:12:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 12:13:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 12:13:16 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 12:19:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:06:15 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:06:15 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:07:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:07:03 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:07:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:08:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:08:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:16:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:16:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:16:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:17:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:17:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:17:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:17:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:20:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:20:15 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:20:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:20:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:20:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:20:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:21:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:45:50 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:45:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:46:27 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:46:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:46:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:46:44 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.25 19:46:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.25 19:46:44 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 22:54:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 22:54:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 22:55:03 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 22:56:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:56:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:56:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:57:44 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:57:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:57:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:57:54 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:57:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:57:54 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:58:25 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:58:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:58:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:58:46 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:58:50 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:58:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:58:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:59:06 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:59:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:59:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:59:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:59:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:59:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:59:12 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 22:59:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:59:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 22:59:37 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:00:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:01:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:01:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:38 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:38 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:01:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:01:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:01:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:02:21 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:02:21 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:02:22 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:02:22 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:03:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:03:08 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:03:08 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:05:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:05:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:05:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:06:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:06:38 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:06:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:06:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:06:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:06:54 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:07:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.11.29 23:07:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.11.29 23:07:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:09:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:09:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:10:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+Nov 29, 2020 11:10:57 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 13632
+2020.11.29 23:11:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:11:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:11:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:11:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:11:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:11:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:11:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:13:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:13:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:13:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:13:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:13:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:13:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:13:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:14:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:14:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:14:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:14:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:14:58 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:15:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:15:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+Nov 29, 2020 11:16:34 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 13922
+2020.11.29 23:16:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:17:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:17:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:17:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:17:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:17:18 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:18:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:18:12 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:18:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:18:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+Nov 29, 2020 11:19:50 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 14186
+2020.11.29 23:19:52 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:19:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:19:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:19:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:19:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:20:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:20:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:20:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:20:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:20:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:20:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.11.29 23:20:25 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.11.29 23:20:25 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:07:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 10:14:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:15:08 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:15:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:16:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+Dec 02, 2020 10:17:51 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 15186
+2020.12.02 10:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:18:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:18:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:18:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:19:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:19:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:19:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:19:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+Dec 02, 2020 10:19:34 AM scala.meta.internal.pc.CompilerAccess retryWithCleanCompiler
+INFO: compiler crashed due to an error in the Scala compiler, retrying with new compiler instance.
+Dec 02, 2020 10:19:34 AM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: 
+  unexpected tree: class scala.reflect.internal.Trees$Template
+RowLevelSchemaValidationResult {
+  <synthetic> val <<error: <none>>: error>: <error> = data.withColumn(MATCHES_COLUMN, toCNFSchema(schema));
+  <synthetic> val <<error: <none>>: error>: <error> = extractAndCastValidRows(dataWithMatches, schema);
+  <synthetic> val <<error: <none>>: error>: <error> = validRows.count();
+  <synthetic> val <<error: <none>>: error>: <error> = dataWithMatches.where(not(col(MATCHES_COLUMN))).drop(MATCHES_COLUMN);
+  <synthetic> val <<error: <none>>: error>: <error> = invalidRows.count()
+}
+     while compiling: file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+        during phase: globalPhase=<no phase>, enteringPhase=parser
+     library version: version 2.12.12
+    compiler version: version 2.12.12
+  reconstructed args: -classpath /Users/noahpaige/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.12/scala-library-2.12.12.jar -Ymacro-expand:discard -Ycache-plugin-class-loader:last-modified -Ypresentation-any-thread
+
+  last tree to typer: Template
+       tree position: line 604 of file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+              symbol: <none>
+   symbol definition: <none> (a NoSymbol)
+      symbol package: <none>
+       symbol owners: 
+           call site: <none> in <none>
+
+== Source file context for tree position ==
+
+   601     data: DataFrame,
+   602     schema: RowLevelSchema,
+   603     storageLevelForIntermediateResults: StorageLevel = StorageLevel.MEMORY_AND_DISK 
+   604   ): RowLevelSchemaValidationResult{
+   605     
+   606     val dataWithMatches = data
+   607       .withColumn(MATCHES_COLUMN, toCNFSchema(schema))
+scala.reflect.internal.FatalError: 
+  unexpected tree: class scala.reflect.internal.Trees$Template
+RowLevelSchemaValidationResult {
+  <synthetic> val <<error: <none>>: error>: <error> = data.withColumn(MATCHES_COLUMN, toCNFSchema(schema));
+  <synthetic> val <<error: <none>>: error>: <error> = extractAndCastValidRows(dataWithMatches, schema);
+  <synthetic> val <<error: <none>>: error>: <error> = validRows.count();
+  <synthetic> val <<error: <none>>: error>: <error> = dataWithMatches.where(not(col(MATCHES_COLUMN))).drop(MATCHES_COLUMN);
+  <synthetic> val <<error: <none>>: error>: <error> = invalidRows.count()
+}
+     while compiling: file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+        during phase: globalPhase=<no phase>, enteringPhase=parser
+     library version: version 2.12.12
+    compiler version: version 2.12.12
+  reconstructed args: -classpath /Users/noahpaige/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.12/scala-library-2.12.12.jar -Ymacro-expand:discard -Ycache-plugin-class-loader:last-modified -Ypresentation-any-thread
+
+  last tree to typer: Template
+       tree position: line 604 of file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+              symbol: <none>
+   symbol definition: <none> (a NoSymbol)
+      symbol package: <none>
+       symbol owners: 
+           call site: <none> in <none>
+
+== Source file context for tree position ==
+
+   601     data: DataFrame,
+   602     schema: RowLevelSchema,
+   603     storageLevelForIntermediateResults: StorageLevel = StorageLevel.MEMORY_AND_DISK 
+   604   ): RowLevelSchemaValidationResult{
+   605     
+   606     val dataWithMatches = data
+   607       .withColumn(MATCHES_COLUMN, toCNFSchema(schema))
+	at scala.reflect.internal.Reporting.abort(Reporting.scala:68)
+	at scala.reflect.internal.Reporting.abort$(Reporting.scala:64)
+	at scala.reflect.internal.SymbolTable.abort(SymbolTable.scala:28)
+	at scala.tools.nsc.typechecker.Typers$Typer.typedOutsidePatternMode$1(Typers.scala:5671)
+	at scala.tools.nsc.typechecker.Typers$Typer.typed1(Typers.scala:5688)
+	at scala.tools.nsc.typechecker.Typers$Typer.typed(Typers.scala:5724)
+	at scala.tools.nsc.typechecker.Typers$Typer.typedQualifier(Typers.scala:5808)
+	at scala.meta.internal.pc.PcDefinitionProvider.definitionTypedTreeAt(PcDefinitionProvider.scala:111)
+	at scala.meta.internal.pc.PcDefinitionProvider.definition(PcDefinitionProvider.scala:24)
+
+2020.12.02 10:19:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+Dec 02, 2020 10:19:35 AM scala.meta.internal.pc.CompilerAccess retryWithCleanCompiler
+INFO: compiler crashed due to an error in the Scala compiler, retrying with new compiler instance.
+Dec 02, 2020 10:19:35 AM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: 
+  unexpected tree: class scala.reflect.internal.Trees$Template
+RowLevelSchemaValidationResult {
+  <synthetic> val <<error: <none>>: error>: <error> = data.withColumn(MATCHES_COLUMN, toCNFSchema(schema));
+  <synthetic> val <<error: <none>>: error>: <error> = extractAndCastValidRows(dataWithMatches, schema);
+  <synthetic> val <<error: <none>>: error>: <error> = validRows.count();
+  <synthetic> val <<error: <none>>: error>: <error> = dataWithMatches.where(not(col(MATCHES_COLUMN))).drop(MATCHES_COLUMN);
+  <synthetic> val <<error: <none>>: error>: <error> = invalidRows.count()
+}
+     while compiling: file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+        during phase: globalPhase=<no phase>, enteringPhase=parser
+     library version: version 2.12.12
+    compiler version: version 2.12.12
+  reconstructed args: -classpath /Users/noahpaige/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.12/scala-library-2.12.12.jar -Ymacro-expand:discard -Ycache-plugin-class-loader:last-modified -Ypresentation-any-thread
+
+  last tree to typer: Template
+       tree position: line 604 of file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+              symbol: <none>
+   symbol definition: <none> (a NoSymbol)
+      symbol package: <none>
+       symbol owners: 
+           call site: <none> in <none>
+
+== Source file context for tree position ==
+
+   601     data: DataFrame,
+   602     schema: RowLevelSchema,
+   603     storageLevelForIntermediateResults: StorageLevel = StorageLevel.MEMORY_AND_DISK 
+   604   ): RowLevelSchemaValidationResult{
+   605     
+   606     val dataWithMatches = data
+   607       .withColumn(MATCHES_COLUMN, toCNFSchema(schema))
+scala.reflect.internal.FatalError: 
+  unexpected tree: class scala.reflect.internal.Trees$Template
+RowLevelSchemaValidationResult {
+  <synthetic> val <<error: <none>>: error>: <error> = data.withColumn(MATCHES_COLUMN, toCNFSchema(schema));
+  <synthetic> val <<error: <none>>: error>: <error> = extractAndCastValidRows(dataWithMatches, schema);
+  <synthetic> val <<error: <none>>: error>: <error> = validRows.count();
+  <synthetic> val <<error: <none>>: error>: <error> = dataWithMatches.where(not(col(MATCHES_COLUMN))).drop(MATCHES_COLUMN);
+  <synthetic> val <<error: <none>>: error>: <error> = invalidRows.count()
+}
+     while compiling: file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+        during phase: globalPhase=<no phase>, enteringPhase=parser
+     library version: version 2.12.12
+    compiler version: version 2.12.12
+  reconstructed args: -classpath /Users/noahpaige/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.12.12/scala-library-2.12.12.jar -Ymacro-expand:discard -Ycache-plugin-class-loader:last-modified -Ypresentation-any-thread
+
+  last tree to typer: Template
+       tree position: line 604 of file:///Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+              symbol: <none>
+   symbol definition: <none> (a NoSymbol)
+      symbol package: <none>
+       symbol owners: 
+           call site: <none> in <none>
+
+== Source file context for tree position ==
+
+   601     data: DataFrame,
+   602     schema: RowLevelSchema,
+   603     storageLevelForIntermediateResults: StorageLevel = StorageLevel.MEMORY_AND_DISK 
+   604   ): RowLevelSchemaValidationResult{
+   605     
+   606     val dataWithMatches = data
+   607       .withColumn(MATCHES_COLUMN, toCNFSchema(schema))
+	at scala.reflect.internal.Reporting.abort(Reporting.scala:68)
+	at scala.reflect.internal.Reporting.abort$(Reporting.scala:64)
+	at scala.reflect.internal.SymbolTable.abort(SymbolTable.scala:28)
+	at scala.tools.nsc.typechecker.Typers$Typer.typedOutsidePatternMode$1(Typers.scala:5671)
+	at scala.tools.nsc.typechecker.Typers$Typer.typed1(Typers.scala:5688)
+	at scala.tools.nsc.typechecker.Typers$Typer.typed(Typers.scala:5724)
+	at scala.tools.nsc.typechecker.Typers$Typer.typedQualifier(Typers.scala:5808)
+	at scala.meta.internal.pc.PcDefinitionProvider.definitionTypedTreeAt(PcDefinitionProvider.scala:111)
+	at scala.meta.internal.pc.PcDefinitionProvider.definition(PcDefinitionProvider.scala:24)
+
+2020.12.02 10:19:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:19:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:19:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:19:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:20:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:20:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:20:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:20:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:20:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+Dec 02, 2020 10:21:17 AM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 16714, count -2, length 26952
+java.lang.StringIndexOutOfBoundsException: offset 16714, count -2, length 26952
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+Dec 02, 2020 10:21:19 AM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 16714, count -2, length 26957
+java.lang.StringIndexOutOfBoundsException: offset 16714, count -2, length 26957
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+2020.12.02 10:21:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:21:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:21:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:22:03 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:22:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:22:48 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:23:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:23:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:23:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:24:06 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:24:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:25:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:29:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:30:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:30:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:30:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:31:36 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:32:18 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:32:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:33:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:33:09 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:33:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:34:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:34:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:34:11 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:34:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:34:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:34:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:34:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:34:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:34:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:35:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:35:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:35:57 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:37:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:37:28 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:37:37 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:37:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:37:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:37:40 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:37:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:40:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:40:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:41:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:41:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:41:58 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:42:08 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:42:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:42:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:42:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:42:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:42:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:43:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:43:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:45:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:45:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:45:14 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:45:14 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:45:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:46:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:55:16 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 10:55:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:55:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:55:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:55:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:56:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 10:56:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:58:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 10:58:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 10:59:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:59:15 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:59:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:59:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:59:29 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 10:59:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 10:59:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+Dec 02, 2020 11:00:03 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 18341
+2020.12.02 11:00:09 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala' because it doesn't belong to a build target.
+2020.12.02 11:00:19 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy2.scala
+2020.12.02 11:00:33 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 11:03:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:03:11 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:04:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:04:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:05:29 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+Dec 02, 2020 11:05:34 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 18556
+2020.12.02 11:06:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:06:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:08:29 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:08:29 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:08:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:10:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:10:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:10:55 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:10:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:10:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:11:50 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:11:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:12:58 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:12:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:13:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:13:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:13:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:13:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:14:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:14:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:14:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:16:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:16:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:17:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:17:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 11:17:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 11:17:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 11:17:50 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 11:17:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 11:17:54 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 11:17:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 11:19:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:20:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:20:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:20:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:20:36 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:20:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:23:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:23:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:23:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:23:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:23:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:23:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:23:52 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:24:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:24:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:24:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 11:24:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 11:30:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:30:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:32:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:33:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+Dec 02, 2020 11:34:46 AM scala.meta.internal.pc.CompilerAccess retryWithCleanCompiler
+INFO: compiler crashed due to an error in the Scala compiler, retrying with new compiler instance.
+2020.12.02 11:34:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:36:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:37:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:37:15 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:37:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:39:42 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:40:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:40:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:40:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:40:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:41:32 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:41:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:41:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+Dec 02, 2020 11:48:46 AM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 18084, count -2, length 33657
+java.lang.StringIndexOutOfBoundsException: offset 18084, count -2, length 33657
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+Dec 02, 2020 11:48:49 AM scala.meta.internal.pc.CompilerAccess handleError
+SEVERE: offset 18084, count -2, length 33667
+java.lang.StringIndexOutOfBoundsException: offset 18084, count -2, length 33667
+	at java.base/java.lang.String.checkBoundsOffCount(String.java:3101)
+	at java.base/java.lang.String.rangeCheck(String.java:278)
+	at java.base/java.lang.String.<init>(String.java:274)
+	at scala.tools.nsc.interactive.Global.typeCompletions$1(Global.scala:1230)
+	at scala.tools.nsc.interactive.Global.completionsAt(Global.scala:1253)
+	at scala.meta.internal.pc.SignatureHelpProvider.$anonfun$treeSymbol$1(SignatureHelpProvider.scala:375)
+	at scala.Option.map(Option.scala:230)
+	at scala.meta.internal.pc.SignatureHelpProvider.treeSymbol(SignatureHelpProvider.scala:373)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCall$.unapply(SignatureHelpProvider.scala:198)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.visit(SignatureHelpProvider.scala:309)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.traverse(SignatureHelpProvider.scala:303)
+	at scala.meta.internal.pc.SignatureHelpProvider$MethodCallTraverser.fromTree(SignatureHelpProvider.scala:272)
+	at scala.meta.internal.pc.SignatureHelpProvider.signatureHelp(SignatureHelpProvider.scala:27)
+
+2020.12.02 11:48:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:48:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+Dec 02, 2020 11:49:13 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 20409
+2020.12.02 11:49:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 11:52:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 11:52:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 17:54:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:21 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:21 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:21 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:39 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:42 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:54 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:54:57 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 17:55:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:55:22 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 17:55:42 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 17:56:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 17:56:41 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:01:28 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:03:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:03:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:03:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:04:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:05:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:08:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 18:08:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/Test.scala
+2020.12.02 18:08:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/Test.scala' because it doesn't belong to a build target.
+2020.12.02 18:08:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/Test.scala
+2020.12.02 18:09:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/Test.scala
+2020.12.02 18:09:06 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/Test.scala' because it doesn't belong to a build target.
+2020.12.02 18:09:33 WARN  no build target for: /Users/noahpaige/Desktop/deequ/Test.scala
+2020.12.02 18:10:30 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:11:15 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:12:22 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:13:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.02 18:13:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:13:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:19:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:19:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+Dec 02, 2020 6:20:06 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 21377
+Dec 02, 2020 6:20:14 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 21420
+2020.12.02 18:20:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:21:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:23:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:23:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:26:28 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:27:40 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:28:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.02 18:29:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:29:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:29:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:30:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:32:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:32:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:32:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:32:08 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:32:08 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:32:08 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:33:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:36:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:36:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:36:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:36:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:36:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:36:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:36:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:36:33 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:36:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:38:16 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:38:21 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:38:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:39:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:39:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:39:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:39:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.02 18:39:44 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.02 18:39:49 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 09:48:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 09:49:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 09:49:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 09:59:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 10:02:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 10:06:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 10:06:04 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 10:09:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.07 10:09:01 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.07 10:09:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.07 10:09:53 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 10:11:19 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 10:11:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:49:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:50:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:50:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:53:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:53:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:53:22 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:54:00 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:54:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:56:06 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:06 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:22 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:29 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:56:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:56:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:56:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:58:18 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:58:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:59:03 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:59:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 14:59:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 14:59:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:00:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:00:41 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:00:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:00:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:00:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:00:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:00:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:02:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:02:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:02:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:02:31 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:02:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:04:30 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:04:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:05:18 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:06:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:06:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:07:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:07:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+Dec 07, 2020 3:07:33 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 23430
+2020.12.07 15:07:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:08:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:08:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:08:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:08:33 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:10:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:11:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:11:34 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:12:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:14:37 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:16:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:17:13 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:17:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:17:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:17:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:19:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:20:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:21:26 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:24:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:27:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:27:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:27:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:27:36 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:28:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:28:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:28:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:28:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:28:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:29:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:29:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:29:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:29:06 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:29:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:29:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:30:07 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:30:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:30:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:30:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:30:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:30:49 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:31:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:31:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:31:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:31:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:31:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:32:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:33:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.07 15:33:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.07 15:33:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+Dec 07, 2020 3:37:19 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 24519
+2020.12.07 15:37:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:37:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:38:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:38:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:39:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:39:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:41:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:42:09 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.07 15:42:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.07 15:42:09 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 09:51:12 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 09:52:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 09:52:47 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 09:58:11 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 09:58:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:00:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:01:07 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:01:16 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:01:35 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:01:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:04:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:04:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:05:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:05:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:05:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:05:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:05:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:06:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:06:02 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:06:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:06:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:06:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:06:46 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:06:46 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:08:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:08:59 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:09:19 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:09:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:09:24 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:09:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:09:42 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:09:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:13:49 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:13:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:14:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:15:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:15:45 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:15:45 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:18:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:18:17 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:18:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:18:40 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:19:03 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:20:04 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:20:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:20:05 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:20:34 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 10:20:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:24:56 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:25:01 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:26:05 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 10:26:17 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 10:26:19 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+Dec 08, 2020 10:26:44 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 26859
+2020.12.08 10:26:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:27:13 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:27:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:27:58 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:28:00 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:31:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:32:14 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:36:59 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:37:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:37:03 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:40:24 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:40:32 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:40:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:40:40 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 10:40:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 10:41:30 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 10:41:33 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 10:41:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 10:41:53 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 10:44:56 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+Dec 08, 2020 10:45:20 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 27947
+2020.12.08 10:45:31 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 10:45:35 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 10:46:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 10:46:22 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 16:08:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:08:18 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:08:22 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:08:23 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 16:08:23 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:08:28 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 16:08:38 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 16:41:50 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 16:42:26 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 16:42:27 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2020.12.08 16:42:27 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 16:43:48 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 16:44:43 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:44:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:44:49 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:45:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 16:46:52 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:47:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:47:03 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala' because it doesn't belong to a build target.
+2020.12.08 16:47:21 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 16:53:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/ValidatorCopy3.scala
+Dec 08, 2020 5:31:17 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTraceNotification
