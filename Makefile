@@ -3,7 +3,7 @@
 MVN_PROFILE_SPARK_30 := spark-3.0-scala-2.12
 MVN_PROFILE_SPARK_24 := spark-2.4-scala-2.11
 MVN_PROFILE_SPARK_23 := spark-2.3-scala-2.11
-MVN_PROFILE_SPARK_24 := spark-2.2-scala-2.11
+MVN_PROFILE_SPARK_22 := spark-2.2-scala-2.11
 
 # Build the project for specific Spark and 
 # Scala versions. You can change the profile 
