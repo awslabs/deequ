@@ -9,16 +9,9 @@ MVN_PROFILE_SPARK_22 := spark-2.2-scala-2.11
 # Scala versions. You can change the profile 
 # variable to use a differen Scala or Spark 
 # version (see list above).
+# If you need more log ouput, remove the -q flag.
 build:
-	mvn clean install -P $(MVN_PROFILE_SPARK_30)
-
-# Test if there are build issues for any Scala 
-# or Spark version.
-build-and-test-all-profiles:
 	mvn clean install -q -P $(MVN_PROFILE_SPARK_30)
-	mvn clean install -q -P $(MVN_PROFILE_SPARK_24)
-	mvn clean install -q -P $(MVN_PROFILE_SPARK_23)
-	mvn clean install -q -P $(MVN_PROFILE_SPARK_22)
 
 # Deprecated.
 travis-deploy:
