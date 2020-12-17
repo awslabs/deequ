@@ -8,22 +8,22 @@ Deequ is a library built on top of Apache Spark for defining "unit tests for dat
 
 ## Requirements and Installation
 
-__Deequ__ depends on Java 8 and is known to work with Apache Spark versions 2.2.x to 2.4.x.
+__Deequ__ depends on Java 8. We provide releases compatible with Apache Spark versions 2.2.x to 2.4.x and 3.0.x.
 
 Available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). 
-Add the latest release as a dependency to your project:
+
+Choose the latest release that matches your Scala and Spark versions from the [available versions](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). Add the release as a dependency to your project. For example:
 __Maven__
 ```
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>1.0.4</version>
+  <version>1.1.0-spark-3.0-scala-2.12</version>
 </dependency>
 ```
-
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.0.4"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.1.0-spark-3.0-scala-2.12"
 ```
 
 ## Example
