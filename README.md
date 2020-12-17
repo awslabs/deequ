@@ -12,7 +12,7 @@ __Deequ__ depends on Java 8. We provide releases compatible with Apache Spark ve
 
 Available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). 
 
-Choose the latest release that matches your Scala and Spark versions from the [available versions](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). Add the release as a dependency to your project. For example:
+Choose the latest release that matches your Scala and Spark versions from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example:
 __Maven__
 ```
 <dependency>
