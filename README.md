@@ -6,6 +6,8 @@
 
 Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets. We are happy to receive feedback and [contributions](CONTRIBUTING.md).
 
+Python users may also be interested in PyDeequ, a Python interface for Deequ. You can find PyDeequ on [GitHub](https://github.com/awslabs/python-deequ), [readthedocs](https://pydeequ.readthedocs.io/en/latest/README.html), and [PyPI](https://pypi.org/project/pydeequ/).
+
 ## Requirements and Installation
 
 __Deequ__ depends on Java 8 and is known to work with Apache Spark versions 2.2.x to 2.4.x.
