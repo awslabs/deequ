@@ -37,10 +37,21 @@ case class RetainTypeRule() extends ConstraintRule[ColumnProfile] {
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
+    val isTypeEmpty =
+      (typ: DataTypeInstances.Value) => profile.typeCounts.getOrElse(typ.toString, 0) == 0
     val typeToCheck = profile.dataType match {
-      case DataTypeInstances.Fractional => ConstrainableDataTypes.Fractional
-      case DataTypeInstances.Integral => ConstrainableDataTypes.Integral
+      case DataTypeInstances.Fractional =>
+        if (isTypeEmpty(DataTypeInstances.Integral)) {
+          ConstrainableDataTypes.Fractional
+        } else {
+          ConstrainableDataTypes.Numeric
+        }
+      case DataTypeInstances.Integral =>
+        if (isTypeEmpty(DataTypeInstances.Fractional)) {
+          ConstrainableDataTypes.Integral
+        } else {
+          ConstrainableDataTypes.Numeric
+        }
       case DataTypeInstances.Boolean => ConstrainableDataTypes.Boolean
     }
 
@@ -49,10 +60,10 @@ case class RetainTypeRule() extends ConstraintRule[ColumnProfile] {
     ConstraintSuggestion(
       constraint,
       profile.column,
-      "DataType: " + profile.dataType.toString,
-      s"'${profile.column}' has type ${profile.dataType}",
+      "DataType: " + typeToCheck,
+      s"'${profile.column}' has type ${typeToCheck}",
       this,
-      s""".hasDataType("${profile.column}", ConstrainableDataTypes.${profile.dataType})"""
+      s""".hasDataType("${profile.column}", ConstrainableDataTypes.${typeToCheck})"""
     )
   }
 
