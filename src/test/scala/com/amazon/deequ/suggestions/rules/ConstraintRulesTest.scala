@@ -245,8 +245,11 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val dfWithColumnCandidate = getDfFull(session)
 
-     val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item",
-       DataTypeInstances.Integral)
+      val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType(
+        "item",
+        DataTypeInstances.Integral,
+        Map("Integral" -> dfWithColumnCandidate.count())
+      )
 
       val check = Check(CheckLevel.Warning, "some")
         .addConstraint(RetainTypeRule().candidate(fakeColumnProfile, 100).constraint)
@@ -266,8 +269,11 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val dfWithColumnCandidate = getDfFull(session)
 
-      val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType("item",
-       DataTypeInstances.Integral)
+      val fakeColumnProfile = getFakeColumnProfileWithColumnNameAndDataType(
+        "item",
+        DataTypeInstances.Integral,
+        Map("Integral" -> dfWithColumnCandidate.count())
+      )
 
       val codeForConstraint = RetainTypeRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
@@ -781,7 +787,8 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
   private[this] def getFakeColumnProfileWithColumnNameAndDataType(
       columnName: String,
-      dataType: DataTypeInstances.Value)
+      dataType: DataTypeInstances.Value,
+      typeCounts: Map[String, Long])
     : ColumnProfile = {
 
     val fakeColumnProfile = getFakeColumnProfileWithName(columnName)
@@ -789,6 +796,10 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       (fakeColumnProfile.dataType _)
         .expects()
         .returns(dataType)
+        .anyNumberOfTimes()
+      (fakeColumnProfile.typeCounts _)
+        .expects()
+        .returns(typeCounts)
         .anyNumberOfTimes()
     }
 
