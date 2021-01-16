@@ -1339,3 +1339,29 @@ WARNING: Unmatched cancel notification for request id 27947
 2020.12.08 16:53:54 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/ValidatorCopy3.scala
 Dec 08, 2020 5:31:17 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
 INFO: Unsupported notification method: $/setTraceNotification
+2020.12.08 17:59:37 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2020.12.08 18:00:43 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2020.12.08 18:01:32 INFO  shutting down Metals
+2021.01.16 16:06:04 INFO  Started: Metals version 0.9.8 in workspace '/Users/noahpaige/Desktop/deequ' for client vscode.
+2021.01.16 16:06:08 INFO  time: initialize in 4.49s
+2021.01.16 16:06:09 WARN  Build server is not auto-connectable.
+2021.01.16 16:06:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2021.01.16 16:06:09 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/RowLevelSchemaValidator.scala
+2021.01.16 16:06:10 INFO  skipping build import with status 'Requested'
+2021.01.16 16:06:18 INFO  no build target: using presentation compiler with only scala-library
+2021.01.16 16:11:55 WARN  no build target for: /Users/noahpaige/Desktop/deequ/ValidatorCopy3.scala
+2021.01.16 16:17:36 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2021.01.16 16:17:39 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2021.01.16 16:17:47 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2021.01.16 16:18:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2021.01.16 16:18:51 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2021.01.16 16:18:51 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2021.01.16 16:19:40 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2021.01.16 16:24:10 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/TestValidator.scala' because it doesn't belong to a build target.
+2021.01.16 16:24:10 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2021.01.16 16:25:02 WARN  no build target for: /Users/noahpaige/Desktop/deequ/TestValidator.scala
+2021.01.16 16:30:11 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/Validator Copy.scala
+2021.01.16 16:30:20 WARN  code navigation does not work for the file '/Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/Validator Copy.scala' because it doesn't belong to a build target.
+2021.01.16 16:30:20 WARN  no build target for: /Users/noahpaige/Desktop/deequ/src/main/scala/com/amazon/deequ/schema/Validator Copy.scala
+Jan 16, 2021 4:43:58 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTraceNotification
