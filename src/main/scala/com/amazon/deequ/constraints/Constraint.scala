@@ -30,6 +30,7 @@ case class ConstraintResult(
     constraint: Constraint,
     status: ConstraintStatus.Value,
     message: Option[String] = None,
+    hint: Option[String] = None,
     metric: Option[Metric[_]] = None)
 
 /** Common trait for all data quality constraints */

@@ -215,8 +215,9 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
         case result =>
           assert(result.status == ConstraintStatus.Failure)
           assert(result.message.isDefined)
-          assert(result.message.get == "Value: 1.0 does not meet the constraint requirement! " +
-            "Value should be like ...!")
+          assert(result.message.get == "Value: 1.0 does not meet the constraint requirement!")
+          assert(result.hint.isDefined)
+          assert(result.hint.get == "Value should be like ...!")
           assert(result.metric.isDefined)
       }
     }

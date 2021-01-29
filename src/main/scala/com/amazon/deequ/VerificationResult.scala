@@ -66,8 +66,15 @@ object VerificationResult {
 
     import sparkSession.implicits._
 
-    simplifiedCheckResults.toDF("check", "check_level", "check_status", "constraint",
-      "constraint_status", "constraint_message")
+    simplifiedCheckResults.toDF(
+      "check",
+      "check_level",
+      "check_status",
+      "constraint",
+      "constraint_status",
+      "constraint_message",
+      "constraint_hint"
+    )
   }
 
   def checkResultsAsJson(verificationResult: VerificationResult,
@@ -83,7 +90,8 @@ object VerificationResult {
             "check_status" -> simpleCheckResultOutput.checkStatus,
             "constraint" -> simpleCheckResultOutput.constraint,
             "constraint_status" -> simpleCheckResultOutput.constraintStatus,
-            "constraint_message" -> simpleCheckResultOutput.constraintMessage
+            "constraint_message" -> simpleCheckResultOutput.constraintMessage,
+            "constraint_hint" -> simpleCheckResultOutput.constraintHint
           )
       }
 
@@ -105,15 +113,22 @@ object VerificationResult {
             checkResult.check.description,
             checkResult.check.level.toString,
             checkResult.status.toString,
-
             constraintResult.constraint.toString,
             constraintResult.status.toString,
-            constraintResult.message.getOrElse("")
+            constraintResult.message.getOrElse(""),
+            constraintResult.hint.getOrElse("")
           )
         }
       }
   }
 
-  private[this] case class SimpleCheckResultOutput(checkDescription: String, checkLevel: String,
-    checkStatus: String, constraint: String, constraintStatus: String, constraintMessage: String)
+  private[this] case class SimpleCheckResultOutput(
+    checkDescription: String,
+    checkLevel: String,
+    checkStatus: String,
+    constraint: String,
+    constraintStatus: String,
+    constraintMessage: String,
+    constraintHint: String
+  )
 }

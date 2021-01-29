@@ -124,18 +124,18 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
         import session.implicits._
         val expected = Seq(
           ("group-1", "Error", "Success", "CompletenessConstraint(Completeness(att1,None))",
-            "Success", ""),
+            "Success", "", ""),
           ("group-2-E", "Error", "Error", "SizeConstraint(Size(None))", "Failure",
-            "Value: 4 does not meet the constraint requirement! Should be greater than 5!"),
+            "Value: 4 does not meet the constraint requirement!", "Should be greater than 5!"),
           ("group-2-E", "Error", "Error", "CompletenessConstraint(Completeness(att2,None))",
-            "Success", ""),
+            "Success", "", ""),
           ("group-2-W", "Warning", "Warning",
             "DistinctnessConstraint(Distinctness(List(item),None))",
-            "Failure", "Value: 1.0 does not meet the constraint requirement! " +
+            "Failure", "Value: 1.0 does not meet the constraint requirement!",
             "Should be smaller than 0.8!")
         )
           .toDF("check", "check_level", "check_status", "constraint",
-            "constraint_status", "constraint_message")
+            "constraint_status", "constraint_message", "constraint_hint")
 
         assertSameRows(successMetricsAsDataFrame, expected)
       }
@@ -151,22 +151,23 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
           val expectedJson =
             """[{"check":"group-1","check_level":"Error","check_status":"Success",
               |"constraint":"CompletenessConstraint(Completeness(att1,None))",
-              |"constraint_status":"Success","constraint_message":""},
+              |"constraint_status":"Success","constraint_message":"","constraint_hint":""},
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
               |"constraint":"SizeConstraint(Size(None))", "constraint_status":"Failure",
-              |"constraint_message":"Value: 4 does not meet the constraint requirement!
-              | Should be greater than 5!"},
+              |"constraint_message":"Value: 4 does not meet the constraint requirement!",
+              |"constraint_hint":"Should be greater than 5!"},
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
               |"constraint":"CompletenessConstraint(Completeness(att2,None))",
-              |"constraint_status":"Success","constraint_message":""},
+              |"constraint_status":"Success","constraint_message":"","constraint_hint":""},
               |
               |{"check":"group-2-W","check_level":"Warning","check_status":"Warning",
               |"constraint":"DistinctnessConstraint(Distinctness(List(item),None))",
               |"constraint_status":"Failure",
-              |"constraint_message":"Value: 1.0 does not meet the constraint requirement!
-              | Should be smaller than 0.8!"}]"""
+              |"constraint_message":"Value: 1.0 does not meet the constraint requirement!",
+              |"constraint_hint":"Should be smaller than 0.8!"}]
+              |"""
               .stripMargin.replaceAll("\n", "")
 
           assertSameResultsJson(checkResultsAsJson, expectedJson)
