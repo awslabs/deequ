@@ -22,9 +22,13 @@ import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import org.apache.commons.lang3.StringEscapeUtils
+import com.amazon.deequ.metrics.DistributionValue
 
 /** If we see a categorical range for a column, we suggest an IS IN (...) constraint */
-case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
+case class CategoricalRangeRule(
+  categorySorter: Array[(String, DistributionValue)] => Array[(String, DistributionValue)] =
+    categories => categories.sortBy({ case (_, value) => value.absolute }).reverse
+) extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     val hasHistogram = profile.histogram.isDefined && (
@@ -47,11 +51,9 @@ case class CategoricalRangeRule() extends ConstraintRule[ColumnProfile] {
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
-    val valuesByPopularity = profile.histogram.get.values.toArray
+    val valuesByPopularityNotNull = profile.histogram.get.values.toArray
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
-      .sortBy { case (_, value) => value.absolute }
-      .reverse
+    val valuesByPopularity = categorySorter(valuesByPopularityNotNull)
 
     val categoriesSql = valuesByPopularity
       // the character "'" can be contained in category names

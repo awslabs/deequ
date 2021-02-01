@@ -26,8 +26,11 @@ import scala.math.BigDecimal.RoundingMode
 
 /** If we see a categorical range for most values in a column, we suggest an IS IN (...)
   * constraint that should hold for most values */
-case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0.9)
-  extends ConstraintRule[ColumnProfile] {
+case class FractionalCategoricalRangeRule(
+  targetDataCoverageFraction: Double = 0.9,
+  categorySorter: Array[(String, DistributionValue)] => Array[(String, DistributionValue)] =
+    categories => categories.sortBy({ case (_, value) => value.absolute }).reverse
+) extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     val hasHistogram = profile.histogram.isDefined && (
@@ -54,15 +57,13 @@ case class FractionalCategoricalRangeRule(targetDataCoverageFraction: Double = 0
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
     val topCategories = getTopCategoriesForFractionalDataCoverage(profile,
       targetDataCoverageFraction)
     val ratioSums = topCategories.map { case (_, categoryValue) => categoryValue.ratio }.sum
 
-    val valuesByPopularity = topCategories.toArray
+    val valuesByPopularityNotNull = topCategories.toArray
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
-      .sortBy { case (_, value) => value.absolute }
-      .reverse
+    val valuesByPopularity = categorySorter(valuesByPopularityNotNull)
 
     val categoriesSql = valuesByPopularity
       // the character "'" can be contained in category names
