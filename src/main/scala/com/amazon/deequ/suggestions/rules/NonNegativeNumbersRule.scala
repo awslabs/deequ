@@ -32,9 +32,10 @@ case class NonNegativeNumbersRule() extends ConstraintRule[ColumnProfile] {
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
     val description = s"'${profile.column}' has no negative values"
-    val constraint = complianceConstraint(description, s"${profile.column} >= 0", Check.IsOne)
+    val constraint = complianceConstraint(
+      description, s"${profile.column} >= 0", Check.IsOne, hint = Some(description))
+    val hintCode = ConstraintRule.genHintCode(description)
 
     val minimum = profile match {
       case numericProfile: NumericColumnProfile
@@ -48,7 +49,7 @@ case class NonNegativeNumbersRule() extends ConstraintRule[ColumnProfile] {
       "Minimum: " + minimum,
       description,
       this,
-      s""".isNonNegative("${profile.column}")"""
+      s""".isNonNegative("${profile.column}", hint = ${hintCode})"""
     )
   }
 

@@ -42,3 +42,7 @@ abstract class ConstraintRule[P <: ColumnProfile] {
     */
   def candidate(profile: P, numRecords: Long): ConstraintSuggestion
 }
+
+object ConstraintRule {
+  def genHintCode(s: String): String = "Some(\"" + s + "\")"
+}

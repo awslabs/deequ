@@ -29,16 +29,17 @@ case class CompleteIfCompleteRule() extends ConstraintRule[ColumnProfile] {
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
-    val constraint = completenessConstraint(profile.column, Check.IsOne)
+    val description = s"'${profile.column}' is not null"
+    val constraint = completenessConstraint(profile.column, Check.IsOne, hint = Some(description))
+    val hintCode = ConstraintRule.genHintCode(description)
 
     ConstraintSuggestion(
       constraint,
       profile.column,
       "Completeness: " + profile.completeness.toString,
-      s"'${profile.column}' is not null",
+      description,
       this,
-      s""".isComplete("${profile.column}")"""
+      s""".isComplete("${profile.column}", hint = ${hintCode})"""
     )
   }
 

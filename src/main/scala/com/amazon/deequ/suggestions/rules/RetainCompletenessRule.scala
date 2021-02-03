@@ -32,7 +32,6 @@ case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
     val p = profile.completeness
     val n = numRecords
     val z = 1.96
@@ -41,11 +40,11 @@ case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
     val targetCompleteness = BigDecimal(p - z * math.sqrt(p * (1 - p) / n))
       .setScale(2, RoundingMode.DOWN).toDouble
 
-    val constraint = completenessConstraint(profile.column, _ >= targetCompleteness)
-
     val boundInPercent = ((1.0 - targetCompleteness) * 100).toInt
-
     val description = s"'${profile.column}' has less than $boundInPercent% missing values"
+    val constraint = completenessConstraint(profile.column, _ >= targetCompleteness,
+      hint = Some(description))
+    val hintCode = ConstraintRule.genHintCode(description)
 
     ConstraintSuggestion(
       constraint,
@@ -54,7 +53,7 @@ case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
       description,
       this,
       s""".hasCompleteness("${profile.column}", _ >= $targetCompleteness,
-         | Some("It should be above $targetCompleteness!"))"""
+         | hint = ${hintCode})"""
         .stripMargin.replaceAll("\n", "")
     )
   }

@@ -36,17 +36,19 @@ case class UniqueIfApproximatelyUniqueRule() extends ConstraintRule[ColumnProfil
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
-    val constraint = uniquenessConstraint(Seq(profile.column), Check.IsOne)
+    val description = s"'${profile.column}' is unique"
+    val constraint = uniquenessConstraint(Seq(profile.column), Check.IsOne,
+      hint = Some(description))
+    val hintCode = ConstraintRule.genHintCode(description)
     val approximateDistinctness = profile.approximateNumDistinctValues.toDouble / numRecords
 
     ConstraintSuggestion(
       constraint,
       profile.column,
       "ApproxDistinctness: " + approximateDistinctness.toString,
-      s"'${profile.column}' is unique",
+      description,
       this,
-      s""".isUnique("${profile.column}")"""
+      s""".isUnique("${profile.column}", hint = ${hintCode})"""
     )
   }
 

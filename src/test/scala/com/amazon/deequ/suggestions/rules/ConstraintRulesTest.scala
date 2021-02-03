@@ -30,7 +30,6 @@ import org.scalatest.WordSpec
 class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContextSpec
   with MockFactory{
 
-
   "CompleteIfCompleteRule" should {
     "be applied correctly" in {
 
@@ -70,12 +69,12 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val codeForConstraint = CompleteIfCompleteRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
-      val expectedCodeForConstraint = """.isComplete("att1")"""
+      val expectedCodeForConstraint = """.isComplete("att1", hint = Some("'att1' is not null"))"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .isComplete("att1")
+        .isComplete("att1", hint = Some("'att1' is not null"))
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -128,13 +127,14 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val codeForConstraint = RetainCompletenessRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = """.hasCompleteness("att1", _ >= 0.4,
-          | Some("It should be above 0.4!"))""".stripMargin.replaceAll("\n", "")
+      val expectedCodeForConstraint =
+        """.hasCompleteness("att1", _ >= 0.4, """ +
+        """hint = Some("'att1' has less than 60% missing values"))"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .hasCompleteness("att1", _ >= 0.4, Some("It should be above 0.4!"))
+        .hasCompleteness("att1", _ >= 0.4, Some("'att1' has less than 60% missing values"))
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -192,12 +192,12 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val codeForConstraint = UniqueIfApproximatelyUniqueRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = """.isUnique("item")"""
+      val expectedCodeForConstraint = """.isUnique("item", hint = Some("'item' is unique"))"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .isUnique("item")
+        .isUnique("item", Some("'item' is unique"))
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -272,12 +272,15 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val codeForConstraint = RetainTypeRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = """.hasDataType("item", ConstrainableDataTypes.Integral)"""
+      val expectedCodeForConstraint =
+        """.hasDataType("item", ConstrainableDataTypes.Integral, """ +
+        """hint = Some("'item' has data type Integral"))"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .hasDataType("item", ConstrainableDataTypes.Integral)
+        .hasDataType("item", ConstrainableDataTypes.Integral,
+          hint = Some("'item' has data type Integral"))
 
       val verificationResult = VerificationSuite()
         .onData(dfWithColumnCandidate)
@@ -448,8 +451,12 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val codeForConstraint = CategoricalRangeRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = ".isContainedIn(\"categoricalColumn\", " +
-        "Array(\"_b%%__\", \"'_[a_[]}!@'\"))"
+      val expectedCodeForConstraint =
+        """.isContainedIn(""" +
+        """"categoricalColumn", """ +
+        """Array("_b%%__", "'_[a_[]}!@'"), """ +
+        """hint = Some("'categoricalColumn' has value range '_b%%__', '''_[a_[]}!@'''")""" +
+        ")"
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
@@ -644,8 +651,11 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val codeForConstraint = FractionalCategoricalRangeRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
 
-      val expectedCodeForConstraint = ".isContainedIn(\"categoricalColumn\", Array(\"_b%%__\"," +
-        " \"'_[a_[]}!@'\"), _ >= 0.9, Some(\"It should be above 0.9!\"))"
+      val expectedCodeForConstraint =
+        """.isContainedIn("categoricalColumn", """ +
+        """Array("_b%%__", "'_[a_[]}!@'"), _ >= 0.9, """ +
+        """hint = Some("'categoricalColumn' has value range '_b%%__', """ +
+        """'''_[a_[]}!@''' for at least 90.0% of values"))"""
 
       assert(expectedCodeForConstraint == codeForConstraint)
 
@@ -714,11 +724,12 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       val codeForNonNegativeConstraint = NonNegativeNumbersRule().candidate(fakeColumnProfile, 100)
         .codeForConstraint
-      val expectedCodeForNonNegativeConstraint = ".isNonNegative(\"item\")"
+      val expectedCodeForNonNegativeConstraint =
+        """.isNonNegative("item", hint = Some("'item' has no negative values"))"""
       assert(expectedCodeForNonNegativeConstraint == codeForNonNegativeConstraint)
 
       val check = Check(CheckLevel.Warning, "some")
-        .isNonNegative("item")
+        .isNonNegative("item", hint = Some("'item' has no negative values"))
         .isPositive("item")
 
       val verificationResult = VerificationSuite()
