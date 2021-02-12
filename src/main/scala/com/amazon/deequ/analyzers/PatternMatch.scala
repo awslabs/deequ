@@ -19,7 +19,7 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.{col, lit, regexp_extract, sum, when}
+import org.apache.spark.sql.functions.{col, lit, sum, when}
 import org.apache.spark.sql.types.{IntegerType, StructType}
 
 import scala.util.matching.Regex
@@ -46,9 +46,7 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
   }
 
   override def aggregationFunctions(): Seq[Column] = {
-
-    val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
-      .otherwise(0)
+    val expression = when(col(column).rlike(pattern.toString) === lit(true), 1).otherwise(0)
 
     val summation = sum(conditionalSelection(expression, where).cast(IntegerType))
 
