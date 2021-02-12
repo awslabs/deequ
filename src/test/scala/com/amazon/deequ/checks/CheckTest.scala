@@ -644,6 +644,23 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertEvaluatesTo(check, context, CheckStatus.Success)
     }
 
+    "ignore null values for hasPattern constraints" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val df = Seq(
+        ("123", 1),
+        (null, 2),
+        ("456", 1)
+      ).toDF("nullable", "id")
+
+      val check = Check(CheckLevel.Error, "some description")
+        .hasPattern("nullable", "\\d{3,3}".r, _ == 1.0)
+
+      val context = runChecks(df, check)
+
+      assertEvaluatesTo(check, context, CheckStatus.Success)
+    }
+
     "fail on mixed data for E-Mail pattern with default assertion" in withSparkSession { session =>
       val col = "some"
       val df = dataFrameWithColumn(col, StringType, session, Row("someone@somewhere.org"),
