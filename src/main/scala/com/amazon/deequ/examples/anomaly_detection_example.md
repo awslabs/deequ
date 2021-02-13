@@ -9,7 +9,7 @@ Anomaly detection operates on metrics stored in a metrics repository, so lets cr
 val metricsRepository = new InMemoryMetricsRepository()
 ```
 
-This is our fictious data from yesterday which only has only two rows.
+This is our fictitious data from yesterday which only has only two rows.
 ```scala
 val yesterdaysDataset = itemsAsDataframe(session,
   Item(1, "Thingy A", "awesome thing.", "high", 0),
@@ -30,7 +30,7 @@ VerificationSuite()
   .run()
 ```
 
-The fictious data of today has five rows, so the data size more than doubled and our anomaly check should
+The fictitious data of today has five rows, so the data size more than doubled and our anomaly check should
 catch this.
 ```scala
 val todaysDataset = itemsAsDataframe(session,

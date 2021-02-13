@@ -15,10 +15,10 @@ When running checks a user specifies a DataFrame and a number of checks to do on
 are based on metrics which describe the data. In order to perform the checks the user requests deequ follows the
 following process:
 * First deequ figures out which Analyzers are required
-* Metrics are calculated using those Analyzers
-** Metrics are also stored if a MetricsRepository is provided 
-** Intermediate state is stored if a StatePersister is provided
-** Intermediate state is used for metric calculations if a StateLoader is provided
+* Metrics are calculated using those Analyzers:
+  * Metrics are also stored if a MetricsRepository is provided 
+  * Intermediate state is stored if a StatePersister is provided
+  * Intermediate state is used for metric calculations if a StateLoader is provided
 * Checks are evaluated using the calculated Metrics
 
 The reason it works this way is for performance, primarily because calculating metrics at the same time gives the
@@ -32,7 +32,7 @@ grouping being required
 calculated
 
 ### Metrics
-A metric includes the following key details
+A metric includes the following key details:
 * name - the name for the type of metric
 * entity - the type of entity the metric is recorded against. e.g. A column, dataset, or multicolumn
 * instance - information about this instance of the metric. For example this could be the column name the metric is
