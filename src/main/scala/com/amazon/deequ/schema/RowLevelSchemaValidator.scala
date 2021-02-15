@@ -636,8 +636,8 @@ object RowLevelSchemaValidator {
   private[this] val MATCHES_COLUMN = "failed_checks"
   private[this] val DATAFRAME = "dataframe"
 
-  /** Enforces a schema and checks on textual data, filters out non-conforming columns and casts the result
-    * to the requested types
+  /** Enforces a schema and checks on textual data, filters out
+    * non-conforming columns and casts the result to the requested types
     *
     * @param data a data frame holding the data to validate in string-typed columns
     * @param schema the schema and checks to enforce
