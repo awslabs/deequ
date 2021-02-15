@@ -32,13 +32,17 @@ import org.apache.spark.sql.types.{
   DecimalType,
   IntegerType,
   StringType,
-  TimestampType
+  TimestampType,
+  StructField,
+  StructType,
+  FloatType
 }
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.storage.StorageLevel
 import com.amazon.deequ.analyzers.{Patterns}
 import scala.util.matching.Regex
-import spark.implicits._
+
+import org.apache.spark.sql.SparkSession
 
 sealed trait ColumnDefinition {
   def name: String
@@ -687,6 +691,12 @@ object RowLevelSchemaValidator {
 
     num_false += ("Valid Rows %" -> numValidRows.toDouble / (total_count_percent))
     num_false += ("Invalid Rows %" -> numInvalidRows.toDouble / total_count_percent)
+
+    val spark = SparkSession
+      .builder()
+      .getOrCreate()
+
+    import spark.implicits._
 
     val stats = num_false.toSeq.toDF("Check_Name", "Percentage_Failed(%)")
 
