@@ -25,7 +25,7 @@ __Maven__
 ```
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.1.0-spark-3.0-scala-2.12"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.1.0_spark-3.0-scala-2.12"
 ```
 
 ## Example
