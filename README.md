@@ -20,12 +20,12 @@ __Maven__
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>1.1.0-spark-3.0-scala-2.12</version>
+  <version>1.1.0_spark-3.0-scala-2.12</version>
 </dependency>
 ```
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.1.0-spark-3.0-scala-2.12"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.1.0_spark-3.0-scala-2.12"
 ```
 
 ## Example
