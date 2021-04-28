@@ -6,7 +6,7 @@
 
     <groupId>com.amazon.deequ</groupId>
     <artifactId>deequ</artifactId>
-    <version>1.2.2-SNAPSHOT</version>
+    <version>1.2.2-spark-3.0</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -20,7 +20,7 @@
         <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
 
         <!-- Spark (select 2.2.3, 2.3.4, 2.4.7, or 3.0.1) -->
-        <spark.version>2.4.7</spark.version>
+        <spark.version>3.0.1</spark.version>
     </properties>
 
     <name>deequ</name>
