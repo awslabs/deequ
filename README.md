@@ -10,22 +10,22 @@ Python users may also be interested in PyDeequ, a Python interface for Deequ. Yo
 
 ## Requirements and Installation
 
-__Deequ__ depends on Java 8. We provide releases compatible with Apache Spark versions 2.2.x to 2.4.x and 3.0.x.
+__Deequ__ depends on Java 8. We provide releases compatible with Apache Spark versions 2.2.x to 3.0.x. The Spark 2.2.x and 2.3.x releases depend on Scala 2.11 and the Spark 2.4.x and 3.0.x releases depend on Scala 2.12.
 
 Available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). 
 
-Choose the latest release that matches your Scala and Spark versions from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example:
+Choose the latest release that matches your Spark version from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example for spark 3.0.x:
 __Maven__
 ```
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>1.1.0_spark-3.0-scala-2.12</version>
+  <version>1.2.2-spark-3.0</version>
 </dependency>
 ```
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "1.1.0_spark-3.0-scala-2.12"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "1.2.2-spark-3.0"
 ```
 
 ## Example
