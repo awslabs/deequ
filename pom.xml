@@ -6,7 +6,7 @@
 
     <groupId>com.amazon.deequ</groupId>
     <artifactId>deequ</artifactId>
-    <version>1.2.2-SNAPSHOT</version>
+    <version>1.2.2-spark-2.4</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
