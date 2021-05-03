@@ -5,8 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.amazon.deequ</groupId>
-    <artifactId>deequ${artifact.scala.version}${artifact.spark.version}</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <artifactId>deequ</artifactId>
+    <version>1.2.2-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <encoding>UTF-8</encoding>
+
+        <!-- Scala (select 2.11 or 2.12) -->
+        <scala.major.version>2.12</scala.major.version>
+        <scala.version>${scala.major.version}.10</scala.version>
+        <artifact.scala.version>${scala.major.version}</artifact.scala.version>
+        <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
+
+        <!-- Spark (select 2.2.3, 2.3.4, 2.4.7, or 3.0.1) -->
+        <spark.version>2.4.7</spark.version>
+    </properties>
 
     <name>deequ</name>
     <description>Deequ is a library built on top of Apache Spark for defining "unit tests for data",
@@ -53,28 +68,6 @@
     <scm>
         <url>https://github.com/awslabs/deequ</url>
     </scm>
-
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <encoding>UTF-8</encoding>
-
-        <!-- Scala -->
-        <scala.major.version>${scala-211.major.version}</scala.major.version>
-        <scala.version>${scala.major.version}.10</scala.version>
-        <scala-211.major.version>2.11</scala-211.major.version>
-        <scala-212.major.version>2.12</scala-212.major.version>
-        <artifact.scala.version></artifact.scala.version>
-        <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
-
-        <!-- Spark -->
-        <spark.version>${spark-24.version}</spark.version>
-        <spark-22.version>2.2.2</spark-22.version>
-        <spark-23.version>2.3.2</spark-23.version>
-        <spark-24.version>2.4.2</spark-24.version>
-        <spark-30.version>3.0.0</spark-30.version>
-        <artifact.spark.version></artifact.spark.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -244,6 +237,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.2.0</version>
+								<configuration>
+										<finalName>${project.artifactId}_${scala.major.version}-${project.version}</finalName>
+								</configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -402,46 +398,6 @@
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>spark-2.2-scala-2.11</id>
-            <properties>
-                <spark.version>${spark-22.version}</spark.version>
-                <scala.major.version>${scala-211.major.version}</scala.major.version>
-                <scala.version>${scala.major.version}.10</scala.version>
-                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
-                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>spark-2.3-scala-2.11</id>
-            <properties>
-                <spark.version>${spark-23.version}</spark.version>
-                <scala.major.version>${scala-211.major.version}</scala.major.version>
-                <scala.version>${scala.major.version}.10</scala.version>
-                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
-                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>spark-2.4-scala-2.11</id>
-            <properties>
-                <spark.version>${spark-24.version}</spark.version>
-                <scala.major.version>${scala-211.major.version}</scala.major.version>
-                <scala.version>${scala.major.version}.10</scala.version>
-                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
-                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
-            </properties>
-        </profile>
-        <profile>
-            <id>spark-3.0-scala-2.12</id>
-            <properties>
-                <spark.version>${spark-30.version}</spark.version>
-                <scala.major.version>${scala-212.major.version}</scala.major.version>
-                <scala.version>${scala.major.version}.10</scala.version>
-                <artifact.scala.version>_scala-${scala.major.version}</artifact.scala.version>
-                <artifact.spark.version>_spark-${spark.version}</artifact.spark.version>
-            </properties>
         </profile>
     </profiles>
 
