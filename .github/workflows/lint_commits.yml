@@ -1,0 +1,34 @@
+name: Lint Commits
+
+on:
+  pull_request_target:
+    types: ["opened", "reopened", "synchronize"]
+
+jobs:
+  lint_commits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lint commits
+        uses: actions-ecosystem/action-lint-commits@v1
+        id: lint-commits
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          regex: '^\w+\(.+\): .+' # e.g.) "feat(api): Add /users/get"
+          format: markdown
+
+      - name: Post warning comment
+        uses: actions-ecosystem/action-create-comment@v1
+        if: ${{ steps.lint-commits.outputs.unmatched_commits != '' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            The following commits needs their message changes:
+
+            ${{ steps.lint-commits.outputs.unmatched_commits }}
+
+            The format `<type>(<scope>): <subject>` (`^\w+\(.+\): .+`) is acceptable. e.g., `feat(api): Add /users/get`
+
+      - name: Fail when commits don't pass lint
+        if: ${{ steps.lint-commits.outputs.unmatched_commits != '' }}
+        run: exit 1
+
