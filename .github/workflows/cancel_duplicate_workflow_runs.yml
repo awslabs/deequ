@@ -6,6 +6,7 @@ on:
     types: ['requested']
 
 jobs:
+  # Cancel duplicate workflow runs
   cancel-duplicate-workflow-runs:
     name: "Cancel duplicate workflow runs"
     runs-on: ubuntu-latest

@@ -1,0 +1,16 @@
+# Reference: https://github.com/derkinderfietsen/pr-description-enforcer
+name: 'PR Description Enforcer'
+# The event that triggers the workflow
+on:
+    pull_request:
+        types: [opened, edited, reopened]
+
+jobs:
+  enforce:
+    # The machine each job should run
+    runs-on: ubuntu-latest
+    # The tasks each job should run
+    steps:
+      - uses: derkinderfietsen/pr-description-enforcer@v1
+        with:
+          repo-token: '${{ secrets.GITHUB_TOKEN }}'
