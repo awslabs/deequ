@@ -33,7 +33,7 @@ private[sql] class StatefulDataType extends UserDefinedAggregateFunction {
   val BOOLEAN_POS = 3
   val STRING_POS = 4
 
-  val FRACTIONAL: Regex = """^(-|\+)? ?\d*\.\d+$""".r
+  val FRACTIONAL: Regex = """^(-|\+)? ?\d+((\.\d+)|((?:\.\d+)?[Ee][-+]?\d+))$""".r
   val INTEGRAL: Regex = """^(-|\+)? ?\d+$""".r
   val BOOLEAN: Regex = """^(true|false)$""".r
 
@@ -60,9 +60,9 @@ private[sql] class StatefulDataType extends UserDefinedAggregateFunction {
       buffer(NULL_POS) = buffer.getLong(NULL_POS) + 1L
     } else {
       input.getString(0) match {
-        case FRACTIONAL(_) => buffer(FRACTIONAL_POS) = buffer.getLong(FRACTIONAL_POS) + 1L
-        case INTEGRAL(_) => buffer(INTEGRAL_POS) = buffer.getLong(INTEGRAL_POS) + 1L
-        case BOOLEAN(_) => buffer(BOOLEAN_POS) = buffer.getLong(BOOLEAN_POS) + 1L
+        case FRACTIONAL(_*) => buffer(FRACTIONAL_POS) = buffer.getLong(FRACTIONAL_POS) + 1L
+        case INTEGRAL(_*) => buffer(INTEGRAL_POS) = buffer.getLong(INTEGRAL_POS) + 1L
+        case BOOLEAN(_*) => buffer(BOOLEAN_POS) = buffer.getLong(BOOLEAN_POS) + 1L
         case _ => buffer(STRING_POS) = buffer.getLong(STRING_POS) + 1L
       }
     }

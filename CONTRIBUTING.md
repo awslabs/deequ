@@ -42,7 +42,7 @@ GitHub provides additional document on [forking a repository](https://help.githu
 
 
 ## Finding contributions to work on
-Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels ((enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any ['help wanted'](https://github.com/awslabs/deequ/labels/help%20wanted) issues is a great place to start. 
+Looking at the existing issues is a great way to find something to contribute to. As our projects, by default, use the default GitHub issue labels ((enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any ['help wanted'](https://github.com/awslabs/deequ/labels/help%20wanted) issues is a great place to start. 
 
 
 ## Understanding the existing codebase
