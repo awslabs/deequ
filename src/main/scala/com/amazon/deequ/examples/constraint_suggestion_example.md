@@ -53,7 +53,7 @@ suggestionResult.constraintSuggestions.foreach { case (column, suggestions) =>
 }
 ```
 
-The first suggestions we get are for the `valuable` column. **Deequ** correctly identified that this column is actually a boolean column 'disguised' as string column and therefore suggests a constraint on the boolean datatype. Furthermore, it saw that this column contains some missing values and suggests a constraint that checks that the ratio of missing values should not increase in the future.
+The first suggestions we get are for the `valuable` column. **Deequ** correctly identified that this column is actually a boolean column 'disguised' as a string column and therefore suggests a constraint on the boolean data type. Furthermore, it saw that this column contains some missing values and suggests a constraint that checks that the ratio of missing values should not increase in the future.
 ```
 Constraint suggestion for 'valuable': 'valuable' has type Boolean
 The corresponding scala code is .hasDataType("valuable", ConstrainableDataTypes.Boolean)
@@ -62,7 +62,7 @@ Constraint suggestion for 'valuable': 'valuable' has less than 62% missing value
 The corresponding scala code is .hasCompleteness("valuable", _ >= 0.38, Some("It should be above 0.38!"))
 ```
 
-Next we look at the `totalNumber` column. **Deequ** identified that this column is actually a numeric column 'disguised' as string column and therefore suggests a constraint on a fractional datatype (such as float or double). Furthermore, it saw that this column contains some missing values and suggests a constraint that checks that the ratio of missing values should not increase in the future. Additionally, it suggests that values in this column should always be positive (as it did not see any negative values in the example data), which probably makes a lot of sense for this count-like data.
+Next we look at the `totalNumber` column. **Deequ** identified that this column is actually a numeric column 'disguised' as a string column and therefore suggests a constraint on a fractional datatype (such as float or double). Furthermore, it saw that this column contains some missing values and suggests a constraint that checks that the ratio of missing values should not increase in the future. Additionally, it suggests that values in this column should always be positive (as it did not see any negative values in the example data), which probably makes a lot of sense for this count-like data.
 ```
 Constraint suggestion for 'totalNumber': 'totalNumber' has type Fractional
 The corresponding scala code is .hasDataType("totalNumber", ConstrainableDataTypes.Fractional)

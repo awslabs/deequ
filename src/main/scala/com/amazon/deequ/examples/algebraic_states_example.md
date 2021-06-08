@@ -107,7 +107,7 @@ val check = Check(CheckLevel.Warning, "a check")
   .isContainedIn("countryCode", Array("DE", "US", "CN"))
 ```
 
-**Deequ** now allows us to compute states for the metrics on which the constraints are defined according to the partitions of the data. We first compute and store the state per partition, and than cheaply compute the metrics for the whole table from the partition states via the `runOnAggregatedStates` method. (Note that we do not need to touch the data again, the states are sufficient).
+**Deequ** now allows us to compute states for the metrics on which the constraints are defined according to the partitions of the data. We first compute and store the state per partition, and then cheaply compute the metrics for the whole table from the partition states via the `runOnAggregatedStates` method. (Note that we do not need to touch the data again, the states are sufficient).
 
 ```scala
 val analysis = Analysis(check.requiredAnalyzers().toSeq)
