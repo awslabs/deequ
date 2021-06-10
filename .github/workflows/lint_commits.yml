@@ -5,6 +5,7 @@ on:
     types: ["opened", "reopened", "synchronize"]
 
 jobs:
+  # lint commits
   lint_commits:
     runs-on: ubuntu-latest
     steps:
@@ -13,7 +14,7 @@ jobs:
         id: lint-commits
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          regex: '^\w+\(.+\): .+' # e.g.) "feat(api): Add /users/get"
+          regex: '.+' # ^\w+\(.+\): e.g.) "feat(api): Add /users/get" or `ci: Adds CI workflow`
           format: markdown
 
       - name: Post warning comment
@@ -26,9 +27,8 @@ jobs:
 
             ${{ steps.lint-commits.outputs.unmatched_commits }}
 
-            The format `<type>(<scope>): <subject>` (`^\w+\(.+\): .+`) is acceptable. e.g., `feat(api): Add /users/get`
+            The format `<type>(<scope>): <subject>` (`'.+'`) is acceptable. e.g., `feat(api): Add /users/get` or `ci: Adds CI workflow`
 
-      - name: Fail when commits don't pass lint
+      - name: Soft exit (Fail) when commits don't pass lint
         if: ${{ steps.lint-commits.outputs.unmatched_commits != '' }}
-        run: exit 1
-
+        run: exit 0

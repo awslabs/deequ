@@ -20,11 +20,9 @@ jobs:
         hadoop: [2.7, 3.2]
         java: [11]
         spark-version: [2.4.7, 3.0.2]  # 3.1.1 - not supported yet
-        python-version: [3.7, 3.8]
         scala-version: [2.12]
     env:
       GITHUB_PREV_SHA: ${{ github.event.before }}
-      PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
     timeout-minutes: 60
     steps:
@@ -32,10 +30,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
 
       - name: Set up JDK
         uses: actions/setup-java@v2
