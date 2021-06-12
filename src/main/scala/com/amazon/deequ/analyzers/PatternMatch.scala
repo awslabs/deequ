@@ -60,10 +60,27 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isString(column) :: Nil
   }
+
+  // PatternMatch hasCode is different with the same-parameter objects because Regex compares by address
+  // fix this by tuple with pattern string
+  private val internalObj = (column, pattern.toString(), where)
+
+  override def hashCode(): Int = {
+    internalObj.hashCode()
+  }
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case o: PatternMatch => {
+        internalObj.equals(o.asInstanceOf[PatternMatch].internalObj)
+      }
+      case _ => false
+    }
+  }
+
 }
 
 object Patterns {
-
   // scalastyle:off
   // http://emailregex.com
   val EMAIL: Regex = """(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])""".r

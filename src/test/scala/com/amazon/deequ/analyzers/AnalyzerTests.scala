@@ -679,6 +679,13 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
   "Pattern compliance analyzer" should {
     val someColumnName = "some"
 
+    "PatternMatch hashCode should equal for the same pattern" in {
+      val p1 = PatternMatch("col1", "[a-z]".r)
+      val p2 = PatternMatch("col1", "[a-z]".r)
+      p1.hashCode() should equal(p2.hashCode())
+      p1 should equal(p2)
+    }
+
     "not match doubles in nullable column" in withSparkSession { sparkSession =>
 
        val df = dataFrameWithColumn(someColumnName, DoubleType, sparkSession, Row(1.1),
