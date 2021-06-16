@@ -61,7 +61,8 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
     hasColumn(column) :: isString(column) :: Nil
   }
 
-  // PatternMatch hasCode is different with the same-parameter objects because Regex compares by address
+  // PatternMatch hasCode is different with the same-parameter objects
+  // because Regex compares by address
   // fix this by tuple with pattern string
   private val internalObj = (column, pattern.toString(), where)
 
@@ -71,9 +72,7 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case o: PatternMatch => {
-        internalObj.equals(o.asInstanceOf[PatternMatch].internalObj)
-      }
+      case o: PatternMatch => internalObj.equals(o.asInstanceOf[PatternMatch].internalObj)
       case _ => false
     }
   }
