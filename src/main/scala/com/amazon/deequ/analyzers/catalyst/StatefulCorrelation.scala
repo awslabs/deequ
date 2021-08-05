@@ -21,7 +21,11 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types._
 
 /** Adjusted version of org.apache.spark.sql.catalyst.expressions.aggregate.Corr */
-private[sql] class StatefulCorrelation(x: Expression, y: Expression) extends Corr(x, y) {
+private[sql] class StatefulCorrelation(
+  x: Expression,
+  y: Expression,
+  nullOnDivideByZero: Boolean = false
+) extends Corr(x, y, nullOnDivideByZero) {
 
   override def dataType: org.apache.spark.sql.types.DataType =
     StructType(StructField("n", DoubleType) :: StructField("xAvg", DoubleType) ::
