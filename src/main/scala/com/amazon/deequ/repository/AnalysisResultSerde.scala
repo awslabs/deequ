@@ -301,6 +301,7 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
         result.addProperty(COLUMN_FIELD, histogram.column)
         result.addProperty("maxDetailBins", histogram.maxDetailBins)
+        result.addProperty(WHERE_FIELD, histogram.where.orNull)
 
       case _ : Histogram =>
         throw new IllegalArgumentException("Unable to serialize Histogram with binningUdf!")
@@ -434,7 +435,8 @@ private[deequ] object AnalyzerDeserializer
         Histogram(
           json.get(COLUMN_FIELD).getAsString,
           None,
-          json.get("maxDetailBins").getAsInt)
+          json.get("maxDetailBins").getAsInt,
+          getOptionalWhereParam(json))
 
       case "DataType" =>
         DataType(
