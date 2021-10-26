@@ -14,6 +14,14 @@
  *
  */
 
+/**
+ * This class generates random data based on DataProfile properties:
+ *  size: the number of rows to generate
+ *  statusDist: Minimum percent of rows with status in 'IN_TRANSIT'
+ *  valuableDist: Minimum percent of rows with valuable equal to 'true'
+ *  Note. Think of statusDist as a volume button for IN_TRANSIT status
+ *        and valuable in 'TRUE'.
+ */
 package com.amazon.deequ.examples
 
 import scala.collection.mutable.ListBuffer
@@ -30,15 +38,18 @@ object GenerateDataUtils {
   var dataList = ListBuffer.empty[RawData]
 
   /**
-   * Generates data according to DataProfile
-   *  DataProfile.size: Total of rows
+   * Generates data according to DataProfile object
+   *  DataProfile.size: Number of rows to generate
    *  DataProfile.statusDist: Minimum percent of rows with status equal to 'IN_TRANSIT'
    *  DataProfile.valuableDist: Minimum percent of rows with valuable equal to 'true'
    * @param dataProfile
    * @return
    */
   def generateData(dataProfile: DataProfile): Seq[RawData] = {
-    if (dataProfile != null && dataProfile.size > 0) {
+    if (dataProfile != null &&
+          dataProfile.size > 0 &&
+            dataProfile.statusDist <= 100 &&
+              dataProfile.valuableDist <= 100) {
       for (i <- 1 to dataProfile.size)
         yield addData(
           RawData(
@@ -48,6 +59,8 @@ object GenerateDataUtils {
             generateValuable(dataProfile) // Generates valuable according to DataProfile.valuableDist
           )
         )
+    } else {
+      println("Data not generated, review DataProfile values.")
     }
     //showData(dataList)
     dataList.toSeq
