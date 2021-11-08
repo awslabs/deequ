@@ -448,15 +448,22 @@ object ColumnProfiler {
     : DataFrame = {
 
     var castedData = originalData
+    var columnsSet = columns.toSet
 
-    columns.foreach { name =>
-
-      castedData = genericStatistics.typeOf(name) match {
-        case Integral => castColumn(castedData, name, LongType)
-        case Fractional => castColumn(castedData, name, DoubleType)
-        case _ => castedData
-      }
-    }
+    castedData = castedData.select(
+      castedData.columns.map { name =>
+        if (!columnsSet.contains(name)) {
+          castedData(name)
+        }
+        else {
+          genericStatistics.typeOf(name) match {
+            case Integral => castedData(name).cast(LongType)
+            case Fractional => castedData(name).cast(DoubleType)
+            case _ => castedData(name)
+          }
+        }
+      }: _*
+    )
 
     castedData
   }
