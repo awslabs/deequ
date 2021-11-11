@@ -124,11 +124,11 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
         import session.implicits._
         val expected = Seq(
           ("group-1", "Error", "Success", "CompletenessConstraint(Completeness(att1,None))",
-            "Success", "Value: 1.0 does meet the constraint requirement!"),
+            "Success", "Value: 1.0 meets the constraint requirement."),
           ("group-2-E", "Error", "Error", "SizeConstraint(Size(None))", "Failure",
             "Value: 4 does not meet the constraint requirement! Should be greater than 5!"),
           ("group-2-E", "Error", "Error", "CompletenessConstraint(Completeness(att2,None))",
-            "Success", "Value: 1.0 does meet the constraint requirement! Should equal 1!"),
+            "Success", "Value: 1.0 meets the constraint requirement. Should equal 1!"),
           ("group-2-W", "Warning", "Warning",
             "DistinctnessConstraint(Distinctness(List(item),None))",
             "Failure", "Value: 1.0 does not meet the constraint requirement! " +
@@ -152,7 +152,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
             """[{"check":"group-1","check_level":"Error","check_status":"Success",
               |"constraint":"CompletenessConstraint(Completeness(att1,None))",
               |"constraint_status":"Success",
-              |"constraint_message":"Value: 1.0 does meet the constraint requirement!"},
+              |"constraint_message":"Value: 1.0 meets the constraint requirement."},
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
               |"constraint":"SizeConstraint(Size(None))", "constraint_status":"Failure",
@@ -162,7 +162,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
               |"constraint":"CompletenessConstraint(Completeness(att2,None))",
               |"constraint_status":"Success",
-              |"constraint_message":"Value: 1.0 does meet the constraint requirement!
+              |"constraint_message":"Value: 1.0 meets the constraint requirement.
               | Should equal 1!"},
               |
               |{"check":"group-2-W","check_level":"Warning","check_status":"Warning",
