@@ -21,6 +21,7 @@ import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
 import org.apache.spark.sql.catalyst.analysis.TypeCheckResult.{TypeCheckFailure, TypeCheckSuccess}
 import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile.PercentileDigest
 import org.apache.spark.sql.catalyst.expressions.{Expression, ImplicitCastInputTypes, Literal}
+import org.apache.spark.sql.catalyst.trees.BinaryLike
 import org.apache.spark.sql.types._
 
 /** Adjusted version of org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
@@ -30,7 +31,7 @@ private[sql] case class StatefulApproxQuantile(
     accuracyExpression: Expression,
     override val mutableAggBufferOffset: Int,
     override val inputAggBufferOffset: Int)
-  extends TypedImperativeAggregate[PercentileDigest] with ImplicitCastInputTypes {
+    extends TypedImperativeAggregate[PercentileDigest] with ImplicitCastInputTypes with BinaryLike[Expression] {
 
   def this(child: Expression, accuracyExpression: Expression) = {
     this(child, accuracyExpression, 0, 0)
@@ -92,7 +93,7 @@ private[sql] case class StatefulApproxQuantile(
   override def withNewInputAggBufferOffset(newOffset: Int): StatefulApproxQuantile =
     copy(inputAggBufferOffset = newOffset)
 
-  override def children: Seq[Expression] = Seq(child, accuracyExpression)
+  // override def children: Seq[Expression] = Seq(child, accuracyExpression)
 
   // Returns null for empty inputs
   override def nullable: Boolean = true
@@ -108,4 +109,16 @@ private[sql] case class StatefulApproxQuantile(
   override def deserialize(bytes: Array[Byte]): PercentileDigest = {
     ApproximatePercentile.serializer.deserialize(bytes)
   }
+
+  override def left: Expression = child
+  override def right: Expression = accuracyExpression
+  // override def third: Expression = accuracyExpression
+
+  protected def withNewChildrenInternal(
+      newFirst: Expression, newSecond: Expression): StatefulApproxQuantile =
+    copy(child = newFirst, accuracyExpression = newSecond)
+
+  // protected def withNewChildrenInternal(
+  //   newFirst: Expression, newSecond: Expression): StatefulApproxQuantile =
+  // copy(child = newFirst, accuracyExpression = newSecond)
 }

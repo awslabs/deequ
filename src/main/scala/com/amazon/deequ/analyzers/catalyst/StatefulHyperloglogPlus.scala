@@ -26,13 +26,14 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.catalyst.expressions.aggregate.HLLConstants._
+import org.apache.spark.sql.catalyst.trees.UnaryLike
 
 /** Adjusted version of org.apache.spark.sql.catalyst.expressions.aggregate.HyperloglogPlus */
 private[sql] case class StatefulHyperloglogPlus(
     child: Expression,
     mutableAggBufferOffset: Int = 0,
     inputAggBufferOffset: Int = 0)
-  extends ImperativeAggregate {
+  extends ImperativeAggregate with UnaryLike[Expression] {
 
   import DeequHyperLogLogPlusPlusUtils._
 
@@ -53,8 +54,6 @@ private[sql] case class StatefulHyperloglogPlus(
   override def withNewInputAggBufferOffset(newInputAggBufferOffset: Int): ImperativeAggregate = {
     copy(inputAggBufferOffset = newInputAggBufferOffset)
   }
-
-  override def children: Seq[Expression] = Seq(child)
 
   override def nullable: Boolean = false
 
@@ -146,6 +145,9 @@ private[sql] case class StatefulHyperloglogPlus(
 
     wordsToBytes(registers)
   }
+
+  protected def withNewChildInternal(newChild: Expression): StatefulHyperloglogPlus =
+  copy(child = newChild)
 
 }
 
