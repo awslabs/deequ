@@ -34,4 +34,7 @@ private[sql] case class StatefulStdDevPop(
   override val evaluateExpression: Expression = CreateStruct(n :: avg :: m2 :: Nil)
 
   override def prettyName: String = "stateful_stddev_pop"
+
+  protected def withNewChildInternal(newChild: Expression): StatefulStdDevPop =
+    copy(child = newChild)
 }
