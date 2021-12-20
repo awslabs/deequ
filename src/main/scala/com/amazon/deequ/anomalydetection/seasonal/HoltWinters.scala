@@ -132,7 +132,7 @@ class HoltWinters(
       }
     val forecasted = Y.drop(series.size)
 
-    ModelResults(forecasted, level, trend, seasonality, residuals)
+    ModelResults(forecasted.toSeq, level.toSeq, trend.toSeq, seasonality.toSeq, residuals.toSeq)
   }
 
   private def modelSelectionFor(
