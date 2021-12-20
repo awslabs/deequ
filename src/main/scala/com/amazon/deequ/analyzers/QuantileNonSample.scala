@@ -21,7 +21,6 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 import scala.util.control.Breaks._
 
-
 class QuantileNonSample[T](
     var sketchSize: Int,
     var shrinkingFactor: Double = 0.64)
