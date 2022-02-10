@@ -50,4 +50,8 @@ private[sql] class StatefulCorrelation(
     val state = Seq(super.hashCode(), evaluateExpression)
     state.map { _.hashCode() }.foldLeft(0) {(a, b) => 31 * a + b }
   }
+
+  override protected def withNewChildrenInternal(newLeft: Expression,
+                                                 newRight: Expression): StatefulCorrelation =
+    new StatefulCorrelation(newLeft, newRight, nullOnDivideByZero)
 }
