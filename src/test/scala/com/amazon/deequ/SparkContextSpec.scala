@@ -78,6 +78,7 @@ trait SparkContextSpec {
       .appName("test")
       .config("spark.ui.enabled", "false")
       .config("spark.sql.shuffle.partitions", 2.toString)
+      .config("spark.sql.adaptive.enabled", value = false)
       .getOrCreate()
     session.sparkContext.setCheckpointDir(System.getProperty("java.io.tmpdir"))
     session
