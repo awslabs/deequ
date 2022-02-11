@@ -1,19 +1,18 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not
- * use this file except in compliance with the License. A copy of the License
- * is located at
- *
- *     http://aws.amazon.com/apache2.0/
- *
- * or in the "license" file accompanying this file. This file is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- *
- */
-
+  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+  * use this file except in compliance with the License. A copy of the License
+  * is located at
+  *
+  * http://aws.amazon.com/apache2.0/
+  *
+  * or in the "license" file accompanying this file. This file is distributed on
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+  * express or implied. See the License for the specific language governing
+  * permissions and limitations under the License.
+  *
+  */
 package org.apache.spark.sql.catalyst.expressions.aggregate
 
 import org.apache.spark.sql.catalyst.InternalRow
@@ -26,12 +25,13 @@ import org.apache.spark.sql.types._
 
 /** Adjusted version of org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
   * (github tag v2.2.0) */
-private[sql] case class StatefulApproxQuantile(
-    child: Expression,
-    accuracyExpression: Expression,
-    override val mutableAggBufferOffset: Int,
-    override val inputAggBufferOffset: Int)
-    extends TypedImperativeAggregate[PercentileDigest] with ImplicitCastInputTypes with BinaryLike[Expression] {
+private[sql] case class StatefulApproxQuantile(child: Expression,
+                                               accuracyExpression: Expression,
+                                               override val mutableAggBufferOffset: Int,
+                                               override val inputAggBufferOffset: Int)
+    extends TypedImperativeAggregate[PercentileDigest]
+    with ImplicitCastInputTypes
+    with BinaryLike[Expression] {
 
   def this(child: Expression, accuracyExpression: Expression) = {
     this(child, accuracyExpression, 0, 0)
@@ -111,11 +111,12 @@ private[sql] case class StatefulApproxQuantile(
   }
 
   override def left: Expression = child
+
   override def right: Expression = accuracyExpression
   // override def third: Expression = accuracyExpression
 
-  protected def withNewChildrenInternal(
-      newFirst: Expression, newSecond: Expression): StatefulApproxQuantile =
+  protected def withNewChildrenInternal(newFirst: Expression,
+                                        newSecond: Expression): StatefulApproxQuantile =
     copy(child = newFirst, accuracyExpression = newSecond)
 
   // protected def withNewChildrenInternal(
