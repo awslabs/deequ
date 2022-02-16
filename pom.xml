@@ -6,7 +6,7 @@
 
     <groupId>com.amazon.deequ</groupId>
     <artifactId>deequ</artifactId>
-    <version>2.0.0-spark-3.2</version>
+    <version>2.0.1-spark-3.2</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -60,6 +60,11 @@
             <id>andrey-tpt</id>
             <name>Andrey Taptunov</name>
             <url>https://github.com/andrey-tpt</url>
+        </developer>
+        <developer>
+            <id>tammo-rukat</id>
+            <name>Tammo Rukat</name>
+            <url>https://github.com/tammor</url>
         </developer>
     </developers>
 
