@@ -691,11 +691,12 @@ case class Check(
       pattern: Regex,
       assertion: Double => Boolean = Check.IsOne,
       name: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      isNullAllowed: Boolean = false)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint)
+      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint, isNullAllowed)
     }
   }
 

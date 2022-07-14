@@ -303,10 +303,11 @@ object Constraint {
       assertion: Double => Boolean,
       where: Option[String] = None,
       name: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      isNullAllowed: Boolean = false)
     : Constraint = {
 
-    val patternMatch = PatternMatch(column, pattern, where)
+    val patternMatch = PatternMatch(column, pattern, where, isNullAllowed)
 
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
       patternMatch, assertion, hint = hint)
