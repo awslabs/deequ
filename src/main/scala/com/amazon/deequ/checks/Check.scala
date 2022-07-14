@@ -696,7 +696,14 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint, isNullAllowed)
+      Constraint.patternMatchConstraint(
+        column,
+        pattern,
+        assertion,
+        filter,
+        name,
+        hint,
+        isNullAllowed)
     }
   }
 
