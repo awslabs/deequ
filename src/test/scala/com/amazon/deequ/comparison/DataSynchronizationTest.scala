@@ -20,16 +20,9 @@ import org.apache.spark
 import org.scalatest.{BeforeAndAfter, FlatSpec}
 import org.apache.spark.sql.{DataFrame, SQLContext, SQLImplicits, SparkSession}
 
-
-
 case class rowItems(id: Int, name: String, state: String)
 
  class DataSynchronizationTest extends FlatSpec{
-
-    def readCsv(sparkSession: SparkSession, filePath: String): DataFrame =
-      sparkSession.read.option("header", value = true).
-        option("delimiter",",").csv(filePath).toDF()
-
 
     val spark = SparkSession.builder().master("local").getOrCreate()
     import spark.implicits._
@@ -43,7 +36,6 @@ case class rowItems(id: Int, name: String, state: String)
       rowItems(6,"Molly","TX")))
     val testDS1 = rdd1.toDF()
 
-
     val rdd2 = spark.sparkContext.parallelize(Seq(
       rowItems(1,"John","NY"),
       rowItems(2,"Javier","WI"),
@@ -53,13 +45,12 @@ case class rowItems(id: Int, name: String, state: String)
       rowItems(7,"Megan","TX")))
     val testDS2 = rdd2.toDF()
 
-  //
   it should "match 0.66 when id is colKey and name is compCols" in {
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
-    val compCols = Map("name" -> "name")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.60
+    val compCols = Some(Map("name" -> "name"))
+    val assertion: Double => Boolean = _ >= 0.60
 
     val result = (DataSynchronization.columnMatch(ds1,ds2,colKeyMap,compCols,assertion))
     assert(result)
@@ -69,8 +60,8 @@ case class rowItems(id: Int, name: String, state: String)
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
-    val compCols = Map("state" -> "state")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.80
+    val compCols = Some(Map("state" -> "state"))
+    val assertion: Double => Boolean = _ >= 0.80
 
     val result = (DataSynchronization.columnMatch(ds1,ds2,colKeyMap,compCols,assertion))
     assert(result)
@@ -80,20 +71,19 @@ case class rowItems(id: Int, name: String, state: String)
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("name" -> "name")
-    val compCols = Map("state" -> "state")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.66
+    val compCols = Some(Map("state" -> "state"))
+    val assertion: Double => Boolean = _ >= 0.66
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(!result)
-
   }
 
   it should "match 0.66 when id is unique col, name and state are compCols" in {
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
-    val compCols = Map("name" -> "name", "state" -> "state")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.60
+    val compCols = Some(Map("name" -> "name", "state" -> "state"))
+    val assertion: Double => Boolean = _ >= 0.60
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(result)
@@ -103,15 +93,14 @@ case class rowItems(id: Int, name: String, state: String)
     val ds1 = testDS2
     val ds2 = testDS1
     val colKeyMap = Map("id" -> "id")
-    val compCols = Map("name" -> "name", "state" -> "state")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.40
+    val compCols = Some(Map("name" -> "name", "state" -> "state"))
+    val assertion: Double => Boolean = _ >= 0.40
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(result)
   }
 
   it should "return false because the id col in ds1 isn't unique" in {
-
     val rdd3 = spark.sparkContext.parallelize(Seq(
       rowItems(1,"John","NY"),
       rowItems(1,"Javier","WI"),
@@ -126,15 +115,14 @@ case class rowItems(id: Int, name: String, state: String)
     val ds1 = testDS3
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
-    val compCols = Map("name" -> "name", "state" -> "state")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.40
+    val compCols = Some(Map("name" -> "name", "state" -> "state"))
+    val assertion: Double => Boolean = _ >= 0.40
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(!result)
   }
 
   it should "return false because the id col in ds2 isn't unique" in {
-
     val rdd3 = spark.sparkContext.parallelize(Seq(
       rowItems(1,"John","NY"),
       rowItems(1,"Javier","WI"),
@@ -149,8 +137,8 @@ case class rowItems(id: Int, name: String, state: String)
     val ds1 = testDS1
     val ds2 = testDS3
     val colKeyMap = Map("id" -> "id")
-    val compCols = Map("name" -> "name", "state" -> "state")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.40
+    val compCols = Some(Map("name" -> "name", "state" -> "state"))
+    val assertion: Double => Boolean = _ >= 0.40
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(!result)
@@ -160,11 +148,32 @@ case class rowItems(id: Int, name: String, state: String)
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("state" -> "state")
-    val compCols = Map("name" -> "name")
-    val assertion: Double => Boolean = (a: Double) => a >= 0.66
+    val compCols = Some(Map("name" -> "name"))
+    val assertion: Double => Boolean = _ >= 0.66
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(!result)
   }
 
+   it should "check all columns and return an assertion of .66" in {
+     val ds1 = testDS1
+     val ds2 = testDS2
+     val colKeyMap = Map("id" -> "id")
+     val compCols = None
+     val assertion: Double => Boolean = _ >= 0.66
+
+     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+     assert(result)
+   }
+
+   it should "return false because state column isn't unique" in {
+     val ds1 = testDS1
+     val ds2 = testDS2
+     val colKeyMap = Map("state" -> "state")
+     val compCols = None
+     val assertion: Double => Boolean = _ >= 0.66
+
+     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+     assert(!result)
+   }
 }

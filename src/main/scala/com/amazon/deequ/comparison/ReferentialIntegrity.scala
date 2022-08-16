@@ -24,11 +24,9 @@ object ReferentialIntegrity {
                   col2: String, assertion: Double => Boolean): Boolean = {
 
     if (ds1.columns.contains(col1) && ds2.columns.contains(col2)) {
-
-      // joining the ds1 with ds2 with only the rows that matches obtained from joinExpression
       val joined = ds1.join(ds2, ds1(col1) === ds2(col2), "leftsemi")
-
       assertion(joined.count().toDouble / ds1.count())
+
     } else {
       false
     }

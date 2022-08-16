@@ -16,19 +16,13 @@
 
 package com.amazon.deequ.comparison
 
-import org.apache.spark
-import org.scalatest.{BeforeAndAfter, FlatSpec}
-import org.apache.spark.sql.{DataFrame, SQLContext, SQLImplicits, SparkSession}
-
+import org.scalatest.FlatSpec
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 case class rowItem(id: Int, name: String, state: String)
 case class newItem (new_id: Int, name: String, state: String)
 
 class ReferentialIntegrityTest extends FlatSpec {
-
-  def readCsv(sparkSession: SparkSession, filePath: String): DataFrame =
-    sparkSession.read.option("header", value = true).
-      option("delimiter","\t").csv(filePath).toDF()
 
   val spark = SparkSession.builder().master("local").getOrCreate()
   import spark.implicits._
@@ -56,8 +50,7 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS2
     val col2 = "new_id"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 1.0
+    val assertion: Double => Boolean = _ >= 1.0
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
@@ -70,8 +63,7 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS1
     val col2 = "id"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 0.6
+    val assertion: Double => Boolean = _ >= 0.6
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
@@ -84,8 +76,7 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS2
     val col2 = "name"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 0.75
+    val assertion: Double => Boolean = _ >= 0.75
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
@@ -98,8 +89,7 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS1
     val col2 = "name"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 0.60
+    val assertion: Double => Boolean = _ >= 0.60
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
@@ -112,8 +102,7 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS2
     val col2 = "state"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 1.0
+    val assertion: Double => Boolean = _ >= 1.0
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
@@ -126,8 +115,7 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS1
     val col2 = "state"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 0.8
+    val assertion: Double => Boolean = _  >= 0.8
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
@@ -140,13 +128,11 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS2
     val col2 = "state"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 0.0
+    val assertion: Double => Boolean = _ >= 0.0
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
   }
-
 
   //Expect failure because col name doesn't exist
   it should "creat an error, col name doesn't exist " in {
@@ -155,21 +141,9 @@ class ReferentialIntegrityTest extends FlatSpec {
     val ds2 = testDS2
     val col2 = "new_id"
 
-    //(a: Double) => a can be _
-    val assertion: Double => Boolean = (a: Double) => a >= 0.6
+    val assertion: Double => Boolean = _ >= 0.6
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(!result)
   }
-
-
-
-  /* This is an example test
-  it should "run" in {
-    val x = 1
-    val y = 2
-    val expected = 3
-    assert(expected == ReferentialIntegrity.add(x,y))
-  }
-   */
 }
