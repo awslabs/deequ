@@ -4,3 +4,4 @@
 target/.travis/public-signing-key.gpg
 target/
 .DS_Store
+.DS_Store
