@@ -42,9 +42,8 @@ class ReferentialIntegrityTest extends FlatSpec {
     newItem(6, "Megan", "TX")))
   val testDS2 = rdd2.toDF()
 
-
   // Expect a 1.0 assertion check of id/new_id columns when testDS1 is the subset
-  it should "id matches fully" in {
+  it should "id match equals 1.0" in {
     val ds1 = testDS1
     val col1 = "id"
     val ds2 = testDS2
@@ -57,7 +56,7 @@ class ReferentialIntegrityTest extends FlatSpec {
   }
 
   // Expect a 0.6 assertion of the new_id/id columns when testDS2 is the subset
-  it should "id match equal or over 0.60" in {
+  it should "id match equals 0.60" in {
     val ds1 = testDS2
     val col1 = "new_id"
     val ds2 = testDS1
@@ -69,21 +68,21 @@ class ReferentialIntegrityTest extends FlatSpec {
     assert(result)
   }
 
-  // Expect a 0.75 assertion check of name columns when testDS1 is the subset
-  it should "name match equal or over 0.75" in {
+  // Expect a 1.0 assertion check of name columns when testDS1 is the subset
+  it should "name match equals 1.0" in {
     val ds1 = testDS1
     val col1 = "name"
     val ds2 = testDS2
     val col2 = "name"
 
-    val assertion: Double => Boolean = _ >= 0.75
+    val assertion: Double => Boolean = _ >= 1.0
 
     val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
     assert(result)
   }
 
   // Expect a 0.60 assertion of the name columns when testDS2 is the subset
-  it should "names match equal or over 0.60" in {
+  it should "names match equals to 0.60" in {
     val ds1 = testDS2
     val col1 = "name"
     val ds2 = testDS1
@@ -96,7 +95,7 @@ class ReferentialIntegrityTest extends FlatSpec {
   }
 
   // Expect a 1.0 assertion of the state columns when testDS1 is the subset
-  it should "state match equal or over 1.0" in {
+  it should "state match equals to 1.0" in {
     val ds1 = testDS1
     val col1 = "state"
     val ds2 = testDS2
@@ -109,7 +108,7 @@ class ReferentialIntegrityTest extends FlatSpec {
   }
 
   //Expect a 0.80 assertion of the state columns when testDS2 is the subset
-  it should "state match equal or over 0.80" in {
+  it should "state match equals to 0.80" in {
     val ds1 = testDS2
     val col1 = "state"
     val ds2 = testDS1
@@ -122,7 +121,7 @@ class ReferentialIntegrityTest extends FlatSpec {
   }
 
   //Expect a 0.0 assertion of the state column with name column when executed
-  it should "state match with name is 0.0" in {
+  it should "state match with name equals to 0.0" in {
     val ds1 = testDS1
     val col1 = "name"
     val ds2 = testDS2
@@ -134,12 +133,25 @@ class ReferentialIntegrityTest extends FlatSpec {
     assert(result)
   }
 
-  //Expect failure because col name doesn't exist
-  it should "creat an error, col name doesn't exist " in {
+  //Expect false because col name doesn't exist
+  it should "ds1 doesn't contain col1 " in {
     val ds1 = testDS1
     val col1 = "ids"
     val ds2 = testDS2
     val col2 = "new_id"
+
+    val assertion: Double => Boolean = _ >= 0.6
+
+    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
+    assert(!result)
+  }
+
+  //Expect false because col name doesn't exist
+  it should "ds2 doesn't contain col2" in {
+    val ds1 = testDS1
+    val col1 = "id"
+    val ds2 = testDS2
+    val col2 = "all-ids"
 
     val assertion: Double => Boolean = _ >= 0.6
 
