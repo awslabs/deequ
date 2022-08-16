@@ -16,13 +16,12 @@
 
 package com.amazon.deequ.comparison
 
-import org.apache.spark
-import org.scalatest.{BeforeAndAfter, FlatSpec}
-import org.apache.spark.sql.{DataFrame, SQLContext, SQLImplicits, SparkSession}
+import org.scalatest.FlatSpec
+import org.apache.spark.sql.SparkSession
 
 case class rowItems(id: Int, name: String, state: String)
 
- class DataSynchronizationTest extends FlatSpec{
+class DataSynchronizationTest extends FlatSpec{
 
     val spark = SparkSession.builder().master("local").getOrCreate()
     import spark.implicits._
@@ -45,7 +44,7 @@ case class rowItems(id: Int, name: String, state: String)
       rowItems(7,"Megan","TX")))
     val testDS2 = rdd2.toDF()
 
-  it should "match 0.66 when id is colKey and name is compCols" in {
+  it should "match == 0.66 when id is colKey and name is compCols" in {
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
@@ -56,7 +55,7 @@ case class rowItems(id: Int, name: String, state: String)
     assert(result)
   }
 
-  it should "match 0.83 when id is colKey and state is compCols" in {
+  it should "match == 0.83 when id is colKey and state is compCols" in {
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
@@ -78,7 +77,7 @@ case class rowItems(id: Int, name: String, state: String)
     assert(!result)
   }
 
-  it should "match 0.66 when id is unique col, name and state are compCols" in {
+  it should "match >= 0.66 when id is unique col, name and state are compCols" in {
     val ds1 = testDS1
     val ds2 = testDS2
     val colKeyMap = Map("id" -> "id")
@@ -89,12 +88,12 @@ case class rowItems(id: Int, name: String, state: String)
     assert(result)
   }
 
-  it should "match 0.66 (same test as above only the data sets change)" in {
+  it should "match >= 0.66 (same test as above only the data sets change)" in {
     val ds1 = testDS2
     val ds2 = testDS1
     val colKeyMap = Map("id" -> "id")
     val compCols = Some(Map("name" -> "name", "state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.40
+    val assertion: Double => Boolean = _ >= 0.60
 
     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
     assert(result)
