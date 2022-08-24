@@ -16,17 +16,33 @@
 
 package com.amazon.deequ.comparison
 
-import org.apache.spark.sql.{DataFrame}
+import org.apache.spark.sql.DataFrame
 
 object ReferentialIntegrity {
+
 
   def subsetCheck(ds1: DataFrame, col1: String, ds2: DataFrame,
                   col2: String, assertion: Double => Boolean): Boolean = {
 
-    if (ds1.columns.contains(col1) && ds2.columns.contains(col2)) {
-      val joined = ds1.join(ds2, ds1(col1) === ds2(col2), "leftsemi")
-      assertion(joined.count().toDouble / ds1.count())
 
+    if (ds1.columns.contains(col1) && ds2.columns.contains(col2)) {
+      //      val spark = SparkSession.builder()
+      //        .master("local[1]")
+      //        .appName("SparkByExamples.com")
+      //        .getOrCreate()
+      //      import spark.implicits._
+
+
+      val cols1 = ds1.select(col1)
+      val cols2 = ds2.select(col2)
+      val match_count = cols1.except(cols2).count()
+
+      if (match_count == 0) {
+        assertion(1.0)
+      } else {
+        val ds1_count = ds1.count
+        assertion((ds1_count - match_count).toDouble / ds1_count)
+      }
     } else {
       false
     }

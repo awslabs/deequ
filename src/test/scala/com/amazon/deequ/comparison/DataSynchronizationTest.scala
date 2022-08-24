@@ -16,163 +16,357 @@
 
 package com.amazon.deequ.comparison
 
-import org.scalatest.FlatSpec
-import org.apache.spark.sql.SparkSession
+import com.amazon.deequ.SparkContextSpec
+import org.scalatest.wordspec.AnyWordSpec
 
-case class rowItems(id: Int, name: String, state: String)
+class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
 
-class DataSynchronizationTest extends FlatSpec{
+  "Data Synchronization Test" should {
 
-    val spark = SparkSession.builder().master("local").getOrCreate()
-    import spark.implicits._
+    "match == 0.66 when id is colKey and name is compCols" in withSparkSession { spark =>
+      import spark.implicits._
 
-    val rdd1 = spark.sparkContext.parallelize(Seq(
-      rowItems(1,"John","NY"),
-      rowItems(2,"Javier","WI"),
-      rowItems(3,"Helena","TX"),
-      rowItems(4,"Helena","TX"),
-      rowItems(5,"Nick","FL"),
-      rowItems(6,"Molly","TX")))
-    val testDS1 = rdd1.toDF()
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Nick", "FL"),
+        (6, "Molly", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
 
-    val rdd2 = spark.sparkContext.parallelize(Seq(
-      rowItems(1,"John","NY"),
-      rowItems(2,"Javier","WI"),
-      rowItems(3,"Helena","TX"),
-      rowItems(4,"Helena","TX"),
-      rowItems(5,"Helena","FL"),
-      rowItems(7,"Megan","TX")))
-    val testDS2 = rdd2.toDF()
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Helena", "FL"),
+        (7, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("id", "name", "state")
 
-  it should "match == 0.66 when id is colKey and name is compCols" in {
-    val ds1 = testDS1
-    val ds2 = testDS2
-    val colKeyMap = Map("id" -> "id")
-    val compCols = Some(Map("name" -> "name"))
-    val assertion: Double => Boolean = _ >= 0.60
 
-    val result = (DataSynchronization.columnMatch(ds1,ds2,colKeyMap,compCols,assertion))
-    assert(result)
+      val ds1 = testDS1
+      val ds2 = testDS2
+      val colKeyMap = Map("id" -> "id")
+      val compCols = Some(Map("name" -> "name"))
+      val assertion: Double => Boolean = _ >= 0.60
+
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+      assert(result)
+    }
+
+
+        "match == 0.83 when id is colKey and state is compCols" in withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val ds1 = testDS1
+          val ds2 = testDS2
+          val colKeyMap = Map("id" -> "id")
+          val compCols = Some(Map("state" -> "state"))
+          val assertion: Double => Boolean = _ >= 0.80
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(result)
+        }
+
+        "return false because col name isn't unique" in withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val ds1 = testDS1
+          val ds2 = testDS2
+          val colKeyMap = Map("name" -> "name")
+          val compCols = Some(Map("state" -> "state"))
+          val assertion: Double => Boolean = _ >= 0.66
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(!result)
+        }
+
+        "match >= 0.66 when id is unique col, name and state are compCols" in
+          withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val ds1 = testDS1
+          val ds2 = testDS2
+          val colKeyMap = Map("id" -> "id")
+          val compCols = Some(Map("name" -> "name", "state" -> "state"))
+          val assertion: Double => Boolean = _ >= 0.60
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(result)
+        }
+
+        "match >= 0.66 (same test as above only the data sets change)" in withSparkSession{ spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val ds1 = testDS2
+          val ds2 = testDS1
+          val colKeyMap = Map("id" -> "id")
+          val compCols = Some(Map("name" -> "name", "state" -> "state"))
+          val assertion: Double => Boolean = _ >= 0.60
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(result)
+        }
+
+        "return false because the id col in ds1 isn't unique" in withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val rdd3 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (1, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (9, "Nicholas", "CT"),
+            (7, "Megan", "TX")))
+          val testDS3 = rdd3.toDF("id", "name", "state")
+
+          val ds1 = testDS3
+          val ds2 = testDS2
+          val colKeyMap = Map("id" -> "id")
+          val compCols = Some(Map("name" -> "name", "state" -> "state"))
+          val assertion: Double => Boolean = _ >= 0.40
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(!result)
+        }
+
+        "return false because the id col in ds2 isn't unique" in withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd3 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (1, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (9, "Nicholas", "CT"),
+            (7, "Megan", "TX")))
+          val testDS3 = rdd3.toDF("id", "name", "state")
+
+          val ds1 = testDS1
+          val ds2 = testDS3
+          val colKeyMap = Map("id" -> "id")
+          val compCols = Some(Map("name" -> "name", "state" -> "state"))
+          val assertion: Double => Boolean = _ >= 0.40
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(!result)
+        }
+
+
+        "return false because col state isn't unique" in withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val ds1 = testDS1
+          val ds2 = testDS2
+          val colKeyMap = Map("state" -> "state")
+          val compCols = Some(Map("name" -> "name"))
+          val assertion: Double => Boolean = _ >= 0.66
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(!result)
+        }
+
+        "check all columns and return an assertion of .66" in withSparkSession { spark =>
+          import spark.implicits._
+
+          val rdd1 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Nick", "FL"),
+            (6, "Molly", "TX")))
+          val testDS1 = rdd1.toDF("id", "name", "state")
+
+          val rdd2 = spark.sparkContext.parallelize(Seq(
+            (1, "John", "NY"),
+            (2, "Javier", "WI"),
+            (3, "Helena", "TX"),
+            (4, "Helena", "TX"),
+            (5, "Helena", "FL"),
+            (7, "Megan", "TX")))
+          val testDS2 = rdd2.toDF("id", "name", "state")
+
+          val ds1 = testDS1
+          val ds2 = testDS2
+          val colKeyMap = Map("id" -> "id")
+          val compCols = None
+          val assertion: Double => Boolean = _ >= 0.66
+
+          val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+          assert(result)
+        }
+
+    "return false because state column isn't unique" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Nick", "FL"),
+        (6, "Molly", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Helena", "FL"),
+        (7, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("id", "name", "state")
+
+      val ds1 = testDS1
+      val ds2 = testDS2
+      val colKeyMap = Map("state" -> "state")
+      val compCols = None
+      val assertion: Double => Boolean = _ >= 0.66
+
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+      assert(!result)
+    }
+    "check all columns" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Nick", "FL"),
+        (6, "Molly", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Helena", "FL"),
+        (7, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("id", "name", "state")
+
+      val ds1 = testDS1
+      val ds2 = testDS2
+      val colKeyMap = Map("id" -> "id")
+      val compCols = None
+      val assertion: Double => Boolean = _ >= 0.66
+
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+      assert(result)
+    }
   }
-
-  it should "match == 0.83 when id is colKey and state is compCols" in {
-    val ds1 = testDS1
-    val ds2 = testDS2
-    val colKeyMap = Map("id" -> "id")
-    val compCols = Some(Map("state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.80
-
-    val result = (DataSynchronization.columnMatch(ds1,ds2,colKeyMap,compCols,assertion))
-    assert(result)
-  }
-
-  it should "return false because col name isn't unique" in {
-    val ds1 = testDS1
-    val ds2 = testDS2
-    val colKeyMap = Map("name" -> "name")
-    val compCols = Some(Map("state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.66
-
-    val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-    assert(!result)
-  }
-
-  it should "match >= 0.66 when id is unique col, name and state are compCols" in {
-    val ds1 = testDS1
-    val ds2 = testDS2
-    val colKeyMap = Map("id" -> "id")
-    val compCols = Some(Map("name" -> "name", "state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.60
-
-    val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-    assert(result)
-  }
-
-  it should "match >= 0.66 (same test as above only the data sets change)" in {
-    val ds1 = testDS2
-    val ds2 = testDS1
-    val colKeyMap = Map("id" -> "id")
-    val compCols = Some(Map("name" -> "name", "state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.60
-
-    val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-    assert(result)
-  }
-
-  it should "return false because the id col in ds1 isn't unique" in {
-    val rdd3 = spark.sparkContext.parallelize(Seq(
-      rowItems(1,"John","NY"),
-      rowItems(1,"Javier","WI"),
-      rowItems(3,"Helena","TX"),
-      rowItems(4,"Helena","TX"),
-      rowItems(5,"Helena","FL"),
-      rowItems(9,"Nicholas","CT"),
-      rowItems(7,"Megan","TX")))
-
-    val testDS3 = rdd3.toDF()
-
-    val ds1 = testDS3
-    val ds2 = testDS2
-    val colKeyMap = Map("id" -> "id")
-    val compCols = Some(Map("name" -> "name", "state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.40
-
-    val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-    assert(!result)
-  }
-
-  it should "return false because the id col in ds2 isn't unique" in {
-    val rdd3 = spark.sparkContext.parallelize(Seq(
-      rowItems(1,"John","NY"),
-      rowItems(1,"Javier","WI"),
-      rowItems(3,"Helena","TX"),
-      rowItems(4,"Helena","TX"),
-      rowItems(5,"Helena","FL"),
-      rowItems(5,"Nicholas","CT"),
-      rowItems(7,"Megan","TX")))
-
-    val testDS3 = rdd3.toDF()
-
-    val ds1 = testDS1
-    val ds2 = testDS3
-    val colKeyMap = Map("id" -> "id")
-    val compCols = Some(Map("name" -> "name", "state" -> "state"))
-    val assertion: Double => Boolean = _ >= 0.40
-
-    val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-    assert(!result)
-  }
-
-  it should "return false because col state isn't unique" in {
-    val ds1 = testDS1
-    val ds2 = testDS2
-    val colKeyMap = Map("state" -> "state")
-    val compCols = Some(Map("name" -> "name"))
-    val assertion: Double => Boolean = _ >= 0.66
-
-    val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-    assert(!result)
-  }
-
-   it should "check all columns and return an assertion of .66" in {
-     val ds1 = testDS1
-     val ds2 = testDS2
-     val colKeyMap = Map("id" -> "id")
-     val compCols = None
-     val assertion: Double => Boolean = _ >= 0.66
-
-     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-     assert(result)
-   }
-
-   it should "return false because state column isn't unique" in {
-     val ds1 = testDS1
-     val ds2 = testDS2
-     val colKeyMap = Map("state" -> "state")
-     val compCols = None
-     val assertion: Double => Boolean = _ >= 0.66
-
-     val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-     assert(!result)
-   }
 }
