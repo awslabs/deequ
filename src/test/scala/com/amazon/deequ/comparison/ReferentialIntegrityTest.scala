@@ -16,146 +16,278 @@
 
 package com.amazon.deequ.comparison
 
-import org.scalatest.FlatSpec
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import com.amazon.deequ.SparkContextSpec
+import org.scalatest.wordspec.AnyWordSpec
 
-case class rowItem(id: Int, name: String, state: String)
-case class newItem (new_id: Int, name: String, state: String)
+class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
 
-class ReferentialIntegrityTest extends FlatSpec {
+  "Referential Integrity Test" should {
+    "id match equals 1.0" in withSparkSession { spark =>
+      import spark.implicits._
 
-  val spark = SparkSession.builder().master("local").getOrCreate()
-  import spark.implicits._
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
 
-  val rdd1 = spark.sparkContext.parallelize(Seq(
-    rowItem(1, "John", "NY"),
-    rowItem(2, "Javier", "WI"),
-    rowItem(3, "Helena", "TX"),
-    rowItem(3, "Helena", "TX")))
-  val testDS1 = rdd1.toDF()
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
 
-  val rdd2 = spark.sparkContext.parallelize(Seq(
-    newItem(1, "John", "NY"),
-    newItem(2, "Javier", "WI"),
-    newItem(3, "Helena", "TX"),
-    newItem(5, "Tyler", "FL"),
-    newItem(6, "Megan", "TX")))
-  val testDS2 = rdd2.toDF()
+      val ds1 = testDS1
+      val col1 = "id"
+      val ds2 = testDS2
+      val col2 = "new_id"
 
-  // Expect a 1.0 assertion check of id/new_id columns when testDS1 is the subset
-  it should "id match equals 1.0" in {
-    val ds1 = testDS1
-    val col1 = "id"
-    val ds2 = testDS2
-    val col2 = "new_id"
+      val assertion: Double => Boolean = _ >= 1.0
 
-    val assertion: Double => Boolean = _ >= 1.0
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+    "id match equals 0.60" in withSparkSession { spark =>
+      import spark.implicits._
 
-  // Expect a 0.6 assertion of the new_id/id columns when testDS2 is the subset
-  it should "id match equals 0.60" in {
-    val ds1 = testDS2
-    val col1 = "new_id"
-    val ds2 = testDS1
-    val col2 = "id"
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
 
-    val assertion: Double => Boolean = _ >= 0.6
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+      val ds1 = testDS2
+      val col1 = "new_id"
+      val ds2 = testDS1
+      val col2 = "id"
 
-  // Expect a 1.0 assertion check of name columns when testDS1 is the subset
-  it should "name match equals 1.0" in {
-    val ds1 = testDS1
-    val col1 = "name"
-    val ds2 = testDS2
-    val col2 = "name"
+      val assertion: Double => Boolean = _ >= 0.60
 
-    val assertion: Double => Boolean = _ >= 1.0
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+    "name match equals 1.0" in withSparkSession { spark =>
+      import spark.implicits._
 
-  // Expect a 0.60 assertion of the name columns when testDS2 is the subset
-  it should "names match equals to 0.60" in {
-    val ds1 = testDS2
-    val col1 = "name"
-    val ds2 = testDS1
-    val col2 = "name"
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
 
-    val assertion: Double => Boolean = _ >= 0.60
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+      // Expect a 1.0 assertion check of id/new_id columns when testDS1 is the subset
+      val ds1 = testDS1
+      val col1 = "name"
+      val ds2 = testDS2
+      val col2 = "name"
 
-  // Expect a 1.0 assertion of the state columns when testDS1 is the subset
-  it should "state match equals to 1.0" in {
-    val ds1 = testDS1
-    val col1 = "state"
-    val ds2 = testDS2
-    val col2 = "state"
+      val assertion: Double => Boolean = _ >= 1.0
 
-    val assertion: Double => Boolean = _ >= 1.0
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+    "name match equals 0.60" in withSparkSession { spark =>
+      import spark.implicits._
 
-  //Expect a 0.80 assertion of the state columns when testDS2 is the subset
-  it should "state match equals to 0.80" in {
-    val ds1 = testDS2
-    val col1 = "state"
-    val ds2 = testDS1
-    val col2 = "state"
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
 
-    val assertion: Double => Boolean = _  >= 0.8
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("id", "name", "state")
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+      // Expect a 1.0 assertion check of id/new_id columns when testDS1 is the subset
+      val ds1 = testDS2
+      val col1 = "name"
+      val ds2 = testDS1
+      val col2 = "name"
 
-  //Expect a 0.0 assertion of the state column with name column when executed
-  it should "state match with name equals to 0.0" in {
-    val ds1 = testDS1
-    val col1 = "name"
-    val ds2 = testDS2
-    val col2 = "state"
+      val assertion: Double => Boolean = _ >= 0.60
 
-    val assertion: Double => Boolean = _ >= 0.0
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(result)
-  }
+    // Expect a 1.0 assertion of the state/state columns when testDS2 is the subset
+    "state match equals 1.0" in withSparkSession { spark =>
+      import spark.implicits._
 
-  //Expect false because col name doesn't exist
-  it should "ds1 doesn't contain col1 " in {
-    val ds1 = testDS1
-    val col1 = "ids"
-    val ds2 = testDS2
-    val col2 = "new_id"
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
 
-    val assertion: Double => Boolean = _ >= 0.6
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(!result)
-  }
 
-  //Expect false because col name doesn't exist
-  it should "ds2 doesn't contain col2" in {
-    val ds1 = testDS1
-    val col1 = "id"
-    val ds2 = testDS2
-    val col2 = "all-ids"
+      val ds1 = testDS1
+      val col1 = "state"
+      val ds2 = testDS2
+      val col2 = "state"
 
-    val assertion: Double => Boolean = _ >= 0.6
+      val assertion: Double => Boolean = _ >= 1.0
 
-    val result = ReferentialIntegrity.subsetCheck(ds1,col1,ds2,col2,assertion)
-    assert(!result)
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
+
+    // Expect a 0.80 assertion of the state columns when testDS2 is the subset
+    "state match equals to 0.80" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
+
+      val ds1 = testDS2
+      val col1 = "state"
+      val ds2 = testDS1
+      val col2 = "state"
+
+      val assertion: Double => Boolean = _ >= 0.8
+
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
+
+    // Expect a 0.0 assertion of the state column with name column when executed
+    "state match with name equals to 0.0" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
+
+      val ds1 = testDS1
+      val col1 = "name"
+      val ds2 = testDS2
+      val col2 = "state"
+
+      val assertion: Double => Boolean = _ >= 0.0
+
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
+
+    // Expect false because col name doesn't exist
+    "ds1 doesn't contain col1 " in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
+      val ds1 = testDS1
+      val col1 = "ids"
+      val ds2 = testDS2
+      val col2 = "new_id"
+
+      val assertion: Double => Boolean = _ >= 0.6
+
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(!result)
+    }
+
+    // Expect false because col name doesn't exist
+    "ds2 doesn't contain col2" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
+
+      val ds1 = testDS1
+      val col1 = "id"
+      val ds2 = testDS2
+      val col2 = "all-ids"
+
+      val assertion: Double => Boolean = _ >= 0.6
+
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(!result)
+    }
   }
 }
