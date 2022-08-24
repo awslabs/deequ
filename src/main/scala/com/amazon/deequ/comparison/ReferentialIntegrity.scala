@@ -18,20 +18,31 @@ package com.amazon.deequ.comparison
 
 import org.apache.spark.sql.DataFrame
 
+
 object ReferentialIntegrity {
 
+  /**
+   * Checks to what extend a column from a DataFrame is a subset of another column
+   * from another DataFrame.
+   *
+   * @param ds1        The data set in which the customer will select the column to
+   *                   do the Referential Integrity check.
+   * @param col1       The column selected from ds1.
+   * @param ds2        The data set in which the customer chooses the second column
+   *                   for the Referential Integrity check.
+   * @param col2       The colum selected from ds2.
+   * @param assertion  The customer inputs a function and we supply a Double to
+   *                   that function, to obtain a Boolean.
+   *
+   * @return Boolean   Internally we calculate the referential integrity as a
+   *                   percentage, and we run the assertion on that outcome
+   *                   that ends up being a true or false response.
+   */
 
   def subsetCheck(ds1: DataFrame, col1: String, ds2: DataFrame,
                   col2: String, assertion: Double => Boolean): Boolean = {
 
-
     if (ds1.columns.contains(col1) && ds2.columns.contains(col2)) {
-      //      val spark = SparkSession.builder()
-      //        .master("local[1]")
-      //        .appName("SparkByExamples.com")
-      //        .getOrCreate()
-      //      import spark.implicits._
-
 
       val cols1 = ds1.select(col1)
       val cols2 = ds2.select(col2)

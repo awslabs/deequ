@@ -44,7 +44,6 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
         (7, "Megan", "TX")))
       val testDS2 = rdd2.toDF("id", "name", "state")
 
-
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
@@ -54,7 +53,6 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
       assert(result)
     }
-
 
         "match == 0.83 when id is colKey and state is compCols" in withSparkSession { spark =>
           import spark.implicits._

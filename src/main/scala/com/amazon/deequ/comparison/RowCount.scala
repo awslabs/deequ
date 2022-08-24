@@ -19,31 +19,33 @@ package com.amazon.deequ.comparison
 import org.apache.spark.sql.DataFrame
 
 object RowCount {
-  /*
-This function will check the row count of the two data sets given by the customer,
-and it will check the match percentage of the two data sets.
 
-@param ds1        The first data set that the customer wants to check its row count.
-@param ds2        The second data set that the customer wants to check its row count.
-@param Assertion  The customer inputs a Double that will be fed to the Assertion
-                  function and a boolean will be return
-                  if the match percentage is within the accepted range of the customer's Assertion.
+  /**
+   * Checks the amount of rows from the two data sets given by the customer,
+   * and gets the match percentage from the counts.
+   *
+   * @param ds1         The first data set that the customer wants to check its row count.
+   * @param ds2         The first data set that the customer wants to check its row count.
+   * @param assertion   The customer inputs a Double that will be fed to the Assertion
+   *                    function and a boolean will be retur if the match percentage
+   *                    is within the accepted range of the customer's Assertion.
+   *
+   * @return Boolean   Internally we calculate the referential integrity as a percentage,
+   *                   and we run the assertion on that outcome that ends up being
+   *                   a true or false response.
+   */
 
-@return Boolean   Internally we calculate the referential integrity as a percentage,
-                  and we run the assertion on that outcome that ends up being
-                  a true or false response.
-*/
   def rowCount(
                 ds1: DataFrame,
                 ds2: DataFrame,
                 assertion: Double => Boolean): Boolean = {
+    ds1.persist()
+    ds2.persist()
 
     val rowsDS1 = ds1.count()
-    println("po")
     val rowsDS2 = ds2.count()
-    println("to")
+
     val rowCheck = if (rowsDS1 > rowsDS2) rowsDS2.toDouble/rowsDS1 else rowsDS1.toDouble/rowsDS2
-    println("hg")
     assertion(rowCheck)
   }
 }

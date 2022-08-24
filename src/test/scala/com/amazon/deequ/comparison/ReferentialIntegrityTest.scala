@@ -140,7 +140,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       assert(result)
     }
 
-    // Expect a 1.0 assertion of the state/state columns when testDS2 is the subset
     "state match equals 1.0" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -171,7 +170,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       assert(result)
     }
 
-    // Expect a 0.80 assertion of the state columns when testDS2 is the subset
     "state match equals to 0.80" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -201,7 +199,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       assert(result)
     }
 
-    // Expect a 0.0 assertion of the state column with name column when executed
     "state match with name equals to 0.0" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -231,7 +228,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       assert(result)
     }
 
-    // Expect false because col name doesn't exist
     "ds1 doesn't contain col1 " in withSparkSession { spark =>
       import spark.implicits._
 
@@ -260,7 +256,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       assert(!result)
     }
 
-    // Expect false because col name doesn't exist
     "ds2 doesn't contain col2" in withSparkSession { spark =>
       import spark.implicits._
 
