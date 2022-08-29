@@ -24,21 +24,20 @@ object DataSynchronization {
   /**
    * Compare two DataFrames 1 to 1 with specific columns inputted by the customer.
    *
-   * @param ds1         The first data set in which the customer will select n number
-   *                    of columns to be compared.
-   * @param ds2         The second data set in which the customer will select n number
-   *                    of columns to be compared.
-   * @param colKeyMap   All the columns that the customer is planning to match from
-   *                    the first data set.
-   * @param compCols    The columns that will be compared 1 to 1 from both data sets,
-   *                    if the customer doesn't input any column names then it will
-   *                    do a full 1 to 1 check of the dataset.
-   * @param assertion   The customer inputs a function and we supply a Double to
-   *                    that function, to obtain a Boolean.
-   *
+   * @param ds1       The first data set in which the customer will select n number
+   *                  of columns to be compared.
+   * @param ds2       The second data set in which the customer will select n number
+   *                  of columns to be compared.
+   * @param colKeyMap All the columns that the customer is planning to match from
+   *                  the first data set.
+   * @param compCols  The columns that will be compared 1 to 1 from both data sets,
+   *                  if the customer doesn't input any column names then it will
+   *                  do a full 1 to 1 check of the dataset.
+   * @param assertion The customer inputs a function and we supply a Double to
+   *                  that function, to obtain a Boolean.
    * @return Boolean    Internally we calculate the referential integrity as a
-   *                    percentage, and we run the assertion on that outcome
-   *                    that ends up being a true or false response.
+   *         percentage, and we run the assertion on that outcome
+   *         that ends up being a true or false response.
    */
 
   def columnMatch(ds1: DataFrame, ds2: DataFrame, colKeyMap: Map[String, String],
@@ -48,45 +47,40 @@ object DataSynchronization {
     val ds1Unique = ds1.groupBy(colKeyMap.keys.toSeq.map(col): _*).count()
     val ds2Unique = ds2.groupBy(colKeyMap.values.toSeq.map(col): _*).count()
 
-    if (ds1Unique.count() == ds1.count() && ds2Unique.count() == ds2.count()
-      && compCols.isDefined) {
+    if (!(ds1Unique.count() == ds1.count() && ds2Unique.count() == ds2.count())) return false
 
-      val mostRows = if (ds1.count() > ds2.count()) ds1.count() else ds2.count()
+    if (compCols.isDefined) {
 
       val mergedMaps = colKeyMap.++(compCols.get)
-      val count = mergingMaps(ds1, ds2, mergedMaps)
 
-      assertion(count / mostRows)
+      finalAssertion(ds1, ds2, mergedMaps, assertion)
 
-    } else if (ds1Unique.count() == ds1.count() && ds2Unique.count() == ds2.count()
-      && compCols.isEmpty) {
-
-      val mostRows = if (ds1.count() > ds2.count()) ds1.count() else ds2.count()
+    } else if (compCols.isEmpty) {
 
       val colsDS1 = ds1.columns.filterNot(x => colKeyMap.keys.toSeq.contains(x)).sorted
       val colsDS2 = ds2.columns.filterNot(x => colKeyMap.values.toSeq.contains(x)).sorted
 
-      if (!(colsDS1 sameElements colsDS2)) {
-        return false
-      }
+      if (!(colsDS1 sameElements colsDS2)) return false
 
-        val mergedMaps = colKeyMap.++(colsDS1.map(x => x -> x).toMap)
-        val count = mergingMaps(ds1, ds2, mergedMaps)
-
-      assertion(count / mostRows)
+      val mergedMaps = colKeyMap.++(colsDS1.map(x => x -> x).toMap)
+      finalAssertion(ds1, ds2, mergedMaps, assertion)
 
     } else {
       false
     }
   }
 
-  def mergingMaps(ds1: DataFrame, ds2: DataFrame, mergedMaps: Map[String, String]): Double = {
+  def finalAssertion(ds1: DataFrame, ds2: DataFrame, mergedMaps: Map[String, String],
+                  assertion: Double => Boolean): Boolean = {
     val joinExpression: Column = mergedMaps.map { case (col1, col2) =>
       ds1(col1) === ds2(col2)
     }.reduce((e1, e2) => e1 && e2)
 
     val joined = ds1.join(ds2, joinExpression, "inner")
 
-    joined.count().toDouble
+    val mostRows = if (ds1.count() > ds2.count()) ds1.count() else ds2.count()
+
+    assertion(joined.count().toDouble / mostRows)
+
   }
 }

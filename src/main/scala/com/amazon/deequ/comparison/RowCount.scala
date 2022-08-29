@@ -39,8 +39,6 @@ object RowCount {
                 ds1: DataFrame,
                 ds2: DataFrame,
                 assertion: Double => Boolean): Boolean = {
-    ds1.persist()
-    ds2.persist()
 
     val rowsDS1 = ds1.count()
     val rowsDS2 = ds2.count()
