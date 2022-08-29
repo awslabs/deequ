@@ -18,7 +18,6 @@ package com.amazon.deequ.comparison
 
 import org.apache.spark.sql.DataFrame
 
-
 object ReferentialIntegrity {
 
   /**
@@ -46,13 +45,15 @@ object ReferentialIntegrity {
 
       val cols1 = ds1.select(col1)
       val cols2 = ds2.select(col2)
-      val match_count = cols1.except(cols2).count()
+      val mismatch_count = cols1.except(cols2).count()
 
-      if (match_count == 0) {
+      if (mismatch_count == 0) {
         assertion(1.0)
+
       } else {
         val ds1_count = ds1.count
-        assertion((ds1_count - match_count).toDouble / ds1_count)
+        assertion((ds1_count - mismatch_count).toDouble / ds1_count)
+
       }
     } else {
       false

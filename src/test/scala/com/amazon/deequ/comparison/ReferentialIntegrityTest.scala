@@ -44,7 +44,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "id"
       val ds2 = testDS2
       val col2 = "new_id"
-
       val assertion: Double => Boolean = _ >= 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -73,7 +72,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "new_id"
       val ds2 = testDS1
       val col2 = "id"
-
       val assertion: Double => Boolean = _ >= 0.60
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -98,12 +96,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
         (6, "Megan", "TX")))
       val testDS2 = rdd2.toDF("new_id", "name", "state")
 
-      // Expect a 1.0 assertion check of id/new_id columns when testDS1 is the subset
       val ds1 = testDS1
       val col1 = "name"
       val ds2 = testDS2
       val col2 = "name"
-
       val assertion: Double => Boolean = _ >= 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -128,12 +124,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
         (6, "Megan", "TX")))
       val testDS2 = rdd2.toDF("id", "name", "state")
 
-      // Expect a 1.0 assertion check of id/new_id columns when testDS1 is the subset
       val ds1 = testDS2
       val col1 = "name"
       val ds2 = testDS1
       val col2 = "name"
-
       val assertion: Double => Boolean = _ >= 0.60
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -158,12 +152,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
         (6, "Megan", "TX")))
       val testDS2 = rdd2.toDF("new_id", "name", "state")
 
-
       val ds1 = testDS1
       val col1 = "state"
       val ds2 = testDS2
       val col2 = "state"
-
       val assertion: Double => Boolean = _ >= 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -192,7 +184,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "state"
       val ds2 = testDS1
       val col2 = "state"
-
       val assertion: Double => Boolean = _ >= 0.8
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -221,7 +212,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "name"
       val ds2 = testDS2
       val col2 = "state"
-
       val assertion: Double => Boolean = _ >= 0.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -249,7 +239,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "ids"
       val ds2 = testDS2
       val col2 = "new_id"
-
       val assertion: Double => Boolean = _ >= 0.6
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
@@ -278,7 +267,6 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "id"
       val ds2 = testDS2
       val col2 = "all-ids"
-
       val assertion: Double => Boolean = _ >= 0.6
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
