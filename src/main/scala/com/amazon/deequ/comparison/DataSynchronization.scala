@@ -67,14 +67,15 @@ object DataSynchronization {
 
     } else {
       false
+
     }
   }
 
   def finalAssertion(ds1: DataFrame, ds2: DataFrame, mergedMaps: Map[String, String],
                   assertion: Double => Boolean): Boolean = {
+
     val joinExpression: Column = mergedMaps.map { case (col1, col2) =>
-      ds1(col1) === ds2(col2)
-    }.reduce((e1, e2) => e1 && e2)
+      ds1(col1) === ds2(col2)}.reduce((e1, e2) => e1 && e2)
 
     val joined = ds1.join(ds2, joinExpression, "inner")
 
