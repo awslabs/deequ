@@ -272,5 +272,39 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
       assert(!result)
     }
+    "More rows still 1.0" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (3, "Helena", "TX"),
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (5, "Tyler", "FL"),
+        (6, "Megan", "TX")))
+      val testDS2 = rdd2.toDF("new_id", "name", "state")
+
+      val ds1 = testDS1
+      val col1 = "id"
+      val ds2 = testDS2
+      val col2 = "new_id"
+      val assertion: Double => Boolean = _ == 1.0
+
+      val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
+      assert(result)
+    }
+
+
   }
 }
