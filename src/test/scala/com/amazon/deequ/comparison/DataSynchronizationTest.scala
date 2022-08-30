@@ -365,5 +365,35 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
       assert(result)
     }
+    "cols exist but 0 matches" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val rdd1 = spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Nick", "FL"),
+        (6, "Molly", "TX")))
+      val testDS1 = rdd1.toDF("id", "name", "state")
+
+      val rdd2 = spark.sparkContext.parallelize(Seq(
+        (7, "Rahul", "CA"),
+        (8, "Tom", "MX"),
+        (9, "Tome", "NM"),
+        (10, "Kyra", "AZ"),
+        (11, "Jamie", "NB"),
+        (12, "Andrius", "ID")))
+      val testDS2 = rdd2.toDF("id", "name", "state")
+
+      val ds1 = testDS1
+      val ds2 = testDS2
+      val colKeyMap = Map("id" -> "id")
+      val compCols = None
+      val assertion: Double => Boolean = _ >= 0
+
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
+      assert(result)
+    }
   }
 }
