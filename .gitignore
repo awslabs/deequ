@@ -8,4 +8,6 @@ target/
 .bloop/
 **/.DS_Store
 **/metals.log
+**/metals.*
 .DS_Store
+.metals/metals.lock.db
