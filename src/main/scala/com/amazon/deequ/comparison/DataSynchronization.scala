@@ -22,48 +22,50 @@ import org.apache.spark.sql.functions.col
 object DataSynchronization {
 
   /**
-   * Compare two DataFrames 1 to 1 with specific columns inputted by the customer.
+   * Check if the specified dataframe columns are primary keys (all values are distinct), 
+   * then join the two dataframes along the primary key columns and any other join column 
+   * and compute the join ratio as a way to measure how much of the entire dataset 
+   * (df1 + df2) is made up by the biggest of the two input dataframes 
+   * max(df1.count(), df2.count()) / df1.count() + df2.count()
    *
-   * @param ds1       The first data set in which the customer will select n number
+   * @param df1       The first data set in which the customer will select n number
    *                  of columns to be compared.
-   * @param ds2       The second data set in which the customer will select n number
+   * @param df2       The second data set in which the customer will select n number
    *                  of columns to be compared.
-   * @param colKeyMap All the columns that the customer is planning to match from
+   * @param primaryKeyColumns All the columns that the customer is planning to match from
    *                  the first data set.
-   * @param compCols  The columns that will be compared 1 to 1 from both data sets,
+   * @param joinColumns  The columns that will be compared 1 to 1 from both data sets,
    *                  if the customer doesn't input any column names then it will
    *                  do a full 1 to 1 check of the dataset.
-   * @param assertion The customer inputs a function and we supply a Double to
-   *                  that function, to obtain a Boolean.
-   * @return Boolean    Internally we calculate the referential integrity as a
-   *         percentage, and we run the assertion on that outcome
-   *         that ends up being a true or false response.
+   * @param assertion The assertion should check that the right ratio of dataset columns match across df1 and df2 satisfy the expected ratio
+   *                  For example if df1 contains 75% of the entire dataset a passing assertion would br `_ == 0.75`
+   * @return Boolean    returns false if either primary key column contains duplicates OR the user provided assertion fails, true otherwise
    */
 
-  def columnMatch(ds1: DataFrame, ds2: DataFrame, colKeyMap: Map[String, String],
-                  compCols: Option[Map[String, String]],
+  def columnMatch(df1: DataFrame, df2: DataFrame, primaryKeyColumns: Map[String, String],
+                  joinColumns: Option[Map[String, String]],
                   assertion: Double => Boolean): Boolean = {
 
-    val ds1Unique = ds1.groupBy(colKeyMap.keys.toSeq.map(col): _*).count()
-    val ds2Unique = ds2.groupBy(colKeyMap.values.toSeq.map(col): _*).count()
+    val df1Unique = df1.groupBy(primaryKeyColumns.keys.toSeq.map(col): _*).count()
+    val ds2Unique = df2.groupBy(primaryKeyColumns.values.toSeq.map(col): _*).count()
 
-    if (!(ds1Unique.count() == ds1.count() && ds2Unique.count() == ds2.count())) return false
+    if (!(df1Unique.count() == df1.count() && ds2Unique.count() == df2.count())) return false
 
-    if (compCols.isDefined) {
+    if (joinColumns.isDefined) {
 
-      val mergedMaps = colKeyMap.++(compCols.get)
+      val mergedMaps = primaryKeyColumns.++(joinColumns.get)
 
-      finalAssertion(ds1, ds2, mergedMaps, assertion)
+      finalAssertion(df1, df2, mergedMaps, assertion)
 
-    } else if (compCols.isEmpty) {
+    } else if (joinColumns.isEmpty) {
 
-      val colsDS1 = ds1.columns.filterNot(x => colKeyMap.keys.toSeq.contains(x)).sorted
-      val colsDS2 = ds2.columns.filterNot(x => colKeyMap.values.toSeq.contains(x)).sorted
+      val colsdf1 = df1.columns.filterNot(x => primaryKeyColumns.keys.toSeq.contains(x)).sorted
+      val colsDS2 = df2.columns.filterNot(x => primaryKeyColumns.values.toSeq.contains(x)).sorted
 
-      if (!(colsDS1 sameElements colsDS2)) return false
+      if (!(colsdf1 sameElements colsDS2)) return false
 
-      val mergedMaps = colKeyMap.++(colsDS1.map(x => x -> x).toMap)
-      finalAssertion(ds1, ds2, mergedMaps, assertion)
+      val mergedMaps = primaryKeyColumns.++(colsdf1.map(x => x -> x).toMap)
+      finalAssertion(df1, df2, mergedMaps, assertion)
 
     } else {
       false
@@ -71,15 +73,15 @@ object DataSynchronization {
     }
   }
 
-  def finalAssertion(ds1: DataFrame, ds2: DataFrame, mergedMaps: Map[String, String],
+  def finalAssertion(df1: DataFrame, df2: DataFrame, mergedMaps: Map[String, String],
                   assertion: Double => Boolean): Boolean = {
 
     val joinExpression: Column = mergedMaps.map { case (col1, col2) =>
-      ds1(col1) === ds2(col2)}.reduce((e1, e2) => e1 && e2)
+      df1(col1) === df2(col2)}.reduce((e1, e2) => e1 && e2)
 
-    val joined = ds1.join(ds2, joinExpression, "inner")
+    val joined = df1.join(df2, joinExpression, "inner")
 
-    val mostRows = if (ds1.count() > ds2.count()) ds1.count() else ds2.count()
+    val mostRows = if (df1.count() > df2.count()) df1.count() else df2.count()
 
     assertion(joined.count().toDouble / mostRows)
 
