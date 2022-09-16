@@ -1,0 +1,1 @@
+ spark-submit --class "com.amazon.deequ.examples.ConstraintSuggestionExample" --master "local[*]" /Users/dariobig/src/dariobig/deequ/target/deequ_2.12-2.0.0-spark-3.2.jar > test_output.txt

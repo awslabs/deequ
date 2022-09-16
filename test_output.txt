@@ -1,0 +1,104 @@
+22/09/15 19:20:52 INFO SparkContext: Running Spark version 3.3.0
+22/09/15 19:20:52 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/09/15 19:20:53 INFO ResourceUtils: ==============================================================
+22/09/15 19:20:53 INFO ResourceUtils: No custom resources configured for spark.driver.
+22/09/15 19:20:53 INFO ResourceUtils: ==============================================================
+22/09/15 19:20:53 INFO SparkContext: Submitted application: test
+22/09/15 19:20:53 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(cores -> name: cores, amount: 1, script: , vendor: , memory -> name: memory, amount: 1024, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+22/09/15 19:20:53 INFO ResourceProfile: Limiting resource is cpu
+22/09/15 19:20:53 INFO ResourceProfileManager: Added ResourceProfile id: 0
+22/09/15 19:20:53 INFO SecurityManager: Changing view acls to: dariobig
+22/09/15 19:20:53 INFO SecurityManager: Changing modify acls to: dariobig
+22/09/15 19:20:53 INFO SecurityManager: Changing view acls groups to: 
+22/09/15 19:20:53 INFO SecurityManager: Changing modify acls groups to: 
+22/09/15 19:20:53 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(dariobig); groups with view permissions: Set(); users  with modify permissions: Set(dariobig); groups with modify permissions: Set()
+22/09/15 19:20:53 INFO Utils: Successfully started service 'sparkDriver' on port 62848.
+22/09/15 19:20:53 INFO SparkEnv: Registering MapOutputTracker
+22/09/15 19:20:53 INFO SparkEnv: Registering BlockManagerMaster
+22/09/15 19:20:53 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+22/09/15 19:20:53 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+22/09/15 19:20:53 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+22/09/15 19:20:53 INFO DiskBlockManager: Created local directory at /private/var/folders/8x/nfzj95t12hz_2ls1gfnr5n_80000gs/T/blockmgr-1a627071-ea4d-4f1a-8c49-d780506954fa
+22/09/15 19:20:53 INFO MemoryStore: MemoryStore started with capacity 366.3 MiB
+22/09/15 19:20:53 INFO SparkEnv: Registering OutputCommitCoordinator
+22/09/15 19:20:53 INFO SparkContext: Added JAR file:/Users/dariobig/.m2/repository/com/amazon/deequ/deequ/2.0.0-spark-3.1/deequ-2.0.0-spark-3.1.jar at spark://192.168.1.18:62848/jars/deequ-2.0.0-spark-3.1.jar with timestamp 1663284052795
+22/09/15 19:20:53 INFO Executor: Starting executor ID driver on host 192.168.1.18
+22/09/15 19:20:53 INFO Executor: Starting executor with user classpath (userClassPathFirst = false): ''
+22/09/15 19:20:53 INFO Executor: Fetching spark://192.168.1.18:62848/jars/deequ-2.0.0-spark-3.1.jar with timestamp 1663284052795
+22/09/15 19:20:53 INFO TransportClientFactory: Successfully created connection to /192.168.1.18:62848 after 28 ms (0 ms spent in bootstraps)
+22/09/15 19:20:53 INFO Utils: Fetching spark://192.168.1.18:62848/jars/deequ-2.0.0-spark-3.1.jar to /private/var/folders/8x/nfzj95t12hz_2ls1gfnr5n_80000gs/T/spark-b229a3d4-9951-4e6c-a9c9-1408c967f861/userFiles-3ae6660c-d7f0-4b58-94fa-8903540f0cee/fetchFileTemp4932593971419864763.tmp
+22/09/15 19:20:53 INFO Executor: Adding file:/private/var/folders/8x/nfzj95t12hz_2ls1gfnr5n_80000gs/T/spark-b229a3d4-9951-4e6c-a9c9-1408c967f861/userFiles-3ae6660c-d7f0-4b58-94fa-8903540f0cee/deequ-2.0.0-spark-3.1.jar to class loader
+22/09/15 19:20:53 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 62850.
+22/09/15 19:20:53 INFO NettyBlockTransferService: Server created on 192.168.1.18:62850
+22/09/15 19:20:53 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+22/09/15 19:20:53 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, 192.168.1.18, 62850, None)
+22/09/15 19:20:53 INFO BlockManagerMasterEndpoint: Registering block manager 192.168.1.18:62850 with 366.3 MiB RAM, BlockManagerId(driver, 192.168.1.18, 62850, None)
+22/09/15 19:20:53 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, 192.168.1.18, 62850, None)
+22/09/15 19:20:54 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, 192.168.1.18, 62850, None)
+22/09/15 19:20:56 INFO SharedState: Setting hive.metastore.warehouse.dir ('null') to the value of spark.sql.warehouse.dir.
+22/09/15 19:20:56 INFO SharedState: Warehouse path is 'file:/Users/dariobig/src/awslabs/deequ/spark-warehouse'.
+22/09/15 19:20:58 INFO MapOutputTrackerMasterEndpoint: MapOutputTrackerMasterEndpoint stopped!
+22/09/15 19:20:58 INFO MemoryStore: MemoryStore cleared
+22/09/15 19:20:58 INFO BlockManager: BlockManager stopped
+22/09/15 19:20:58 INFO BlockManagerMaster: BlockManagerMaster stopped
+22/09/15 19:20:58 INFO OutputCommitCoordinator$OutputCommitCoordinatorEndpoint: OutputCommitCoordinator stopped!
+22/09/15 19:20:58 INFO SparkContext: Successfully stopped SparkContext
+22/09/15 19:20:58 INFO ShutdownHookManager: Shutdown hook called
+22/09/15 19:20:58 INFO ShutdownHookManager: Deleting directory /private/var/folders/8x/nfzj95t12hz_2ls1gfnr5n_80000gs/T/spark-b229a3d4-9951-4e6c-a9c9-1408c967f861
+22/09/15 19:20:58 INFO ShutdownHookManager: Deleting directory /private/var/folders/8x/nfzj95t12hz_2ls1gfnr5n_80000gs/T/spark-a71c143b-7e79-45da-85fa-6107630d5872
+Exception in thread "main" java.lang.AbstractMethodError
+        at org.apache.spark.sql.catalyst.trees.TreeNode.$anonfun$withNewChildren$2(TreeNode.scala:462)
+        at org.apache.spark.sql.catalyst.trees.CurrentOrigin$.withOrigin(TreeNode.scala:176)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.withNewChildren(TreeNode.scala:461)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.mapChildren(TreeNode.scala:698)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.transformDownWithPruning(TreeNode.scala:589)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.$anonfun$transformDownWithPruning$3(TreeNode.scala:589)
+        at scala.collection.immutable.List.map(List.scala:293)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.mapChildren(TreeNode.scala:698)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.transformDownWithPruning(TreeNode.scala:589)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.transformDown(TreeNode.scala:560)
+        at org.apache.spark.sql.catalyst.trees.TreeNode.transform(TreeNode.scala:528)
+        at org.apache.spark.sql.catalyst.util.package$.usePrettyExpression(package.scala:110)
+        at org.apache.spark.sql.catalyst.util.package$.toPrettySQL(package.scala:141)
+        at org.apache.spark.sql.RelationalGroupedDataset.alias(RelationalGroupedDataset.scala:90)
+        at org.apache.spark.sql.RelationalGroupedDataset.$anonfun$toDF$1(RelationalGroupedDataset.scala:66)
+        at scala.collection.immutable.List.map(List.scala:297)
+        at org.apache.spark.sql.RelationalGroupedDataset.toDF(RelationalGroupedDataset.scala:66)
+        at org.apache.spark.sql.RelationalGroupedDataset.agg(RelationalGroupedDataset.scala:256)
+        at org.apache.spark.sql.Dataset.agg(Dataset.scala:1955)
+        at com.amazon.deequ.analyzers.runners.AnalysisRunner$.liftedTree1$1(AnalysisRunner.scala:326)
+        at com.amazon.deequ.analyzers.runners.AnalysisRunner$.runScanningAnalyzers(AnalysisRunner.scala:318)
+        at com.amazon.deequ.analyzers.runners.AnalysisRunner$.doAnalysisRun(AnalysisRunner.scala:167)
+        at com.amazon.deequ.analyzers.runners.AnalysisRunBuilder.run(AnalysisRunBuilder.scala:110)
+        at com.amazon.deequ.profiles.ColumnProfiler$.profile(ColumnProfiler.scala:141)
+        at com.amazon.deequ.profiles.ColumnProfilerRunner.run(ColumnProfilerRunner.scala:72)
+        at com.amazon.deequ.profiles.ColumnProfilerRunBuilder.run(ColumnProfilerRunBuilder.scala:185)
+        at com.amazon.deequ.suggestions.ConstraintSuggestionRunner.profileAndSuggest(ConstraintSuggestionRunner.scala:242)
+        at com.amazon.deequ.suggestions.ConstraintSuggestionRunner.run(ConstraintSuggestionRunner.scala:125)
+        at com.amazon.deequ.suggestions.ConstraintSuggestionRunBuilder.run(ConstraintSuggestionRunBuilder.scala:226)
+        at com.amazon.deequ.examples.ConstraintSuggestionExample$.$anonfun$new$1(ConstraintSuggestionExample.scala:55)
+        at com.amazon.deequ.examples.ConstraintSuggestionExample$.$anonfun$new$1$adapted(ConstraintSuggestionExample.scala:25)
+        at com.amazon.deequ.examples.ExampleUtils$.withSpark(ExampleUtils.scala:32)
+        at com.amazon.deequ.examples.ConstraintSuggestionExample$.delayedEndpoint$com$amazon$deequ$examples$ConstraintSuggestionExample$1(ConstraintSuggestionExample.scala:25)
+        at com.amazon.deequ.examples.ConstraintSuggestionExample$delayedInit$body.apply(ConstraintSuggestionExample.scala:23)
+        at scala.Function0.apply$mcV$sp(Function0.scala:39)
+        at scala.Function0.apply$mcV$sp$(Function0.scala:39)
+        at scala.runtime.AbstractFunction0.apply$mcV$sp(AbstractFunction0.scala:17)
+        at scala.App.$anonfun$main$1$adapted(App.scala:80)
+        at scala.collection.immutable.List.foreach(List.scala:431)
+        at scala.App.main(App.scala:80)
+        at scala.App.main$(App.scala:78)
+        at com.amazon.deequ.examples.ConstraintSuggestionExample$.main(ConstraintSuggestionExample.scala:23)
+        at com.amazon.deequ.examples.ConstraintSuggestionExample.main(ConstraintSuggestionExample.scala)
+        at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+        at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.lang.reflect.Method.invoke(Method.java:498)
+        at org.apache.spark.deploy.JavaMainApplication.start(SparkApplication.scala:52)
+        at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:958)
+        at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
+        at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
+        at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
+        at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:1046)
+        at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:1055)
+        at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)

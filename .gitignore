@@ -3,3 +3,7 @@
 **/*.iml
 target/.travis/public-signing-key.gpg
 target/
+.metals/
+.vscode/
+project/build.properties
+.DS_Store

@@ -1,0 +1,82 @@
+mvn clean install
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.amazon.deequ:deequ >-----------------------
+[INFO] Building deequ 2.0.0-spark-3.1
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ deequ ---
+[INFO] Deleting /Users/dariobig/src/awslabs/deequ/target
+[INFO] 
+[INFO] --- maven-resources-plugin:2.7:resources (default-resources) @ deequ ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /Users/dariobig/src/awslabs/deequ/src/main/resources
+[INFO] 
+[INFO] --- scala-maven-plugin:4.4.0:add-source (scala-compile-first) @ deequ ---
+[INFO] Add Test Source directory: /Users/dariobig/src/awslabs/deequ/src/test/scala
+[INFO] 
+[INFO] --- scala-maven-plugin:4.4.0:compile (scala-compile-first) @ deequ ---
+[INFO] Using incremental compilation using Mixed compile order
+[INFO] Compiler bridge file: /Users/dariobig/.sbt/1.0/zinc/org.scala-sbt/org.scala-sbt-compiler-bridge_2.12-1.3.5-bin_2.12.10__52.0-1.3.5_20200330T000931.jar
+[INFO] Compiling 107 Scala sources and 1 Java source to /Users/dariobig/src/awslabs/deequ/target/classes ...
+[WARNING] /Users/dariobig/src/awslabs/deequ/src/main/scala/com/amazon/deequ/anomalydetection/seasonal/HoltWinters.scala:70: match may not be exhaustive.
+It would fail on the following inputs: (Value(), _), (Weekly, Monthly), (Weekly, _), (Yearly, Daily), (Yearly, _), (_, Daily), (_, Monthly), (_, Value()), (_, _)
+[WARNING] : there was one deprecation warning
+[WARNING] : there was one deprecation warning (since 2.11.0)
+[WARNING] : there were three deprecation warnings (since 2.12.0)
+[WARNING] : there was one deprecation warning (since 2.12.7)
+[WARNING] : there were two deprecation warnings (since 3.0.0)
+[WARNING] : there were 8 deprecation warnings in total; re-run with -deprecation for details
+[WARNING] 7 warnings found
+[INFO] Done compiling.
+[INFO] compile in 63.2 s
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:compile (default-compile) @ deequ ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 1 source file to /Users/dariobig/src/awslabs/deequ/target/classes
+[INFO] 
+[INFO] --- apache-rat-plugin:0.12:check (default) @ deequ ---
+[INFO] Added 1 additional default licenses.
+[INFO] Enabled default license matchers.
+[INFO] Added 1 custom approved licenses.
+[INFO] Will parse SCM ignores for exclusions...
+[INFO] Parsing exclusions from /Users/dariobig/src/awslabs/deequ/.gitignore
+[INFO] Finished adding exclusions from SCM ignore files.
+[INFO] 68 implicit excludes (use -debug for more details).
+[INFO] No excludes explicitly specified.
+[INFO] 169 resources included (use -debug for more details)
+[INFO] Rat check: Summary over all files. Unapproved: 0, unknown: 0, generated: 0, approved: 169 licenses.
+[INFO] 
+[INFO] --- maven-resources-plugin:2.7:testResources (default-testResources) @ deequ ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 2 resources
+[INFO] 
+[INFO] --- scala-maven-plugin:4.4.0:testCompile (scala-test-compile) @ deequ ---
+[INFO] Using incremental compilation using Mixed compile order
+[INFO] Compiler bridge file: /Users/dariobig/.sbt/1.0/zinc/org.scala-sbt/org.scala-sbt-compiler-bridge_2.12-1.3.5-bin_2.12.10__52.0-1.3.5_20200330T000931.jar
+[INFO] Compiling 61 Scala sources and 1 Java source to /Users/dariobig/src/awslabs/deequ/target/test-classes ...
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/suggestions/rules/ConstraintRulesTest.scala:35: type mismatch;
+ found   : Double(12.5)
+ required: Option[Double]
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/suggestions/rules/ConstraintRulesTest.scala:39: not found: value incomplete
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/suggestions/rules/ConstraintRulesTest.scala:47: type mismatch;
+ found   : Double(12.5)
+ required: Option[Double]
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/suggestions/rules/ConstraintRulesTest.scala:51: not found: value incomplete
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/utils/FixtureSupport.scala:34: parameter 'maximum' is already specified at parameter position 10
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/utils/FixtureSupport.scala:34: parameter 'mean' is already specified at parameter position 9
+[ERROR] /Users/dariobig/src/awslabs/deequ/src/test/scala/com/amazon/deequ/utils/FixtureSupport.scala:34: 16 arguments but expected 14 for method apply: (column: String, completeness: Double, approximateNumDistinctValues: Long, dataType: com.amazon.deequ.analyzers.DataTypeInstances.Value, isDataTypeInferred: Boolean, typeCounts: Map[String,Long], histogram: Option[com.amazon.deequ.metrics.Distribution], kll: Option[com.amazon.deequ.metrics.BucketDistribution], mean: Option[Double], maximum: Option[Double], minimum: Option[Double], sum: Option[Double], stdDev: Option[Double], approxPercentiles: Option[Seq[Double]])com.amazon.deequ.profiles.NumericColumnProfile in object NumericColumnProfile
+[ERROR] 7 errors found
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:50 min
+[INFO] Finished at: 2022-09-09T12:55:32-04:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal net.alchim31.maven:scala-maven-plugin:4.4.0:testCompile (scala-test-compile) on project deequ: Execution scala-test-compile of goal net.alchim31.maven:scala-maven-plugin:4.4.0:testCompile failed.: CompileFailed -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/PluginExecutionException
