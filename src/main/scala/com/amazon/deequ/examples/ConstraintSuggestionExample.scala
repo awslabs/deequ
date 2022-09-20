@@ -58,10 +58,8 @@ private[examples] object ConstraintSuggestionExample {
       )
 
       val data = session.createDataFrame(rows)
-      println("TEST_1")
       println(s"SCHEMA: ${data.schema}")
 
-      println("TEST_2")
       // We ask deequ to compute constraint suggestions for us on the data
       // It will profile the data and than apply a set of rules specified in addConstraintRules()
       // to suggest constraints
@@ -69,7 +67,6 @@ private[examples] object ConstraintSuggestionExample {
         .onData(data)
         .addConstraintRules(Rules.EXTENDED)
         .run()
-      println("TEST_3")
 
       // We can now investigate the constraints that deequ suggested. We get a textual description
       // and the corresponding scala code for each suggested constraint
