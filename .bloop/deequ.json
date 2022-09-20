@@ -2,16 +2,16 @@
     "version": "1.4.0",
     "project": {
         "name": "deequ",
-        "directory": "/Users/dariobig/src/awslabs/deequ",
-        "workspaceDir": "/Users/dariobig/src/awslabs/deequ",
+        "directory": "/Users/dariobig/src/rdsharma26/deequ",
+        "workspaceDir": "/Users/dariobig/src/rdsharma26/deequ",
         "sources": [
-            "/Users/dariobig/src/awslabs/deequ/src/main/scala"
+            "/Users/dariobig/src/rdsharma26/deequ/src/main/scala"
         ],
         "dependencies": [
             
         ],
         "classpath": [
-            "/Users/dariobig/src/awslabs/deequ/target/classes",
+            "/Users/dariobig/src/rdsharma26/deequ/target/classes",
             "/Users/dariobig/.m2/repository/org/scala-lang/scala-library/2.12.10/scala-library-2.12.10.jar",
             "/Users/dariobig/.m2/repository/org/apache/spark/spark-core_2.12/3.1.1/spark-core_2.12-3.1.1.jar",
             "/Users/dariobig/.m2/repository/com/thoughtworks/paranamer/paranamer/2.8/paranamer-2.8.jar",
@@ -193,10 +193,10 @@
             "/Users/dariobig/.m2/repository/org/objenesis/objenesis/2.6/objenesis-2.6.jar",
             "/Users/dariobig/.m2/repository/org/scala-lang/scala-library/2.12.10/scala-library-2.12.10.jar"
         ],
-        "out": "/Users/dariobig/src/awslabs/deequ/target",
-        "classesDir": "/Users/dariobig/src/awslabs/deequ/target/classes",
+        "out": "/Users/dariobig/src/rdsharma26/deequ/target",
+        "classesDir": "/Users/dariobig/src/rdsharma26/deequ/target/classes",
         "resources": [
-            "/Users/dariobig/src/awslabs/deequ/src/main/resources"
+            "/Users/dariobig/src/rdsharma26/deequ/src/main/resources"
         ],
         "scala": {
             "organization": "org.scala-lang",

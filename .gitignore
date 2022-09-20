@@ -7,3 +7,4 @@ target/
 .vscode/
 project/build.properties
 .DS_Store
+*.txt

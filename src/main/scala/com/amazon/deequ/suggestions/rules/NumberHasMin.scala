@@ -15,6 +15,7 @@
 package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
+import com.amazon.deequ.constraints.Constraint.minConstraint
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.profiles.{ColumnProfile, NumericColumnProfile}
 import com.amazon.deequ.suggestions.ConstraintSuggestion
@@ -54,20 +55,16 @@ case class NumberHasMin() extends ConstraintRule[ColumnProfile] {
       s"""'$profile.column' values should be >= $minimum""".stripMargin
         .replaceAll("\n", "")
 
-    // hasMin(
-    //   column: String,
-    //   assertion: Double => Boolean,
-    //   hint: Option[String] = None)
-
-    val constraint = complianceConstraint(
-      description,
-      s"${profile.column} >= $minimum",
-      Check.IsOne
-    )
-
     val hint =
-      s"""'$profile.column' should be >= $minimum""".stripMargin
-        .replaceAll("\n", "")
+        s"""min('$profile.column') should be == $minimum""".stripMargin
+          .replaceAll("\n", "")
+
+    val constraint = minConstraint(
+      column = column,
+      assertion = _ == minimum,
+      // where = should exclude nulls?!?
+      hint = Some(hint)
+    )
 
     ConstraintSuggestion(
       constraint,

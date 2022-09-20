@@ -15,7 +15,7 @@
 package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
-import com.amazon.deequ.constraints.Constraint.complianceConstraint
+import com.amazon.deequ.constraints.Constraint.maxConstraint
 import com.amazon.deequ.profiles.{ColumnProfile, NumericColumnProfile}
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
@@ -42,7 +42,7 @@ case class NumberHasMax() extends ConstraintRule[ColumnProfile] {
 
     val maximum: Double = profile match {
       case numericProfile: NumericColumnProfile => numericProfile.maximum.get
-      case _                                    => Double.NegativeInfinity // scalastyle:ignore
+      case _ => Double.NegativeInfinity // scalastyle:ignore
     }
 
     val column = profile.column
@@ -50,15 +50,16 @@ case class NumberHasMax() extends ConstraintRule[ColumnProfile] {
       s"""'$profile.column' values should be <= $maximum""".stripMargin
         .replaceAll("\n", "")
 
-    val constraint = complianceConstraint(
-      description,
-      s"${profile.column} <= $maximum",
-      Check.IsOne
-    )
-
     val hint =
       s"""'$profile.column' should be <= $maximum""".stripMargin
         .replaceAll("\n", "")
+
+    val constraint = maxConstraint(
+      column = column,
+      assertion = _ == maximum,
+      // where = add filter for non-null
+      hint = Some(hint)
+    )
 
     ConstraintSuggestion(
       constraint,

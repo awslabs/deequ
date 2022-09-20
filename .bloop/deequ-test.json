@@ -2,17 +2,17 @@
     "version": "1.4.0",
     "project": {
         "name": "deequ-test",
-        "directory": "/Users/dariobig/src/awslabs/deequ",
-        "workspaceDir": "/Users/dariobig/src/awslabs/deequ",
+        "directory": "/Users/dariobig/src/rdsharma26/deequ",
+        "workspaceDir": "/Users/dariobig/src/rdsharma26/deequ",
         "sources": [
-            "/Users/dariobig/src/awslabs/deequ/src/test/scala"
+            "/Users/dariobig/src/rdsharma26/deequ/src/test/scala"
         ],
         "dependencies": [
             "deequ"
         ],
         "classpath": [
-            "/Users/dariobig/src/awslabs/deequ/target/test-classes",
-            "/Users/dariobig/src/awslabs/deequ/target/classes",
+            "/Users/dariobig/src/rdsharma26/deequ/target/test-classes",
+            "/Users/dariobig/src/rdsharma26/deequ/target/classes",
             "/Users/dariobig/.m2/repository/org/scala-lang/scala-library/2.12.10/scala-library-2.12.10.jar",
             "/Users/dariobig/.m2/repository/org/apache/spark/spark-core_2.12/3.1.1/spark-core_2.12-3.1.1.jar",
             "/Users/dariobig/.m2/repository/com/thoughtworks/paranamer/paranamer/2.8/paranamer-2.8.jar",
@@ -208,10 +208,10 @@
             "/Users/dariobig/.m2/repository/org/apache/datasketches/datasketches-memory/1.2.0-incubating/datasketches-memory-1.2.0-incubating.jar",
             "/Users/dariobig/.m2/repository/org/scala-lang/scala-library/2.12.10/scala-library-2.12.10.jar"
         ],
-        "out": "/Users/dariobig/src/awslabs/deequ/target",
-        "classesDir": "/Users/dariobig/src/awslabs/deequ/target/test-classes",
+        "out": "/Users/dariobig/src/rdsharma26/deequ/target",
+        "classesDir": "/Users/dariobig/src/rdsharma26/deequ/target/test-classes",
         "resources": [
-            "/Users/dariobig/src/awslabs/deequ/src/test/resources"
+            "/Users/dariobig/src/rdsharma26/deequ/src/test/resources"
         ],
         "scala": {
             "organization": "org.scala-lang",

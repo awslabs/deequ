@@ -15,7 +15,7 @@
 package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
-import com.amazon.deequ.constraints.Constraint.complianceConstraint
+import com.amazon.deequ.constraints.Constraint.standardDeviationConstraint
 import com.amazon.deequ.profiles.{ColumnProfile, NumericColumnProfile}
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
@@ -51,19 +51,20 @@ case class NumberHasStandardDeviation() extends ConstraintRule[ColumnProfile] {
       s"""'$profile.column' stdDev should be == $stdDev""".stripMargin
         .replaceAll("\n", "")
 
-    val constraint = complianceConstraint(
-      description,
-      s"${profile.column}.stdDev == $stdDev",
-      Check.IsOne
-    )
-
     val hint =
-      s"""'$profile.column' stdDev should be == $stdDev""".stripMargin
+        s"""'$profile.column' stdDev should be == $stdDev""".stripMargin
         .replaceAll("\n", "")
+
+    val constraint = standardDeviationConstraint(
+      column = column,
+      assertion = _ == stdDev,
+      // where = should exclude nulls?!?
+      hint = Some(hint)
+    )
 
     ConstraintSuggestion(
       constraint,
-      profile.column,
+      column,
       hint,
       description,
       this,

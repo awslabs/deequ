@@ -15,7 +15,7 @@
 package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
-import com.amazon.deequ.constraints.Constraint.complianceConstraint
+import com.amazon.deequ.constraints.Constraint.meanConstraint
 import com.amazon.deequ.profiles.{ColumnProfile, NumericColumnProfile}
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
@@ -41,7 +41,7 @@ case class NumberHasMean() extends ConstraintRule[ColumnProfile] {
 
     val mean: Double = profile match {
       case numericProfile: NumericColumnProfile => numericProfile.mean.get
-      case _                                    => Double.NegativeInfinity // scalastyle:ignore
+      case _ => Double.NegativeInfinity // scalastyle:ignore
     }
 
     val column = profile.column
@@ -49,15 +49,16 @@ case class NumberHasMean() extends ConstraintRule[ColumnProfile] {
       s"""'$profile.column' mean should be == $mean""".stripMargin
         .replaceAll("\n", "")
 
-    val constraint = complianceConstraint(
-      description,
-      s"${profile.column}.mean == $mean",
-      Check.IsOne
-    )
-
     val hint =
       s"""'$profile.column' mean should be == $mean""".stripMargin
         .replaceAll("\n", "")
+
+    val constraint = meanConstraint(
+      column = column,
+      assertion = _ == mean,
+      // where = should exclude nulls?!?
+      hint = Some(hint)
+    )
 
     ConstraintSuggestion(
       constraint,

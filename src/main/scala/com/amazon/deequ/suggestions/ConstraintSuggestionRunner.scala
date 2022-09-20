@@ -45,7 +45,7 @@ object Rules {
     NumberHasMin(),
     NumberHasMax(),
     NumberHasStandardDeviation(),
-    NumberIsContainedInRule()
+    NumberHasNumericDataType()
   )
 
   val EXTENDED: Seq[ConstraintRule[ColumnProfile]] =
