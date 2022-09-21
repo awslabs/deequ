@@ -49,7 +49,7 @@ object Rules {
   )
 
   val EXTENDED: Seq[ConstraintRule[ColumnProfile]] =
-    DEFAULT ++ NUMERIC
+    DEFAULT ++ NUMERIC ++ Seq(HasRowCount())
 
 }
 
