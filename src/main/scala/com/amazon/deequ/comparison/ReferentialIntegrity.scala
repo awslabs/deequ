@@ -18,24 +18,47 @@ import org.apache.spark.sql.DataFrame
 
 object ReferentialIntegrity {
 
+  /** Checks to what extend a column from a DataFrame is a subset of another
+    * column from another DataFrame.
+    *
+    * @param df1
+    *   The data-frame in which the user will select the column to do the
+    *   Referential Integrity check.
+    * @param column1
+    *   The column selected from df1.
+    * @param df2
+    *   The data set in which the customer chooses the second column for the
+    *   Referential Integrity check.
+    * @param column2
+    *   The colum selected from df2.
+    * @param assertion
+    *   assertion to determine if the check failed / passed the referential
+    *   integrity check, for example, if `df2.col2` contains 30% of the values
+    *   from `df1.col1` `_ >= 0.3` would pass the check
+    *
+    * @return
+    *   Boolean Internally we calculate the referential integrity as a
+    *   percentage, and we run the assertion on that outcome that ends up being
+    *   a true or false response.
+    */
   def subsetCheck(
-      ds1: DataFrame,
-      col1: String,
-      ds2: DataFrame,
-      col2: String,
+      df1: DataFrame,
+      column1: String,
+      df2: DataFrame,
+      column2: String,
       assertion: Double => Boolean
   ): Boolean = {
 
-    if (ds1.columns.contains(col1) && ds2.columns.contains(col2)) {
-      val cols1 = ds1.select(col1)
-      val cols2 = ds2.select(col2)
+    if (df1.columns.contains(column1) && df2.columns.contains(column2)) {
+      val cols1 = df1.select(column1)
+      val cols2 = df2.select(column2)
       val match_count = cols1.except(cols2).count()
 
       if (match_count == 0) {
         assertion(1.0)
       } else {
-        val ds1_count = ds1.count
-        assertion((ds1_count - match_count).toDouble / ds1_count)
+        val df1_count = df1.count
+        assertion((df1_count - match_count).toDouble / df1_count)
       }
     } else {
       false
