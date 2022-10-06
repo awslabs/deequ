@@ -26,13 +26,13 @@ object DataSynchronization {
     * @param mergedMaps:
     *   A map that contains the columns that the user is going to compare.
     * @return
-    *   Double: Returns the amount of rows of the joined DataFrame as a Double
+    *   Double: Returns the the joined DataFrame
     */
-  def mergingMaps(
+  def joinByColumnMapping(
       df1: DataFrame,
       df2: DataFrame,
       mergedMaps: Map[String, String]
-  ): Double = {
+  ): DataFrame = {
     val joinExpression: Column = mergedMaps
       .map { case (col1, col2) =>
         df1(col1) === df2(col2)
@@ -40,9 +40,7 @@ object DataSynchronization {
       .reduce((e1, e2) => e1 && e2)
 
     // joining the df1 with df2 with only the rows that matches obtained from joinExpression
-    val joined = df1.join(df2, joinExpression, "inner")
-
-    joined.count().toDouble
+    df1.join(df2, joinExpression, "inner")
   }
 
   /** Check if the specified dataframe columns are primary keys (all values are
@@ -80,30 +78,31 @@ object DataSynchronization {
       assertion: Double => Boolean
   ): Boolean = {
 
-    val df1Unique =
+    val df1UniqueCount =
       df1.groupBy(primaryKeyColumns.keys.toSeq.map(col): _*).count()
-    val df2Unique =
+    val df2UniqueCount =
       df2.groupBy(primaryKeyColumns.values.toSeq.map(col): _*).count()
+
+    val df1Count: Long = df1.count()
+    val df2Count: Long = df2.count()
+    val maxCount: Double = (df1Count).max(df2Count).toDouble
 
     // Check if all the rows from the primaryKeyColumns are unique
     if (
-      df1Unique.count() == df1.count() && df2Unique.count() == df2.count()
+      df1UniqueCount == df1Count && df2UniqueCount == df2Count
       && joinColumns.isDefined
     ) {
-      // get the dataset with the most rows
-      val mostRows = if (df1.count() > df2.count()) df1.count() else df2.count()
-
       // Merge the PrimaryKeyColumns (that we know to be unique) with the columns
       // that are going to be compared
       val mergedMaps = primaryKeyColumns.++(joinColumns.getOrElse(Map.empty))
-      val count = mergingMaps(df1, df2, mergedMaps)
-      assertion(count / mostRows)
+      val joined = joinByColumnMapping(df1, df2, mergedMaps)
+      val joinedCount = joined.count().toDouble
+      assertion(joinedCount / maxCount)
     } else if (
-      df1Unique.count() == df1.count() && df2Unique.count() == df2.count()
+      df1UniqueCount == df1Count && df2UniqueCount == df2Count
       && joinColumns.isEmpty
     ) {
       // get tye data set with the most rows
-      val mostRows = if (df1.count() > df2.count()) df1.count() else df2.count()
 
       // collect non-primary key columns from both data sets
       val columnsDF1 =
@@ -122,8 +121,8 @@ object DataSynchronization {
       // Merge the primaryKeyColumns (that we know to be unique) with the
       // columns that are going to be compared
       val mergedMaps = primaryKeyColumns.++(columnsDF1.map(x => x -> x).toMap)
-      val count = mergingMaps(df1, df2, mergedMaps)
-      assertion(count / mostRows)
+      val joined = joinByColumnMapping(df1, df2, mergedMaps)
+      assertion(joined.count().toDouble / maxCount)
     } else {
       false
     }

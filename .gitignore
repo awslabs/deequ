@@ -1,5 +1,13 @@
 .idea/
+*.iml
 **/*.iml
+target/
 target/
 .metals/
 .vscode/
+.bloop/
+<<<<<<< HEAD
+.DS_Store
+=======
+.DS_Store
+>>>>>>> 62e2691 (Update .gitignore)
