@@ -1,5 +1,9 @@
 .idea/
 *.iml
 **/*.iml
-target/.travis/public-signing-key.gpg
 target/
+target/
+.metals/
+.vscode/
+.bloop/
+.DS_Store
