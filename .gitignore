@@ -2,7 +2,6 @@
 *.iml
 **/*.iml
 target/
-target/
 .metals/
 .vscode/
 .bloop/
