@@ -186,6 +186,18 @@ trait FixtureSupport extends MockFactory {
       (103, "Electronics", "Product 4", 10, null),
       (104, "Electronics", "Product 5", 50, null)
     ).toDF("id", "product", "product_id", "units", "date")
+
+  def getDfCompleteAndInCompleteColumnsInteger(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", 1, "f"),
+      ("2", 2, "d"),
+      ("3", 3, null),
+      ("4", 4, "f"),
+      ("5", 5, null),
+      ("6", 6, "f")
+    ).toDF("string1", "integer1", "att2")
   }
 
   def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {

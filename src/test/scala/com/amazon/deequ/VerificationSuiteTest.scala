@@ -56,6 +56,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         }
 
         val df = getDfCompleteAndInCompleteColumns(sparkSession)
+        val dfInteger = getDfCompleteAndInCompleteColumnsInteger(sparkSession)
+
+        val checkToSucceedInteger = Check(CheckLevel.Error, "group-1")
+          .isComplete("integer1")
+          .hasCompleteness("string1", _ == 1.0)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
           .isComplete("att1")
@@ -67,7 +72,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
           .hasCompleteness("item", _ < 0.8)
 
-
+        println("ASSERT INTEGER COLUMN COMPLETENESS")
+        assertStatusFor(dfInteger, checkToSucceedInteger)(CheckStatus.Success)
         assertStatusFor(df, checkToSucceed)(CheckStatus.Success)
         assertStatusFor(df, checkToErrorOut)(CheckStatus.Error)
         assertStatusFor(df, checkToWarn)(CheckStatus.Warning)
