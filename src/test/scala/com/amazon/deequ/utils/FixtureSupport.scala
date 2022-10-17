@@ -155,6 +155,19 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
+  def getDfCompleteAndInCompleteColumnsInteger(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", 1, "f"),
+      ("2", 2, "d"),
+      ("3", 3, null),
+      ("4", 4, "f"),
+      ("5", 5, null),
+      ("6", 6, "f")
+    ).toDF("string1", "integer1", "att2")
+  }
+
   def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
