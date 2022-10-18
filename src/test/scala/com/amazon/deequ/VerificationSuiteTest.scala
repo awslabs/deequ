@@ -61,6 +61,11 @@ class VerificationSuiteTest
           println(s"$json")
         }
 
+        val customerDF = sparkSession.read.format("csv")
+          .option("inferSchema", "true")
+          .option("header", "true")
+          .load("test-data/customer.csv")
+
         val df = getDfCompleteAndInCompleteColumns(sparkSession)
         val dfInteger = getDfCompleteAndInCompleteColumnsInteger(sparkSession)
 
