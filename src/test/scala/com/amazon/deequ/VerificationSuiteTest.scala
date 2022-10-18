@@ -40,10 +40,9 @@ class VerificationSuiteTest
 
     "return the correct verification status regardless of the order of checks" in
       withSparkSession { sparkSession =>
-
-        def assertStatusFor(data: DataFrame, checks: Check*)
-                           (expectedStatus: CheckStatus.Value)
-          : Unit = {
+        def assertStatusFor(data: DataFrame, checks: Check*)(
+            expectedStatus: CheckStatus.Value
+        ): Unit = {
           val verificationSuiteStatus =
             VerificationSuite().onData(data).addChecks(checks).run().status
           assert(verificationSuiteStatus == expectedStatus)
@@ -55,13 +54,18 @@ class VerificationSuiteTest
             VerificationSuite().onData(data).addChecks(checks).run()
           println("### CHECK RESULTS ###")
           data.show(100)
+          println("### CHECK RESULTS ###")
+          println(
+            data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
+          )
 
           val json = VerificationResult.checkResultsAsJson(result, checks)
 
           println(s"$json")
         }
 
-        val customerDF = sparkSession.read.format("csv")
+        val customerDF = sparkSession.read
+          .format("csv")
           .option("inferSchema", "true")
           .option("header", "true")
           .load("test-data/customer.csv")
@@ -72,6 +76,10 @@ class VerificationSuiteTest
         val checkToSucceedInteger = Check(CheckLevel.Error, "group-1")
           .isComplete("integer1")
           .hasCompleteness("string1", _ == 1.0)
+
+        val checkToSucceedIntegerCustomer = Check(CheckLevel.Error, "group-1")
+          .isComplete("Customer_ID")
+          .hasCompleteness("Customer_ID", _ == 1.0)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
           .isComplete("att1")
@@ -85,6 +93,7 @@ class VerificationSuiteTest
 
         println("ASSERT INTEGER COLUMN COMPLETENESS")
 
+        printCheckResults(customerDF, checkToSucceedIntegerCustomer)
         printCheckResults(dfInteger, checkToSucceedInteger)
         printCheckResults(df, checkToSucceed)
         printCheckResults(df, checkToErrorOut)
