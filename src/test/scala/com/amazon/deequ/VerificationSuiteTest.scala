@@ -69,6 +69,21 @@ class VerificationSuiteTest
           println(s"$json")
         }
 
+        def printSuccessMetricsAsJson(data: DataFrame, checks: Check*): Unit = {
+          val results: VerificationResult =
+            VerificationSuite().onData(data).addChecks(checks).run()
+          println("### SUCCESS METRICS ###")
+          data.show(100)
+          println(
+            data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
+          )
+
+          val analyzers = results.metrics.keys.toSeq
+          val json = VerificationResult.successMetricsAsJson(results, analyzers)
+
+          println(s"$json")
+        }
+
         val customerDF = sparkSession.read
           .format("csv")
           .option("inferSchema", "true")
@@ -101,12 +116,17 @@ class VerificationSuiteTest
           .hasCompleteness("item", _ < 0.8)
 
         println("ASSERT INTEGER COLUMN COMPLETENESS")
-
+        printSuccessMetricsAsJson(customerDF, checkToSucceedIntegerCustomer)
         printCheckResults(customerDF, checkToSucceedIntegerCustomer)
+        printSuccessMetricsAsJson(dfInteger, checkToSucceedInteger)
         printCheckResults(dfInteger, checkToSucceedInteger)
+        printSuccessMetricsAsJson(df, checkToSucceed)
         printCheckResults(df, checkToSucceed)
+        printSuccessMetricsAsJson(df, checkToSucceed)
         printCheckResults(df, checkToErrorOut)
+        printSuccessMetricsAsJson(df, checkToErrorOut)
         printCheckResults(df, checkToWarn)
+        printSuccessMetricsAsJson(df, checkToWarn)
 
         Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
           assertStatusFor(df, checks: _*)(CheckStatus.Error)
