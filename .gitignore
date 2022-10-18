@@ -8,3 +8,4 @@ target/
 .bloop/
 .DS_Store
 *.log
+.scalafmt.conf
