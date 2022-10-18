@@ -60,7 +60,6 @@ class VerificationSuiteTest
             VerificationSuite().onData(data).addChecks(checks).run()
           println("### CHECK RESULTS ###")
           data.show(100)
-          println("### CHECK RESULTS ###")
           println(
             data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
           )
@@ -83,9 +82,13 @@ class VerificationSuiteTest
           .isComplete("integer1")
           .hasCompleteness("string1", _ == 1.0)
 
-        val checkToSucceedIntegerCustomer = Check(CheckLevel.Error, "group-1")
+        val checkToSucceedIntegerCustomer = Check(CheckLevel.Error, "group-2")
           .isComplete("Customer_ID")
+          .isComplete("Address_1")
+          .isComplete("Zip")
           .hasCompleteness("Customer_ID", _ == 1.0)
+          .hasCompleteness("Address_1", _ == 1.0)
+          .hasCompleteness("Zip", _ == 1.0)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
           .isComplete("att1")
