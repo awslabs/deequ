@@ -36,68 +36,120 @@ class VerificationSuiteTest
     with FixtureSupport
     with MockFactory {
 
+  def assertStatusFor(data: DataFrame, checks: Check*)(
+      expectedStatus: CheckStatus.Value
+  ): Unit = {
+    val verificationSuiteStatus =
+      VerificationSuite().onData(data).addChecks(checks).run().status
+    assert(verificationSuiteStatus == expectedStatus)
+  }
+
+  def printCheckResults(
+      data: DataFrame,
+      checks: Check*
+  ): Unit = {
+
+    val results: VerificationResult =
+      VerificationSuite().onData(data).addChecks(checks).run()
+    println("### CHECK RESULTS ###")
+    data.show(100)
+    println(
+      data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
+    )
+
+    val resultJson = VerificationResult.checkResultsAsJson(results, checks)
+
+    println(s"$resultJson")
+
+    println("### SUCCESS METRICS: ###")
+    println(
+      data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
+    )
+
+    val analyzers = results.metrics.keys.toSeq
+    val metricsJson =
+      VerificationResult.successMetricsAsJson(results, analyzers)
+
+    println(s"$metricsJson")
+  }
+
   "Verification Suite" should {
 
-    "return the correct verification status regardless of the order of checks" in
+    "return correct verification status on csv file" in
       withSparkSession { sparkSession =>
-        def assertStatusFor(data: DataFrame, checks: Check*)(
-            expectedStatus: CheckStatus.Value
-        ): Unit = {
-          val verificationSuiteStatus =
-            VerificationSuite().onData(data).addChecks(checks).run().status
-          assert(verificationSuiteStatus == expectedStatus)
-        }
-
-        def printCheckResults(data: DataFrame, checks: Check*): Unit = {
-
-          val result: VerificationResult =
-            VerificationSuite().onData(data).addChecks(checks).run()
-          println("### CHECK RESULTS ###")
-          data.show(100)
-          println(
-            data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
-          )
-
-          val json = VerificationResult.checkResultsAsJson(result, checks)
-
-          println(s"$json")
-        }
-
-        def printSuccessMetricsAsJson(data: DataFrame, checks: Check*): Unit = {
-          val results: VerificationResult =
-            VerificationSuite().onData(data).addChecks(checks).run()
-          println("### SUCCESS METRICS ###")
-          data.show(100)
-          println(
-            data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
-          )
-
-          val analyzers = results.metrics.keys.toSeq
-          val json = VerificationResult.successMetricsAsJson(results, analyzers)
-
-          println(s"$json")
-        }
-
-        val customerDF = sparkSession.read
+        val df = sparkSession.read
           .format("csv")
           .option("inferSchema", "true")
           .option("header", "true")
           .load("test-data/customer.csv")
 
-        val df = getDfCompleteAndInCompleteColumns(sparkSession)
-        val dfInteger = getDfCompleteAndInCompleteColumnsInteger(sparkSession)
-
-        val checkToSucceedInteger = Check(CheckLevel.Error, "group-1")
-          .isComplete("integer1")
-          .hasCompleteness("string1", _ == 1.0)
-
-        val checkToSucceedIntegerCustomer = Check(CheckLevel.Error, "group-2")
+        val checkToSucceed = Check(CheckLevel.Error, "customer-1-S")
           .isComplete("Customer_ID")
           .isComplete("Address_1")
           .isComplete("Zip")
           .hasCompleteness("Customer_ID", _ == 1.0)
           .hasCompleteness("Address_1", _ == 1.0)
           .hasCompleteness("Zip", _ == 1.0)
+
+        val checkToErrorOut = Check(CheckLevel.Error, "customer-1-F")
+          .isComplete("Customer_ID")
+          .isComplete("Address_1")
+          .isComplete("Zip")
+          .hasCompleteness("Customer_ID", _ == 0.0)
+          .hasCompleteness("Address_1", _ == 0.0)
+          .hasCompleteness("Zip", _ == 0.0)
+
+        printCheckResults(df, checkToSucceed)
+        printCheckResults(df, checkToErrorOut)
+
+        Seq(checkToSucceed).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Success)
+        }
+
+        Seq(checkToErrorOut).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
+        }
+      }
+
+    "return the correct verification on numeric columns" in
+      withSparkSession { sparkSession =>
+        val df = getDfCompleteAndInCompleteColumnsNumeric(sparkSession)
+
+        val checkToSucceed = Check(CheckLevel.Error, "numeric-1-S")
+          // .isComplete("item")
+          .isComplete("completeInteger")
+          .isComplete("completeDouble")
+          .hasCompleteness("completeInteger", _ == 1.0)
+          .hasCompleteness("completeDouble", _ == 1.0)
+          .hasCompleteness("incompleteInteger", _ <= 1.0)
+          .hasCompleteness("incompleteDouble", _ <= 1.0)
+
+        val checkToErrorOut = Check(CheckLevel.Error, "numeric-1-F")
+          .isComplete("incompleteInteger")
+          .isComplete("incompleteDouble")
+          .hasCompleteness("completeInteger", _ == 1.0)
+          .hasCompleteness("completeDouble", _ == 1.0)
+          .hasCompleteness("incompleteInteger", _ >= 0.8)
+          .hasCompleteness("incompleteDouble", _ >= 0.8)
+          .hasCompleteness("att1", _ >= 0.99)
+          .isComplete("att1")
+          .hasCompleteness("missingColumn", _ >= 0.8)
+
+        printCheckResults(df, checkToSucceed)
+        printCheckResults(df, checkToErrorOut)
+
+        Seq(checkToSucceed).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Success)
+        }
+
+        Seq(checkToErrorOut).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
+        }
+      }
+
+    "return the correct verification status regardless of the order of checks" in
+      withSparkSession { sparkSession =>
+        val df = getDfCompleteAndInCompleteColumns(sparkSession)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
           .isComplete("att1")
@@ -109,34 +161,20 @@ class VerificationSuiteTest
         val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
           .hasCompleteness("item", _ < 0.8)
 
-        println("ASSERT INTEGER COLUMN COMPLETENESS")
-        printSuccessMetricsAsJson(customerDF, checkToSucceedIntegerCustomer)
-        printCheckResults(customerDF, checkToSucceedIntegerCustomer)
-        printSuccessMetricsAsJson(dfInteger, checkToSucceedInteger)
-        printCheckResults(dfInteger, checkToSucceedInteger)
-        printSuccessMetricsAsJson(df, checkToSucceed)
         printCheckResults(df, checkToSucceed)
-        printSuccessMetricsAsJson(df, checkToSucceed)
         printCheckResults(df, checkToErrorOut)
-        printSuccessMetricsAsJson(df, checkToErrorOut)
         printCheckResults(df, checkToWarn)
-        printSuccessMetricsAsJson(df, checkToWarn)
 
-        Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
+        Seq(checkToSucceed).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Success)
+        }
+
+        Seq(checkToErrorOut).forEachOrder { checks =>
           assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
 
-        Seq(checkToSucceed, checkToWarn).forEachOrder { checks =>
+        Seq(checkToWarn).forEachOrder { checks =>
           assertStatusFor(df, checks: _*)(CheckStatus.Warning)
-        }
-
-        Seq(checkToWarn, checkToErrorOut).forEachOrder { checks =>
-          assertStatusFor(df, checks: _*)(CheckStatus.Error)
-        }
-
-        Seq(checkToSucceed, checkToWarn, checkToErrorOut).forEachOrder {
-          checks =>
-            assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
       }
 

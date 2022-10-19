@@ -1,26 +1,29 @@
-/**
-  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+/** Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the "License"). You may not
   * use this file except in compliance with the License. A copy of the License
   * is located at
   *
-  *     http://aws.amazon.com/apache2.0/
+  * http://aws.amazon.com/apache2.0/
   *
   * or in the "license" file accompanying this file. This file is distributed on
   * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
   * express or implied. See the License for the specific language governing
   * permissions and limitations under the License.
-  *
   */
 
 package com.amazon.deequ.utils
 
-import org.apache.spark.sql.types.{DoubleType, LongType, MapType, StringType, StructType}
+import org.apache.spark.sql.types.{
+  DoubleType,
+  LongType,
+  MapType,
+  StringType,
+  StructType
+}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import scala.util.Random
-
 
 trait FixtureSupport {
 
@@ -43,15 +46,17 @@ trait FixtureSupport {
     val column2 = $"column2".string
     val mySchema = StructType(column1 :: column2 :: Nil)
 
-    sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], mySchema)
+    sparkSession.createDataFrame(
+      sparkSession.sparkContext.emptyRDD[Row],
+      mySchema
+    )
   }
 
   def getDfWithNRows(sparkSession: SparkSession, n: Int): DataFrame = {
     import sparkSession.implicits._
 
-    (1 to n)
-      .toList
-      .map { index => (s"$index", s"c1-r$index", s"c2-r$index")}
+    (1 to n).toList
+      .map { index => (s"$index", s"c1-r$index", s"c2-r$index") }
       .toDF("c0", "c1", "c2")
   }
 
@@ -100,7 +105,6 @@ trait FixtureSupport {
       }""").toDF()
   }
 
-
   def getDfMissing(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
@@ -142,7 +146,9 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
-  def getDfCompleteAndInCompleteColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfCompleteAndInCompleteColumns(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
 
     Seq(
@@ -155,20 +161,37 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
-  def getDfCompleteAndInCompleteColumnsInteger(sparkSession: SparkSession): DataFrame = {
-    import sparkSession.implicits._
+  case class NumericRow(
+      item: String,
+      completeInteger: Integer,
+      completeDouble: Double,
+      incompleteInteger: Option[Integer],
+      incompleteDouble: Option[Double],
+      att1: String
+      )
 
-    Seq(
-      ("1", 1, "f"),
-      ("2", 2, "d"),
-      ("3", 3, null),
-      ("4", 4, "f"),
-      ("5", 5, null),
-      ("6", 6, "f")
-    ).toDF("string1", "integer1", "att2")
+  def getDfCompleteAndInCompleteColumnsNumeric(
+      sparkSession: SparkSession
+  ): DataFrame = {
+
+    val rows: Seq[NumericRow] = Seq(
+      NumericRow("1", 1, 1.01, Some(1), Some(1.01), "f"),
+      NumericRow("2", 2, 2.01, None, None, "d"),
+      NumericRow("3", 3, 3.01, Some(3), Some(3.01), null),
+      NumericRow("4", 4, 4.01, None, None, "f"),
+      NumericRow("5", 5, 5.01, Some(5), Some(5.01), null),
+      NumericRow("6", 6, 6.01, Some(6), Some(6.01), "f"),
+      NumericRow("6", 7, 7.01, Some(7), Some(7.01), "f"),
+      NumericRow("6", 8, 8.01, Some(8), Some(8.01), "f"),
+      NumericRow("6", 9, 9.01, Some(9), Some(9.01), "f")
+    )
+
+    sparkSession.sqlContext.createDataFrame(rows)
   }
 
-  def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {
+  def getDfCompleteAndInCompleteColumnsDelta(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
 
     Seq(
@@ -177,7 +200,6 @@ trait FixtureSupport {
       ("9", "a", null)
     ).toDF("item", "att1", "att2")
   }
-
 
   def getDfFractionalIntegralTypes(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
@@ -219,7 +241,9 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2", "att3")
   }
 
-  def getDfWithNumericFractionalValues(sparkSession: SparkSession): DataFrame = {
+  def getDfWithNumericFractionalValues(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       ("1", 1.0, 0.0),
@@ -231,7 +255,9 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
-  def getDfWithNumericFractionalValuesForKLL(sparkSession: SparkSession): DataFrame = {
+  def getDfWithNumericFractionalValuesForKLL(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       ("1", 1.0, 0.0),
@@ -278,8 +304,14 @@ trait FixtureSupport {
       ("5", "6", null, "4", "0", "5"),
       ("6", "7", null, "5", "0", "6")
     )
-    .toDF("unique", "nonUnique", "nonUniqueWithNulls", "uniqueWithNulls",
-      "onlyUniqueWithOtherNonUnique", "halfUniqueCombinedWithNonUnique")
+      .toDF(
+        "unique",
+        "nonUnique",
+        "nonUniqueWithNulls",
+        "uniqueWithNulls",
+        "onlyUniqueWithOtherNonUnique",
+        "halfUniqueCombinedWithNonUnique"
+      )
   }
 
   def getDfWithDistinctValues(sparkSession: SparkSession): DataFrame = {
@@ -291,11 +323,14 @@ trait FixtureSupport {
       (null, "x"),
       ("b", "x"),
       ("b", "x"),
-      ("c", "y"))
+      ("c", "y")
+    )
       .toDF("att1", "att2")
   }
 
-  def getDfWithConditionallyUninformativeColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfWithConditionallyUninformativeColumns(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       (1, 0),
@@ -304,7 +339,9 @@ trait FixtureSupport {
     ).toDF("att1", "att2")
   }
 
-  def getDfWithConditionallyInformativeColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfWithConditionallyInformativeColumns(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       (1, 4),
@@ -316,19 +353,20 @@ trait FixtureSupport {
   def getDfWithCategoricalColumn(
       sparkSession: SparkSession,
       numberOfRows: Int,
-      categories: Seq[String])
-    : DataFrame = {
+      categories: Seq[String]
+  ): DataFrame = {
 
     val random = new Random(0)
 
     import sparkSession.implicits._
-    (1 to numberOfRows)
-      .toList
-      .map { index => (s"$index", random.shuffle(categories).head)}
+    (1 to numberOfRows).toList
+      .map { index => (s"$index", random.shuffle(categories).head) }
       .toDF("att1", "categoricalColumn")
   }
 
-  def getDfWithVariableStringLengthValues(sparkSession: SparkSession): DataFrame = {
+  def getDfWithVariableStringLengthValues(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       "",
