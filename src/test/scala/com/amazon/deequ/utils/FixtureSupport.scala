@@ -190,17 +190,37 @@ trait FixtureSupport extends MockFactory {
   def getDfCompleteAndInCompleteColumnsInteger(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
-    Seq(
-      ("1", 1, "f"),
-      ("2", 2, "d"),
-      ("3", 3, null),
-      ("4", 4, "f"),
-      ("5", 5, null),
-      ("6", 6, "f")
-    ).toDF("string1", "integer1", "att2")
+  case class NumericRow(
+      item: String,
+      completeInteger: Integer,
+      completeDouble: Double,
+      incompleteInteger: Option[Integer],
+      incompleteDouble: Option[Double],
+      att1: String
+      )
+
+  def getDfCompleteAndInCompleteColumnsNumeric(
+      sparkSession: SparkSession
+  ): DataFrame = {
+
+    val rows: Seq[NumericRow] = Seq(
+      NumericRow("1", 1, 1.01, Some(1), Some(1.01), "f"),
+      NumericRow("2", 2, 2.01, None, None, "d"),
+      NumericRow("3", 3, 3.01, Some(3), Some(3.01), null),
+      NumericRow("4", 4, 4.01, None, None, "f"),
+      NumericRow("5", 5, 5.01, Some(5), Some(5.01), null),
+      NumericRow("6", 6, 6.01, Some(6), Some(6.01), "f"),
+      NumericRow("6", 7, 7.01, Some(7), Some(7.01), "f"),
+      NumericRow("6", 8, 8.01, Some(8), Some(8.01), "f"),
+      NumericRow("6", 9, 9.01, Some(9), Some(9.01), "f")
+    )
+
+    sparkSession.sqlContext.createDataFrame(rows)
   }
 
-  def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {
+  def getDfCompleteAndInCompleteColumnsDelta(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
 
     Seq(
