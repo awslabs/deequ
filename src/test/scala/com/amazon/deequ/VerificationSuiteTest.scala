@@ -42,6 +42,7 @@ class VerificationSuiteTest
     with FixtureSupport
     with MockFactory {
 
+  // TODO @dariobig: reuse status result from validation run
   def assertStatusFor(data: DataFrame, checks: Check*)(
       expectedStatus: CheckStatus.Value
   ): Unit = {
@@ -67,6 +68,7 @@ class VerificationSuiteTest
 
     println(s"$resultJson")
 
+    // TODO @dariobig: group metrics by column
     println("### SUCCESS METRICS: ###")
     println(
       data.dtypes.map(f => println(f._1 + "," + f._2)).mkString(", ")
@@ -81,11 +83,47 @@ class VerificationSuiteTest
 
   "Verification Suite" should {
 
-    "return correct verification status on csv file" in
+    "return correct verification status on csv file with inferSchema = true" in
       withSparkSession { sparkSession =>
         val df = sparkSession.read
           .format("csv")
           .option("inferSchema", "true")
+          .option("header", "true")
+          .load("test-data/customer.csv")
+
+        val checkToSucceed = Check(CheckLevel.Error, "customer-1-S")
+          .isComplete("Customer_ID")
+          .isComplete("Address_1")
+          .isComplete("Zip")
+          .hasCompleteness("Customer_ID", _ == 1.0)
+          .hasCompleteness("Address_1", _ == 1.0)
+          .hasCompleteness("Zip", _ == 1.0)
+
+        val checkToErrorOut = Check(CheckLevel.Error, "customer-1-F")
+          .isComplete("Customer_ID")
+          .isComplete("Address_1")
+          .isComplete("Zip")
+          .hasCompleteness("Customer_ID", _ == 0.0)
+          .hasCompleteness("Address_1", _ == 0.0)
+          .hasCompleteness("Zip", _ == 0.0)
+
+        printCheckResults(df, checkToSucceed)
+        printCheckResults(df, checkToErrorOut)
+
+        Seq(checkToSucceed).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Success)
+        }
+
+        Seq(checkToErrorOut).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
+        }
+      }
+
+    "return correct verification status on csv file with inferSchema = false" in
+      withSparkSession { sparkSession =>
+        val df = sparkSession.read
+          .format("csv")
+          .option("inferSchema", "false")
           .option("header", "true")
           .load("test-data/customer.csv")
 
