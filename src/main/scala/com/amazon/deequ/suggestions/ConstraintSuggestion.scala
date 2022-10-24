@@ -33,7 +33,7 @@ case class ConstraintSuggestion(
 
 object ConstraintSuggestions {
 
-  private[this] val CONSTRANT_SUGGESTIONS_FIELD = "constraint_suggestions"
+  private[this] val CONSTRAINT_SUGGESTIONS_FIELD = "constraint_suggestions"
 
   private[suggestions] def toJson(constraintSuggestions: Seq[ConstraintSuggestion]): String = {
 
@@ -49,7 +49,7 @@ object ConstraintSuggestions {
       constraintsJson.add(constraintJson)
     }
 
-    json.add(CONSTRANT_SUGGESTIONS_FIELD, constraintsJson)
+    json.add(CONSTRAINT_SUGGESTIONS_FIELD, constraintsJson)
 
     val gson = new GsonBuilder()
       .setPrettyPrinting()
@@ -90,7 +90,7 @@ object ConstraintSuggestions {
         constraintEvaluations.add(constraintEvaluation)
       }
 
-    json.add(CONSTRANT_SUGGESTIONS_FIELD, constraintEvaluations)
+    json.add(CONSTRAINT_SUGGESTIONS_FIELD, constraintEvaluations)
 
     val gson = new GsonBuilder()
       .setPrettyPrinting()

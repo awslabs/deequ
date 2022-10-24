@@ -18,11 +18,15 @@ package com.amazon.deequ.utils
 
 import org.apache.spark.sql.types.{DoubleType, LongType, MapType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import com.amazon.deequ.profiles.{ColumnProfile, StandardColumnProfile}
+import com.amazon.deequ.analyzers.{DataTypeInstances}
+import com.amazon.deequ.metrics.Distribution
+import org.scalamock.scalatest.MockFactory
 
 import scala.util.Random
 
 
-trait FixtureSupport {
+trait FixtureSupport extends MockFactory {
 
   def getEmptyColumnDataDf(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
@@ -324,5 +328,84 @@ trait FixtureSupport {
       "ccc",
       "dddd"
     ).toDF("att1")
+  }
+
+  private[this] def getFakeColumnProfileWithName(
+      columnName: String
+  ): ColumnProfile = {
+
+    val fakeColumnProfile = mock[ColumnProfile]
+    inSequence {
+      (fakeColumnProfile.column _)
+        .expects()
+        .returns(columnName)
+        .anyNumberOfTimes()
+    }
+
+    fakeColumnProfile
+  }
+
+  def getFakeColumnProfileWithNameAndCompleteness(
+      columnName: String,
+      completeness: Double
+  ): ColumnProfile = {
+
+    val fakeColumnProfile = getFakeColumnProfileWithName(columnName)
+    inSequence {
+      (fakeColumnProfile.completeness _)
+        .expects()
+        .returns(completeness)
+        .anyNumberOfTimes()
+    }
+
+    fakeColumnProfile
+  }
+
+  def getFakeColumnProfileWithNameAndApproxNumDistinctValues(
+      columnName: String,
+      approximateNumDistinctValues: Long
+  ): ColumnProfile = {
+
+    val fakeColumnProfile = getFakeColumnProfileWithName(columnName)
+    inSequence {
+      (fakeColumnProfile.approximateNumDistinctValues _)
+        .expects()
+        .returns(approximateNumDistinctValues)
+        .anyNumberOfTimes()
+    }
+
+    fakeColumnProfile
+  }
+
+  def getFakeColumnProfileWithColumnNameAndDataType(
+      columnName: String,
+      dataType: DataTypeInstances.Value
+  ): ColumnProfile = {
+
+    val fakeColumnProfile = getFakeColumnProfileWithName(columnName)
+    inSequence {
+      (fakeColumnProfile.dataType _)
+        .expects()
+        .returns(dataType)
+        .anyNumberOfTimes()
+    }
+
+    fakeColumnProfile
+  }
+
+  def getFakeColumnProfileWithColumnNameAndHistogram(
+      columnName: String,
+      histogram: Option[Distribution]
+  ): ColumnProfile = {
+
+    val fakeColumnProfile = getFakeColumnProfileWithName(columnName)
+    inSequence {
+      (fakeColumnProfile.histogram _)
+        .expects()
+        .returns(histogram)
+        .anyNumberOfTimes()
+    }
+
+    fakeColumnProfile
   }
 }
