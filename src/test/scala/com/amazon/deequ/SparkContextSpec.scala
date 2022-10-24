@@ -76,6 +76,8 @@ trait SparkContextSpec {
     val session = SparkSession.builder()
       .master("local")
       .appName("test")
+      .config("spark.driver.host", "localhost") // Machine ip
+      .config("spark.driver.bindAddress", "localhost") // Machine ip
       .config("spark.ui.enabled", "false")
       .config("spark.sql.shuffle.partitions", 2.toString)
       .config("spark.sql.adaptive.enabled", value = false)
