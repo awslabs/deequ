@@ -60,6 +60,6 @@ case class HasMean() extends ConstraintRule[ColumnProfile] {
     )
   }
 
-  override val ruleDescription: String = "If we see a numeric column" +
+  override val ruleDescription: String = "If we see a numeric column, " +
     "we suggest a corresponding Mean value constraint"
 }
