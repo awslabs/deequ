@@ -1,17 +1,15 @@
-/**
-  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+/** Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the "License"). You may not
   * use this file except in compliance with the License. A copy of the License
   * is located at
   *
-  *     http://aws.amazon.com/apache2.0/
+  * http://aws.amazon.com/apache2.0/
   *
   * or in the "license" file accompanying this file. This file is distributed on
   * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
   * express or implied. See the License for the specific language governing
   * permissions and limitations under the License.
-  *
   */
 
 package com.amazon.deequ.utils
@@ -22,13 +20,12 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.{DoubleType, LongType, MapType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import com.amazon.deequ.profiles.{ColumnProfile, StandardColumnProfile}
+import com.amazon.deequ.profiles.{ColumnProfile, StandardColumnProfile, NumericColumnProfile}
 import com.amazon.deequ.analyzers.{DataTypeInstances}
 import com.amazon.deequ.metrics.Distribution
 import org.scalamock.scalatest.MockFactory
 
 import scala.util.Random
-
 
 trait FixtureSupport extends MockFactory {
 
@@ -51,15 +48,17 @@ trait FixtureSupport extends MockFactory {
     val column2 = $"column2".string
     val mySchema = StructType(column1 :: column2 :: Nil)
 
-    sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], mySchema)
+    sparkSession.createDataFrame(
+      sparkSession.sparkContext.emptyRDD[Row],
+      mySchema
+    )
   }
 
   def getDfWithNRows(sparkSession: SparkSession, n: Int): DataFrame = {
     import sparkSession.implicits._
 
-    (1 to n)
-      .toList
-      .map { index => (s"$index", s"c1-r$index", s"c2-r$index")}
+    (1 to n).toList
+      .map { index => (s"$index", s"c1-r$index", s"c2-r$index") }
       .toDF("c0", "c1", "c2")
   }
 
@@ -108,7 +107,6 @@ trait FixtureSupport extends MockFactory {
       }""").toDF()
   }
 
-
   def getDfMissing(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
@@ -150,7 +148,9 @@ trait FixtureSupport extends MockFactory {
     ).toDF("item", "att1", "att2")
   }
 
-  def getDfCompleteAndInCompleteColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfCompleteAndInCompleteColumns(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
 
     Seq(
@@ -187,6 +187,7 @@ trait FixtureSupport extends MockFactory {
       (104, "Electronics", "Product 5", 50, null)
     ).toDF("id", "product", "product_id", "units", "date")
   }
+
   def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
@@ -196,7 +197,6 @@ trait FixtureSupport extends MockFactory {
       ("9", "a", null)
     ).toDF("item", "att1", "att2")
   }
-
 
   def getDfFractionalIntegralTypes(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
@@ -253,7 +253,9 @@ trait FixtureSupport extends MockFactory {
     ).toDF("name", "age")
   }
 
-  def getDfWithNumericFractionalValues(sparkSession: SparkSession): DataFrame = {
+  def getDfWithNumericFractionalValues(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       ("1", 1.0, 0.0),
@@ -265,7 +267,9 @@ trait FixtureSupport extends MockFactory {
     ).toDF("item", "att1", "att2")
   }
 
-  def getDfWithNumericFractionalValuesForKLL(sparkSession: SparkSession): DataFrame = {
+  def getDfWithNumericFractionalValuesForKLL(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       ("1", 1.0, 0.0),
@@ -312,8 +316,14 @@ trait FixtureSupport extends MockFactory {
       ("5", "6", null, "4", "0", "5"),
       ("6", "7", null, "5", "0", "6")
     )
-    .toDF("unique", "nonUnique", "nonUniqueWithNulls", "uniqueWithNulls",
-      "onlyUniqueWithOtherNonUnique", "halfUniqueCombinedWithNonUnique")
+      .toDF(
+        "unique",
+        "nonUnique",
+        "nonUniqueWithNulls",
+        "uniqueWithNulls",
+        "onlyUniqueWithOtherNonUnique",
+        "halfUniqueCombinedWithNonUnique"
+      )
   }
 
   def getDfWithDistinctValues(sparkSession: SparkSession): DataFrame = {
@@ -325,11 +335,14 @@ trait FixtureSupport extends MockFactory {
       (null, "x"),
       ("b", "x"),
       ("b", "x"),
-      ("c", "y"))
+      ("c", "y")
+    )
       .toDF("att1", "att2")
   }
 
-  def getDfWithConditionallyUninformativeColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfWithConditionallyUninformativeColumns(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       (1, 0),
@@ -338,7 +351,9 @@ trait FixtureSupport extends MockFactory {
     ).toDF("att1", "att2")
   }
 
-  def getDfWithConditionallyInformativeColumns(sparkSession: SparkSession): DataFrame = {
+  def getDfWithConditionallyInformativeColumns(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       (1, 4),
@@ -350,19 +365,20 @@ trait FixtureSupport extends MockFactory {
   def getDfWithCategoricalColumn(
       sparkSession: SparkSession,
       numberOfRows: Int,
-      categories: Seq[String])
-    : DataFrame = {
+      categories: Seq[String]
+  ): DataFrame = {
 
     val random = new Random(0)
 
     import sparkSession.implicits._
-    (1 to numberOfRows)
-      .toList
-      .map { index => (s"$index", random.shuffle(categories).head)}
+    (1 to numberOfRows).toList
+      .map { index => (s"$index", random.shuffle(categories).head) }
       .toDF("att1", "categoricalColumn")
   }
 
-  def getDfWithVariableStringLengthValues(sparkSession: SparkSession): DataFrame = {
+  def getDfWithVariableStringLengthValues(
+      sparkSession: SparkSession
+  ): DataFrame = {
     import sparkSession.implicits._
     Seq(
       "",
@@ -449,6 +465,34 @@ trait FixtureSupport extends MockFactory {
     }
 
     fakeColumnProfile
+  }
+
+  def getFakeNumericColumnProfileWithMinMaxMeanAndStdDev(
+      columnName: String,
+      completeness: Double,
+      dataType: DataTypeInstances.Value,
+      minimum: Double,
+      maximum: Double,
+      mean: Double,
+      stdDev: Double
+  ): NumericColumnProfile = {
+
+    NumericColumnProfile(
+      column = columnName,
+      completeness = completeness,
+      approximateNumDistinctValues = 1000,
+      dataType = dataType,
+      isDataTypeInferred = false,
+      typeCounts = Map[String, Long](),
+      histogram = None,
+      kll = None,
+      mean = Some(mean),
+      maximum = Some(maximum),
+      minimum = Some(minimum),
+      sum = Some(1000.879),
+      stdDev = Some(1.023),
+      approxPercentiles = None
+    )
   }
 
   def getFakeColumnProfileWithNameAndApproxNumDistinctValues(
