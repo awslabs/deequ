@@ -16,6 +16,8 @@
 
 package com.amazon.deequ.metrics
 
+import org.apache.spark.sql.Column
+
 import scala.util.{Failure, Success, Try}
 
 object Entity extends Enumeration {
@@ -37,13 +39,21 @@ trait Metric[T] {
   def flatten(): Seq[DoubleMetric]
 }
 
+/**
+ * Full-column metrics store the entire column of row-level pass/fail results
+ */
+trait FullColumn {
+  val fullColumn: Option[Column] = None
+}
+
 /** Common trait for all data quality metrics where the value is double */
 case class DoubleMetric(
-    entity: Entity.Value,
-    name: String,
-    instance: String,
-    value: Try[Double])
-  extends Metric[Double] {
+                         entity: Entity.Value,
+                         name: String,
+                         instance: String,
+                         value: Try[Double],
+                         override val fullColumn: Option[Column] = None)
+  extends Metric[Double] with FullColumn {
 
   override def flatten(): Seq[DoubleMetric] = Seq(this)
 }

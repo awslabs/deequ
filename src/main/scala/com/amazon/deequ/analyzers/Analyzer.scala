@@ -22,6 +22,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
+import com.amazon.deequ.metrics.FullColumn
 
 import scala.language.existentials
 import scala.util.{Failure, Success}
@@ -205,8 +206,13 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
 
   override def computeMetricFrom(state: Option[S]): DoubleMetric = {
     state match {
-      case Some(theState) =>
-        metricFromValue(theState.metricValue(), name, instance, entity)
+      case Some(theState) => {
+        val col = theState match {
+          case withColumn: FullColumn => withColumn.fullColumn
+          case _ => None
+        }
+        metricFromValue(theState.metricValue(), name, instance, entity, col)
+      }
       case _ =>
         metricFromEmpty(this, name, instance, entity)
     }
@@ -227,8 +233,8 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
 
 /** A state for computing ratio-based metrics,
   * contains #rows that match a predicate and overall #rows */
-case class NumMatchesAndCount(numMatches: Long, count: Long)
-  extends DoubleValuedState[NumMatchesAndCount] {
+case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullColumn: Option[Column] = None)
+  extends DoubleValuedState[NumMatchesAndCount] with FullColumn {
 
   override def sum(other: NumMatchesAndCount): NumMatchesAndCount = {
     NumMatchesAndCount(numMatches + other.numMatches, count + other.count)
@@ -472,10 +478,11 @@ private[deequ] object Analyzers {
       value: Double,
       name: String,
       instance: String,
-      entity: Entity.Value = Entity.Column)
+      entity: Entity.Value = Entity.Column,
+      fullColumn: Option[Column] = None)
     : DoubleMetric = {
 
-    DoubleMetric(entity, name, instance, Success(value))
+    DoubleMetric(entity, name, instance, Success(value), fullColumn)
   }
 
   def emptyStateException(analyzer: Analyzer[_, _]): EmptyStateException = {
