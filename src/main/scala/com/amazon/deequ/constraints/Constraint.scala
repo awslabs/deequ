@@ -69,6 +69,18 @@ class NamedConstraint(private[deequ] val constraint: Constraint, name: String)
 }
 
 /**
+ * Constraint decorator which holds a name of the constraint and a name for the column-level result
+ *
+ * @param constraint Delegate
+ * @param name       Name (Detailed message) for the constraint
+ * @param columnName Name for the column containing row-level results for this constraint
+ */
+class RowLevelConstraint(private[deequ] override val constraint: Constraint, name: String, columnName: String)
+  extends NamedConstraint(constraint, name) {
+  def getColumnName: String = columnName
+}
+
+/**
   * Companion object to create constraint objects
   * These methods can be used from the unit tests or during creation of Check configuration
   */
@@ -170,7 +182,7 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
       completeness, assertion, hint = hint)
 
-    new NamedConstraint(constraint, s"CompletenessConstraint($completeness)")
+    new RowLevelConstraint(constraint, s"CompletenessConstraint($completeness)", s"Completeness-$column")
   }
 
   /**

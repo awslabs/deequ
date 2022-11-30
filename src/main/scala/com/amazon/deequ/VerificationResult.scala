@@ -19,8 +19,13 @@ package com.amazon.deequ
 import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.checks.{Check, CheckResult, CheckStatus}
+import com.amazon.deequ.constraints.AnalysisBasedConstraint
+import com.amazon.deequ.constraints.NamedConstraint
+import com.amazon.deequ.constraints.RowLevelConstraint
+import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
@@ -70,6 +75,24 @@ object VerificationResult {
       "constraint_status", "constraint_message")
   }
 
+  /**
+   * For each check in the verification suite, adds a column of row-level results to the input data.
+   *
+   * Accepts a naming rule
+   */
+  def toRowLevelResults(
+      sparkSession: SparkSession,
+      verificationResult: VerificationResult,
+      data: DataFrame): DataFrame = {
+
+    val booleanChecks: Seq[(String, Column)] = verificationResult.checkResults.zip(verificationResult.metrics)
+      .flatMap(getColumnNameToMetric)
+      .flatMap(getColumnIfCalculated)
+      .toList
+
+    booleanChecks.foldLeft(data)((data, newColumn) => data.withColumn(newColumn._1, newColumn._2))
+  }
+
   def checkResultsAsJson(verificationResult: VerificationResult,
     forChecks: Seq[Check] = Seq.empty): String = {
 
@@ -88,6 +111,27 @@ object VerificationResult {
       }
 
     SimpleResultSerde.serialize(checkResults)
+  }
+
+  private[this] def getColumnNameToMetric(
+                    zipResult: ((Check, CheckResult),
+                    (Analyzer[_, Metric[_]], Metric[_]))): Option[(String, Metric[_])] = {
+    val check: Check = zipResult._1._1
+    val metric: Metric[_] = zipResult._2._2
+    // Row-level constraints are decorated as RowLevelConstraint
+    val booleanConstraint = check.constraints.head match {
+      case c: RowLevelConstraint => Some((c.getColumnName, metric))
+      case _ => None
+    }
+    booleanConstraint
+  }
+
+  private[this] def getColumnIfCalculated(pair: (String, Metric[_])): Option[(String, Column)] = {
+    pair._2 match {
+      case fullColumn: FullColumn =>
+        if (fullColumn.fullColumn.isDefined) Some(pair._1, fullColumn.fullColumn.get) else None
+      case _ => None
+    }
   }
 
   private[this] def getSimplifiedCheckResultOutput(
