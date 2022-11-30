@@ -206,13 +206,12 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
 
   override def computeMetricFrom(state: Option[S]): DoubleMetric = {
     state match {
-      case Some(theState) => {
+      case Some(theState) =>
         val col = theState match {
           case withColumn: FullColumn => withColumn.fullColumn
           case _ => None
         }
         metricFromValue(theState.metricValue(), name, instance, entity, col)
-      }
       case _ =>
         metricFromEmpty(this, name, instance, entity)
     }
