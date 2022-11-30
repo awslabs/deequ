@@ -75,13 +75,11 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
 
       val suite = new VerificationSuite().onData(data).addChecks(Seq(isComplete, completeness, isPrimaryKey))
 
-      data.show()
       val result: VerificationResult = suite.run()
 
       assert(result.status == CheckStatus.Error)
 
       val resultData = VerificationResult.toRowLevelResults(session, result, data)
-      resultData.show()
 
       val expectedColumns: Seq[String] = data.columns :+ expectedColumn1 :+ expectedColumn2
       assert(resultData.columns.sameElements(expectedColumns))
