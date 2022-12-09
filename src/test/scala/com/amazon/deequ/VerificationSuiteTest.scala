@@ -376,8 +376,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val statePersister = mock[StatePersister]
 
       val df = getDfWithNumericValues(sparkSession)
-      val analyzers = Sum("att2") :: Completeness("att1") :: Nil
-      val states = SumState(18.0) :: NumMatchesAndCount(6, 6) :: Nil
+      val completeness =  Completeness("att1")
+      val analyzers = Sum("att2") :: completeness :: Nil
+      val states = SumState(18.0) :: NumMatchesAndCount(6, 6, Some(completeness.criterion)) :: Nil
 
       analyzers.zip(states).foreach { case (analyzer: Analyzer[_, _], state: State[_]) =>
         (statePersister.persist[state.type] _)
