@@ -376,7 +376,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val statePersister = mock[StatePersister]
 
       val df = getDfWithNumericValues(sparkSession)
-      val completeness =  Completeness("att1")
+      val completeness = Completeness("att1")
       val analyzers = Sum("att2") :: completeness :: Nil
       val states = SumState(18.0) :: NumMatchesAndCount(6, 6, Some(completeness.criterion)) :: Nil
 

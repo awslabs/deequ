@@ -21,6 +21,7 @@ import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, WrongColumnTyp
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types._
@@ -50,10 +51,12 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
       assert(Completeness("someMissingColumn").preconditions.size == 2,
         "should check column name availability")
-      assert(Completeness("att1").calculate(dfMissing) == DoubleMetric(Entity.Column,
-        "Completeness", "att1", Success(0.5)))
-      assert(Completeness("att2").calculate(dfMissing) == DoubleMetric(Entity.Column,
-        "Completeness", "att2", Success(0.75)))
+      val result1 = Completeness("att1").calculate(dfMissing)
+      assert(result1 == DoubleMetric(Entity.Column,
+        "Completeness", "att1", Success(0.5), result1.fullColumn))
+      val result2 = Completeness("att2").calculate(dfMissing)
+      assert(result2 == DoubleMetric(Entity.Column,
+        "Completeness", "att2", Success(0.75), result2.fullColumn))
 
     }
 
@@ -82,7 +85,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val dfMissing = getDfMissing(sparkSession)
 
       val result = Completeness("att1", Some("item IN ('1', '2')")).calculate(dfMissing)
-      assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0)))
+      assert(result == DoubleMetric(Entity.Column, "Completeness", "att1", Success(1.0), result.fullColumn))
     }
 
   }
