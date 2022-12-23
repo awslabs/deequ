@@ -63,6 +63,18 @@ case class Check(
   description: String,
   private[deequ] val constraints: Seq[Constraint] = Seq.empty) {
 
+  /**
+   * Returns the name of the columns where each Constraint puts row-level results, if any
+   * 
+   */
+  def getRowLevelConstraintColumnNames(): Seq[String] = {
+    constraints.flatMap(c => {
+      c match {
+        case c: RowLevelConstraint => Some(c.getColumnName)
+        case _ => None
+      }
+    })
+  }
 
   /**
     * Returns a new Check object with the given constraint added to the constraints list.

@@ -60,6 +60,10 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertEvaluatesTo(check1, context, CheckStatus.Success)
       assertEvaluatesTo(check2, context, CheckStatus.Error)
       assertEvaluatesTo(check3, context, CheckStatus.Warning)
+
+      assert(check1.getRowLevelConstraintColumnNames() == Seq("Completeness-att1", "Completeness-att1"))
+      assert(check2.getRowLevelConstraintColumnNames() == Seq("Completeness-att2"))
+      assert(check3.getRowLevelConstraintColumnNames() == Seq("Completeness-att2"))
     }
 
     "return the correct check status for combined completeness" in
