@@ -65,7 +65,7 @@ case class Check(
 
   /**
    * Returns the name of the columns where each Constraint puts row-level results, if any
-   * 
+   *
    */
   def getRowLevelConstraintColumnNames(): Seq[String] = {
     constraints.flatMap(c => {

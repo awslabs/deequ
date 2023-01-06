@@ -54,7 +54,7 @@ trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
 }
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
-trait Analyzer[S <: State[_], +M <: Metric[_]] {
+trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
 
   /**
     * Compute the state (sufficient statistics) from the data

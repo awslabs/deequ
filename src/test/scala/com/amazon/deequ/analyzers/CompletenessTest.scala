@@ -22,7 +22,6 @@ import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
-import com.amazon.deequ.constraints.NamedConstraint
 import com.amazon.deequ.constraints.RowLevelConstraint
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn

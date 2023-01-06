@@ -33,7 +33,7 @@ case class ConstraintResult(
     metric: Option[Metric[_]] = None)
 
 /** Common trait for all data quality constraints */
-trait Constraint {
+trait Constraint extends Serializable {
   def evaluate(analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]]): ConstraintResult
 }
 
@@ -77,7 +77,7 @@ class NamedConstraint(private[deequ] val constraint: Constraint, name: String)
  */
 class RowLevelConstraint(private[deequ] override val constraint: Constraint, name: String, columnName: String)
   extends NamedConstraint(constraint, name) {
-  def getColumnName: String = columnName
+  val getColumnName: String = columnName
 }
 
 /**
