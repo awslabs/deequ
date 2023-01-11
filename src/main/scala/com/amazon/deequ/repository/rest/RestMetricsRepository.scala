@@ -20,7 +20,8 @@ import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
-import com.amazonaws.http.{AmazonHttpClient, DefaultErrorResponseHandler, ExecutionContext, HttpResponse, HttpResponseHandler}
+import com.amazonaws.http.{AmazonHttpClient, DefaultErrorResponseHandler, ExecutionContext, HttpResponse,
+  HttpResponseHandler}
 import com.amazonaws.retry.PredefinedRetryPolicies
 import com.amazonaws.{AmazonClientException, ClientConfiguration, DefaultRequest}
 import com.google.common.collect.ImmutableList
@@ -35,7 +36,8 @@ import java.io.{BufferedInputStream, ByteArrayInputStream}
  * readRequest: an endpoint request that read all of the metrics generated so far
  * writeRequest: an endpoint request that write th metrics to database
  * */
-class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: DefaultRequest[Void]) extends MetricsRepository {
+class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: DefaultRequest[Void])
+  extends MetricsRepository {
   /**
    * Saves Analysis results (metrics)
    *
@@ -47,7 +49,9 @@ class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: Def
       case (_, metric) => metric.value.isSuccess
     }
     val analyzerContextWithSuccessfulValues = AnalyzerContext(successfulMetrics)
-    val serializedResult = AnalysisResultSerde.serialize(Seq(AnalysisResult(resultKey, analyzerContextWithSuccessfulValues)))
+    val serializedResult = AnalysisResultSerde.serialize(
+      Seq(AnalysisResult(resultKey, analyzerContextWithSuccessfulValues))
+    )
 
     writeRequest.setContent(new ByteArrayInputStream(serializedResult.getBytes))
 
@@ -67,7 +71,8 @@ class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: Def
   }
 }
 
-class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Void]) extends MetricsRepositoryMultipleResultsLoader {
+class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Void])
+  extends MetricsRepositoryMultipleResultsLoader {
 
   private[this] var tagValues: Option[Map[String, String]] = None
   private[this] var forAnalyzers: Option[Seq[Analyzer[_, Metric[_]]]] = None
@@ -122,7 +127,9 @@ class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Voi
       IOUtils.toString(_, "UTF-8")
     })
 
-    val allResults = contentString.map { text => AnalysisResultSerde.deserialize(text) }.getOrElse(Seq.empty)
+    val allResults = contentString
+      .map { text => AnalysisResultSerde.deserialize(text) }
+      .getOrElse(Seq.empty)
 
     val selection = allResults
       .filter { result => after.isEmpty || after.get <= result.resultKey.dataSetDate }
@@ -146,29 +153,32 @@ class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Voi
 }
 
 object RestMetricsRepository {
-  private[api] val httpClient = new AmazonHttpClient(new ClientConfiguration()
+  private[rest] val httpClient = new AmazonHttpClient(new ClientConfiguration()
     .withRetryPolicy(PredefinedRetryPolicies.DEFAULT))
 
-  def apply(readRequest: DefaultRequest[Void], writeRequest: DefaultRequest[Void]): RestMetricsRepository = {
+  def apply(readRequest: DefaultRequest[Void], writeRequest: DefaultRequest[Void]):
+  RestMetricsRepository = {
     new RestMetricsRepository(readRequest, writeRequest)
   }
 
   /* Helper function to write to a content to provided endpoint */
-  private[api] def writeHttpClient(writeRequest: DefaultRequest[Void]): Unit = {
+  private[rest] def writeHttpClient(writeRequest: DefaultRequest[Void]): Unit = {
     httpClient
       .requestExecutionBuilder
       .executionContext(new ExecutionContext(true))
       .request(writeRequest)
       .errorResponseHandler(new HttpResponseHandler[AmazonClientException] {
         override def handle(response: HttpResponse): AmazonClientException = {
-          throw new AmazonClientException(s"ERROR writing to endpoint: ${writeRequest.getEndpoint}. Code: ${response.getStatusCode}. Message: ${response.getStatusText}")
+          throw new AmazonClientException(s"ERROR writing to endpoint: " +
+            s"${writeRequest.getEndpoint}. Code: ${response.getStatusCode}")
         }
         override def needsConnectionLeftOpen(): Boolean = false
       })
       .execute(new HttpResponseHandler[Unit] {
         override def handle(response: HttpResponse): Unit = {
           if (response.getStatusCode != 200) {
-            throw new AmazonClientException(s"ERROR writing to endpoint: ${writeRequest.getEndpoint}. Code: ${response.getStatusCode}. Message: ${response.getStatusText}")
+            throw new AmazonClientException(s"ERROR writing to endpoint: " +
+              s"${writeRequest.getEndpoint}. Code: ${response.getStatusCode}")
           }
         }
         override def needsConnectionLeftOpen(): Boolean = false
@@ -177,7 +187,8 @@ object RestMetricsRepository {
   }
 
   /* Helper function to read from provided endpoint */
-  private[api] def readHttpClient[T](readRequest: DefaultRequest[Void], readFunc: BufferedInputStream => T): Option[T] = {
+  private[rest] def readHttpClient[T](readRequest: DefaultRequest[Void],
+                                      readFunc: BufferedInputStream => T): Option[T] = {
     httpClient
       .requestExecutionBuilder
       .executionContext(new ExecutionContext(true))
