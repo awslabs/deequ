@@ -55,8 +55,8 @@ object Distance {
   /** Calculate distance of categorical profiles based on different distance methods
    *
    * Thresholds for chi-square method:
-   *    - for 2x2 tables: all expected counts should be 10 or greater (Cochran 1952, 1954)
-   *    - for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, p. 734)
+   *    - for 2x2 tables: all expected counts should be 10 or greater (Cochran, William G. "The χ2 test of goodness of fit." The Annals of mathematical statistics (1952): 315-345.)
+   *    - for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, The Practice of Statistics, p. 734)
    *
    * @param sample1                      the mapping between categories(keys) and counts(values) of the observed sample
    * @param sample2                      the mapping between categories(keys) and counts(values) of the expected baseline
@@ -84,8 +84,8 @@ object Distance {
 
   /** Calculate distance of categorical profiles based on Chisquare test or stats
    *
-   *  for 2x2 tables: all expected counts should be 10 or greater (Cochran 1952, 1954)
-   *  for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, p. 734)
+   *  for 2x2 tables: all expected counts should be 10 or greater (Cochran, William G. "The χ2 test of goodness of fit." The Annals of mathematical statistics (1952): 315-345.)
+   *  for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, The Practice of Statistics, p. 734)
    *
    *  @param sample                       the mapping between categories(keys) and counts(values) of the observed sample
    *  @param expected                     the mapping between categories(keys) and counts(values) of the expected baseline
@@ -130,8 +130,8 @@ object Distance {
 
   /** Regroup categories with elements below threshold, required for chi-square test
    *
-   * for 2x2 tables: all expected counts should be 10 or greater (Cochran 1952, 1954)
-   * for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, p. 734)
+   * for 2x2 tables: all expected counts should be 10 or greater (Cochran, William G. "The χ2 test of goodness of fit." The Annals of mathematical statistics (1952): 315-345.)
+   * for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, The Practice of Statistics, p. 734)
    *
    * @param sample                       the mapping between categories(keys) and counts(values) of the observed sample
    * @param expected                     the mapping between categories(keys) and counts(values) of the expected baseline
@@ -153,7 +153,7 @@ object Distance {
     if (expected.keySet.size < 2) {
       (sample, expected)
     } else {
-      // Determine thresholds depending on dimensions of mapping (2x2 tables use Cohan, all other tables Yates thresholds)
+      // Determine thresholds depending on dimensions of mapping (2x2 tables use Cochran, all other tables Yates thresholds)
       var absThresholdPerColumn : Integer = absThresholdCochran
       var maxNbColumnsBelowThreshold: Integer = 0
       if (expected.keySet.size > 2) {
