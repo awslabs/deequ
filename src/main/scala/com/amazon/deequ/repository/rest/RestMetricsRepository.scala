@@ -30,13 +30,16 @@ import org.apache.commons.io.IOUtils
 import java.io.{BufferedInputStream, ByteArrayInputStream}
 
 
-/** A simple Repository implementation backed by a concurrent hash map
+/** A simple Repository implementation using AmazonHttpClient to read and write to API
  *
  * readRequest: an endpoint request that read all of the metrics generated so far
- * writeRequest: an endpoint request that write th metrics to database
+ * writeRequest: an endpoint request that write analyzer metrics
  * */
 class RestMetricsRepository(readRequest: Request[Void], writeRequest: Request[Void])
   extends MetricsRepository {
+  /**
+  * Other implementation of this RestApiHelper can be used, by extending RestApiHelper, and call setApiHelper
+  * */
   var apiHelper: RestApiHelper = new RestApiHelperImp()
   /**
    * Saves Analysis results (metrics)
@@ -70,6 +73,7 @@ class RestMetricsRepository(readRequest: Request[Void], writeRequest: Request[Vo
     new RestMetricsRepositoryMultipleResultsLoader(apiHelper, readRequest)
   }
 
+  /** Set different implementation of RestApiHelper, instead of the default AmazonHttpClient */
   def setApiHelper(apiHelper: RestApiHelper): Unit = {
     this.apiHelper = apiHelper
   }
@@ -165,7 +169,6 @@ class RestApiHelperImp extends RestApiHelper {
   private val httpClient = new AmazonHttpClient(new ClientConfiguration()
     .withRetryPolicy(PredefinedRetryPolicies.DEFAULT))
 
-  /* Helper function to write to a content to provided endpoint */
   override def writeHttpRequest(writeRequest: Request[Void]): Unit = {
     httpClient
       .requestExecutionBuilder
@@ -190,7 +193,6 @@ class RestApiHelperImp extends RestApiHelper {
       .getAwsResponse
   }
 
-  /* Helper function to read from provided endpoint */
   override def readHttpRequest[T](readRequest: Request[Void],
                                        readFunc: BufferedInputStream => T): Option[T] = {
     httpClient

@@ -22,13 +22,12 @@ import com.amazon.deequ.analyzers.runners.AnalyzerContext._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.{AnalysisResult, AnalysisResultSerde, MetricsRepository, ResultKey}
-import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
+import com.amazon.deequ.utils.{FixtureSupport}
 import com.amazonaws.{DefaultRequest, Request}
 import com.amazonaws.http.HttpMethodName
 import com.google.common.io.Closeables
 import org.apache.commons.io.IOUtils
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.{BufferedInputStream, ByteArrayInputStream}
@@ -49,7 +48,7 @@ class RestMetricsRepositoryTest extends AnyWordSpec
   private[this] val REGION_EU = Map("Region" -> "EU")
   private[this] val REGION_NA = Map("Region" -> "NA")
 
-  private[this] val TOKEN = "asdf123"
+  private[this] val TOKEN = "sso_token_guid_123"
   private[this] val ENDPOINT = "https://test.api.com"
   private[this] val PATH = "/v1/api/metrics"
 
@@ -276,24 +275,23 @@ class RestMetricsRepositoryTest extends AnyWordSpec
   }
 
   private[this] def createRepository(sparkSession: SparkSession): MetricsRepository = {
+    val ssoJwt = "sso-jwt " + TOKEN
+    val headers = Map(
+      "Content-Type" -> "application/json",
+      "Authorization" -> ssoJwt
+    )
+
     val writeRequest = new DefaultRequest[Void]("execute-api")
     writeRequest.setHttpMethod(HttpMethodName.POST)
     writeRequest.setEndpoint(URI.create(ENDPOINT))
     writeRequest.setResourcePath(PATH)
-    val ssoJwt = "sso-jwt " + TOKEN
-    writeRequest.setHeaders(Map(
-      "Content-Type" -> "application/json",
-      "Authorization" -> ssoJwt
-    ).asJava)
+    writeRequest.setHeaders(headers.asJava)
 
     val readRequest = new DefaultRequest[Void]("execute-api")
     readRequest.setHttpMethod(HttpMethodName.GET)
     readRequest.setEndpoint(URI.create(ENDPOINT))
     readRequest.setResourcePath(PATH)
-    readRequest.setHeaders(Map(
-      "Content-Type" -> "application/json",
-      "Authorization" -> ssoJwt
-    ).asJava)
+    readRequest.setHeaders(headers.asJava)
 
     val repo = new RestMetricsRepository(readRequest=readRequest, writeRequest=writeRequest)
     repo.setApiHelper(new RestApiHelperMock())
