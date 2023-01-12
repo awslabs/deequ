@@ -61,35 +61,4 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
       data.withColumn("new", metric.fullColumn.get).show()
     }
   }
-
-  "VerificationSuite" should {
-    "generate a result that contains row-level results" in withSparkSession { session =>
-      val data = completenessSampleData(session)
-
-      val isComplete = new Check(CheckLevel.Error, "rule1").isComplete("Address Line 2")
-      val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("Country", _ > 0.7)
-      val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("Address Line 1")
-      val expectedColumn1 = isComplete.constraints.head.asInstanceOf[RowLevelConstraint].getColumnName
-      val expectedColumn2 = completeness.constraints.head.asInstanceOf[RowLevelConstraint].getColumnName
-
-      val suite = new VerificationSuite().onData(data).addChecks(Seq(isComplete, completeness, isPrimaryKey))
-
-      val result: VerificationResult = suite.run()
-
-      assert(result.status == CheckStatus.Error)
-
-      data.show()
-      val resultData = VerificationResult.toRowLevelResults(session, result, data)
-      resultData.show()
-
-      val expectedColumns: Seq[String] = data.columns :+ expectedColumn1 :+ expectedColumn2
-      assert(resultData.columns.sameElements(expectedColumns))
-
-      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getBoolean(0))
-      assert(Seq(true, true, true, true, false, true, true, false).sameElements(rowLevel1))
-
-      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
-      assert(Seq(true, true, true, true, true, true, true, true).sameElements(rowLevel2))
-    }
-  }
 }

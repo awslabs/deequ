@@ -21,6 +21,7 @@ import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.Constraint
+import com.amazon.deequ.constraints.RowLevelConstraint
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -83,6 +84,33 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           assertStatusFor(df, checks: _*)(CheckStatus.Error)
         }
       }
+
+    "generate a result that contains row-level results" in withSparkSession { session =>
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val isComplete = new Check(CheckLevel.Error, "rule1").isComplete("att1")
+      val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("att2", _ > 0.7)
+      val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("item")
+      val expectedColumn1 = isComplete.constraints.head.asInstanceOf[RowLevelConstraint].getColumnName
+      val expectedColumn2 = completeness.constraints.head.asInstanceOf[RowLevelConstraint].getColumnName
+
+      val suite = new VerificationSuite().onData(data).addChecks(Seq(isComplete, completeness, isPrimaryKey))
+
+      val result: VerificationResult = suite.run()
+
+      assert(result.status == CheckStatus.Error)
+
+      val resultData = VerificationResult.toRowLevelResults(session, result, data)
+
+      val expectedColumns: Seq[String] = data.columns :+ expectedColumn1 :+ expectedColumn2
+      assert(resultData.columns.sameElements(expectedColumns))
+
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel1))
+
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, false, true, false, true).sameElements(rowLevel2))
+    }
 
     "accept analysis config for mandatory analysis" in withSparkSession { sparkSession =>
 
