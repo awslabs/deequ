@@ -20,10 +20,9 @@ import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
-import com.amazonaws.http.{AmazonHttpClient, DefaultErrorResponseHandler, ExecutionContext, HttpResponse,
-  HttpResponseHandler}
+import com.amazonaws.http.{AmazonHttpClient, DefaultErrorResponseHandler, ExecutionContext, HttpResponse, HttpResponseHandler}
 import com.amazonaws.retry.PredefinedRetryPolicies
-import com.amazonaws.{AmazonClientException, ClientConfiguration, DefaultRequest}
+import com.amazonaws.{AmazonClientException, ClientConfiguration, Request}
 import com.google.common.collect.ImmutableList
 import com.google.common.io.Closeables
 import org.apache.commons.io.IOUtils
@@ -36,8 +35,9 @@ import java.io.{BufferedInputStream, ByteArrayInputStream}
  * readRequest: an endpoint request that read all of the metrics generated so far
  * writeRequest: an endpoint request that write th metrics to database
  * */
-class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: DefaultRequest[Void])
+class RestMetricsRepository(readRequest: Request[Void], writeRequest: Request[Void])
   extends MetricsRepository {
+  var apiHelper: RestApiHelper = new RestApiHelperImp()
   /**
    * Saves Analysis results (metrics)
    *
@@ -53,9 +53,9 @@ class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: Def
       Seq(AnalysisResult(resultKey, analyzerContextWithSuccessfulValues))
     )
 
-    writeRequest.setContent(new ByteArrayInputStream(serializedResult.getBytes))
+    writeRequest.setContent(new ByteArrayInputStream(serializedResult.getBytes("UTF-8")))
 
-    RestMetricsRepository.writeHttpClient(writeRequest)
+    apiHelper.writeHttpRequest(writeRequest)
   }
 
   /**
@@ -67,11 +67,15 @@ class RestMetricsRepository(readRequest: DefaultRequest[Void], writeRequest: Def
 
   /** Get a builder class to construct a loading query to get AnalysisResults */
   override def load(): MetricsRepositoryMultipleResultsLoader = {
-    new RestMetricsRepositoryMultipleResultsLoader(readRequest)
+    new RestMetricsRepositoryMultipleResultsLoader(apiHelper, readRequest)
+  }
+
+  def setApiHelper(apiHelper: RestApiHelper): Unit = {
+    this.apiHelper = apiHelper
   }
 }
 
-class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Void])
+class RestMetricsRepositoryMultipleResultsLoader(apiHelper: RestApiHelper, readRequest: Request[Void])
   extends MetricsRepositoryMultipleResultsLoader {
 
   private[this] var tagValues: Option[Map[String, String]] = None
@@ -123,7 +127,7 @@ class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Voi
 
   /** Get the AnalysisResult */
   def get(): Seq[AnalysisResult] = {
-    val contentString = RestMetricsRepository.readHttpClient(readRequest, {
+    val contentString = apiHelper.readHttpRequest(readRequest, {
       IOUtils.toString(_, "UTF-8")
     })
 
@@ -152,17 +156,17 @@ class RestMetricsRepositoryMultipleResultsLoader(readRequest: DefaultRequest[Voi
   }
 }
 
-object RestMetricsRepository {
-  private[rest] val httpClient = new AmazonHttpClient(new ClientConfiguration()
+trait RestApiHelper {
+  def writeHttpRequest(writeRequest: Request[Void]): Unit
+  def readHttpRequest[T](readRequest: Request[Void], readFunc: BufferedInputStream => T): Option[T]
+}
+
+class RestApiHelperImp extends RestApiHelper {
+  private val httpClient = new AmazonHttpClient(new ClientConfiguration()
     .withRetryPolicy(PredefinedRetryPolicies.DEFAULT))
 
-  def apply(readRequest: DefaultRequest[Void], writeRequest: DefaultRequest[Void]):
-  RestMetricsRepository = {
-    new RestMetricsRepository(readRequest, writeRequest)
-  }
-
   /* Helper function to write to a content to provided endpoint */
-  private[rest] def writeHttpClient(writeRequest: DefaultRequest[Void]): Unit = {
+  override def writeHttpRequest(writeRequest: Request[Void]): Unit = {
     httpClient
       .requestExecutionBuilder
       .executionContext(new ExecutionContext(true))
@@ -187,8 +191,8 @@ object RestMetricsRepository {
   }
 
   /* Helper function to read from provided endpoint */
-  private[rest] def readHttpClient[T](readRequest: DefaultRequest[Void],
-                                      readFunc: BufferedInputStream => T): Option[T] = {
+  override def readHttpRequest[T](readRequest: Request[Void],
+                                       readFunc: BufferedInputStream => T): Option[T] = {
     httpClient
       .requestExecutionBuilder
       .executionContext(new ExecutionContext(true))
