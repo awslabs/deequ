@@ -293,7 +293,7 @@ class RestMetricsRepositoryTest extends AnyWordSpec
     readRequest.setResourcePath(PATH)
     readRequest.setHeaders(headers.asJava)
 
-    val repo = new RestMetricsRepository(readRequest=readRequest, writeRequest=writeRequest)
+    val repo = new RestMetricsRepository(readRequest = readRequest, writeRequest = writeRequest)
     repo.setApiHelper(new RestApiHelperMock())
     repo
   }
@@ -315,7 +315,7 @@ class RestApiHelperMock extends RestApiHelper {
   }
 
   override def readHttpRequest[T](readRequest: Request[Void], readFunc: BufferedInputStream => T):
-  Option[T] =  {
+  Option[T] = {
     val analyzerResults = mapRepo.values.map { analysisResult =>
         val requestedMetrics = analysisResult
           .analyzerContext

@@ -20,7 +20,8 @@ import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
-import com.amazonaws.http.{AmazonHttpClient, DefaultErrorResponseHandler, ExecutionContext, HttpResponse, HttpResponseHandler}
+import com.amazonaws.http.{AmazonHttpClient, DefaultErrorResponseHandler,
+  ExecutionContext, HttpResponse, HttpResponseHandler}
 import com.amazonaws.retry.PredefinedRetryPolicies
 import com.amazonaws.{AmazonClientException, ClientConfiguration, Request}
 import com.google.common.collect.ImmutableList
@@ -38,7 +39,8 @@ import java.io.{BufferedInputStream, ByteArrayInputStream}
 class RestMetricsRepository(readRequest: Request[Void], writeRequest: Request[Void])
   extends MetricsRepository {
   /**
-  * Other implementation of this RestApiHelper can be used, by extending RestApiHelper, and call setApiHelper
+  * Other implementation of this RestApiHelper can be used,
+   * by extending RestApiHelper, and call setApiHelper
   * */
   var apiHelper: RestApiHelper = new RestApiHelperImp()
   /**
@@ -79,7 +81,8 @@ class RestMetricsRepository(readRequest: Request[Void], writeRequest: Request[Vo
   }
 }
 
-class RestMetricsRepositoryMultipleResultsLoader(apiHelper: RestApiHelper, readRequest: Request[Void])
+class RestMetricsRepositoryMultipleResultsLoader(apiHelper: RestApiHelper,
+                                                 readRequest: Request[Void])
   extends MetricsRepositoryMultipleResultsLoader {
 
   private[this] var tagValues: Option[Map[String, String]] = None
