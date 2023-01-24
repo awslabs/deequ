@@ -28,10 +28,15 @@ import org.apache.spark.mllib.stat.test.ChiSqTestResult
 
 object Distance {
 
-    // chi-square constants
+    // Chi-square constants
+    // at least two distinct categories are required to run the chi-square test for a categorical variable
     private val chisquareMinDimension: Int = 2
+
+    //for tables larger than 2 x 2: "No more than 20% of the expected counts are less than 5 and all individual expected counts are 1 or greater" (Yates, Moore & McCabe, 1999, The Practice of Statistics, p. 734)
     private val defaultAbsThresholdYates: Integer = 5
     private val defaultPercThresholdYates: Double = 0.2
+
+    // for 2x2 tables: all expected counts should be 10 or greater (Cochran, William G. "The χ2 test of goodness of fit." The Annals of mathematical statistics (1952): 315-345.)
     private val defaultAbsThresholdCochran: Integer = 10
 
     trait CategoricalDistanceMethod
