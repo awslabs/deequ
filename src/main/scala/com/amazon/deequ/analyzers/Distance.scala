@@ -15,7 +15,6 @@
  */
 
 package com.amazon.deequ.analyzers
-import com.amazon.deequ.analyzers.CategoricalDistanceMethod.{CategoricalDistanceMethod, Chisquare, LInfinity}
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg._
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -23,14 +22,27 @@ import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.mllib.stat.Statistics._
 import org.apache.spark.mllib.stat.test.ChiSqTestResult
 
-object CategoricalDistanceMethod extends Enumeration {
-  type CategoricalDistanceMethod = Value
-  val LInfinity, Chisquare = Value
-}
+
+
+
 
 object Distance {
 
-    /** Calculate distance of numerical profiles based on KLL Sketches and L-Infinity Distance */
+    // chi-square constants
+    private val chisquareMinDimension: Int = 2
+    private val defaultAbsThresholdYates: Integer = 5
+    private val defaultPercThresholdYates: Double = 0.2
+    private val defaultAbsThresholdCochran: Integer = 10
+
+    trait CategoricalDistanceMethod
+    case class LInfinity() extends CategoricalDistanceMethod
+    case class Chisquare(
+                          absThresholdYates: Integer = defaultAbsThresholdYates,
+                          percThresholdYates: Double = defaultPercThresholdYates,
+                          absThresholdCochran: Integer = defaultAbsThresholdCochran)
+      extends CategoricalDistanceMethod
+
+  /** Calculate distance of numerical profiles based on KLL Sketches and L-Infinity Distance */
     def numericalDistance(
       sample1: QuantileNonSample[Double],
       sample2: QuantileNonSample[Double],
@@ -71,14 +83,18 @@ object Distance {
     sample1: scala.collection.mutable.Map[String, Long],
     sample2: scala.collection.mutable.Map[String, Long],
     correctForLowNumberOfSamples: Boolean = false,
-    method: CategoricalDistanceMethod = LInfinity,
-    absThresholdYates: Integer = 5,
-    percThresholdYates: Double = 0.2,
-    absThresholdCochran: Integer = 10)
-    : Double = {
+    method: CategoricalDistanceMethod = LInfinity())
+  : Double = {
     method match {
-      case LInfinity => categoricalLInfinityDistance(sample1, sample2, correctForLowNumberOfSamples)
-      case Chisquare => categoricalChiSquareTest(sample1, sample2, correctForLowNumberOfSamples, absThresholdYates , percThresholdYates,absThresholdCochran )
+      case LInfinity() => categoricalLInfinityDistance(sample1, sample2, correctForLowNumberOfSamples)
+      case Chisquare(absThresholdYates, percThresholdYates, absThresholdCochran)
+        => categoricalChiSquareTest(
+            sample1,
+            sample2,
+            correctForLowNumberOfSamples,
+            absThresholdYates,
+            percThresholdYates,
+            absThresholdCochran )
     }
   }
 
@@ -100,26 +116,26 @@ object Distance {
     sample: scala.collection.mutable.Map[String, Long],
     expected: scala.collection.mutable.Map[String, Long],
     correctForLowNumberOfSamples: Boolean = false,
-    absThresholdYates : Integer = 5 ,
-    percThresholdYates : Double = 0.2,
-    absThresholdCochran : Integer = 10)
+    absThresholdYates : Integer = defaultAbsThresholdYates ,
+    percThresholdYates : Double = defaultPercThresholdYates,
+    absThresholdCochran : Integer = defaultAbsThresholdCochran)
   : Double = {
 
-    val sample_sum: Double = sample.filter(e => expected.contains(e._1)).map((e => e._2)).sum
-    val expected_sum: Double = expected.map(e => e._2).sum
+    val sampleSum: Double = sample.filter(e => expected.contains(e._1)).map((e => e._2)).sum
+    val expectedSum: Double = expected.map(e => e._2).sum
 
     // Normalize the expected input
-    val expectedNorm: scala.collection.mutable.Map[String, Double] = expected.map(e => (e._1, (e._2 / expected_sum * sample_sum)))
+    val expectedNorm: scala.collection.mutable.Map[String, Double] = expected.map(e => (e._1, (e._2 / expectedSum * sampleSum)))
 
     // Call the function that regroups categories if necessary depending on thresholds
-    val (regrouped_sample, regrouped_expected) = regroupCategories(sample.map(e => (e._1, e._2.toDouble)), expectedNorm, absThresholdYates, percThresholdYates, absThresholdCochran)
+    val (regroupedSample, regroupedExpected) = regroupCategories(sample.map(e => (e._1, e._2.toDouble)), expectedNorm, absThresholdYates, percThresholdYates, absThresholdCochran)
 
     // If less than 2 categories remain we cannot conduct the test
-    if (regrouped_sample.keySet.size < 2) {
+    if (regroupedSample.keySet.size < chisquareMinDimension) {
       Double.NaN
     } else {
       // run chi-square test and return statistics or p-value
-      val result = chiSquareTest(regrouped_sample, regrouped_expected)
+      val result = chiSquareTest(regroupedSample, regroupedExpected)
       if (correctForLowNumberOfSamples) {
         result.statistic
       } else {
@@ -144,19 +160,19 @@ object Distance {
   private[this] def regroupCategories(
     sample: scala.collection.mutable.Map[String, Double],
     expected: scala.collection.mutable.Map[String, Double],
-    absThresholdYates: Integer = 5,
-    percThresholdYates: Double = 0.2,
-    absThresholdCochran: Integer = 10)
+    absThresholdYates: Integer = defaultAbsThresholdYates,
+    percThresholdYates: Double = defaultPercThresholdYates,
+    absThresholdCochran: Integer = defaultAbsThresholdCochran)
     : (scala.collection.mutable.Map[String, Double], scala.collection.mutable.Map[String, Double]) = {
 
-    // If number of categories is below return original mappings
-    if (expected.keySet.size < 2) {
+    // If number of categories is below the minimum return original mappings
+    if (expected.keySet.size < chisquareMinDimension) {
       (sample, expected)
     } else {
       // Determine thresholds depending on dimensions of mapping (2x2 tables use Cochran, all other tables Yates thresholds)
       var absThresholdPerColumn : Integer = absThresholdCochran
       var maxNbColumnsBelowThreshold: Integer = 0
-      if (expected.keySet.size > 2) {
+      if (expected.keySet.size > chisquareMinDimension) {
         absThresholdPerColumn = absThresholdYates
         maxNbColumnsBelowThreshold = (percThresholdYates * expected.keySet.size).toInt
       }
@@ -203,20 +219,20 @@ object Distance {
                                    expected: scala.collection.mutable.Map[String, Double])
   : ChiSqTestResult = {
 
-    var sample_array = Array[Double]()
-    var expected_array = Array[Double]()
+    var sampleArray = Array[Double]()
+    var expectedArray = Array[Double]()
 
     expected.keySet.foreach { key =>
       val cdf1: Double = sample.getOrElse(key, 0.0)
       val cdf2: Double = expected(key)
-      sample_array = sample_array :+ cdf1
-      expected_array = expected_array :+ cdf2
+      sampleArray = sampleArray :+ cdf1
+      expectedArray = expectedArray :+ cdf2
     }
 
-    val vec_sample: Vector = Vectors.dense(sample_array)
-    val vec_expected: Vector = Vectors.dense(expected_array)
+    val vecSample: Vector = Vectors.dense(sampleArray)
+    val vecExpected: Vector = Vectors.dense(expectedArray)
 
-    Statistics.chiSqTest(vec_sample, vec_expected)
+    Statistics.chiSqTest(vecSample, vecExpected)
   }
 
   /** Calculate distance of categorical profiles based on L-Infinity Distance */
