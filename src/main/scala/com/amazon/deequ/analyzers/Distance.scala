@@ -39,9 +39,12 @@ object Distance {
     // for 2x2 tables: all expected counts should be 10 or greater (Cochran, William G. "The χ2 test of goodness of fit." The Annals of mathematical statistics (1952): 315-345.)
     private val defaultAbsThresholdCochran: Integer = 10
 
+    // Default c(alpha) value corresponding to an alpha value of 0.003, Eq. (15) in Section 3.3.1 of Knuth, D.E., The Art of Computer Programming, Volume 2 (Seminumerical Algorithms), 3rd Edition, Addison Wesley, Reading Mass, 1998.
+    private val defaultCAlpha : Double = 1.8
+
     trait CategoricalDistanceMethod
-    case class LInfinity() extends CategoricalDistanceMethod
-    case class Chisquare(
+    case class LInfinityMethod(alpha: Option[Double] = None) extends CategoricalDistanceMethod
+    case class ChisquareMethod(
                           absThresholdYates: Integer = defaultAbsThresholdYates,
                           percThresholdYates: Double = defaultPercThresholdYates,
                           absThresholdCochran: Integer = defaultAbsThresholdCochran)
@@ -51,7 +54,8 @@ object Distance {
     def numericalDistance(
       sample1: QuantileNonSample[Double],
       sample2: QuantileNonSample[Double],
-      correctForLowNumberOfSamples: Boolean = false)
+      correctForLowNumberOfSamples: Boolean = false,
+      alpha: Option[Double] = None)
     : Double = {
       val rankMap1 = sample1.getRankMap()
       val rankMap2 = sample2.getRankMap()
@@ -66,7 +70,7 @@ object Distance {
         val cdfDiff = Math.abs(cdf1 - cdf2)
         linfSimple = Math.max(linfSimple, cdfDiff)
       }
-      selectMetrics(linfSimple, n, m, correctForLowNumberOfSamples)
+      selectMetrics(linfSimple, n, m, correctForLowNumberOfSamples, alpha)
     }
 
   /** Calculate distance of categorical profiles based on different distance methods
@@ -88,11 +92,11 @@ object Distance {
     sample1: scala.collection.mutable.Map[String, Long],
     sample2: scala.collection.mutable.Map[String, Long],
     correctForLowNumberOfSamples: Boolean = false,
-    method: CategoricalDistanceMethod = LInfinity())
+    method: CategoricalDistanceMethod = LInfinityMethod())
   : Double = {
     method match {
-      case LInfinity() => categoricalLInfinityDistance(sample1, sample2, correctForLowNumberOfSamples)
-      case Chisquare(absThresholdYates, percThresholdYates, absThresholdCochran)
+      case LInfinityMethod(alpha) => categoricalLInfinityDistance(sample1, sample2, correctForLowNumberOfSamples, alpha)
+      case ChisquareMethod(absThresholdYates, percThresholdYates, absThresholdCochran)
         => categoricalChiSquareTest(
             sample1,
             sample2,
@@ -123,13 +127,16 @@ object Distance {
     correctForLowNumberOfSamples: Boolean = false,
     absThresholdYates : Integer = defaultAbsThresholdYates ,
     percThresholdYates : Double = defaultPercThresholdYates,
-    absThresholdCochran : Integer = defaultAbsThresholdCochran)
+    absThresholdCochran : Integer = defaultAbsThresholdCochran,
+    normalizeExpected : Boolean = true)
   : Double = {
 
     val sampleSum: Double = sample.filter(e => expected.contains(e._1)).map((e => e._2)).sum
     val expectedSum: Double = expected.map(e => e._2).sum
 
-    // Normalize the expected input
+    // Normalize the expected input, normalization is required to conduct the chi-square test
+    // While normalization is already included in the mllib chi-square test, we perform normalization manually to execute proper regrouping
+    // https://spark.apache.org/docs/3.1.3/api/scala/org/apache/spark/mllib/stat/Statistics$.html#chiSqTest:org.apache.spark.mllib.stat.test.ChiSqTestResult
     val expectedNorm: scala.collection.mutable.Map[String, Double] = expected.map(e => (e._1, (e._2 / expectedSum * sampleSum)))
 
     // Call the function that regroups categories if necessary depending on thresholds
@@ -244,7 +251,8 @@ object Distance {
   private[this] def categoricalLInfinityDistance(
     sample1: scala.collection.mutable.Map[String, Long],
     sample2: scala.collection.mutable.Map[String, Long],
-    correctForLowNumberOfSamples: Boolean = false)
+    correctForLowNumberOfSamples: Boolean = false,
+    alpha: Option[Double])
   : Double = {
     var n = 0.0
     var m = 0.0
@@ -263,7 +271,7 @@ object Distance {
       val cdfDiff = Math.abs(cdf1 - cdf2)
       linfSimple = Math.max(linfSimple, cdfDiff)
     }
-    selectMetrics(linfSimple, n, m, correctForLowNumberOfSamples)
+    selectMetrics(linfSimple, n, m, correctForLowNumberOfSamples, alpha)
   }
 
   /** Select which metrics to compute (linf_simple or linf_robust)
@@ -272,14 +280,20 @@ object Distance {
      linfSimple: Double,
      n: Double,
      m: Double,
-     correctForLowNumberOfSamples: Boolean = false)
+     correctForLowNumberOfSamples: Boolean = false,
+     alpha: Option[Double])
    : Double = {
      if (correctForLowNumberOfSamples) {
        linfSimple
      } else {
        // This formula is based on  “Two-sample Kolmogorov–Smirnov test"
        // Reference: https://en.m.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
-       val linfRobust = Math.max(0.0, linfSimple - 1.8 * Math.sqrt((n + m) / (n * m)))
+
+       val cAlpha : Double =  alpha match {
+         case Some(a)  => Math.sqrt(-Math.log(a/2) * 1/2)
+         case None => defaultCAlpha
+       }
+       val linfRobust = Math.max(0.0, linfSimple - cAlpha * Math.sqrt((n + m) / (n * m)))
        linfRobust
      }
    }
