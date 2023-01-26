@@ -17,7 +17,7 @@
 package org.apache.spark.sql
 
 
-import com.amazon.deequ.analyzers.KLLSketch
+import com.amazon.deequ.analyzers.catalyst.DateTimeAggregation
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateFunction, StatefulApproxQuantile, StatefulHyperloglogPlus}
 import org.apache.spark.sql.catalyst.expressions.Literal
 
@@ -79,6 +79,17 @@ object DeequFunctions {
   def stateful_datatype(column: Column): Column = {
     val statefulDataType = new StatefulDataType()
     statefulDataType(column)
+  }
+
+  /**
+   * return DataTime distribution aggregation function
+   * @param column: column on which aggragtion to be performed
+   * @param interval: interval of date time aggregation
+   * @return Column: aggregation function Column
+   * */
+  def dateTimeDistribution(column: Column, interval: Long): Column = {
+    val dateTimeAgg = new DateTimeAggregation(interval)
+    dateTimeAgg(column)
   }
 
   def stateful_kll(

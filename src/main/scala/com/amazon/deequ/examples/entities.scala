@@ -16,12 +16,21 @@
 
 package com.amazon.deequ.examples
 
+import java.sql.Timestamp
+import java.math.BigDecimal
+
 private[deequ] case class Item(
     id: Long,
     productName: String,
     description: String,
     priority: String,
     numViews: Long
+)
+
+private[deequ] case class Order(
+    id: Long,
+    amount: BigDecimal,
+    orderDate: Timestamp
 )
 
 private[deequ] case class Manufacturer(

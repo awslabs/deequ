@@ -45,4 +45,9 @@ private[deequ] object ExampleUtils {
     val rdd = session.sparkContext.parallelize(manufacturers)
     session.createDataFrame(rdd)
   }
+
+  def ordersAsDataframe(session: SparkSession, orders: Order*): DataFrame = {
+    val rdd = session.sparkContext.parallelize(orders)
+    session.createDataFrame(rdd)
+  }
 }

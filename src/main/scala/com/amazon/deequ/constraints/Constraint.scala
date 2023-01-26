@@ -16,7 +16,9 @@
 
 package com.amazon.deequ.constraints
 
-import com.amazon.deequ.analyzers._
+import java.sql.Timestamp
+
+import com.amazon.deequ.analyzers.{MaximumDateTime, _}
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
@@ -484,6 +486,35 @@ object Constraint {
     new NamedConstraint(constraint, s"MaximumConstraint($maximum)")
   }
 
+  def minTimestampConstraint(
+      column: String,
+      assertion: Timestamp => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+  : Constraint = {
+
+    val minimum = MinimumDateTime(column, where)
+
+    val constraint = AnalysisBasedConstraint[MinDateTimeState, Timestamp,
+      Timestamp](minimum, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"MinimumTimestampConstraint($minimum)")
+  }
+
+  def maxTimestampConstraint(
+      column: String,
+      assertion: Timestamp => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+  : Constraint = {
+
+    val maximum = MaximumDateTime(column, where)
+
+    val constraint = AnalysisBasedConstraint[MaxDateTimeState, Timestamp,
+      Timestamp](maximum, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"MaximumTimestampConstraint($maximum)")
+  }
   /**
     * Runs mean analysis on the given column and executes the assertion
     *

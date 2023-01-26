@@ -16,16 +16,18 @@
 
 package com.amazon.deequ.checks
 
+import java.sql.Timestamp
+
 import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State, KLLParameters}
-import com.amazon.deequ.constraints.Constraint._
+import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
+import com.amazon.deequ.constraints.Constraint.{maxTimestampConstraint, minTimestampConstraint, _}
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.checks.ColumnCondition.{isEachNotNull, isAnyNotNull}
+import com.amazon.deequ.checks.ColumnCondition.{isAnyNotNull, isEachNotNull}
 
 import scala.util.matching.Regex
 
@@ -936,6 +938,22 @@ case class Check(
     isContainedIn(column, allowedValues, Check.IsOne, None)
   }
 
+  /**
+   * Asserts that every non-null value in a column is contained in a set of predefined values
+   *for providing isContained availble for numeric types as well
+   *
+   * @param column Column to run the assertion on
+   * @param allowedValues allowed values for the column
+   * @return
+   */
+  def isContainedIn[T <: AnyVal](
+      column: String,
+      allowedValues: Array[T])
+  : CheckWithLastConstraintFilterable = {
+
+    isContainedIn(column, allowedValues, Check.IsOne, None)
+  }
+
   // We can't use default values here as you can't combine default values and overloading in Scala
   /**
     * Asserts that every non-null value in a column is contained in a set of predefined values
@@ -950,6 +968,15 @@ case class Check(
       allowedValues: Array[String],
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
+
+    isContainedIn(column, allowedValues, Check.IsOne, hint)
+  }
+
+  def isContainedIn[T <: AnyVal](
+      column: String,
+      allowedValues: Array[T],
+      hint: Option[String])
+  : CheckWithLastConstraintFilterable = {
 
     isContainedIn(column, allowedValues, Check.IsOne, hint)
   }
@@ -983,20 +1010,30 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isContainedIn(
+  def isContainedIn[T](
       column: String,
-      allowedValues: Array[String],
+      allowedValues: Array[T],
       assertion: Double => Boolean,
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
 
-
-    val valueList = allowedValues
-      .map { _.replaceAll("'", "''") }
-      .mkString("'", "','", "'")
+    val valueList = getValueList(allowedValues)
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
+  }
+
+
+  def getValueList[T](allowedValues: Array[_]): String = {
+    allowedValues match {
+      case allowedValues : Array[String] => allowedValues
+        .map {
+          _.replaceAll("'", "''")
+        }
+        .mkString("'", "','", "'")
+      case allowedValues : Array[Char] => allowedValues.mkString("'", "','", "'")
+      case _ => allowedValues.mkString(",")
+    }
   }
 
   /**
@@ -1025,7 +1062,111 @@ case class Check(
     val predicate = s"`$column` IS NULL OR " +
       s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
+    satisfies(predicate, s"`$column` between $lowerBound and $upperBound", hint = hint)
+  }
+
+  def hasMinTimestamp(
+      column: String,
+      assertion: Timestamp => Boolean,
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => minTimestampConstraint(column, assertion, filter, hint) }
+  }
+
+  def hasMaxTimestamp(
+      column: String,
+      assertion: Timestamp => Boolean,
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => maxTimestampConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * is less than the given datetime (Timestamp)
+   *
+   * @param column Column to run the assertion on
+   * @param datetime value of Timestamp to run assert
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def isDateTimeLessThan(
+      column: String,
+      datetime: Timestamp,
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$column < to_timestamp('${datetime.toString}')",
+      s"$column is less than '${datetime.toString}'", assertion,
+      hint = hint)
+  }
+
+  /**
+   *
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * is greater than the given datetime (Timestamp)
+   *
+   * @param column Column to run the assertion on
+   * @param datetime value of Timestamp to run assert
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def isDateTimeGreaterThan(
+      column: String,
+      datetime: Timestamp,
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$column > to_timestamp('${datetime.toString}')",
+      s"$column is greater than '${datetime.toString}'", assertion,
+      hint = hint)
+  }
+
+  /**
+   *
+   * Asserts that, in each row, the value of column (DateType or TimestampType) contains a past date
+   *
+   * @param column Column to run the assertion on
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasPastDates(
+      column: String,
+      assertion: Double => Boolean = Check.IsOne,
+      hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$column < now()",
+      s"$column has all past dates", assertion,
+      hint = hint)
+  }
+
+  /**
+   *
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * contains a future date
+   *
+   * @param column Column to run the assertion on
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasFutureDates(
+       column: String,
+       assertion: Double => Boolean = Check.IsOne,
+       hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    satisfies(s"$column > now()",
+      s"$column has all future dates", assertion,
+      hint = hint)
   }
 
   /**
@@ -1139,4 +1280,5 @@ object Check {
 
     detectedAnomalies.anomalies.isEmpty
   }
+
 }
