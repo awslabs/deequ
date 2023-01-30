@@ -31,7 +31,6 @@ case class Completeness(column: String, where: Option[String] = None) extends
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      // TODO: optimize to not re-compute
       NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion))
     }
   }
