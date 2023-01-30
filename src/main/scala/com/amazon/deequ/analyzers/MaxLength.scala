@@ -27,12 +27,12 @@ case class MaxLength(column: String, where: Option[String] = None)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    max(length(conditionalSelection(column, where))).cast(DoubleType) :: Nil
+    max(criterion) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MaxState(result.getDouble(offset))
+      MaxState(result.getDouble(offset), Some(criterion))
     }
   }
 
@@ -41,4 +41,6 @@ case class MaxLength(column: String, where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  private def criterion: Column = length(conditionalSelection(column, where)).cast(DoubleType)
 }
