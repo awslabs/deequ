@@ -44,6 +44,9 @@ trait Metric[T] {
  */
 trait FullColumn {
   val fullColumn: Option[Column] = None
+
+  def sum(colA: Option[Column], colB: Option[Column]): Option[Column] =
+    if (colA.equals(colB)) colA else None
 }
 
 /** Common trait for all data quality metrics where the value is double */

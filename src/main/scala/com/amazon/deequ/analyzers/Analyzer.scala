@@ -246,9 +246,6 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
       numMatches.toDouble / count
     }
   }
-
-  private def sum(colA: Option[Column], colB: Option[Column]): Option[Column] =
-    if (colA.equals(colB)) colA else None
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */

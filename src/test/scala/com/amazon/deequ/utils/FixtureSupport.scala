@@ -325,4 +325,20 @@ trait FixtureSupport {
       "dddd"
     ).toDF("att1")
   }
+
+  def getDfWithStringColumns(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("India", "Xavier House, 2nd Floor", "St. Peter Colony, Perry Road", "Bandra (West)"),
+      ("India", "503 Godavari", "Sir Pochkhanwala Road", "Worli"),
+      ("India", "4/4 Seema Society", "N Dutta Road, Four Bungalows", "Andheri"),
+      ("India", "1001D Abhishek Apartments", "Juhu Versova Road", "Andheri"),
+      ("India", "95, Hill Road", null, null),
+      ("India", "90 Cuffe Parade", "Taj President Hotel", "Cuffe Parade"),
+      ("India", "4, Seven PM", "Sir Pochkhanwala Rd", "Worli"),
+      ("India", "1453 Sahar Road", null, null)
+    )
+      .toDF("Country", "Address Line 1", "Address Line 2", "Address Line 3")
+  }
 }
