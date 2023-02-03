@@ -426,7 +426,7 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
       hint = hint)
 
-    new NamedConstraint(constraint, s"MaxLengthConstraint($maxLength)")
+    new RowLevelConstraint(constraint, s"MaxLengthConstraint($maxLength)", s"StringLength-$column")
   }
 
   /**

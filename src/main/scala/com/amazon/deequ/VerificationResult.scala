@@ -76,7 +76,8 @@ object VerificationResult {
   }
 
   /**
-   * For each check in the verification suite, adds a column of row-level results to the input data.
+   * For each check in the verification suite, adds a column of row-level results
+   * to the input data if that check contains a column.
    *
    * Accepts a naming rule
    */
@@ -85,12 +86,13 @@ object VerificationResult {
       verificationResult: VerificationResult,
       data: DataFrame): DataFrame = {
 
-    val booleanChecks: Seq[(String, Column)] = verificationResult.checkResults.zip(verificationResult.metrics)
-      .flatMap(getColumnNameToMetric)
-      .flatMap(getColumnIfCalculated)
-      .toList
+    val columnNamesToMetrics: Map[String, Metric[_]] = mapResultToMetric(verificationResult)
+      .flatMap(mapColumnNameToMetric)
 
-    booleanChecks.foldLeft(data)((data, newColumn) => data.withColumn(newColumn._1, newColumn._2))
+    val checks: Seq[(String, Column)] = columnNamesToMetrics.flatMap(getColumnIfCalculated).toList
+
+    checks.foldLeft(data)(
+      (data, newColumn: (String, Column)) => data.withColumn(newColumn._1, newColumn._2))
   }
 
   def checkResultsAsJson(verificationResult: VerificationResult,
@@ -113,17 +115,22 @@ object VerificationResult {
     SimpleResultSerde.serialize(checkResults)
   }
 
-  private[this] def getColumnNameToMetric(
-                    zipResult: ((Check, CheckResult),
-                    (Analyzer[_, Metric[_]], Metric[_]))): Option[(String, Metric[_])] = {
-    val check: Check = zipResult._1._1
-    val metric: Metric[_] = zipResult._2._2
-    // Row-level constraints are decorated as RowLevelConstraint
-    val booleanConstraint = check.constraints.head match {
-      case c: RowLevelConstraint => Some((c.getColumnName, metric))
+  /**
+   * This is necessary because in VerificationResult the order of CheckResult and Metric doesn't match
+   */
+  private def mapResultToMetric(verificationResult: VerificationResult): Map[CheckResult, Seq[Metric[_]]] = {
+    val results: Map[Check, CheckResult] = verificationResult.checkResults
+    results.map(r => r._2 -> r._2.constraintResults.flatMap(_.metric))
+  }
+
+  private def mapColumnNameToMetric(pair: (CheckResult, Seq[Metric[_]])): Option[(String, Metric[_])] = {
+    val constraints = pair._1.check.constraints
+    val metrics = pair._2
+    // TODO: Aggregate all constraints with AND, don't just look at the first one
+    constraints.head match {
+      case c: RowLevelConstraint => Some((c.getColumnName, metrics.head))
       case _ => None
     }
-    booleanConstraint
   }
 
   private[this] def getColumnIfCalculated(pair: (String, Metric[_])): Option[(String, Column)] = {
