@@ -24,40 +24,39 @@ object ReferentialIntegrity {
    * Checks to what extend a column from a DataFrame is a subset of another column
    * from another DataFrame.
    *
-   * @param ds1        The data set in which the customer will select the column to
-   *                   do the Referential Integrity check.
-   * @param col1       The column selected from ds1.
-   * @param ds2        The data set in which the customer chooses the second column
-   *                   for the Referential Integrity check.
-   * @param col2       The colum selected from ds2.
-   * @param assertion  The customer inputs a function and we supply a Double to
-   *                   that function, to obtain a Boolean.
+   * @param primary      The primary data set which contains the column which the customer
+   *                     will select the column to do the Referential Integrity check.
+   * @param primaryCol   The name of the column selected from the primary data set.
+   * @param reference    The reference data set which contains the possible values for the column
+   *                     from the primary dataset.
+   * @param referenceCol The name of the column selected from the reference data set, which
+   *                     contains those values.
+   * @param assertion    A function which accepts the match ratio and returns a Boolean.
    *
    * @return Boolean   Internally we calculate the referential integrity as a
-   *                   percentage, and we run the assertion on that outcome
+   *                   ratio, and we run the assertion on that outcome
    *                   that ends up being a true or false response.
    */
 
-  def subsetCheck(ds1: DataFrame, col1: String, ds2: DataFrame,
-                  col2: String, assertion: Double => Boolean): Boolean = {
+  def subsetCheck(primary: DataFrame,
+                  primaryCol: String,
+                  reference: DataFrame,
+                  referenceCol: String,
+                  assertion: Double => Boolean): Boolean = {
 
-    if (ds1.columns.contains(col1) && ds2.columns.contains(col2)) {
+    if (primary.columns.contains(primaryCol) && reference.columns.contains(referenceCol)) {
+      val primaryCols = primary.select(primaryCol)
+      val referenceCols = reference.select(referenceCol)
+      val mismatchCount = primaryCols.except(referenceCols).count()
 
-      val cols1 = ds1.select(col1)
-      val cols2 = ds2.select(col2)
-      val mismatch_count = cols1.except(cols2).count()
-
-      if (mismatch_count == 0) {
+      if (mismatchCount == 0) {
         assertion(1.0)
-
       } else {
-        val ds1_count = ds1.count
-        assertion((ds1_count - mismatch_count).toDouble / ds1_count)
-
+        val primaryCount = primary.count
+        assertion((primaryCount - mismatchCount).toDouble / primaryCount)
       }
     } else {
       false
-
     }
   }
 }

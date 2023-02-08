@@ -24,23 +24,22 @@ object DataSynchronization {
   /**
    * Compare two DataFrames 1 to 1 with specific columns inputted by the customer.
    *
-   * @param ds1       The first data set in which the customer will select n number
-   *                  of columns to be compared.
-   * @param ds2       The second data set in which the customer will select n number
-   *                  of columns to be compared.
-   * @param colKeyMap All the columns that the customer is planning to match from
-   *                  the first data set.
-   * @param compCols  The columns that will be compared 1 to 1 from both data sets,
-   *                  if the customer doesn't input any column names then it will
-   *                  do a full 1 to 1 check of the dataset.
-   * @param assertion The customer inputs a function and we supply a Double to
-   *                  that function, to obtain a Boolean.
-   * @return Boolean    Internally we calculate the referential integrity as a
-   *         percentage, and we run the assertion on that outcome
-   *         that ends up being a true or false response.
+   * @param ds1       The first data set which the customer will select for comparison.
+   * @param ds2       The second data set which the customer will select for comparison.
+   * @param colKeyMap A map of columns to columns used for joining the two datasets.
+   *                  The keys in the map are composite key forming columns from the first dataset.
+   *                  The values for each key is the equivalent column from the second dataset. 
+   * @param compCols  A map of columns to columns which we will check for equality, post joining.
+   *                  This is an optional parameter. If not provided, we assume that the non primary
+   *                  key columns in both datasets are identical. If provided, we expect a map like colKeyMap.
+   * @param assertion A function which accepts the match ratio and returns a Boolean.
+   * @return Boolean  Internally we calculate the ratio of the rows that match and we run the assertion
+   *                  on that outcome that ends up being a true or false response.
    */
 
-  def columnMatch(ds1: DataFrame, ds2: DataFrame, colKeyMap: Map[String, String],
+  def columnMatch(ds1: DataFrame,
+                  ds2: DataFrame,
+                  colKeyMap: Map[String, String],
                   compCols: Option[Map[String, String]],
                   assertion: Double => Boolean): Boolean = {
 
@@ -67,21 +66,22 @@ object DataSynchronization {
 
     } else {
       false
-
     }
   }
 
-  def finalAssertion(ds1: DataFrame, ds2: DataFrame, mergedMaps: Map[String, String],
-                  assertion: Double => Boolean): Boolean = {
+  private def finalAssertion(ds1: DataFrame,
+                             ds2: DataFrame,
+                             mergedMaps: Map[String, String],
+                             assertion: Double => Boolean): Boolean = {
 
-    val joinExpression: Column = mergedMaps.map { case (col1, col2) =>
-      ds1(col1) === ds2(col2)}.reduce((e1, e2) => e1 && e2)
+    val joinExpression: Column = mergedMaps
+      .map { case (col1, col2) => ds1(col1) === ds2(col2)}
+      .reduce((e1, e2) => e1 && e2)
 
     val joined = ds1.join(ds2, joinExpression, "inner")
 
     val mostRows = if (ds1.count() > ds2.count()) ds1.count() else ds2.count()
 
     assertion(joined.count().toDouble / mostRows)
-
   }
 }
