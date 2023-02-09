@@ -86,12 +86,9 @@ object VerificationResult {
       verificationResult: VerificationResult,
       data: DataFrame): DataFrame = {
 
-    val columnNamesToMetrics: Map[String, Metric[_]] = mapResultToMetric(verificationResult)
-      .flatMap(mapColumnNameToMetric)
+    val columnNamesToMetrics: Map[String, Column] = verificationResultToColumn(verificationResult)
 
-    val checks: Seq[(String, Column)] = columnNamesToMetrics.flatMap(getColumnIfCalculated).toList
-
-    checks.foldLeft(data)(
+    columnNamesToMetrics.foldLeft(data)(
       (data, newColumn: (String, Column)) => data.withColumn(newColumn._1, newColumn._2))
   }
 
@@ -116,30 +113,28 @@ object VerificationResult {
   }
 
   /**
-   * This is necessary because in VerificationResult the order of CheckResult and Metric doesn't match
+   * Returns a column for each check whose values are the result of each of the check's constraints
    */
-  private def mapResultToMetric(verificationResult: VerificationResult): Map[CheckResult, Seq[Metric[_]]] = {
-    val results: Map[Check, CheckResult] = verificationResult.checkResults
-    results.map(r => r._2 -> r._2.constraintResults.flatMap(_.metric))
+  private def verificationResultToColumn(verificationResult: VerificationResult): Map[String, Column] = {
+    verificationResult.checkResults.flatMap(pair => columnForCheckResult(pair._1, pair._2))
   }
 
-  private def mapColumnNameToMetric(pair: (CheckResult, Seq[Metric[_]])): Option[(String, Metric[_])] = {
-    val constraints = pair._1.check.constraints
-    val metrics = pair._2
-    // TODO: Aggregate all constraints with AND, don't just look at the first one
-    constraints.head match {
-      case c: RowLevelConstraint => Some((c.getColumnName, metrics.head))
+  private def columnForCheckResult(check: Check, checkResult: CheckResult): Option[(String, Column)] = {
+    val metrics: Seq[Column] = checkResult.constraintResults.flatMap(_.metric).flatMap(metricToColumn)
+    if (metrics.isEmpty) {
+      None
+    } else {
+      Some(check.description, metrics.reduce(_ and _))
+    }
+  }
+
+  private def metricToColumn(metric: Metric[_]): Option[Column] = {
+    metric match {
+      case fullColumn: FullColumn => fullColumn.fullColumn
       case _ => None
     }
   }
 
-  private[this] def getColumnIfCalculated(pair: (String, Metric[_])): Option[(String, Column)] = {
-    pair._2 match {
-      case fullColumn: FullColumn =>
-        if (fullColumn.fullColumn.isDefined) Some(pair._1, fullColumn.fullColumn.get) else None
-      case _ => None
-    }
-  }
 
   private[this] def getSimplifiedCheckResultOutput(
       verificationResult: VerificationResult)
