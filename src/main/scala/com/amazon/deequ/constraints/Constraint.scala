@@ -80,6 +80,13 @@ class RowLevelConstraint(private[deequ] override val constraint: Constraint, nam
   val getColumnName: String = columnName
 }
 
+class RowLevelAssertedConstraint(private[deequ] override val constraint: Constraint,
+                                 name: String,
+                                 columnName: String,
+                                 val assertion: UserDefinedFunction)
+  extends RowLevelConstraint(constraint, name, columnName) {
+}
+
 /**
   * Companion object to create constraint objects
   * These methods can be used from the unit tests or during creation of Check configuration
@@ -426,7 +433,13 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
       hint = hint)
 
-    new RowLevelConstraint(constraint, s"MaxLengthConstraint($maxLength)", s"StringLength-$column")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"MaxLengthConstraint($maxLength)",
+      s"StringLength-$column",
+      sparkAssertion)
   }
 
   /**

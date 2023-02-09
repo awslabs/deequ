@@ -111,20 +111,23 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     }
 
     "generate a result that contains row-level results" in withSparkSession { session =>
-      val data = getDfCompleteAndInCompleteColumns(session)
+      val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
 
       val isComplete = new Check(CheckLevel.Error, "rule1").isComplete("att1")
       val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("att2", _ > 0.7)
       val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("item")
-      val maxLength = new Check(CheckLevel.Error, "rule4").hasMaxLength("att2", _ == 1)
+      val minLength = new Check(CheckLevel.Error, "rule4").hasMaxLength("item", _ <= 3)
+      val maxLength = new Check(CheckLevel.Error, "rule5").hasMaxLength("item", _ > 1)
       val expectedColumn1 = isComplete.description
       val expectedColumn2 = completeness.description
-      val expectedColumn3 = maxLength.description
+      val expectedColumn3 = minLength.description
+      val expectedColumn4 = maxLength.description
 
       val suite = new VerificationSuite().onData(data)
         .addCheck(isComplete)
         .addCheck(completeness)
         .addCheck(isPrimaryKey)
+        .addCheck(minLength)
         .addCheck(maxLength)
 
       val result: VerificationResult = suite.run()
@@ -134,8 +137,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val resultData = VerificationResult.toRowLevelResults(session, result, data)
 
       resultData.show()
-      val expectedColumns: Seq[String] = data.columns :+ expectedColumn1 :+ expectedColumn2 :+ expectedColumn3
-      assert(resultData.columns.sameElements(expectedColumns))
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4
+      assert(resultData.columns.toSet == expectedColumns)
+
 
       val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getBoolean(0))
       assert(Seq(true, true, true, true, true, true).sameElements(rowLevel1))
@@ -143,10 +148,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
       assert(Seq(true, true, false, true, false, true).sameElements(rowLevel2))
 
-      // TODO: This should be boolean, not double
-      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Double](0))
-      println(rowLevel3.mkString(", "))
-      assert(Seq(1.0, 1.0, 0.0, 1.0, 0.0, 1.0).sameElements(rowLevel3))
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Boolean](0))
+      assert(Seq(true, true, true, false, false, false).sameElements(rowLevel3))
+
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getAs[Boolean](0))
+      assert(Seq(false, true, true, true, true, true).sameElements(rowLevel4))
     }
 
     "accept analysis config for mandatory analysis" in withSparkSession { sparkSession =>
