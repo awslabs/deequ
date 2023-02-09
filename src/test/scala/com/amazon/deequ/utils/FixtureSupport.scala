@@ -155,6 +155,19 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
+  def getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", "a", "f"),
+      ("22", "b", "d"),
+      ("333", "a", null),
+      ("4444", "a", "f"),
+      ("55555", "b", null),
+      ("666666", "a", "f")
+    ).toDF("item", "att1", "att2")
+  }
+
   def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
