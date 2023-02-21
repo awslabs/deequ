@@ -47,11 +47,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = Some(Map("name" -> "name"))
+      val compCols = Map("name" -> "name")
       val assertion: Double => Boolean = _ >= 0.60
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "match == 0.83 when id is colKey and state is compCols" in withSparkSession { spark =>
@@ -78,11 +78,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = Some(Map("state" -> "state"))
+      val compCols = Map("state" -> "state")
       val assertion: Double => Boolean = _ >= 0.80
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "return false because col name isn't unique" in withSparkSession { spark =>
@@ -109,11 +109,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("name" -> "name")
-      val compCols = Some(Map("state" -> "state"))
+      val compCols = Map("state" -> "state")
       val assertion: Double => Boolean = _ >= 0.66
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(!result)
+      assert(result.isInstanceOf[ComparisonFailed])
     }
 
     "match >= 0.66 when id is unique col, rest compCols" in withSparkSession { spark =>
@@ -140,11 +140,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = Some(Map("name" -> "name", "state" -> "state"))
+      val compCols = Map("name" -> "name", "state" -> "state")
       val assertion: Double => Boolean = _ >= 0.60
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "match >= 0.66 (same test as above only the data sets change)" in withSparkSession{ spark =>
@@ -171,11 +171,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS2
       val ds2 = testDS1
       val colKeyMap = Map("id" -> "id")
-      val compCols = Some(Map("name" -> "name", "state" -> "state"))
+      val compCols = Map("name" -> "name", "state" -> "state")
       val assertion: Double => Boolean = _ >= 0.60
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "return false because the id col in ds1 isn't unique" in withSparkSession { spark =>
@@ -203,11 +203,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS3
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = Some(Map("name" -> "name", "state" -> "state"))
+      val compCols = Map("name" -> "name", "state" -> "state")
       val assertion: Double => Boolean = _ >= 0.40
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(!result)
+      assert(result.isInstanceOf[ComparisonFailed])
     }
 
     "return false because the id col in ds2 isn't unique" in withSparkSession { spark =>
@@ -235,11 +235,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS3
       val colKeyMap = Map("id" -> "id")
-      val compCols = Some(Map("name" -> "name", "state" -> "state"))
+      val compCols = Map("name" -> "name", "state" -> "state")
       val assertion: Double => Boolean = _ >= 0.40
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(!result)
+      assert(result.isInstanceOf[ComparisonFailed])
     }
 
     "return false because col state isn't unique" in withSparkSession { spark =>
@@ -266,11 +266,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("state" -> "state")
-      val compCols = Some(Map("name" -> "name"))
+      val compCols = Map("name" -> "name")
       val assertion: Double => Boolean = _ >= 0.66
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(!result)
+      assert(result.isInstanceOf[ComparisonFailed])
     }
 
     "check all columns and return an assertion of .66" in withSparkSession { spark =>
@@ -297,11 +297,10 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = None
       val assertion: Double => Boolean = _ >= 0.66
 
-      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion))
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "return false because state column isn't unique" in withSparkSession { spark =>
@@ -328,11 +327,10 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("state" -> "state")
-      val compCols = None
       val assertion: Double => Boolean = _ >= 0.66
 
-      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(!result)
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion))
+      assert(result.isInstanceOf[ComparisonFailed])
     }
 
     "check all columns" in withSparkSession { spark =>
@@ -359,11 +357,10 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = None
       val assertion: Double => Boolean = _ >= 0.66
 
-      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion))
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
     "cols exist but 0 matches" in withSparkSession { spark =>
       import spark.implicits._
@@ -389,11 +386,10 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val ds1 = testDS1
       val ds2 = testDS2
       val colKeyMap = Map("id" -> "id")
-      val compCols = None
       val assertion: Double => Boolean = _ >= 0
 
-      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result)
+      val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion))
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
   }
 }

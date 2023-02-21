@@ -47,7 +47,7 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ >= 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "id match equals 0.60" in withSparkSession { spark =>
@@ -72,10 +72,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "new_id"
       val ds2 = testDS1
       val col2 = "id"
-      val assertion: Double => Boolean = _ >= 0.60
+      val assertion: Double => Boolean = _ == 0.6
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "name match equals 1.0" in withSparkSession { spark =>
@@ -103,7 +103,7 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ >= 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "name match equals 0.60" in withSparkSession { spark =>
@@ -128,10 +128,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "name"
       val ds2 = testDS1
       val col2 = "name"
-      val assertion: Double => Boolean = _ >= 0.60
+      val assertion: Double => Boolean = _ == 0.6
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "state match equals 1.0" in withSparkSession { spark =>
@@ -159,7 +159,7 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ >= 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "state match equals to 0.80" in withSparkSession { spark =>
@@ -187,7 +187,7 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ >= 0.8
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "state match with name equals to 0.0" in withSparkSession { spark =>
@@ -215,7 +215,7 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ >= 0.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
 
     "ds1 doesn't contain col1 " in withSparkSession { spark =>
@@ -239,10 +239,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "ids"
       val ds2 = testDS2
       val col2 = "new_id"
-      val assertion: Double => Boolean = _ >= 0.6
+      val assertion: Double => Boolean = _ == 0.66
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(!result)
+      assert(result.isInstanceOf[ComparisonFailed])
     }
 
     "ds2 doesn't contain col2" in withSparkSession { spark =>
@@ -267,11 +267,12 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val col1 = "id"
       val ds2 = testDS2
       val col2 = "all-ids"
-      val assertion: Double => Boolean = _ >= 0.6
+      val assertion: Double => Boolean = _ == 0.66
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(!result)
+      assert(result.isInstanceOf[ComparisonFailed])
     }
+
     "More rows still 1.0" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -302,9 +303,7 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ == 1.0
 
       val result = ReferentialIntegrity.subsetCheck(ds1, col1, ds2, col2, assertion)
-      assert(result)
+      assert(result.isInstanceOf[ComparisonSucceeded])
     }
-
-
   }
 }

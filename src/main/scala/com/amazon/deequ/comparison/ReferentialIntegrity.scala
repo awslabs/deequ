@@ -21,8 +21,10 @@ import org.apache.spark.sql.DataFrame
 object ReferentialIntegrity {
 
   /**
-   * Checks to what extend a column from a DataFrame is a subset of another column
+   * Checks to what extent a column from a DataFrame is a subset of another column
    * from another DataFrame.
+   *
+   * This is an experimental utility.
    *
    * @param primary      The primary data set which contains the column which the customer
    *                     will select the column to do the Referential Integrity check.
@@ -42,21 +44,27 @@ object ReferentialIntegrity {
                   primaryCol: String,
                   reference: DataFrame,
                   referenceCol: String,
-                  assertion: Double => Boolean): Boolean = {
+                  assertion: Double => Boolean): ComparisonResult = {
+    val primaryCount = primary.count()
 
-    if (primary.columns.contains(primaryCol) && reference.columns.contains(referenceCol)) {
-      val primaryCols = primary.select(primaryCol)
-      val referenceCols = reference.select(referenceCol)
-      val mismatchCount = primaryCols.except(referenceCols).count()
-
-      if (mismatchCount == 0) {
-        assertion(1.0)
-      } else {
-        val primaryCount = primary.count
-        assertion((primaryCount - mismatchCount).toDouble / primaryCount)
-      }
+    if (!primary.columns.contains(primaryCol)) {
+      ComparisonFailed(s"Column $primaryCol does not exist in primary data frame.")
+    } else if (!reference.columns.contains(referenceCol)) {
+      ComparisonFailed(s"Column $referenceCol does not exist in reference data frame.")
+    } else if (primaryCount == 0) {
+      ComparisonFailed(s"Primary data frame contains no data.")
     } else {
-      false
+      val primarySparkCol = primary.select(primaryCol)
+      val referenceSparkCol = reference.select(referenceCol)
+      val mismatchCount = primarySparkCol.except(referenceSparkCol).count()
+
+      val ratio = if (mismatchCount == 0) 1.0 else (primaryCount - mismatchCount).toDouble / primaryCount
+
+      if (assertion(ratio)) {
+        ComparisonSucceeded()
+      } else {
+        ComparisonFailed(s"Value: $ratio does not meet the constraint requirement.")
+      }
     }
   }
 }
