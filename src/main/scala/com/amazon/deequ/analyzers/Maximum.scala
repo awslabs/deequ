@@ -21,11 +21,13 @@ import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.max
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import Analyzers._
+import com.amazon.deequ.metrics.FullColumn
 
-case class MaxState(maxValue: Double) extends DoubleValuedState[MaxState] {
+case class MaxState(maxValue: Double, override val fullColumn: Option[Column] = None)
+  extends DoubleValuedState[MaxState] with FullColumn {
 
   override def sum(other: MaxState): MaxState = {
-    MaxState(math.max(maxValue, other.maxValue))
+    MaxState(math.max(maxValue, other.maxValue), sum(fullColumn, other.fullColumn))
   }
 
   override def metricValue(): Double = {

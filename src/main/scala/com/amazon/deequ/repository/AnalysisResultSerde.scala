@@ -17,7 +17,6 @@
 package com.amazon.deequ.repository
 
 import java.lang.reflect.Type
-
 import com.amazon.deequ.analyzers.{State, _}
 import org.apache.spark.sql.functions._
 import com.amazon.deequ.metrics.{Distribution, Metric, _}
@@ -30,8 +29,9 @@ import com.google.gson.reflect.TypeToken
 import scala.collection._
 import scala.collection.JavaConverters._
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
-
 import JsonSerializationConstants._
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.functions.expr
 
 import scala.collection.JavaConversions._
 
@@ -513,6 +513,7 @@ private[deequ] object MetricSerializer extends JsonSerializer[Metric[_]] {
         result.addProperty("instance", doubleMetric.instance)
         result.addProperty("name", doubleMetric.name)
         result.addProperty("value", doubleMetric.value.getOrElse(null).asInstanceOf[Double])
+        doubleMetric.fullColumn.foreach(c => result.addProperty("fullColumn", c.expr.sql))
 
       case histogramMetric: HistogramMetric =>
         result.addProperty("metricName", "HistogramMetric")
@@ -557,7 +558,8 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
           Entity.withName(jsonObject.get("entity").getAsString),
           jsonObject.get("name").getAsString,
           jsonObject.get("instance").getAsString,
-          Try(jsonObject.get("value").getAsDouble))
+          Try(jsonObject.get("value").getAsDouble),
+          fullColumn(jsonObject))
 
       case "HistogramMetric" =>
         HistogramMetric(
@@ -588,6 +590,15 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
     }
 
     metric.asInstanceOf[Metric[_]]
+  }
+
+  private def fullColumn(jsonObject: JsonObject): Option[Column] = {
+    if (jsonObject.has("fullColumn")) {
+      val stringExpression = jsonObject.get("fullColumn").getAsString
+      Some(expr(stringExpression))
+    } else {
+      None
+    }
   }
 }
 

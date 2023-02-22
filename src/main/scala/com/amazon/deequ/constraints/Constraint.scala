@@ -33,7 +33,7 @@ case class ConstraintResult(
     metric: Option[Metric[_]] = None)
 
 /** Common trait for all data quality constraints */
-trait Constraint {
+trait Constraint extends Serializable {
   def evaluate(analysisResults: Map[Analyzer[_, Metric[_]], Metric[_]]): ConstraintResult
 }
 
@@ -66,6 +66,25 @@ class ConstraintDecorator(protected val _inner: Constraint) extends Constraint {
 class NamedConstraint(private[deequ] val constraint: Constraint, name: String)
     extends ConstraintDecorator(constraint) {
   override def toString(): String = name
+}
+
+/**
+ * Constraint decorator which holds a name of the constraint and a name for the column-level result
+ *
+ * @param constraint Delegate
+ * @param name       Name (Detailed message) for the constraint
+ * @param columnName Name for the column containing row-level results for this constraint
+ */
+class RowLevelConstraint(private[deequ] override val constraint: Constraint, name: String, columnName: String)
+  extends NamedConstraint(constraint, name) {
+  val getColumnName: String = columnName
+}
+
+class RowLevelAssertedConstraint(private[deequ] override val constraint: Constraint,
+                                 name: String,
+                                 columnName: String,
+                                 val assertion: UserDefinedFunction)
+  extends RowLevelConstraint(constraint, name, columnName) {
 }
 
 /**
@@ -170,7 +189,7 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
       completeness, assertion, hint = hint)
 
-    new NamedConstraint(constraint, s"CompletenessConstraint($completeness)")
+    new RowLevelConstraint(constraint, s"CompletenessConstraint($completeness)", s"Completeness-$column")
   }
 
   /**
@@ -414,7 +433,13 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
       hint = hint)
 
-    new NamedConstraint(constraint, s"MaxLengthConstraint($maxLength)")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"MaxLengthConstraint($maxLength)",
+      s"ColumnLength-$column",
+      sparkAssertion)
   }
 
   /**

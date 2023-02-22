@@ -282,9 +282,9 @@ object ConstraintSuggestionRunnerTest {
            |  com.amazon.deequ.VerificationSuite()
            |    .onData(df)
            |    .addCheck(
-           |      com.amazon.deequ.checks.Check(com.amazon.deequ.checks.CheckLevel.Error, "Test")
-           |        $constraint
-           |    )
+           |      com.amazon.deequ.checks.Check(
+           |        com.amazon.deequ.checks.CheckLevel.Error, "Test")
+           |        $constraint)
            |    .run()
            |}
          """.stripMargin.trim()
