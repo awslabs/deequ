@@ -99,7 +99,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       assert(result.status == CheckStatus.Error)
 
-      val resultData = VerificationResult.toRowLevelResults(session, result, data)
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data)
       resultData.show()
 
       val expectedColumns: Seq[String] = data.columns :+ expectedColumn1
@@ -134,7 +134,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       assert(result.status == CheckStatus.Error)
 
-      val resultData = VerificationResult.toRowLevelResults(session, result, data)
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data)
 
       resultData.show()
       val expectedColumns: Set[String] =

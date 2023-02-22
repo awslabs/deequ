@@ -83,7 +83,7 @@ object VerificationResult {
    *
    * Accepts a naming rule
    */
-  def toRowLevelResults(
+  def rowLevelResultsAsDataFrame(
       sparkSession: SparkSession,
       verificationResult: VerificationResult,
       data: DataFrame): DataFrame = {
