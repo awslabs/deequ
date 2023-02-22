@@ -20,6 +20,7 @@ import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import Analyzers._
+import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.{Column, Row}
 
@@ -48,5 +49,6 @@ case class Completeness(column: String, where: Option[String] = None) extends
 
   override def filterCondition: Option[String] = where
 
-  def criterion: Column = conditionalSelection(column, where).isNotNull
+  @VisibleForTesting // required by some tests that compare analyzer results to an expected state
+  private[deequ] def criterion: Column = conditionalSelection(column, where).isNotNull
 }

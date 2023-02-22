@@ -438,7 +438,7 @@ object Constraint {
     new RowLevelAssertedConstraint(
       constraint,
       s"MaxLengthConstraint($maxLength)",
-      s"StringLength-$column",
+      s"ColumnLength-$column",
       sparkAssertion)
   }
 
