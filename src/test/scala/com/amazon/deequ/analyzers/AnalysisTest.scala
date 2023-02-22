@@ -22,6 +22,7 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import org.apache.spark.sql.{DataFrame, Row}
+import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -122,8 +123,16 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
 
       assert(resultMetrics.size == analysis.analyzers.size)
 
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MaxLength", "att1",
-        Success(4.0)))
+      // Partially check the max length metric - don't verify the full column content
+      val maxLengthMetric = resultMetrics.head
+      inside (maxLengthMetric) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "MaxLength"
+        instance shouldBe "att1"
+        value shouldBe Success(4.0)
+        fullColumn.isDefined shouldBe true
+      }
+
       resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "att1",
         Success(0.0)))
     }
