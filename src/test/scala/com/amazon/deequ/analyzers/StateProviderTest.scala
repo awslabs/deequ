@@ -77,7 +77,7 @@ class StateProviderTest extends AnyWordSpec
       val data = someData(session)
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
-      assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
+      assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
         Compliance("att1", "att1 = 'b'"), data)
@@ -88,11 +88,11 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[SumState](provider, provider, Sum("price"), data)
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
       assertCorrectlyRestoresState[MinState](provider, provider, Minimum("price"), data)
-      assertCorrectlyRestoresState[MaxState](provider, provider, Maximum("price"), data)
+      assertCorrectlyRestoresMaxState(provider, provider, Maximum("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
 
-      assertCorrectlyRestoresState[MaxState](provider, provider, MaxLength("att1"), data)
+      assertCorrectlyRestoresMaxState(provider, provider, MaxLength("att1"), data)
       assertCorrectlyRestoresState[MinState](provider, provider, MinLength("att1"), data)
 
       assertCorrectlyRestoresState[DataTypeHistogram](provider, provider, DataType("item"), data)
@@ -170,6 +170,40 @@ class StateProviderTest extends AnyWordSpec
     }
   }
 
+  def assertCorrectlyRestoresNumMatchesAndCount(persister: StatePersister,
+                                                loader: StateLoader,
+                                                analyzer: Analyzer[NumMatchesAndCount, _],
+                                                data: DataFrame): Unit = {
+
+    val stateResult = analyzer.computeStateFrom(data)
+    assert(stateResult.isDefined)
+    val state = stateResult.get
+
+    val expectedState = NumMatchesAndCount(state.numMatches, state.count, None)
+
+    persister.persist[NumMatchesAndCount](analyzer, state)
+    val clonedState = loader.load[NumMatchesAndCount](analyzer)
+
+    assert(clonedState.isDefined)
+    assert(expectedState == clonedState.get)
+  }
+
+  def assertCorrectlyRestoresMaxState(persister: StatePersister,
+                                      loader: StateLoader,
+                                      analyzer: Analyzer[MaxState, _],
+                                      data: DataFrame): Unit = {
+
+    val stateResult = analyzer.computeStateFrom(data)
+    assert(stateResult.isDefined)
+    val expectedState = stateResult.get
+
+    persister.persist[MaxState](analyzer, expectedState)
+    val restoredState = loader.load[MaxState](analyzer)
+
+    assert(restoredState.isDefined)
+    assert(MaxState(expectedState.maxValue, None) == restoredState.get)
+  }
+
   def assertCorrectlyRestoresState[S <: State[S]](
       persister: StatePersister,
       loader: StateLoader,
@@ -178,13 +212,13 @@ class StateProviderTest extends AnyWordSpec
 
     val stateResult = analyzer.computeStateFrom(data)
     assert(stateResult.isDefined)
-    val state = stateResult.get
+    val expectedState = stateResult.get
 
-    persister.persist[S](analyzer, state)
-    val clonedState = loader.load[S](analyzer)
+    persister.persist[S](analyzer, expectedState)
+    val restoredState = loader.load[S](analyzer)
 
-    assert(clonedState.isDefined)
-    assert(state == clonedState.get)
+    assert(restoredState.isDefined)
+    assert(expectedState == restoredState.get)
   }
 
   def assertCorrectlyApproxQuantileState(
