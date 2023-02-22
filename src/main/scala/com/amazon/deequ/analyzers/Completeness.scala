@@ -20,6 +20,8 @@ import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import Analyzers._
+import com.google.common.annotations.VisibleForTesting
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.{Column, Row}
 
 /** Completeness is the fraction of non-null values in a column of a DataFrame. */
@@ -30,13 +32,13 @@ case class Completeness(column: String, where: Option[String] = None) extends
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion))
     }
   }
 
   override def aggregationFunctions(): Seq[Column] = {
 
-    val summation = sum(conditionalSelection(column, where).isNotNull.cast(IntegerType))
+    val summation = sum(criterion.cast(IntegerType))
 
     summation :: conditionalCount(where) :: Nil
   }
@@ -46,4 +48,7 @@ case class Completeness(column: String, where: Option[String] = None) extends
   }
 
   override def filterCondition: Option[String] = where
+
+  @VisibleForTesting // required by some tests that compare analyzer results to an expected state
+  private[deequ] def criterion: Column = conditionalSelection(column, where).isNotNull
 }
