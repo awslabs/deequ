@@ -16,6 +16,8 @@
 
 package com.amazon.deequ.metrics
 
+import org.apache.spark.sql.Column
+
 import scala.util.{Failure, Success, Try}
 
 object Entity extends Enumeration {
@@ -37,13 +39,34 @@ trait Metric[T] {
   def flatten(): Seq[DoubleMetric]
 }
 
+/**
+ * Full-column metrics store the entire column of row-level pass/fail results
+ */
+trait FullColumn {
+  val fullColumn: Option[Column] = None
+
+  /**
+   * State::sum is used to combine two states, e.g. when the same analyzer has run on two parts
+   * of a dataset and then the states are combined to produce the state for the entire dataset.
+   * For FullColumn analyzers, their sum implementation should invoke this sum method to
+   * combine the columns.
+   *
+   * As Column is a Spark expression of a transformation on data, rather than the data itself,
+   * the sum of two Spark columns whose expression equal to each other is the expression.
+   * The sum of two different Spark columns is not defined, so an empty Option is returned.
+   */
+  def sum(colA: Option[Column], colB: Option[Column]): Option[Column] =
+    if (colA.equals(colB)) colA else None
+}
+
 /** Common trait for all data quality metrics where the value is double */
 case class DoubleMetric(
-    entity: Entity.Value,
-    name: String,
-    instance: String,
-    value: Try[Double])
-  extends Metric[Double] {
+                         entity: Entity.Value,
+                         name: String,
+                         instance: String,
+                         value: Try[Double],
+                         override val fullColumn: Option[Column] = None)
+  extends Metric[Double] with FullColumn {
 
   override def flatten(): Seq[DoubleMetric] = Seq(this)
 }

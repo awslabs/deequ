@@ -62,7 +62,8 @@ class NullHandlingTests extends AnyWordSpec
       val data = dataWithNullColumns(session)
 
       Size().computeStateFrom(data) shouldBe Some(NumMatches(8))
-      Completeness("stringCol").computeStateFrom(data) shouldBe Some(NumMatchesAndCount(0, 8))
+      val completeness = Completeness("stringCol")
+      completeness.computeStateFrom(data) shouldBe Some(NumMatchesAndCount(0, 8, Some(completeness.criterion)))
 
       Mean("numericCol").computeStateFrom(data) shouldBe None
       StandardDeviation("numericCol").computeStateFrom(data) shouldBe None

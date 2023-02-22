@@ -79,7 +79,7 @@ object AnalysisRunner {
   }
 
   /**
-    * Compute the metrics from the analyzers configured in the analyis
+    * Compute the metrics from the analyzers configured in the analysis
     *
     * @param data data on which to operate
     * @param analyzers the analyzers to run
@@ -169,7 +169,7 @@ object AnalysisRunner {
     // TODO this can be further improved, we can get the number of rows from other metrics as well
     // TODO we could also insert an extra Size() computation if we have to scan the data anyways
     var numRowsOfData = nonGroupedMetrics.metric(Size()).collect {
-      case DoubleMetric(_, _, _, Success(value: Double)) => value.toLong
+      case DoubleMetric(_, _, _, Success(value: Double), None) => value.toLong
     }
 
     var groupedMetrics = AnalyzerContext.empty
