@@ -20,5 +20,5 @@ jobs:
         distribution: 'corretto'
         cache: maven
     - name: Build with Maven
-      run: mvn clean test
+      run: mvn clean verify
 
