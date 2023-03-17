@@ -357,7 +357,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      histogramBinConstraint(column, assertion, binningUdf, maxBins, filter, hint) }
+      histogramBinConstraint(column, assertion, binningUdf, maxBins, filter, hint, computeFrequenciesAsRatio = false) }
   }
 
   /**

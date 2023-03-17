@@ -42,7 +42,8 @@ case class Histogram(
     column: String,
     binningUdf: Option[UserDefinedFunction] = None,
     maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
-    where: Option[String] = None)
+    where: Option[String] = None,
+    computeFrequenciesAsRatio: Boolean = true)
   extends Analyzer[FrequenciesAndNumRows, HistogramMetric]
   with FilterableAnalyzer {
 
@@ -56,7 +57,11 @@ case class Histogram(
   override def computeStateFrom(data: DataFrame): Option[FrequenciesAndNumRows] = {
 
     // TODO figure out a way to pass this in if its known before hand
-    val totalCount = data.count()
+    val totalCount = if (computeFrequenciesAsRatio) {
+      data.count()
+    } else {
+      1
+    }
 
     val frequencies = data
       .transform(filterOptional(where))
