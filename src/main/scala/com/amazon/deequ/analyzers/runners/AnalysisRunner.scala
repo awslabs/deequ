@@ -299,6 +299,7 @@ object AnalysisRunner {
     frequenciesAndNumRows.numRows -> results
   }
 
+  // Main method that needs looking into
   private[this] def runScanningAnalyzers(
       data: DataFrame,
       analyzers: Seq[Analyzer[State[_], Metric[_]]],
@@ -322,9 +323,7 @@ object AnalysisRunner {
         val offsets = shareableAnalyzers.scanLeft(0) { case (current, analyzer) =>
           current + analyzer.aggregationFunctions().length
         }
-
         val results = data.agg(aggregations.head, aggregations.tail: _*).collect().head
-
         shareableAnalyzers.zip(offsets).map { case (analyzer, offset) =>
           analyzer ->
             successOrFailureMetricFrom(analyzer, results, offset, aggregateWith, saveStatesTo)
@@ -334,12 +333,10 @@ object AnalysisRunner {
         case error: Exception =>
           shareableAnalyzers.map { analyzer => analyzer -> analyzer.toFailureMetric(error) }
       }
-
       AnalyzerContext(metricsByAnalyzer.toMap[Analyzer[_, Metric[_]], Metric[_]])
     } else {
       AnalyzerContext.empty
     }
-
     /* Run non-shareable analyzers separately */
     val otherMetrics = others
       .map { analyzer => analyzer -> analyzer.calculate(data, aggregateWith, saveStatesTo) }

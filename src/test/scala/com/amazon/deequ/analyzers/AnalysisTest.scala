@@ -56,6 +56,31 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
       assertSameRows(successMetricsAsDataFrame, expected)
     }
 
+    "return results for configured analyzers for df with . in column name" in withSparkSession { sparkSession =>
+
+      val df = getDfWithPeriodInName(sparkSession)
+
+      val analysisResult = AnalysisRunner.onData(df)
+        .addAnalyzer(Size())
+        .addAnalyzer(Distinctness("`item.one`"))
+        .addAnalyzer(Completeness("att1"))
+        .addAnalyzer(Uniqueness(Seq("att1", "att2")))
+        .run()
+
+      val successMetricsAsDataFrame = AnalyzerContext
+        .successMetricsAsDataFrame(sparkSession, analysisResult)
+
+      import sparkSession.implicits._
+      val expected = Seq(
+        ("Dataset", "*", "Size", 4.0),
+        ("Column", "`item.one`", "Distinctness", 1.0),
+        ("Column", "att1", "Completeness", 1.0),
+        ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+        .toDF("entity", "instance", "name", "value")
+
+      assertSameRows(successMetricsAsDataFrame, expected)
+    }
+
     "return results for configured analyzers in case insensitive manner" in
       withSparkSession { sparkSession =>
 

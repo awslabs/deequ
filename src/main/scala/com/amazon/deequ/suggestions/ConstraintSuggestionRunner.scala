@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.suggestions
 
+import com.amazon.deequ.analyzers.Preconditions.escapeColumn
 import com.amazon.deequ.analyzers.{DataTypeInstances, KLLParameters}
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.checks.{Check, CheckLevel}
@@ -232,7 +233,8 @@ class ConstraintSuggestionRunner {
 
     schema.fields
       .filter { field => restrictToColumns.isEmpty || restrictToColumns.get.contains(field.name) }
-      .map { field => field.name }
+      .map { field => {escapeColumn(field.name)}
+      }
   }
 
   private[this] def saveColumnProfilesJsonToFileSystemIfNecessary(

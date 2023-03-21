@@ -204,6 +204,7 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
     entity: Entity.Value = Entity.Column)
   extends ScanShareableAnalyzer[S, DoubleMetric] {
 
+  // Thrown here
   override def computeMetricFrom(state: Option[S]): DoubleMetric = {
     state match {
       case Some(theState) =>
@@ -217,6 +218,7 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
     }
   }
 
+  // Thrown here
   override private[deequ] def toFailureMetric(exception: Exception): DoubleMetric = {
     metricFromFailure(exception, name, instance, entity)
   }
@@ -303,17 +305,34 @@ object Preconditions {
     if (caseSensitive) {
       schema(column)
     } else {
-      schema.find(_.name.equalsIgnoreCase(column)).getOrElse {
+      schema.find(_.name.equalsIgnoreCase(removeEscapeColumn(column))).getOrElse {
         throw new IllegalArgumentException(s"Field {$column} doesn't not exist" )
       }
     }
   }
 
-  def hasColumn(column: String, schema: StructType): Boolean = {
-    if (caseSensitive) {
-      schema.fieldNames.contains(column)
+  def removeEscapeColumn(column: String): String = {
+    if (column.endsWith("`")) {
+      column.substring(1, column.length - 1)
     } else {
-      schema.fieldNames.find(_.equalsIgnoreCase(column)).isDefined
+      column
+    }
+  }
+
+  def escapeColumn(column: String): String = {
+    if (column.contains(".")) {
+      "`" + column + "`"
+    } else {
+      column
+    }
+  }
+
+  def hasColumn(column: String, schema: StructType): Boolean = {
+    val escapedColumn = removeEscapeColumn(column)
+    if (caseSensitive) {
+      schema.fieldNames.contains(escapedColumn)
+    } else {
+      schema.fieldNames.find(_.equalsIgnoreCase(escapedColumn)).isDefined
     }
   }
 
