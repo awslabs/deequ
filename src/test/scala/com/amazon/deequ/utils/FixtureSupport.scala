@@ -16,8 +16,10 @@
 
 package com.amazon.deequ.utils
 
-import org.apache.spark.sql.types.{DoubleType, LongType, MapType, StringType, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 
 import scala.util.Random
 
@@ -353,5 +355,29 @@ trait FixtureSupport {
       ("India", "1453 Sahar Road", null, null)
     )
       .toDF("Country", "Address Line 1", "Address Line 2", "Address Line 3")
+  }
+
+  def getDfWithPeriodInName(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", "a", "c"),
+      ("2", "a", "c"),
+      ("3", "a", "c"),
+      ("4", "b", "d")
+    ).toDF("item.one", "att1", "att2")
+  }
+
+  def getDfCompleteAndInCompleteColumnsWithPeriod(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", "a", "f"),
+      ("2", "b", "d"),
+      ("3", "a", null),
+      ("4", "a", "f"),
+      ("5", "b", null),
+      ("6", "a", "f")
+    ).toDF("item.one", "att.1", "att.2")
   }
 }
