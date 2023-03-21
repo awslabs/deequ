@@ -51,8 +51,10 @@ class DistinctnessTest extends AnyWordSpec with Matchers with SparkContextSpec w
 
       val distinctnessValue = numNonNullDistinct.toDouble / numberOfNonNullItems
 
-      val distinctness = new Check(CheckLevel.Error, "d1").hasDistinctness(Seq("att1"), almostEquals(_, distinctnessValue))
-      val countDistinct = new Check(CheckLevel.Error, "d2").hasNumberOfDistinctValues("att1", _ == numDistinct)
+      val distinctness = new Check(CheckLevel.Error, "d1")
+        .hasDistinctness(Seq("att1"), almostEquals(_, distinctnessValue))
+      val countDistinct = new Check(CheckLevel.Error, "d2")
+        .hasNumberOfDistinctValues("att1", _ == numDistinct)
 
       val suite = new VerificationSuite().onData(data).addCheck(distinctness).addCheck(countDistinct)
       val result = suite.run()
