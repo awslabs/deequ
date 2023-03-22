@@ -104,11 +104,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val df = getDfCompleteAndInCompleteColumnsWithPeriod(sparkSession)
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
-          .isComplete("att1")
-          .hasCompleteness("att1", _ == 1.0)
+          .isComplete("`att.1`")
+          .hasCompleteness("`att.1`", _ == 1.0)
 
         val checkToErrorOut = Check(CheckLevel.Error, "group-2-E")
-          .hasCompleteness("att2", _ > 0.8)
+          .hasCompleteness("`att.2`", _ > 0.8)
 
         val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
           .hasCompleteness("`item.one`", _ < 0.8)
