@@ -158,10 +158,11 @@ object Constraint {
       binningUdf: Option[UserDefinedFunction] = None,
       maxBins: Integer = Histogram.MaximumAllowedDetailBins,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      computeFrequenciesAsRatio: Boolean = true)
     : Constraint = {
 
-    val histogram = Histogram(column, binningUdf, maxBins, where)
+    val histogram = Histogram(column, binningUdf, maxBins, where, computeFrequenciesAsRatio)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Long](
       histogram, assertion, Some(_.numberOfBins), hint)
