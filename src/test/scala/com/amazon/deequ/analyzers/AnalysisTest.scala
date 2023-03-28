@@ -158,8 +158,14 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         fullColumn.isDefined shouldBe true
       }
 
-      resultMetrics should contain(DoubleMetric(Entity.Column, "MinLength", "att1",
-        Success(0.0)))
+      val minLengthMetric = resultMetrics.tail.head
+      inside (minLengthMetric) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "MinLength"
+        instance shouldBe "att1"
+        value shouldBe Success(0.0)
+        fullColumn.isDefined shouldBe true
+      }
     }
 
     "return the proper exception for non existing columns" in withSparkSession { sparkSession =>

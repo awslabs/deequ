@@ -462,7 +462,13 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minLength, assertion,
       hint = hint)
 
-    new NamedConstraint(constraint, s"MinLengthConstraint($minLength)")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"MinLengthConstraint($minLength)",
+      s"ColumnLength-$column",
+      sparkAssertion)
   }
 
   /**

@@ -21,11 +21,13 @@ import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.min
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import Analyzers._
+import com.amazon.deequ.metrics.FullColumn
 
-case class MinState(minValue: Double) extends DoubleValuedState[MinState] {
+case class MinState(minValue: Double, override val fullColumn: Option[Column] = None)
+  extends DoubleValuedState[MinState] with FullColumn {
 
   override def sum(other: MinState): MinState = {
-    MinState(math.min(minValue, other.minValue))
+    MinState(math.min(minValue, other.minValue), sum(fullColumn, other.fullColumn))
   }
 
   override def metricValue(): Double = {

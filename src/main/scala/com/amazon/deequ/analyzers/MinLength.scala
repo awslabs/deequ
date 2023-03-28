@@ -18,6 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
+import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.functions.{length, min}
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.apache.spark.sql.{Column, Row}
@@ -32,7 +33,7 @@ case class MinLength(column: String, where: Option[String] = None)
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MinState(result.getDouble(offset))
+      MinState(result.getDouble(offset), Some(criterion))
     }
   }
 
@@ -41,4 +42,7 @@ case class MinLength(column: String, where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  @VisibleForTesting
+  private[deequ] def criterion: Column = length(conditionalSelection(column, where)).cast(DoubleType)
 }
