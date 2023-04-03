@@ -477,7 +477,7 @@ object ColumnProfiler {
         case _ => castedData
       }
     }
-  castedData
+    castedData
   }
 
 

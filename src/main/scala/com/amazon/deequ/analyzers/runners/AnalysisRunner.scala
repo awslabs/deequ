@@ -299,7 +299,6 @@ object AnalysisRunner {
     frequenciesAndNumRows.numRows -> results
   }
 
-  // Main method that needs looking into
   private[this] def runScanningAnalyzers(
       data: DataFrame,
       analyzers: Seq[Analyzer[State[_], Metric[_]]],

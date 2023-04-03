@@ -204,7 +204,6 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
     entity: Entity.Value = Entity.Column)
   extends ScanShareableAnalyzer[S, DoubleMetric] {
 
-  // Thrown here
   override def computeMetricFrom(state: Option[S]): DoubleMetric = {
     state match {
       case Some(theState) =>
@@ -218,7 +217,6 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
     }
   }
 
-  // Thrown here
   override private[deequ] def toFailureMetric(exception: Exception): DoubleMetric = {
     metricFromFailure(exception, name, instance, entity)
   }
