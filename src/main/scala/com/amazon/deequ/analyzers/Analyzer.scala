@@ -23,6 +23,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.FullColumn
+import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
 
 import scala.language.existentials
 import scala.util.{Failure, Success}
@@ -303,17 +304,17 @@ object Preconditions {
     if (caseSensitive) {
       schema(column)
     } else {
-      schema.find(_.name.equalsIgnoreCase(column)).getOrElse {
+      schema.find(_.name.equalsIgnoreCase(removeEscapeColumn(column))).getOrElse {
         throw new IllegalArgumentException(s"Field {$column} doesn't not exist" )
       }
     }
   }
-
   def hasColumn(column: String, schema: StructType): Boolean = {
+    val escapedColumn = removeEscapeColumn(column)
     if (caseSensitive) {
-      schema.fieldNames.contains(column)
+      schema.fieldNames.contains(escapedColumn)
     } else {
-      schema.fieldNames.find(_.equalsIgnoreCase(column)).isDefined
+      schema.fieldNames.find(_.equalsIgnoreCase(escapedColumn)).isDefined
     }
   }
 

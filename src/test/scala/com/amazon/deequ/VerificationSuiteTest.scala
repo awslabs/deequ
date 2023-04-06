@@ -19,18 +19,23 @@ package com.amazon.deequ
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
-import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+import com.amazon.deequ.checks.Check
+import com.amazon.deequ.checks.CheckLevel
+import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.constraints.Constraint
-import com.amazon.deequ.constraints.RowLevelConstraint
 import com.amazon.deequ.io.DfsUtils
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.repository.MetricsRepository
+import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
-import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
+import com.amazon.deequ.utils.FixtureSupport
+import com.amazon.deequ.utils.TempFileUtils
 import org.apache.spark.sql.DataFrame
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 
 
 
@@ -61,6 +66,52 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
           .hasCompleteness("item", _ < 0.8)
+
+
+        assertStatusFor(df, checkToSucceed)(CheckStatus.Success)
+        assertStatusFor(df, checkToErrorOut)(CheckStatus.Error)
+        assertStatusFor(df, checkToWarn)(CheckStatus.Warning)
+
+
+        Seq(checkToSucceed, checkToErrorOut).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
+        }
+
+        Seq(checkToSucceed, checkToWarn).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Warning)
+        }
+
+        Seq(checkToWarn, checkToErrorOut).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
+        }
+
+        Seq(checkToSucceed, checkToWarn, checkToErrorOut).forEachOrder { checks =>
+          assertStatusFor(df, checks: _*)(CheckStatus.Error)
+        }
+      }
+
+    "return the correct verification status regardless of the order of checks with period" in
+      withSparkSession { sparkSession =>
+
+        def assertStatusFor(data: DataFrame, checks: Check*)
+                           (expectedStatus: CheckStatus.Value)
+        : Unit = {
+          val verificationSuiteStatus =
+            VerificationSuite().onData(data).addChecks(checks).run().status
+          assert(verificationSuiteStatus == expectedStatus)
+        }
+
+        val df = getDfCompleteAndInCompleteColumnsWithPeriod(sparkSession)
+
+        val checkToSucceed = Check(CheckLevel.Error, "group-1")
+          .isComplete("`att.1`")
+          .hasCompleteness("`att.1`", _ == 1.0)
+
+        val checkToErrorOut = Check(CheckLevel.Error, "group-2-E")
+          .hasCompleteness("`att.2`", _ > 0.8)
+
+        val checkToWarn = Check(CheckLevel.Warning, "group-2-W")
+          .hasCompleteness("`item.one`", _ < 0.8)
 
 
         assertStatusFor(df, checkToSucceed)(CheckStatus.Success)
