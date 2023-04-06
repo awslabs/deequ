@@ -233,7 +233,7 @@ class ConstraintSuggestionRunner {
 
     schema.fields
       .filter { field => restrictToColumns.isEmpty || restrictToColumns.get.contains(field.name) }
-      .map { field => {escapeColumn(field.name)}
+      .map { field => {escapeColumn(field.name) }
       }
   }
 

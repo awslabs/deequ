@@ -19,7 +19,7 @@ package com.amazon.deequ.utilities
 object ColumnUtil {
 
   def removeEscapeColumn(column: String): String = {
-    if (column.endsWith("`")) {
+    if (column.startsWith("`") && column.endsWith("`")) {
       column.substring(1, column.length - 1)
     } else {
       column
