@@ -16,16 +16,31 @@
 
 package com.amazon.deequ.profiles
 
-import scala.util.Success
-
 import com.amazon.deequ.analyzers.DataTypeInstances._
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.{AnalysisRunBuilder, AnalysisRunner, AnalyzerContext, ReusingNotPossibleResultsMissingException}
+import com.amazon.deequ.analyzers.runners.AnalysisRunBuilder
+import com.amazon.deequ.analyzers.runners.AnalysisRunner
+import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.runners.ReusingNotPossibleResultsMissingException
 import com.amazon.deequ.metrics._
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
-
+import com.amazon.deequ.repository.MetricsRepository
+import com.amazon.deequ.repository.ResultKey
+import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
+import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.types.{BooleanType, DecimalType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructType, TimestampType, DataType => SparkDataType}
+import org.apache.spark.sql.types.BooleanType
+import org.apache.spark.sql.types.DecimalType
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.FloatType
+import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.ShortType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.TimestampType
+import org.apache.spark.sql.types.{DataType => SparkDataType}
+
+import scala.util.Success
 
 private[deequ] case class GenericColumnStatistics(
     numRecords: Long,
@@ -216,7 +231,8 @@ object ColumnProfiler {
 
     schema.fields
       .filter { field => restrictToColumns.isEmpty || restrictToColumns.get.contains(field.name) }
-      .map { field => field.name }
+      .map { field => { escapeColumn(field.name) }
+    }
   }
 
   private[this] def getAnalyzersForGenericStats(
@@ -225,11 +241,13 @@ object ColumnProfiler {
       predefinedTypes: Map[String, DataTypeInstances.Value])
     : Seq[Analyzer[_, Metric[_]]] = {
 
+
     schema.fields
-      .filter { field => relevantColumns.contains(field.name) }
+      .filter { field => relevantColumns
+        .contains( escapeColumn(field.name)) }
       .flatMap { field =>
 
-        val name = field.name
+        val name: String = escapeColumn(field.name)
 
         if (field.dataType == StringType && !predefinedTypes.contains(name)) {
           Seq(Completeness(name), ApproxCountDistinct(name), DataType(name))
@@ -366,9 +384,11 @@ object ColumnProfiler {
       toType: SparkDataType)
     : DataFrame = {
 
+    val originalName = removeEscapeColumn(name)
+
     data.withColumn(s"${name}___CASTED", data(name).cast(toType))
-      .drop(name)
-      .withColumnRenamed(s"${name}___CASTED", name)
+      .drop(originalName)
+      .withColumnRenamed(s"${name}___CASTED", originalName)
   }
 
   private[this] def extractGenericStatistics(
@@ -382,7 +402,6 @@ object ColumnProfiler {
       .collect { case (_: Size, metric: DoubleMetric) => metric.value.get }
       .head
       .toLong
-
 
     val inferredTypes = results.metricMap
       .filterNot{
@@ -450,14 +469,12 @@ object ColumnProfiler {
     var castedData = originalData
 
     columns.foreach { name =>
-
       castedData = genericStatistics.typeOf(name) match {
         case Integral => castColumn(castedData, name, LongType)
         case Fractional => castColumn(castedData, name, DoubleType)
         case _ => castedData
       }
     }
-
     castedData
   }
 
