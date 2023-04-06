@@ -23,6 +23,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.FullColumn
+import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
 
 import scala.language.existentials
 import scala.util.{Failure, Success}
@@ -308,23 +309,6 @@ object Preconditions {
       }
     }
   }
-
-  def removeEscapeColumn(column: String): String = {
-    if (column.endsWith("`")) {
-      column.substring(1, column.length - 1)
-    } else {
-      column
-    }
-  }
-
-  def escapeColumn(column: String): String = {
-    if (column.contains(".")) {
-      "`" + column + "`"
-    } else {
-      column
-    }
-  }
-
   def hasColumn(column: String, schema: StructType): Boolean = {
     val escapedColumn = removeEscapeColumn(column)
     if (caseSensitive) {

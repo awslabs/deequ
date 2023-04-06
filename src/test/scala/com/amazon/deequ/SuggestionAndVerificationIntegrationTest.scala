@@ -16,7 +16,6 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.analyzers.Preconditions.escapeColumn
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
@@ -24,6 +23,7 @@ import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.suggestions.ConstraintSuggestionRunner
 import com.amazon.deequ.suggestions.Rules
 import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
+import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.DataFrame
 import org.scalatest.Matchers

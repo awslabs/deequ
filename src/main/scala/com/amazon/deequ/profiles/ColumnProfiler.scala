@@ -17,8 +17,6 @@
 package com.amazon.deequ.profiles
 
 import com.amazon.deequ.analyzers.DataTypeInstances._
-import com.amazon.deequ.analyzers.Preconditions.escapeColumn
-import com.amazon.deequ.analyzers.Preconditions.removeEscapeColumn
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalysisRunBuilder
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
@@ -27,6 +25,8 @@ import com.amazon.deequ.analyzers.runners.ReusingNotPossibleResultsMissingExcept
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
+import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
+import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.BooleanType
 import org.apache.spark.sql.types.DecimalType
