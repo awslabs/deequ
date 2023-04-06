@@ -21,7 +21,8 @@ import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.FixtureSupport
 import com.google.gson.JsonParser
 import org.apache.spark.sql.SparkSession
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 
 class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
@@ -458,6 +459,89 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
       }
   }
 
+  "return Json that is formatted as expected for getConstraintSuggestionsAsJson with Period in Column Name" in
+    withSparkSession { session =>
+
+      evaluateWithPeriodInColumnName(session) { results =>
+
+        val constraintSuggestionJson = ConstraintSuggestionResult
+          .getConstraintSuggestionsAsJson(results)
+
+        val expectedJson =
+          """{
+            |  "constraint_suggestions": [
+            |  {
+            |      "constraint_name": "CompletenessConstraint(Completeness(`item.one`,None))",
+            |      "column_name": "`item.one`",
+            |      "current_value": "Completeness: 1.0",
+            |      "description": "'`item.one`' is not null",
+            |      "suggesting_rule": "CompleteIfCompleteRule()",
+            |      "rule_description": "If a column is complete in the sample, we suggest a NOT
+            | NULL constraint",
+            |      "code_for_constraint": ".isComplete(\"`item.one`\")"
+            |    },
+            |    {
+            |      "constraint_name": "AnalysisBasedConstraint(DataType(`item.one`,None),
+            |\u003cfunction1\u003e,Some(\u003cfunction1\u003e),None)",
+            |      "column_name": "`item.one`",
+            |      "current_value": "DataType: Integral",
+            |      "description": "'`item.one`' has type Integral",
+            |      "suggesting_rule": "RetainTypeRule()",
+            |      "rule_description": "If we detect a non-string type, we suggest a type
+            | constraint",
+            |      "code_for_constraint": ".hasDataType(\"`item.one`\", ConstrainableDataTypes
+            |.Integral)"
+            |    },
+            |    {
+            |      "constraint_name": "ComplianceConstraint(Compliance(\u0027`item.one`\u0027 has no
+            | negative values,`item.one` \u003e\u003d 0,None))",
+            |      "column_name": "`item.one`",
+            |      "current_value": "Minimum: 1.0",
+            |      "description": "\u0027`item.one`\u0027 has no negative values",
+            |      "suggesting_rule": "NonNegativeNumbersRule()",
+            |      "rule_description": "If we see only non-negative numbers in a column, we
+            | suggest a corresponding constraint",
+            |      "code_for_constraint": ".isNonNegative(\"`item.one`\")"
+            |    },
+            |    {
+            |      "constraint_name": "UniquenessConstraint(Uniqueness(List(`item.one`),None))",
+            |      "column_name": "`item.one`",
+            |      "current_value": "ApproxDistinctness: 1.0",
+            |      "description": "'`item.one`' is unique",
+            |      "suggesting_rule": "UniqueIfApproximatelyUniqueRule()",
+            |      "rule_description": "If the ratio of approximate num distinct values in a
+            | column is close to the number of records (within the error of the HLL sketch),
+            | we suggest a UNIQUE constraint",
+            |      "code_for_constraint": ".isUnique(\"`item.one`\")"
+            |    },
+            |    {
+            |      "constraint_name": "CompletenessConstraint(Completeness(att2,None))",
+            |      "column_name": "att2",
+            |      "current_value": "Completeness: 1.0",
+            |      "description": "'att2' is not null",
+            |      "suggesting_rule": "CompleteIfCompleteRule()",
+            |      "rule_description": "If a column is complete in the sample, we suggest a NOT
+            | NULL constraint",
+            |      "code_for_constraint": ".isComplete(\"att2\")"
+            |    },
+            |    {
+            |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
+            |      "column_name": "att1",
+            |      "current_value": "Completeness: 1.0",
+            |      "description": "'att1' is not null",
+            |      "suggesting_rule": "CompleteIfCompleteRule()",
+            |      "rule_description": "If a column is complete in the sample, we suggest a NOT
+            | NULL constraint",
+            |      "code_for_constraint": ".isComplete(\"att1\")"
+            |    }
+            |  ]
+            |}"""
+            .stripMargin.replaceAll("\n", "")
+
+        assertJsonStringsAreEqual(constraintSuggestionJson, expectedJson)
+      }
+    }
+
   private[this] def evaluate(session: SparkSession)(test: ConstraintSuggestionResult => Unit)
     : Unit = {
 
@@ -483,6 +567,20 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
       .addConstraintRules(Rules.DEFAULT)
       .addConstraintRule(UniqueIfApproximatelyUniqueRule())
       .useTrainTestSplitWithTestsetRatio(0.1, Some(0))
+      .run()
+
+    test(results)
+  }
+
+  private[this] def evaluateWithPeriodInColumnName(session: SparkSession)(test: ConstraintSuggestionResult => Unit)
+  : Unit = {
+
+    val data = getDfWithPeriodInName(session)
+
+    val results = ConstraintSuggestionRunner()
+      .onData(data)
+      .addConstraintRules(Rules.DEFAULT)
+      .addConstraintRule(UniqueIfApproximatelyUniqueRule())
       .run()
 
     test(results)
