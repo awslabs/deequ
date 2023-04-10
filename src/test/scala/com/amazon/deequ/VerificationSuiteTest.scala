@@ -26,9 +26,9 @@ import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.Entity
-import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
+import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.TempFileUtils
@@ -167,8 +167,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val isComplete = new Check(CheckLevel.Error, "rule1").isComplete("att1")
       val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("att2", _ > 0.7)
       val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("item")
-      val minLength = new Check(CheckLevel.Error, "rule4").hasMinLength("item", _ <= 3)
-      val maxLength = new Check(CheckLevel.Error, "rule5").hasMaxLength("item", _ > 1)
+      val minLength = new Check(CheckLevel.Error, "rule4")
+        .hasMinLength("item", _ <= 3, convertNull = true)
+      val maxLength = new Check(CheckLevel.Error, "rule5")
+        .hasMaxLength("item", _ > 1, convertNull = true)
       val expectedColumn1 = isComplete.description
       val expectedColumn2 = completeness.description
       val expectedColumn3 = minLength.description
@@ -199,10 +201,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
       assert(Seq(true, true, false, true, false, true).sameElements(rowLevel2))
 
-      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Boolean](0))
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getBoolean(0))
       assert(Seq(true, true, true, false, false, false).sameElements(rowLevel3))
 
-      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getAs[Boolean](0))
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getBoolean(0))
       assert(Seq(false, true, true, true, true, true).sameElements(rowLevel4))
     }
 
@@ -211,8 +213,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val minLength = new Check(CheckLevel.Error, "rule1").hasMinLength("item", _ <= 3)
       val maxLength = new Check(CheckLevel.Error, "rule2").hasMaxLength("item", _ > 1)
-      val isLengthMin = new Check(CheckLevel.Error, "rule3").hasMinLength("att1", _ <= 1)
-      val isLengthMax = new Check(CheckLevel.Error, "rule4").hasMaxLength("att1", _ >= 1)
+      val isLengthMin = new Check(CheckLevel.Error, "rule3")
+        .hasMinLength("att2", _ <= 1, convertNull = true)
+      val isLengthMax = new Check(CheckLevel.Error, "rule4")
+        .hasMaxLength("att2", _ >= 1, convertNull = true)
       val expectedColumn1 = minLength.description
       val expectedColumn2 = maxLength.description
       val expectedColumn3 = isLengthMin.description
@@ -242,11 +246,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
       assert(Seq(false, true, true, true, true, true).sameElements(rowLevel2))
 
-      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Boolean](0))
-      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel3))
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, false, true, false, true).sameElements(rowLevel3))
 
-      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getAs[Boolean](0))
-      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel4))
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, false, true, false, true).sameElements(rowLevel4))
     }
 
     "accept analysis config for mandatory analysis" in withSparkSession { sparkSession =>

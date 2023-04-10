@@ -17,23 +17,27 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.isString
 import com.google.common.annotations.VisibleForTesting
-import org.apache.spark.sql.functions.{length, min}
-import org.apache.spark.sql.types.{DoubleType, StructType}
-import org.apache.spark.sql.{Column, Row}
+import org.apache.spark.sql.functions.length
+import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
 
-case class MinLength(column: String, where: Option[String] = None)
+case class MinLength(column: String, where: Option[String] = None, convertNull: Boolean = false)
   extends StandardScanShareableAnalyzer[MinState]("MinLength", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    min(length(conditionalSelection(column, where))).cast(DoubleType) :: Nil
+    min(criterion(false)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MinState(result.getDouble(offset), Some(criterion))
+      MinState(result.getDouble(offset), Some(criterion(convertNull)))
     }
   }
 
@@ -44,5 +48,12 @@ case class MinLength(column: String, where: Option[String] = None)
   override def filterCondition: Option[String] = where
 
   @VisibleForTesting
-  private[deequ] def criterion: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+  private[deequ] def criterion(convertNull: Boolean): Column = {
+    if (convertNull) {
+      val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+      conditionalSelectionForLength(colLengths, Option(s"${column} IS NULL"), Double.MaxValue)
+    } else {
+      length(conditionalSelection(column, where)).cast(DoubleType)
+    }
+  }
 }

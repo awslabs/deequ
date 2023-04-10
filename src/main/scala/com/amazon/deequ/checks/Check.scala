@@ -516,10 +516,11 @@ case class Check(
   def hasMinLength(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      convertNull: Boolean = false)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint, convertNull) }
   }
 
   /**
@@ -533,10 +534,11 @@ case class Check(
   def hasMaxLength(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      convertNull: Boolean = false)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint, convertNull) }
   }
 
   /**

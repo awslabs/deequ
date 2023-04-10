@@ -51,6 +51,18 @@ class MinLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
         .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, 0.0, 1.0, 0.0, 1.0)
     }
 
+    "return row-level results for null columns with convertNull option" in withSparkSession { session =>
+
+      val data = getEmptyColumnDataDf(session)
+
+      val addressLength = MinLength("att3", convertNull = true) // It's null in two rows
+      val state: Option[MinState] = addressLength.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get)
+        .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, Double.MaxValue, 1.0, Double.MaxValue, 1.0)
+    }
+
     "return row-level results for blank strings" in withSparkSession { session =>
 
       val data = getEmptyColumnDataDf(session)

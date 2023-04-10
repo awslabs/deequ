@@ -17,22 +17,26 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
-import org.apache.spark.sql.functions.{length, max}
-import org.apache.spark.sql.types.{DoubleType, StructType}
-import org.apache.spark.sql.{Column, Row}
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.isString
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.length
+import org.apache.spark.sql.functions.max
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StructType
 
-case class MaxLength(column: String, where: Option[String] = None)
+case class MaxLength(column: String, where: Option[String] = None, convertNull: Boolean = false)
   extends StandardScanShareableAnalyzer[MaxState]("MaxLength", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    max(criterion) :: Nil
+    max(criterion(false)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MaxState(result.getDouble(offset), Some(criterion))
+      MaxState(result.getDouble(offset), Some(criterion(convertNull)))
     }
   }
 
@@ -42,5 +46,13 @@ case class MaxLength(column: String, where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  private def criterion: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+  private def criterion(convertNull: Boolean): Column = {
+    if (convertNull) {
+      val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+      conditionalSelectionForLength(colLengths, Option(s"${column} IS NULL"), Double.MinValue)
+    } else {
+      length(conditionalSelection(column, where)).cast(DoubleType)
+    }
+  }
+
 }

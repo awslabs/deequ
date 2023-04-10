@@ -426,10 +426,11 @@ object Constraint {
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      convertNull: Boolean = false)
     : Constraint = {
 
-    val maxLength = MaxLength(column, where)
+    val maxLength = MaxLength(column, where, convertNull)
 
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
       hint = hint)
@@ -454,10 +455,11 @@ object Constraint {
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      convertNull: Boolean = false)
     : Constraint = {
 
-    val minLength = MinLength(column, where)
+    val minLength = MinLength(column, where, convertNull)
 
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minLength, assertion,
       hint = hint)

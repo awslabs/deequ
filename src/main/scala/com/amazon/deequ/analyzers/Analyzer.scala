@@ -17,16 +17,22 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
+import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
+import com.amazon.deequ.metrics.Metric
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 
 import scala.language.existentials
-import scala.util.{Failure, Success}
+import scala.util.Failure
+import scala.util.Success
 
 /**
   * A state (sufficient statistic) computed from data, from which we can compute a metric.
@@ -449,6 +455,12 @@ private[deequ] object Analyzers {
     if (columns.size == 1) Entity.Column else Entity.Mutlicolumn
   }
 
+  def conditionalSelectionForLength(selection: Column, where: Option[String], replaceWith: Double): Column = {
+    val conditionColumn = where.map { expression => expr(expression) }
+    conditionColumn
+      .map { condition => when(condition, replaceWith).otherwise(selection) }
+      .getOrElse(selection)
+  }
   def conditionalSelection(selection: String, where: Option[String]): Column = {
     conditionalSelection(col(selection), where)
   }
