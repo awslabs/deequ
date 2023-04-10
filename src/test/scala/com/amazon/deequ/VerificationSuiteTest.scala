@@ -168,9 +168,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("att2", _ > 0.7)
       val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("item")
       val minLength = new Check(CheckLevel.Error, "rule4")
-        .hasMinLength("item", _ <= 3, convertNull = true)
+        .hasMinLength("item", _ <= 3, analyzerOptions = Option(AnalyzerOptions(convertNull = true)))
       val maxLength = new Check(CheckLevel.Error, "rule5")
-        .hasMaxLength("item", _ > 1, convertNull = true)
+        .hasMaxLength("item", _ > 1, analyzerOptions = Option(AnalyzerOptions(convertNull = true)))
       val expectedColumn1 = isComplete.description
       val expectedColumn2 = completeness.description
       val expectedColumn3 = minLength.description
@@ -214,9 +214,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val minLength = new Check(CheckLevel.Error, "rule1").hasMinLength("item", _ <= 3)
       val maxLength = new Check(CheckLevel.Error, "rule2").hasMaxLength("item", _ > 1)
       val isLengthMin = new Check(CheckLevel.Error, "rule3")
-        .hasMinLength("att2", _ <= 1, convertNull = true)
+        .hasMinLength("att2", _ <= 1, analyzerOptions = Option(AnalyzerOptions(convertNull = true)))
       val isLengthMax = new Check(CheckLevel.Error, "rule4")
-        .hasMaxLength("att2", _ >= 1, convertNull = true)
+        .hasMaxLength("att2", _ >= 1, analyzerOptions = Option(AnalyzerOptions(convertNull = true)))
       val expectedColumn1 = minLength.description
       val expectedColumn2 = maxLength.description
       val expectedColumn3 = isLengthMin.description

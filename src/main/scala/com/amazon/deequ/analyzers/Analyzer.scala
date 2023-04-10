@@ -255,6 +255,12 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
+case class AnalyzerOptions(convertNull: Boolean) {
+  def getConvertNull(): Boolean = {
+    convertNull
+  }
+}
+
 /** Base class for analyzers that compute ratios of matching predicates */
 abstract class PredicateMatchingAnalyzer(
     name: String,

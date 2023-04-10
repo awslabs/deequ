@@ -16,16 +16,17 @@
 
 package com.amazon.deequ.checks
 
+import com.amazon.deequ.analyzers.AnalyzerOptions
 import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, Patterns, State, KLLParameters}
+import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.checks.ColumnCondition.{isEachNotNull, isAnyNotNull}
+import com.amazon.deequ.checks.ColumnCondition.{isAnyNotNull, isEachNotNull}
 
 import scala.util.matching.Regex
 
@@ -517,10 +518,10 @@ case class Check(
       column: String,
       assertion: Double => Boolean,
       hint: Option[String] = None,
-      convertNull: Boolean = false)
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint, convertNull) }
+    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -535,10 +536,10 @@ case class Check(
       column: String,
       assertion: Double => Boolean,
       hint: Option[String] = None,
-      convertNull: Boolean = false)
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint, convertNull) }
+    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**

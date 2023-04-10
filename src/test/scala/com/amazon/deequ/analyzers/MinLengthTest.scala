@@ -55,7 +55,7 @@ class MinLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
 
       val data = getEmptyColumnDataDf(session)
 
-      val addressLength = MinLength("att3", convertNull = true) // It's null in two rows
+      val addressLength = MinLength("att3", analyzerOptions = Option(AnalyzerOptions(true))) // It's null in two rows
       val state: Option[MinState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 

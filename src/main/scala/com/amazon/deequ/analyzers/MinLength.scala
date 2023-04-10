@@ -27,7 +27,7 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 
-case class MinLength(column: String, where: Option[String] = None, convertNull: Boolean = false)
+case class MinLength(column: String, where: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[MinState]("MinLength", column)
   with FilterableAnalyzer {
 
@@ -36,6 +36,9 @@ case class MinLength(column: String, where: Option[String] = None, convertNull: 
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
+    val convertNull: Boolean = analyzerOptions
+      .map { options => options.getConvertNull() }
+      .getOrElse(false)
     ifNoNullsIn(result, offset) { _ =>
       MinState(result.getDouble(offset), Some(criterion(convertNull)))
     }
