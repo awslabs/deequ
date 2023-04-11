@@ -24,6 +24,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.length
 import org.apache.spark.sql.functions.max
 import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.types.StructType
 
 case class MaxLength(column: String, where: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
@@ -51,8 +52,8 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
 
   private def criterion(convertNull: Boolean): Column = {
     if (convertNull) {
-      val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-      conditionalSelectionForLength(colLengths, Option(s"${column} IS NULL"), Double.MinValue)
+      val colLengths: Column = length(conditionalSelection(column, where)).cast(IntegerType)
+      conditionalSelectionForLength(colLengths, Option(s"${column} IS NULL"), Integer.MAX_VALUE)
     } else {
       length(conditionalSelection(column, where)).cast(DoubleType)
     }

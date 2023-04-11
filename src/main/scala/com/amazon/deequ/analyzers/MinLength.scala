@@ -26,6 +26,7 @@ import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.IntegerType
 
 case class MinLength(column: String, where: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[MinState]("MinLength", column)
@@ -53,8 +54,8 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
   @VisibleForTesting
   private[deequ] def criterion(convertNull: Boolean): Column = {
     if (convertNull) {
-      val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-      conditionalSelectionForLength(colLengths, Option(s"${column} IS NULL"), Double.MaxValue)
+      val colLengths: Column = length(conditionalSelection(column, where)).cast(IntegerType)
+      conditionalSelectionForLength(colLengths, Option(s"${column} IS NULL"), Integer.MIN_VALUE)
     } else {
       length(conditionalSelection(column, where)).cast(DoubleType)
     }

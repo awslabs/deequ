@@ -170,6 +170,17 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
+  def getDateDf(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      (100, "Furniture", "Product 1", 25, null),
+      (101, "Cosmetics", "Product 2", 20, "2022-01-05"),
+      (102, "Furniture", "Product 3", 30, null),
+      (103, "Electronics", "Product 4", 10, null),
+      (104, "Electronics", "Product 5", 50, null)
+    ).toDF("id", "product", "product_id", "units", "date")
+  }
   def getDfCompleteAndInCompleteColumnsDelta(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
