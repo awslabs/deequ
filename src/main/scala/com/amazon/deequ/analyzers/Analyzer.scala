@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
@@ -255,10 +256,15 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
-case class AnalyzerOptions(convertNull: Boolean) {
-  def getConvertNull(): Boolean = {
-    convertNull
+case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore) {
+  def getNullBehavior(): NullBehavior = {
+    nullBehavior
   }
+}
+
+object NullBehavior extends Enumeration {
+  type NullBehavior = Value
+  val Ignore, Empty, Fail = Value
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */
@@ -461,14 +467,15 @@ private[deequ] object Analyzers {
     if (columns.size == 1) Entity.Column else Entity.Mutlicolumn
   }
 
-  def conditionalSelectionForLength(selection: Column, where: Option[String], replaceWith: Double): Column = {
+  def conditionalSelection(selection: String, where: Option[String]): Column = {
+    conditionalSelection(col(selection), where)
+  }
+
+  def conditionalSelection(selection: Column, where: Option[String], replaceWith: Any): Column = {
     val conditionColumn = where.map { expression => expr(expression) }
     conditionColumn
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
-  }
-  def conditionalSelection(selection: String, where: Option[String]): Column = {
-    conditionalSelection(col(selection), where)
   }
 
   def conditionalSelection(selection: Column, condition: Option[String]): Column = {
