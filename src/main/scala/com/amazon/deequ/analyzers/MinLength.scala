@@ -20,7 +20,6 @@ import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.Preconditions.isString
-import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
@@ -34,12 +33,12 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    min(criterion(getNullBehavior())) :: Nil
+    min(criterion(getNullBehavior)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MinState(result.getDouble(offset), Some(criterion(getNullBehavior())))
+      MinState(result.getDouble(offset), Some(criterion(getNullBehavior)))
     }
   }
 
@@ -49,21 +48,20 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
 
   override def filterCondition: Option[String] = where
 
-  @VisibleForTesting
   private[deequ] def criterion(nullBehavior: NullBehavior): Column = {
     nullBehavior match {
       case NullBehavior.Fail =>
         val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
         conditionalSelection(colLengths, Option(s"${column} IS NULL"), replaceWith = Double.MinValue)
-      case NullBehavior.Empty =>
+      case NullBehavior.EmptyString =>
         length(conditionalSelection(col(column), Option(s"${column} IS NULL"), replaceWith = "")).cast(DoubleType)
       case _ => length(conditionalSelection(column, where)).cast(DoubleType)
     }
   }
 
-  private def getNullBehavior(): NullBehavior = {
+  private def getNullBehavior: NullBehavior = {
     analyzerOptions
-      .map { options => options.getNullBehavior() }
+      .map { options => options.nullBehavior }
       .getOrElse(NullBehavior.Ignore)
   }
 }

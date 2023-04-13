@@ -256,15 +256,11 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
-case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore) {
-  def getNullBehavior(): NullBehavior = {
-    nullBehavior
-  }
-}
+case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore)
 
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
-  val Ignore, Empty, Fail = Value
+  val Ignore, EmptyString, Fail = Value
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */
@@ -472,14 +468,14 @@ private[deequ] object Analyzers {
   }
 
   def conditionalSelection(selection: Column, where: Option[String], replaceWith: Double): Column = {
-    val conditionColumn = where.map { expression => expr(expression) }
+    val conditionColumn = where.map(expr)
     conditionColumn
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
   }
 
   def conditionalSelection(selection: Column, where: Option[String], replaceWith: String): Column = {
-    val conditionColumn = where.map { expression => expr(expression) }
+    val conditionColumn = where.map(expr)
     conditionColumn
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)

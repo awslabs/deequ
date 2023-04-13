@@ -233,7 +233,6 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         data.columns.toSet + expectedColumn1 + expectedColumn2
       assert(resultData.columns.toSet == expectedColumns)
 
-
       val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getBoolean(0))
       assert(Seq(true, true, false, true, false, true).sameElements(rowLevel1))
 
@@ -246,10 +245,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       // null should fail since length 0 is not >= 1
       val minLength = new Check(CheckLevel.Error, "rule1")
-        .hasMinLength("att2", _ >= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Empty)))
+        .hasMinLength("att2", _ >= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
       // nulls should succeed since length 0 is < 2
       val maxLength = new Check(CheckLevel.Error, "rule2")
-        .hasMaxLength("att2", _ < 2, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Empty)))
+        .hasMaxLength("att2", _ < 2, analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
       val expectedColumn1 = minLength.description
       val expectedColumn2 = maxLength.description
 

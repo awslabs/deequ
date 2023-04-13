@@ -67,7 +67,7 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
       val data = getEmptyColumnDataDf(session)
 
       // It's null in two rows
-      val addressLength = MaxLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.Empty)))
+      val addressLength = MaxLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
       val state: Option[MaxState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
