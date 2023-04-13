@@ -45,11 +45,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
         (6, "Megan", "TX")))
       val ds2 = rdd2.toDF("new_id", "name", "state")
 
-      val col1 = "name_foo"
-      val col2 = "name"
+      val col = "name"
       val assertion: Double => Boolean = _ >= 1.0
 
-      val result = ReferentialIntegrity.subsetCheck(ds1, Seq.empty, ds2, Seq(col2), assertion)
+      val result = ReferentialIntegrity.subsetCheck(ds1, Seq.empty, ds2, Seq(col), assertion)
       assert(result.isInstanceOf[ComparisonFailed])
       assert(result.asInstanceOf[ComparisonFailed].errorMessage.contains(s"Empty list provided"))
     }
@@ -125,11 +124,10 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
         (6, "Megan", "TX")))
       val ds2 = rdd2.toDF("new_id", "name", "state")
 
-      val col1 = "name"
-      val col2 = "name_foo"
+      val col = "name"
       val assertion: Double => Boolean = _ >= 1.0
 
-      val result = ReferentialIntegrity.subsetCheck(ds1, Seq(col1), ds2, Seq.empty, assertion)
+      val result = ReferentialIntegrity.subsetCheck(ds1, Seq(col), ds2, Seq.empty, assertion)
       assert(result.isInstanceOf[ComparisonFailed])
       assert(result.asInstanceOf[ComparisonFailed].errorMessage.contains(s"Empty list provided"))
     }
@@ -563,38 +561,51 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
     "works for multiple columns" in withSparkSession { spark =>
       import spark.implicits._
 
+      val idColumn = "id"
+      val refColumns = Seq("state name", "state")
+      val allColumns = idColumn +: refColumns
+
       val rdd1 = spark.sparkContext.parallelize(Seq(
         (1, "New York", "NY"),
         (2, "Wisconsin", "WI"),
         (3, "Texas", "TX"),
         (4, "Canada", "CA"))) // Incorrect row
-      val ds1 = rdd1.toDF("id", "state name", "state")
+      val ds1 = rdd1.toDF(allColumns: _*)
 
       val rdd2 = spark.sparkContext.parallelize(Seq(
         (1, "New York", "NY"),
         (2, "Wisconsin", "WI"),
         (3, "Texas", "TX"),
         (4, "California", "CA"))) // Reference has correct row
-      val ds2 = rdd2.toDF("id", "state name", "state")
+      val ds2 = rdd2.toDF(allColumns: _*)
 
-      val cols = Seq("state name", "state")
       val outcomeCol = "row_level_outcome"
 
-      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, cols, ds2, cols, Some(outcomeCol))
+      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, refColumns, ds2, refColumns, Some(outcomeCol))
       assert(result.isRight)
-      val outcomes = result.right.get.select(outcomeCol).collect().toSeq.map { r => r.get(0) }
-      assert(outcomes == Seq(true, true, false, true))
+
+      val resultDF = result.right.get
+      assert(resultDF.columns.toSeq == allColumns :+ outcomeCol)
+
+      val outcomes = resultDF.orderBy(idColumn).select(outcomeCol).collect().toSeq.map { r => r.get(0) }
+      assert(outcomes == Seq(true, true, true, false))
+
+      assert(ds1.orderBy(idColumn).collect() sameElements resultDF.orderBy(idColumn).drop(outcomeCol).collect())
     }
 
     "works for multiple columns with duplicates in reference" in withSparkSession { spark =>
       import spark.implicits._
+
+      val idColumn = "id"
+      val refColumns = Seq("state name", "state")
+      val allColumns = idColumn +: refColumns
 
       val rdd1 = spark.sparkContext.parallelize(Seq(
         (1, "New York", "NY"),
         (2, "Wisconsin", "WI"),
         (3, "Texas", "TX"),
         (4, "Canada", "CA"))) // Incorrect row
-      val ds1 = rdd1.toDF("id", "state name", "state")
+      val ds1 = rdd1.toDF(allColumns: _*)
 
       val rdd2 = spark.sparkContext.parallelize(Seq(
         (1, "New York", "NY"),
@@ -602,26 +613,35 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
         (3, "Texas", "TX"),
         (4, "California", "CA"), // Reference has correct row
         (5, "California", "CA"))) // Reference has correct duplicate row
-      val ds2 = rdd2.toDF("id", "state name", "state")
+      val ds2 = rdd2.toDF(allColumns: _*)
 
-      val cols = Seq("state name", "state")
       val outcomeCol = "row_level_outcome"
 
-      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, cols, ds2, cols, Some(outcomeCol))
+      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, refColumns, ds2, refColumns, Some(outcomeCol))
       assert(result.isRight)
-      val outcomes = result.right.get.select(outcomeCol).collect().toSeq.map { r => r.get(0) }
-      assert(outcomes == Seq(true, true, false, true))
+
+      val resultDF = result.right.get
+      assert(resultDF.columns.toSeq == allColumns :+ outcomeCol)
+
+      val outcomes = resultDF.orderBy(idColumn).select(outcomeCol).collect().toSeq.map { r => r.get(0) }
+      assert(outcomes == Seq(true, true, true, false))
+
+      assert(ds1.orderBy(idColumn).collect() sameElements resultDF.orderBy(idColumn).drop(outcomeCol).collect())
     }
 
     "works for nested columns" in withSparkSession { spark =>
       import spark.implicits._
 
+      val idColumn = "id"
+      val refColumns = Seq("state.stateName", "state.stateAbbr")
+      val allColumns = Seq(idColumn, "state") // State is a single, nested column
+
       val rdd1 = spark.sparkContext.parallelize(
         Seq(
           DatasetRow(1, State("New York", "NY")),
-          DatasetRow(1, State("Wisconsin", "WI")),
-          DatasetRow(1, State("Texas", "TX")),
-          DatasetRow(1, State("Canada", "CA")) // Incorrect row
+          DatasetRow(2, State("Wisconsin", "WI")),
+          DatasetRow(3, State("Texas", "TX")),
+          DatasetRow(4, State("Canada", "CA")) // Incorrect row
         )
       )
       val ds1 = rdd1.toDF
@@ -629,31 +649,40 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val rdd2 = spark.sparkContext.parallelize(
         Seq(
           DatasetRow(1, State("New York", "NY")),
-          DatasetRow(1, State("Wisconsin", "WI")),
-          DatasetRow(1, State("Texas", "TX")),
-          DatasetRow(1, State("California", "CA")) // Reference has correct row
+          DatasetRow(2, State("Wisconsin", "WI")),
+          DatasetRow(3, State("Texas", "TX")),
+          DatasetRow(4, State("California", "CA")) // Reference has correct row
         )
       )
       val ds2 = rdd2.toDF
 
-      val cols = Seq("state.stateName", "state.stateAbbr")
       val outcomeCol = "row_level_outcome"
 
-      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, cols, ds2, cols, Some(outcomeCol))
+      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, refColumns, ds2, refColumns, Some(outcomeCol))
       assert(result.isRight)
-      val outcomes = result.right.get.select(outcomeCol).collect().toSeq.map { r => r.get(0) }
-      assert(outcomes == Seq(true, true, false, true))
+
+      val resultDF = result.right.get
+      assert(resultDF.columns.toSeq == allColumns :+ outcomeCol)
+
+      val outcomes = resultDF.orderBy(idColumn).select(outcomeCol).collect().toSeq.map { r => r.get(0) }
+      assert(outcomes == Seq(true, true, true, false))
+
+      assert(ds1.orderBy(idColumn).collect() sameElements resultDF.orderBy(idColumn).drop(outcomeCol).collect())
     }
 
     "works for nested columns with reference columns in reverse order" in withSparkSession { spark =>
       import spark.implicits._
 
+      val idColumn = "id"
+      val refColumns = Seq("state.stateName", "state.stateAbbr")
+      val allColumns = Seq(idColumn, "state") // State is a single, nested column
+
       val rdd1 = spark.sparkContext.parallelize(
         Seq(
           DatasetRow(1, State("New York", "NY")),
-          DatasetRow(1, State("Wisconsin", "WI")),
-          DatasetRow(1, State("Texas", "TX")),
-          DatasetRow(1, State("Canada", "CA")) // Incorrect row
+          DatasetRow(2, State("Wisconsin", "WI")),
+          DatasetRow(3, State("Texas", "TX")),
+          DatasetRow(4, State("Canada", "CA")) // Incorrect row
         )
       )
       val ds1 = rdd1.toDF
@@ -661,20 +690,25 @@ class ReferentialIntegrityTest extends AnyWordSpec with SparkContextSpec {
       val rdd2 = spark.sparkContext.parallelize(
         Seq(
           DatasetRowReverse(1, StateReverse("NY", "New York")),
-          DatasetRowReverse(1, StateReverse("WI", "Wisconsin")),
-          DatasetRowReverse(1, StateReverse("TX", "Texas")),
-          DatasetRowReverse(1, StateReverse("CA", "California")) // Reference has correct row
+          DatasetRowReverse(2, StateReverse("WI", "Wisconsin")),
+          DatasetRowReverse(3, StateReverse("TX", "Texas")),
+          DatasetRowReverse(4, StateReverse("CA", "California")) // Reference has correct row
         )
       )
       val ds2 = rdd2.toDF
 
-      val cols = Seq("state.stateName", "state.stateAbbr")
       val outcomeCol = "row_level_outcome"
 
-      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, cols, ds2, cols, Some(outcomeCol))
+      val result = ReferentialIntegrity.subsetCheckRowLevel(ds1, refColumns, ds2, refColumns, Some(outcomeCol))
       assert(result.isRight)
-      val outcomes = result.right.get.select(outcomeCol).collect().toSeq.map { r => r.get(0) }
-      assert(outcomes == Seq(true, true, false, true))
+
+      val resultDF = result.right.get
+      assert(resultDF.columns.toSeq == allColumns :+ outcomeCol)
+
+      val outcomes = resultDF.orderBy(idColumn).select(outcomeCol).collect().toSeq.map { r => r.get(0) }
+      assert(outcomes == Seq(true, true, true, false))
+
+      assert(ds1.orderBy(idColumn).collect() sameElements resultDF.orderBy(idColumn).drop(outcomeCol).collect())
     }
   }
 }
