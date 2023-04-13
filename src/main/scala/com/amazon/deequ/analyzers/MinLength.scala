@@ -17,22 +17,28 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
-import org.apache.spark.sql.functions.{length, min}
-import org.apache.spark.sql.types.{DoubleType, StructType}
-import org.apache.spark.sql.{Column, Row}
+import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.isString
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.length
+import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StructType
 
-case class MinLength(column: String, where: Option[String] = None)
+case class MinLength(column: String, where: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[MinState]("MinLength", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    min(length(conditionalSelection(column, where))).cast(DoubleType) :: Nil
+    min(criterion(getNullBehavior)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MinState(result.getDouble(offset))
+      MinState(result.getDouble(offset), Some(criterion(getNullBehavior)))
     }
   }
 
@@ -41,4 +47,21 @@ case class MinLength(column: String, where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+  private[deequ] def criterion(nullBehavior: NullBehavior): Column = {
+    nullBehavior match {
+      case NullBehavior.Fail =>
+        val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+        conditionalSelection(colLengths, Option(s"${column} IS NULL"), replaceWith = Double.MinValue)
+      case NullBehavior.EmptyString =>
+        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), replaceWith = "")).cast(DoubleType)
+      case _ => length(conditionalSelection(column, where)).cast(DoubleType)
+    }
+  }
+
+  private def getNullBehavior: NullBehavior = {
+    analyzerOptions
+      .map { options => options.nullBehavior }
+      .getOrElse(NullBehavior.Ignore)
+  }
 }
