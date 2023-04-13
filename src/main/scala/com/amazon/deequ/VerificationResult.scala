@@ -18,17 +18,18 @@ package com.amazon.deequ
 
 import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.checks.{Check, CheckResult, CheckStatus}
-import com.amazon.deequ.constraints.AnalysisBasedConstraint
+import com.amazon.deequ.checks.Check
+import com.amazon.deequ.checks.CheckResult
+import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.constraints.ConstraintResult
-import com.amazon.deequ.constraints.NamedConstraint
 import com.amazon.deequ.constraints.RowLevelAssertedConstraint
 import com.amazon.deequ.constraints.RowLevelConstraint
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.Column
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 
 /**
   * The result returned from the VerificationSuite

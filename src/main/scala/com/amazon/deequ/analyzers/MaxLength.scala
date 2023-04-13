@@ -17,22 +17,28 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
-import org.apache.spark.sql.functions.{length, max}
-import org.apache.spark.sql.types.{DoubleType, StructType}
-import org.apache.spark.sql.{Column, Row}
+import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.isString
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.length
+import org.apache.spark.sql.functions.max
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StructType
 
-case class MaxLength(column: String, where: Option[String] = None)
+case class MaxLength(column: String, where: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[MaxState]("MaxLength", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    max(criterion) :: Nil
+    max(criterion(getNullBehavior)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MaxState(result.getDouble(offset), Some(criterion))
+      MaxState(result.getDouble(offset), Some(criterion(getNullBehavior)))
     }
   }
 
@@ -42,5 +48,19 @@ case class MaxLength(column: String, where: Option[String] = None)
 
   override def filterCondition: Option[String] = where
 
-  private def criterion: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+  private def criterion(nullBehavior: NullBehavior): Column = {
+    nullBehavior match {
+      case NullBehavior.Fail =>
+        val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
+        conditionalSelection(colLengths, Option(s"${column} IS NULL"), replaceWith = Double.MaxValue)
+      case NullBehavior.EmptyString =>
+        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), replaceWith = "")).cast(DoubleType)
+      case _ => length(conditionalSelection(column, where)).cast(DoubleType)
+    }
+  }
+  private def getNullBehavior: NullBehavior = {
+    analyzerOptions
+      .map { options => options.nullBehavior }
+      .getOrElse(NullBehavior.Ignore)
+  }
 }
