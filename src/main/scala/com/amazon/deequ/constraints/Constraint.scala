@@ -426,10 +426,11 @@ object Constraint {
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val maxLength = MaxLength(column, where)
+    val maxLength = MaxLength(column, where, analyzerOptions)
 
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
       hint = hint)
@@ -454,15 +455,22 @@ object Constraint {
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val minLength = MinLength(column, where)
+    val minLength = MinLength(column, where, analyzerOptions)
 
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minLength, assertion,
       hint = hint)
 
-    new NamedConstraint(constraint, s"MinLengthConstraint($minLength)")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"MinLengthConstraint($minLength)",
+      s"ColumnLength-$column",
+      sparkAssertion)
   }
 
   /**

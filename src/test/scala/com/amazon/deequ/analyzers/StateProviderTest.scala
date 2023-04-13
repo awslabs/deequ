@@ -87,13 +87,13 @@ class StateProviderTest extends AnyWordSpec
 
       assertCorrectlyRestoresState[SumState](provider, provider, Sum("price"), data)
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
-      assertCorrectlyRestoresState[MinState](provider, provider, Minimum("price"), data)
+      assertCorrectlyRestoresMinState(provider, provider, Minimum("price"), data)
       assertCorrectlyRestoresMaxState(provider, provider, Maximum("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
 
       assertCorrectlyRestoresMaxState(provider, provider, MaxLength("att1"), data)
-      assertCorrectlyRestoresState[MinState](provider, provider, MinLength("att1"), data)
+      assertCorrectlyRestoresMinState(provider, provider, MinLength("att1"), data)
 
       assertCorrectlyRestoresState[DataTypeHistogram](provider, provider, DataType("item"), data)
       assertCorrectlyRestoresStateForHLL(provider, provider, ApproxCountDistinct("att1"), data)
@@ -202,6 +202,22 @@ class StateProviderTest extends AnyWordSpec
 
     assert(restoredState.isDefined)
     assert(MaxState(expectedState.maxValue, None) == restoredState.get)
+  }
+
+  def assertCorrectlyRestoresMinState(persister: StatePersister,
+                                      loader: StateLoader,
+                                      analyzer: Analyzer[MinState, _],
+                                      data: DataFrame): Unit = {
+
+    val stateResult = analyzer.computeStateFrom(data)
+    assert(stateResult.isDefined)
+    val expectedState = stateResult.get
+
+    persister.persist[MinState](analyzer, expectedState)
+    val restoredState = loader.load[MinState](analyzer)
+
+    assert(restoredState.isDefined)
+    assert(MinState(expectedState.minValue, None) == restoredState.get)
   }
 
   def assertCorrectlyRestoresState[S <: State[S]](

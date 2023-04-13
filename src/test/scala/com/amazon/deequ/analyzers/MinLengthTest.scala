@@ -13,6 +13,8 @@
  * permissions and limitations under the License.
  *
  */
+
+
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
@@ -22,15 +24,15 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class MinLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
-  "MaxLength" should {
+  "MinLength" should {
     "return row-level results for non-null columns" in withSparkSession { session =>
 
       val data = getDfWithStringColumns(session)
 
-      val countryLength = MaxLength("Country") // It's "India" in every row
-      val state: Option[MaxState] = countryLength.computeStateFrom(data)
+      val countryLength = MinLength("Country") // It's "India" in every row
+      val state: Option[MinState] = countryLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = countryLength.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get)
@@ -41,8 +43,8 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
 
       val data = getEmptyColumnDataDf(session)
 
-      val addressLength = MaxLength("att3") // It's null in two rows
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
+      val addressLength = MinLength("att3") // It's null in two rows
+      val state: Option[MinState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get)
@@ -54,12 +56,12 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
       val data = getEmptyColumnDataDf(session)
 
       // It's null in two rows
-      val addressLength = MaxLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
+      val addressLength = MinLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
+      val state: Option[MinState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, Double.MaxValue, 1.0, Double.MaxValue, 1.0)
+        .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, Double.MinValue, 1.0, Double.MinValue, 1.0)
     }
 
     "return row-level results for null columns with NullBehavior empty option" in withSparkSession { session =>
@@ -67,8 +69,8 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
       val data = getEmptyColumnDataDf(session)
 
       // It's null in two rows
-      val addressLength = MaxLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
+      val addressLength = MinLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
+      val state: Option[MinState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get)
@@ -79,8 +81,8 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
 
       val data = getEmptyColumnDataDf(session)
 
-      val addressLength = MaxLength("att1") // It's empty strings
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
+      val addressLength = MinLength("att1") // It's empty strings
+      val state: Option[MinState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get)
