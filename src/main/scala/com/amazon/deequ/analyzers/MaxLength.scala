@@ -52,9 +52,9 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
     nullBehavior match {
       case NullBehavior.Fail =>
         val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-        conditionalSelection(colLengths, Option(s"${column} IS NULL"), Double.MaxValue)
+        conditionalSelection(colLengths, Option(s"${column} IS NULL"), replaceWith = Double.MaxValue)
       case NullBehavior.Empty =>
-        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), "")).cast(DoubleType)
+        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), replaceWith = "")).cast(DoubleType)
       case _ => length(conditionalSelection(column, where)).cast(DoubleType)
     }
   }

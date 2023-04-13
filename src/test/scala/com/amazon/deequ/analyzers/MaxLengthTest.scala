@@ -49,7 +49,7 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
         .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, 0.0, 1.0, 0.0, 1.0)
     }
 
-    "return row-level results for null columns with convertNull option" in withSparkSession { session =>
+    "return row-level results for null columns with NullBehavior fail option" in withSparkSession { session =>
 
       val data = getEmptyColumnDataDf(session)
 
@@ -60,6 +60,19 @@ class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
 
       data.withColumn("new", metric.fullColumn.get)
         .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, Double.MaxValue, 1.0, Double.MaxValue, 1.0)
+    }
+
+    "return row-level results for null columns with NullBehavior empty option" in withSparkSession { session =>
+
+      val data = getEmptyColumnDataDf(session)
+
+      // It's null in two rows
+      val addressLength = MaxLength("att3", analyzerOptions = Option(AnalyzerOptions(NullBehavior.Empty)))
+      val state: Option[MaxState] = addressLength.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get)
+        .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, 0.0, 1.0, 0.0, 1.0)
     }
 
     "return row-level results for blank strings" in withSparkSession { session =>

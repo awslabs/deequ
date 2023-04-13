@@ -54,9 +54,9 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
     nullBehavior match {
       case NullBehavior.Fail =>
         val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-        conditionalSelection(colLengths, Option(s"${column} IS NULL"), Double.MinValue)
+        conditionalSelection(colLengths, Option(s"${column} IS NULL"), replaceWith = Double.MinValue)
       case NullBehavior.Empty =>
-        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), "")).cast(DoubleType)
+        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), replaceWith = "")).cast(DoubleType)
       case _ => length(conditionalSelection(column, where)).cast(DoubleType)
     }
   }
