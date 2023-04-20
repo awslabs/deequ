@@ -20,6 +20,7 @@ import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions._
 import Analyzers._
+import com.google.common.annotations.VisibleForTesting
 
 /**
   * Compliance is a measure of the fraction of rows that complies with the given column constraint.
@@ -41,16 +42,21 @@ case class Compliance(instance: String, predicate: String, where: Option[String]
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion))
     }
   }
 
   override def aggregationFunctions(): Seq[Column] = {
 
-    val summation = sum(conditionalSelection(expr(predicate), where).cast(IntegerType))
+    val summation = sum(criterion)
 
     summation :: conditionalCount(where) :: Nil
   }
 
   override def filterCondition: Option[String] = where
+
+  @VisibleForTesting
+  private def criterion: Column = {
+    conditionalSelection(expr(predicate), where).cast(IntegerType)
+  }
 }

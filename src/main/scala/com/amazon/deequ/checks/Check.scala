@@ -16,10 +16,9 @@
 
 package com.amazon.deequ.checks
 
-import com.amazon.deequ.analyzers.AnalyzerOptions
+import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
 import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
@@ -517,11 +516,10 @@ case class Check(
   def hasMinLength(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None,
-      analyzerOptions: Option[AnalyzerOptions] = None)
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint, analyzerOptions) }
+    addFilterableConstraint { filter => minLengthConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -535,11 +533,10 @@ case class Check(
   def hasMaxLength(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None,
-      analyzerOptions: Option[AnalyzerOptions] = None)
+      hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint, analyzerOptions) }
+    addFilterableConstraint { filter => maxLengthConstraint(column, assertion, filter, hint) }
   }
 
   /**

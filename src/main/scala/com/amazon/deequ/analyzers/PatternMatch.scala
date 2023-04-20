@@ -18,9 +18,10 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
+import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{col, lit, regexp_extract, sum, when}
-import org.apache.spark.sql.types.{IntegerType, StructType}
+import org.apache.spark.sql.types.{BooleanType, IntegerType, StructType}
 
 import scala.util.matching.Regex
 
@@ -41,16 +42,13 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion.cast(BooleanType)))
     }
   }
 
   override def aggregationFunctions(): Seq[Column] = {
 
-    val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
-      .otherwise(0)
-
-    val summation = sum(conditionalSelection(expression, where).cast(IntegerType))
+    val summation = sum(criterion)
 
     summation :: conditionalCount(where) :: Nil
   }
@@ -76,6 +74,14 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
       case _ => false
     }
   }
+
+  @VisibleForTesting // required by some tests that compare analyzer results to an expected state
+  private[deequ] def criterion: Column = {
+    val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
+      .otherwise(0)
+    conditionalSelection(expression, where).cast(IntegerType)
+  }
+
 
 }
 
