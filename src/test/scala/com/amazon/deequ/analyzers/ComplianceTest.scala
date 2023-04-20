@@ -37,6 +37,18 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
       data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Int]("new")) shouldBe Seq(0, 0, 0, 1, 1, 1)
     }
+
+    "return row-level results for null columns" in withSparkSession { session =>
+
+      val data = getDfWithNumericValues(session)
+
+      val att1Compliance = Compliance("rule1", "attNull > 3")
+      val state = att1Compliance.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get).collect().map(r =>
+        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(null, null, null, 1, 1, 1)
+    }
   }
 
 }

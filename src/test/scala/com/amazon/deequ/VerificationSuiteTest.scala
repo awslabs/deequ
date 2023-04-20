@@ -234,8 +234,10 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val isComplete = new Check(CheckLevel.Error, "rule1").isComplete("att1")
       val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("att2", _ > 0.7)
       val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("item")
-      val minLength = new Check(CheckLevel.Error, "rule4").hasMinLength("item", _ >= 1)
-      val maxLength = new Check(CheckLevel.Error, "rule5").hasMaxLength("item", _ <= 1)
+      val minLength = new Check(CheckLevel.Error, "rule3")
+        .hasMinLength("item", _ >= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
+      val maxLength = new Check(CheckLevel.Error, "rule4")
+        .hasMaxLength("item", _ <= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
       val patternMatch = new Check(CheckLevel.Error, "rule6").hasPattern("att2", "[a-z]".r)
       val min = new Check(CheckLevel.Error, "rule7").hasMin("val1", _ > 1)
       val max = new Check(CheckLevel.Error, "rule8").hasMax("val1", _ <= 3)
@@ -305,15 +307,19 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val max = new Check(CheckLevel.Error, "rule2").hasMax("val2", _ <= 3)
       val patternMatchNullString = new Check(CheckLevel.Error, "rule3")
         .hasPattern("att2", """\w""".r)
+      val complianceNullValue = new Check(CheckLevel.Error, "rule4")
+        .satisfies("val2 > 3", "rule4")
 
       val expectedColumn1 = min.description
       val expectedColumn2 = max.description
       val expectedColumn3 = patternMatchNullString.description
+      val expectedColumn4 = complianceNullValue.description
 
       val suite = new VerificationSuite().onData(data)
         .addCheck(min)
         .addCheck(max)
         .addCheck(patternMatchNullString)
+        .addCheck(complianceNullValue)
 
       val result: VerificationResult = suite.run()
 
@@ -324,7 +330,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       resultData.show()
 
       val expectedColumns: Set[String] =
-        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4
       assert(resultData.columns.toSet == expectedColumns)
 
       val rowLevel1 = resultData.select(expectedColumn1).collect().map(r =>
@@ -338,13 +344,19 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val rowLevel3 = resultData.select(expectedColumn3).collect().map(r =>
         if (r == null) null else r.getAs[Boolean](0))
       assert(Seq(true, true, false, true, false, true).sameElements(rowLevel3))
+
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r =>
+        if (r == null) null else r.getAs[Boolean](0))
+      assert(Seq(false, null, false, true, null, true).sameElements(rowLevel4))
     }
 
     "generate a result that contains length row-level results with nullBehavior fail" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
 
-      val minLength = new Check(CheckLevel.Error, "rule1").hasMinLength("att2", _ >= 1)
-      val maxLength = new Check(CheckLevel.Error, "rule2").hasMaxLength("att2", _ <= 1)
+      val minLength = new Check(CheckLevel.Error, "rule1")
+        .hasMinLength("att2", _ >= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
+      val maxLength = new Check(CheckLevel.Error, "rule2")
+        .hasMaxLength("att2", _ <= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
       val expectedColumn1 = minLength.description
       val expectedColumn2 = maxLength.description
 
@@ -354,7 +366,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val result: VerificationResult = suite.run()
 
-      assert(result.status == CheckStatus.Success)
+      assert(result.status == CheckStatus.Error)
 
       val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data)
 
@@ -363,13 +375,46 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         data.columns.toSet + expectedColumn1 + expectedColumn2
       assert(resultData.columns.toSet == expectedColumns)
 
-      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r =>
-        if (r == null) null else r.getAs[Boolean](0))
-      assert(Seq(true, true, null, true, null, true).sameElements(rowLevel1))
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, false, true, false, true).sameElements(rowLevel1))
 
-      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r =>
-        if (r == null) null else r.getAs[Boolean](0))
-      assert(Seq(true, true, null, true, null, true).sameElements(rowLevel2))
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, false, true, false, true).sameElements(rowLevel2))
+    }
+
+    "generate a result that contains length row-level results with nullBehavior empty" in withSparkSession { session =>
+      val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
+
+      // null should fail since length 0 is not >= 1
+      val minLength = new Check(CheckLevel.Error, "rule1")
+        .hasMinLength("att2", _ >= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
+      // nulls should succeed since length 0 is < 2
+      val maxLength = new Check(CheckLevel.Error, "rule2")
+        .hasMaxLength("att2", _ < 2, analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString)))
+      val expectedColumn1 = minLength.description
+      val expectedColumn2 = maxLength.description
+
+      val suite = new VerificationSuite().onData(data)
+        .addCheck(minLength)
+        .addCheck(maxLength)
+
+      val result: VerificationResult = suite.run()
+
+      assert(result.status == CheckStatus.Error)
+
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data)
+
+      resultData.show()
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2
+      assert(resultData.columns.toSet == expectedColumns)
+
+
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, false, true, false, true).sameElements(rowLevel1))
+
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getBoolean(0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel2))
     }
 
     "accept analysis config for mandatory analysis" in withSparkSession { sparkSession =>

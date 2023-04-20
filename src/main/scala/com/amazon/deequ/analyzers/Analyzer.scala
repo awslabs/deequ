@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
@@ -253,6 +254,12 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
       numMatches.toDouble / count
     }
   }
+}
+
+case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore)
+object NullBehavior extends Enumeration {
+  type NullBehavior = Value
+  val Ignore, EmptyString, Fail = Value
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */

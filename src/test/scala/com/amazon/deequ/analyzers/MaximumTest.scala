@@ -38,5 +38,18 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
       data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Double]("new")) shouldBe
         Seq(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
     }
+
+    "return row-level results for columns with null" in withSparkSession { session =>
+
+      val data = getDfWithNumericValues(session)
+
+      val att1Maximum = Maximum("attNull")
+      val state: Option[MaxState] = att1Maximum.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get).collect().map(r =>
+        if (r == null) null else r.getAs[Double]("new")) shouldBe
+        Seq(null, null, null, 5.0, 6.0, 7.0)
+    }
   }
 }
