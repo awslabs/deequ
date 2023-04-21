@@ -24,6 +24,7 @@ import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.constraints.ConstraintResult
 import com.amazon.deequ.constraints.RowLevelAssertedConstraint
 import com.amazon.deequ.constraints.RowLevelConstraint
+import com.amazon.deequ.constraints.RowLevelGroupedConstraint
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.SimpleResultSerde
@@ -139,6 +140,8 @@ object VerificationResult {
       case asserted: RowLevelAssertedConstraint =>
         constraintResult.metric.flatMap(metricToColumn).map(asserted.assertion(_))
       case _: RowLevelConstraint =>
+        constraintResult.metric.flatMap(metricToColumn)
+      case _: RowLevelGroupedConstraint =>
         constraintResult.metric.flatMap(metricToColumn)
       case _ => None
     }

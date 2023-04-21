@@ -161,15 +161,69 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     }
 
+    "test uniqueness" in withSparkSession { session =>
+      val data = getDfWithUniqueColumns(session)
+
+      val overlapUniqueness = new Check(CheckLevel.Error, "rule1").hasUniqueness(Seq("nonUnique", "halfUniqueCombinedWithNonUnique"), Check.IsOne)
+      val hasFullUniqueness = new Check(CheckLevel.Error, "rule2").hasUniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique"), Check.IsOne)
+      val uniquenessWithNulls = new Check(CheckLevel.Error, "rule3").hasUniqueness(Seq("unique", "nonUniqueWithNulls"), Check.IsOne)
+      val unique = new Check(CheckLevel.Error, "rule4").isUnique("unique")
+      val nonUnique = new Check(CheckLevel.Error, "rule5").isUnique("nonUnique")
+      val nullPrimaryKey = new Check(CheckLevel.Error, "rule6").isPrimaryKey("uniqueWithNulls")
+
+      val expectedColumn1 = overlapUniqueness.description
+      val expectedColumn2 = hasFullUniqueness.description
+      val expectedColumn3 = uniquenessWithNulls.description
+      val expectedColumn4 = unique.description
+      val expectedColumn5 = nonUnique.description
+      val expectedColumn6 = nullPrimaryKey.description
+
+      val suite = new VerificationSuite().onData(data)
+        .addCheck(overlapUniqueness)
+        .addCheck(hasFullUniqueness)
+        .addCheck(uniquenessWithNulls)
+        .addCheck(unique)
+        .addCheck(nonUnique)
+        .addCheck(nullPrimaryKey)
+
+      val result: VerificationResult = suite.run()
+
+      assert(result.status == CheckStatus.Error)
+
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data)
+      resultData.show()
+
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4 + expectedColumn5 + expectedColumn6
+      assert(resultData.columns.toSet == expectedColumns)
+
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.get(0))
+      assert(Seq(false, false, false, true, true, true).sameElements(rowLevel1))
+
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.get(0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel2))
+
+      val rowLevel3 = resultData.orderBy("unique").select(expectedColumn3).collect().map(r => r.get(0))
+      assert(Seq(true, true, true, null, null, null).sameElements(rowLevel3))
+
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.get(0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel4))
+
+      val rowLevel5 = resultData.select(expectedColumn5).collect().map(r => r.get(0))
+      assert(Seq(false, false, false, true, true, true).sameElements(rowLevel5))
+
+      val rowLevel6 = resultData.orderBy("unique").select(expectedColumn6).collect().map(r => r.get(0))
+      assert(Seq(true, true, null, true, true, true).sameElements(rowLevel6))
+    }
+
     "generate a result that contains row-level results" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
 
       val isComplete = new Check(CheckLevel.Error, "rule1").isComplete("att1")
       val completeness = new Check(CheckLevel.Error, "rule2").hasCompleteness("att2", _ > 0.7)
-      val isPrimaryKey = new Check(CheckLevel.Error, "rule3").isPrimaryKey("item")
-      val minLength = new Check(CheckLevel.Error, "rule4")
+      val minLength = new Check(CheckLevel.Error, "rule3")
         .hasMinLength("item", _ >= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
-      val maxLength = new Check(CheckLevel.Error, "rule5")
+      val maxLength = new Check(CheckLevel.Error, "rule4")
         .hasMaxLength("item", _ <= 1, analyzerOptions = Option(AnalyzerOptions(NullBehavior.Fail)))
       val expectedColumn1 = isComplete.description
       val expectedColumn2 = completeness.description
@@ -179,7 +233,6 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val suite = new VerificationSuite().onData(data)
         .addCheck(isComplete)
         .addCheck(completeness)
-        .addCheck(isPrimaryKey)
         .addCheck(minLength)
         .addCheck(maxLength)
 

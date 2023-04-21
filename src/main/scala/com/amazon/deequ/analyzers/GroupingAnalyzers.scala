@@ -16,14 +16,22 @@
 
 package com.amazon.deequ.analyzers
 
-import org.apache.spark.sql.{Column, DataFrame, Row}
-import org.apache.spark.sql.functions.{coalesce, col, count, expr, lit}
-import Analyzers.COUNT_COL
+import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
+import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.Preconditions._
 import com.amazon.deequ.metrics.DoubleMetric
-import Analyzers._
+import com.amazon.deequ.metrics.FullColumn
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.coalesce
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.count
+import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.types.StructType
-import Preconditions._
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
 
 /** Base class for all analyzers that operate the frequencies of groups in the data */
 abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
@@ -79,7 +87,12 @@ object FrequencyBasedAnalyzer {
       .transform(filterOptional(where))
       .count()
 
-    FrequenciesAndNumRows(frequencies, numRows)
+    // Set rows with value count 1 to true, 0 to null (null values), and otherwise false
+    val fullColumn: Column =
+      when(count(columnsToGroupBy.head).over(Window.partitionBy(columnsToGroupBy: _*).orderBy(columnsToGroupBy.head)).equalTo(1), true)
+        .when(count(columnsToGroupBy.head).over(Window.partitionBy(columnsToGroupBy: _*).orderBy(columnsToGroupBy.head)).equalTo(0), null)
+        .otherwise(false)
+    FrequenciesAndNumRows(frequencies, numRows, Option(fullColumn))
   }
 
   private def filterOptional(where: Option[String])(data: DataFrame) : DataFrame = {
@@ -105,7 +118,7 @@ abstract class ScanShareableFrequencyBasedAnalyzer(name: String, columnsToGroupO
         val result = theState.frequencies.agg(aggregations.head, aggregations.tail: _*).collect()
           .head
 
-        fromAggregationResult(result, 0)
+        fromAggregationResult(result, 0, theState.fullColumn)
 
       case None =>
         metricFromEmpty(this, name, columnsToGroupOn.mkString(","), entityFrom(columnsToGroupOn))
@@ -116,23 +129,23 @@ abstract class ScanShareableFrequencyBasedAnalyzer(name: String, columnsToGroupO
     metricFromFailure(exception, name, columnsToGroupOn.mkString(","), entityFrom(columnsToGroupOn))
   }
 
-  protected def toSuccessMetric(value: Double): DoubleMetric = {
-    metricFromValue(value, name, columnsToGroupOn.mkString(","), entityFrom(columnsToGroupOn))
+  protected def toSuccessMetric(value: Double, fullColumn: Option[Column] = None): DoubleMetric = {
+    metricFromValue(value, name, columnsToGroupOn.mkString(","), entityFrom(columnsToGroupOn), fullColumn)
   }
 
-  def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
+  def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column] = None): DoubleMetric = {
     if (result.isNullAt(offset)) {
       metricFromEmpty(this, name, columnsToGroupOn.mkString(","), entityFrom(columnsToGroupOn))
     } else {
-      toSuccessMetric(result.getDouble(offset))
+      toSuccessMetric(result.getDouble(offset), fullColumn)
     }
   }
 
 }
 
 /** State representing frequencies of groups in the data, as well as overall #rows */
-case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
-  extends State[FrequenciesAndNumRows] {
+case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long, override val fullColumn: Option[Column] = None)
+  extends State[FrequenciesAndNumRows] with FullColumn {
 
   /** Add up frequencies via an outer-join */
   override def sum(other: FrequenciesAndNumRows): FrequenciesAndNumRows = {
@@ -154,7 +167,8 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long)
       .join(other.frequencies.alias("other"), joinCondition, "outer")
       .select(projectionAfterMerge: _*)
 
-    FrequenciesAndNumRows(frequenciesSum, numRows + other.numRows)
+    Window
+    FrequenciesAndNumRows(frequenciesSum, numRows + other.numRows, sum(fullColumn, other.fullColumn))
   }
 
   private[analyzers] def nullSafeEq(column: String): Column = {

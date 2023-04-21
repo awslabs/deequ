@@ -30,11 +30,11 @@ case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
     sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) :: count("*") :: Nil
   }
 
-  override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
+  override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column] = None): DoubleMetric = {
     val numUniqueValues = result.getDouble(offset)
     val numDistinctValues = result.getLong(offset + 1).toDouble
 
-    toSuccessMetric(numUniqueValues / numDistinctValues)
+    toSuccessMetric(numUniqueValues / numDistinctValues, fullColumn)
   }
 
   override def filterCondition: Option[String] = where
