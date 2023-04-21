@@ -18,7 +18,7 @@
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
         <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
 
-        <spark.version>3.3.0</spark.version>
+        <spark.version>3.4.0</spark.version>
     </properties>
 
     <name>deequ</name>
