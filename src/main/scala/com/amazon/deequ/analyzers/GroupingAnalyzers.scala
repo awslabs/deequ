@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.VerificationResult.UNIQUENESS_ID
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions._
@@ -87,10 +88,9 @@ object FrequencyBasedAnalyzer {
       .transform(filterOptional(where))
       .count()
 
-    // Set rows with value count 1 to true, 0 to null (null values), and otherwise false
+    // Set rows with value count 1 to true, and otherwise false
     val fullColumn: Column =
-      when(count(columnsToGroupBy.head).over(Window.partitionBy(columnsToGroupBy: _*).orderBy(columnsToGroupBy.head)).equalTo(1), true)
-        .when(count(columnsToGroupBy.head).over(Window.partitionBy(columnsToGroupBy: _*).orderBy(columnsToGroupBy.head)).equalTo(0), null)
+      when(count(UNIQUENESS_ID).over(Window.partitionBy(columnsToGroupBy: _*)).equalTo(1), true)
         .otherwise(false)
     FrequenciesAndNumRows(frequencies, numRows, Option(fullColumn))
   }
@@ -140,7 +140,6 @@ abstract class ScanShareableFrequencyBasedAnalyzer(name: String, columnsToGroupO
       toSuccessMetric(result.getDouble(offset), fullColumn)
     }
   }
-
 }
 
 /** State representing frequencies of groups in the data, as well as overall #rows */
@@ -167,7 +166,6 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long, override
       .join(other.frequencies.alias("other"), joinCondition, "outer")
       .select(projectionAfterMerge: _*)
 
-    Window
     FrequenciesAndNumRows(frequenciesSum, numRows + other.numRows, sum(fullColumn, other.fullColumn))
   }
 
@@ -179,5 +177,3 @@ case class FrequenciesAndNumRows(frequencies: DataFrame, numRows: Long, override
     coalesce(col(column), lit(0))
   }
 }
-
-

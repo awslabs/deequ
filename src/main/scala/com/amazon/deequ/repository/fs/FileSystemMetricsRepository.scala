@@ -19,13 +19,20 @@ package com.amazon.deequ.repository.fs
 import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.Metric
-import com.amazon.deequ.repository.{AnalysisResult, AnalysisResultSerde, MetricsRepository, MetricsRepositoryMultipleResultsLoader, ResultKey}
-import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.spark.sql.SparkSession
-import java.util.UUID.randomUUID
+import com.amazon.deequ.repository.AnalysisResult
+import com.amazon.deequ.repository.AnalysisResultSerde
+import com.amazon.deequ.repository.MetricsRepository
+import com.amazon.deequ.repository.MetricsRepositoryMultipleResultsLoader
+import com.amazon.deequ.repository.ResultKey
 import com.google.common.io.Closeables
-import java.io.{BufferedInputStream, BufferedOutputStream}
 import org.apache.commons.io.IOUtils
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.spark.sql.SparkSession
+
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.util.UUID.randomUUID
 
 
 /** A Repository implementation using a file system */

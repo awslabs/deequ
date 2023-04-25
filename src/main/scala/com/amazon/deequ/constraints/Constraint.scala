@@ -241,7 +241,6 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueness, assertion, hint = hint)
 
-//    new NamedConstraint(constraint, s"UniquenessConstraint($uniqueness)")
     new RowLevelGroupedConstraint(constraint,
       s"UniquenessConstraint($uniqueness)",
       columns)

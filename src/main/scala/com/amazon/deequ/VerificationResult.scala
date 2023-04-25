@@ -31,6 +31,9 @@ import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.monotonically_increasing_id
+
+import java.util.UUID
 
 /**
   * The result returned from the VerificationSuite
@@ -45,6 +48,8 @@ case class VerificationResult(
     metrics: Map[Analyzer[_, Metric[_]], Metric[_]])
 
 object VerificationResult {
+
+  val UNIQUENESS_ID = UUID.randomUUID().toString
 
   def successMetricsAsDataFrame(
       sparkSession: SparkSession,
@@ -92,8 +97,9 @@ object VerificationResult {
 
     val columnNamesToMetrics: Map[String, Column] = verificationResultToColumn(verificationResult)
 
-    columnNamesToMetrics.foldLeft(data)(
-      (data, newColumn: (String, Column)) => data.withColumn(newColumn._1, newColumn._2))
+    val dataWithID = data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+    columnNamesToMetrics.foldLeft(dataWithID)(
+      (dataWithID, newColumn: (String, Column)) => dataWithID.withColumn(newColumn._1, newColumn._2)).drop(UNIQUENESS_ID)
   }
 
   def checkResultsAsJson(verificationResult: VerificationResult,
