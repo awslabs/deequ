@@ -164,13 +164,17 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     "test uniqueness" in withSparkSession { session =>
       val data = getDfWithUniqueColumns(session)
 
-      val overlapUniqueness = new Check(CheckLevel.Error, "rule1").hasUniqueness(Seq("nonUnique", "halfUniqueCombinedWithNonUnique"), Check.IsOne)
-      val hasFullUniqueness = new Check(CheckLevel.Error, "rule2").hasUniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique"), Check.IsOne)
-      val uniquenessWithNulls = new Check(CheckLevel.Error, "rule3").hasUniqueness(Seq("unique", "nonUniqueWithNulls"), Check.IsOne)
+      val overlapUniqueness = new Check(CheckLevel.Error, "rule1")
+        .hasUniqueness(Seq("nonUnique", "halfUniqueCombinedWithNonUnique"), Check.IsOne)
+      val hasFullUniqueness = new Check(CheckLevel.Error, "rule2")
+        .hasUniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique"), Check.IsOne)
+      val uniquenessWithNulls = new Check(CheckLevel.Error, "rule3")
+        .hasUniqueness(Seq("unique", "nonUniqueWithNulls"), Check.IsOne)
       val unique = new Check(CheckLevel.Error, "rule4").isUnique("unique")
       val nonUnique = new Check(CheckLevel.Error, "rule5").isUnique("nonUnique")
       val nullPrimaryKey = new Check(CheckLevel.Error, "rule6").isPrimaryKey("uniqueWithNulls")
-      val uniqueValueRatio = new Check(CheckLevel.Error, "rule7").hasUniqueValueRatio(Seq("nonUnique"), _ == 0.75)
+      val uniqueValueRatio = new Check(CheckLevel.Error, "rule7")
+        .hasUniqueValueRatio(Seq("nonUnique"), _ == 0.75)
 
       val expectedColumn1 = overlapUniqueness.description
       val expectedColumn2 = hasFullUniqueness.description

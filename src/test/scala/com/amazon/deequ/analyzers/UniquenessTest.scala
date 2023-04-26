@@ -99,7 +99,8 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
     // Adding column with UNIQUENESS_ID, since it's only added in VerificationResult.getRowLevelResults
-    data.withColumn(UNIQUENESS_ID, monotonically_increasing_id()).withColumn("new", metric.fullColumn.get).orderBy("unique")
+    data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+      .withColumn("new", metric.fullColumn.get).orderBy("unique")
       .collect().map(_.getAs[Boolean]("new")) shouldBe Seq(true, true, true, false, false, false)
   }
 
@@ -112,7 +113,8 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
     // Adding column with UNIQUENESS_ID, since it's only added in VerificationResult.getRowLevelResults
-    data.withColumn(UNIQUENESS_ID, monotonically_increasing_id()).withColumn("new", metric.fullColumn.get).orderBy("unique")
+    data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+      .withColumn("new", metric.fullColumn.get).orderBy("unique")
       .collect().map(_.getAs[Boolean]("new")) shouldBe Seq(true, true, true, true, true, true)
   }
 }

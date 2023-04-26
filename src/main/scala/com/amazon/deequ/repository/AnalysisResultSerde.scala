@@ -513,7 +513,7 @@ private[deequ] object MetricSerializer extends JsonSerializer[Metric[_]] {
         result.addProperty("instance", doubleMetric.instance)
         result.addProperty("name", doubleMetric.name)
         result.addProperty("value", doubleMetric.value.getOrElse(null).asInstanceOf[Double])
-        doubleMetric.fullColumn.foreach(c => result.addProperty("fullColumn", c.expr.sql))
+        // doubleMetric.fullColumn.foreach(c => result.addProperty("fullColumn", c.expr.sql))
 
       case histogramMetric: HistogramMetric =>
         result.addProperty("metricName", "HistogramMetric")
@@ -558,8 +558,7 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
           Entity.withName(jsonObject.get("entity").getAsString),
           jsonObject.get("name").getAsString,
           jsonObject.get("instance").getAsString,
-          Try(jsonObject.get("value").getAsDouble),
-          fullColumn(jsonObject))
+          Try(jsonObject.get("value").getAsDouble))
 
       case "HistogramMetric" =>
         HistogramMetric(

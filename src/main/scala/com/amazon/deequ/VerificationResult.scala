@@ -99,7 +99,8 @@ object VerificationResult {
 
     val dataWithID = data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
     columnNamesToMetrics.foldLeft(dataWithID)(
-      (dataWithID, newColumn: (String, Column)) => dataWithID.withColumn(newColumn._1, newColumn._2)).drop(UNIQUENESS_ID)
+      (dataWithID, newColumn: (String, Column)) =>
+        dataWithID.withColumn(newColumn._1, newColumn._2)).drop(UNIQUENESS_ID)
   }
 
   def checkResultsAsJson(verificationResult: VerificationResult,

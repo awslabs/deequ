@@ -345,7 +345,8 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
 
         val distinctnessException = new IllegalArgumentException("-test-distinctness-failing-")
         val failingDistinctness = new Distinctness("att1" :: Nil) {
-          override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column] = None): DoubleMetric = {
+          override def fromAggregationResult(result: Row, offset: Int,
+                                             fullColumn: Option[Column] = None): DoubleMetric = {
             throw distinctnessException
           }
         }
