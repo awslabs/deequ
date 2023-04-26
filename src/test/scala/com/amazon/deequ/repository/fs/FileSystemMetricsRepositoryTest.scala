@@ -46,6 +46,12 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
     "save and retrieve AnalyzerContexts" in withSparkSession { session =>
       evaluate(session) { (results, repository) =>
 
+        /*
+        Syntax Error
+        == SQL ==
+        CASE WHEN (count(att1) OVER (PARTITION BY att1, att2 ORDER BY att1 ASC NULLS FIRST unspecifiedframe$()) = 1) THEN true WHEN (count(att1) OVER (PARTITION BY att1, att2 ORDER BY att1 ASC NULLS FIRST unspecifiedframe$()) = 0) THEN NULL ELSE false END
+        ----------^^^
+         */
         val resultKey = ResultKey(DATE_ONE, REGION_EU)
         repository.save(resultKey, results)
 

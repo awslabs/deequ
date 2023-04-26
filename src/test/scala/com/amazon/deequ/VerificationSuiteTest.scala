@@ -170,6 +170,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val unique = new Check(CheckLevel.Error, "rule4").isUnique("unique")
       val nonUnique = new Check(CheckLevel.Error, "rule5").isUnique("nonUnique")
       val nullPrimaryKey = new Check(CheckLevel.Error, "rule6").isPrimaryKey("uniqueWithNulls")
+      val uniqueValueRatio = new Check(CheckLevel.Error, "rule7").hasUniqueValueRatio(Seq("nonUnique"), _ == 0.75)
 
       val expectedColumn1 = overlapUniqueness.description
       val expectedColumn2 = hasFullUniqueness.description
@@ -177,6 +178,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val expectedColumn4 = unique.description
       val expectedColumn5 = nonUnique.description
       val expectedColumn6 = nullPrimaryKey.description
+      val expectedColumn7 = uniqueValueRatio.description
 
       val suite = new VerificationSuite().onData(data)
         .addCheck(overlapUniqueness)
@@ -185,6 +187,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         .addCheck(unique)
         .addCheck(nonUnique)
         .addCheck(nullPrimaryKey)
+        .addCheck(uniqueValueRatio)
 
       val result: VerificationResult = suite.run()
 
@@ -194,7 +197,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       resultData.show()
 
       val expectedColumns: Set[String] =
-        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4 + expectedColumn5 + expectedColumn6
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4 +
+          expectedColumn5 + expectedColumn6 + expectedColumn7
       assert(resultData.columns.toSet == expectedColumns)
 
       val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.get(0))
@@ -203,7 +207,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.get(0))
       assert(Seq(true, true, true, true, true, true).sameElements(rowLevel2))
 
-      val rowLevel3 = resultData.orderBy("unique").select(expectedColumn3).collect().map(r => r.get(0))
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.get(0))
       assert(Seq(true, true, true, true, true, true).sameElements(rowLevel3))
 
       val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.get(0))
@@ -213,8 +217,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       assert(Seq(false, false, false, true, true, true).sameElements(rowLevel5))
 
       // TODO: fix how primaryKey works (nulls should be false)
-      val rowLevel6 = resultData.orderBy("unique").select(expectedColumn6).collect().map(r => r.get(0))
+      val rowLevel6 = resultData.select(expectedColumn6).collect().map(r => r.get(0))
       assert(Seq(true, true, true, true, true, true).sameElements(rowLevel6))
+
+      val rowLevel7 = resultData.select(expectedColumn7).collect().map(r => r.get(0))
+      assert(Seq(false, false, false, true, true, true).sameElements(rowLevel7))
     }
 
     "generate a result that contains row-level results" in withSparkSession { session =>

@@ -290,7 +290,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueValueRatio, assertion, hint = hint)
 
-    new NamedConstraint(constraint, s"UniqueValueRatioConstraint($uniqueValueRatio")
+    new RowLevelGroupedConstraint(constraint,
+      s"UniqueValueRatioConstraint($uniqueValueRatio",
+      columns)
   }
 
   /**
