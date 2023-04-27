@@ -16,10 +16,11 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.metrics.DoubleMetric
-import org.apache.spark.sql.{Column, Row}
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.count
-import Analyzers._
 
 case class CountDistinct(columns: Seq[String])
   extends ScanShareableFrequencyBasedAnalyzer("CountDistinct", columns) {
@@ -28,8 +29,8 @@ case class CountDistinct(columns: Seq[String])
     count("*") :: Nil
   }
 
-  override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
-    toSuccessMetric(result.getLong(offset).toDouble)
+  override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column] = None): DoubleMetric = {
+    toSuccessMetric(result.getLong(offset).toDouble, None)
   }
 }
 

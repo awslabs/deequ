@@ -19,9 +19,9 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.scalatest.matchers.should.Matchers
-import org.apache.spark.sql.functions.col
 import org.scalatest.wordspec.AnyWordSpec
 
 class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec
@@ -54,9 +54,7 @@ class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContex
       println("\n")
       incrementalResults.allMetrics.foreach { println }
 
-
-
-      assert(incrementalResults == nonIncrementalResults)
+      assert(incrementalResults.toString == nonIncrementalResults.toString)
     }
 
     "produce correct results when sharing scans for aggregation functions" in
@@ -82,7 +80,7 @@ class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContex
 
         results.metricMap.foreach { case (analyzer, metric) =>
           val nonIncrementalMetric = analyzer.calculate(everything)
-          assert(nonIncrementalMetric == metric)
+          assert(nonIncrementalMetric.toString == metric.toString)
         }
       }
 
@@ -102,7 +100,7 @@ class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContex
 
         results.metricMap.foreach { case (analyzer, metric) =>
           val nonIncrementalMetric = analyzer.calculate(everything)
-          assert(nonIncrementalMetric == metric)
+          assert(nonIncrementalMetric.toString == metric.toString)
         }
       }
 

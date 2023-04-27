@@ -17,10 +17,14 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.VerificationResult.UNIQUENESS_ID
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -84,5 +88,33 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     assert(result.metric(uniqueness).get.asInstanceOf[DoubleMetric].value.get == 0.6)
     assert(result.metric(uniquenessWithFilter).get.asInstanceOf[DoubleMetric].value.get == 1.0)
+  }
+
+  "return row-level results for uniqueness with multiple columns" in withSparkSession { session =>
+
+    val data = getDfWithUniqueColumns(session)
+
+    val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique", "nonUniqueWithNulls")) // It's null in two rows
+    val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data)
+    val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
+
+    // Adding column with UNIQUENESS_ID, since it's only added in VerificationResult.getRowLevelResults
+    data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+      .withColumn("new", metric.fullColumn.get).orderBy("unique")
+      .collect().map(_.getAs[Boolean]("new")) shouldBe Seq(true, true, true, false, false, false)
+  }
+
+  "return row-level results for uniqueness with null" in withSparkSession { session =>
+
+    val data = getDfWithUniqueColumns(session)
+
+    val addressLength = Uniqueness(Seq("uniqueWithNulls"))
+    val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data)
+    val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
+
+    // Adding column with UNIQUENESS_ID, since it's only added in VerificationResult.getRowLevelResults
+    data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+      .withColumn("new", metric.fullColumn.get).orderBy("unique")
+      .collect().map(_.getAs[Boolean]("new")) shouldBe Seq(true, true, true, true, true, true)
   }
 }
