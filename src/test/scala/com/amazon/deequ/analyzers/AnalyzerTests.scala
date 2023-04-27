@@ -17,18 +17,22 @@
 package com.amazon.deequ
 package analyzers
 
-import com.amazon.deequ.analyzers.runners.{NoSuchColumnException, WrongColumnTypeException}
-import com.amazon.deequ.metrics.{Distribution, DistributionValue, DoubleMetric, Entity}
+import com.amazon.deequ.analyzers.runners.NoSuchColumnException
+import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.DistributionValue
+import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.{col, udf}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types._
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-import scala.util.{Failure, Success}
+import scala.util.Failure
+import scala.util.Success
 
 class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
@@ -95,33 +99,41 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val dfMissing = getDfMissing(sparkSession)
       val dfFull = getDfFull(sparkSession)
 
-      assert(Uniqueness("att1").calculate(dfMissing) == DoubleMetric(Entity.Column, "Uniqueness",
-        "att1", Success(0.0)))
-      assert(Uniqueness("att2").calculate(dfMissing) == DoubleMetric(Entity.Column, "Uniqueness",
-        "att2", Success(0.0)))
+      val uniquenessDfMissingAtt1 = Uniqueness("att1").calculate(dfMissing)
+      assert(uniquenessDfMissingAtt1 == DoubleMetric(Entity.Column, "Uniqueness",
+        "att1", Success(0.0), uniquenessDfMissingAtt1.fullColumn))
+      val uniquenessDfMissingAtt2 = Uniqueness("att2").calculate(dfMissing)
+      assert(uniquenessDfMissingAtt2 == DoubleMetric(Entity.Column, "Uniqueness",
+        "att2", Success(0.0), uniquenessDfMissingAtt2.fullColumn))
 
-
-      assert(Uniqueness("att1").calculate(dfFull) == DoubleMetric(Entity.Column, "Uniqueness",
-        "att1", Success(0.25)))
-      assert(Uniqueness("att2").calculate(dfFull) == DoubleMetric(Entity.Column, "Uniqueness",
-        "att2", Success(0.25)))
+      val uniquenessDfFullAtt1 = Uniqueness("att1").calculate(dfFull)
+      assert(uniquenessDfFullAtt1 == DoubleMetric(Entity.Column, "Uniqueness",
+        "att1", Success(0.25), uniquenessDfFullAtt1.fullColumn))
+      val uniquenessDfFullAtt2 = Uniqueness("att2").calculate(dfFull)
+      assert(uniquenessDfFullAtt2 == DoubleMetric(Entity.Column, "Uniqueness",
+        "att2", Success(0.25), uniquenessDfFullAtt2.fullColumn))
 
     }
     "compute correct metrics on multiple columns" in withSparkSession { sparkSession =>
       val dfFull = getDfWithUniqueColumns(sparkSession)
 
-      assert(Uniqueness("unique").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "unique", Success(1.0)))
-      assert(Uniqueness("uniqueWithNulls").calculate(dfFull) ==
-        DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(1.0)))
-      assert(Uniqueness(Seq("unique", "nonUnique")).calculate(dfFull) ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUnique", Success(1.0)))
-      assert(Uniqueness(Seq("unique", "nonUniqueWithNulls")).calculate(dfFull) ==
+      val unique = Uniqueness("unique").calculate(dfFull)
+      assert(unique ==
+        DoubleMetric(Entity.Column, "Uniqueness", "unique", Success(1.0), unique.fullColumn))
+      val uniqueWithNulls = Uniqueness("uniqueWithNulls").calculate(dfFull)
+      assert(uniqueWithNulls ==
+        DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(1.0), uniqueWithNulls.fullColumn))
+      val multiColUnique = Uniqueness(Seq("unique", "nonUnique")).calculate(dfFull)
+      assert(multiColUnique ==
+        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUnique", Success(1.0), multiColUnique.fullColumn))
+      val multiColUniqueWithNull = Uniqueness(Seq("unique", "nonUniqueWithNulls")).calculate(dfFull)
+      assert(multiColUniqueWithNull ==
         DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUniqueWithNulls",
-          Success(1.0)))
-      assert(Uniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique")).calculate(dfFull) ==
+          Success(1.0), multiColUniqueWithNull.fullColumn))
+      val multiColUniqueComb = Uniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique")).calculate(dfFull)
+      assert(multiColUniqueComb ==
         DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "nonUnique,onlyUniqueWithOtherNonUnique",
-          Success(1.0)))
+          Success(1.0), multiColUniqueComb.fullColumn))
 
     }
     "fail on wrong column input" in withSparkSession { sparkSession =>

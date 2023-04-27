@@ -17,9 +17,11 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
+import com.amazon.deequ.metrics.DoubleMetric
 import org.apache.spark.sql.functions.{col, sum}
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
 
 /**
   * Distinctness is the fraction of distinct values of a column(s).
@@ -32,6 +34,10 @@ case class Distinctness(columns: Seq[String], where: Option[String] = None)
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
     (sum(col(COUNT_COL).geq(1).cast(DoubleType)) / numRows) :: Nil
+  }
+
+  override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column]): DoubleMetric = {
+    super.fromAggregationResult(result, offset, None)
   }
 
   override def filterCondition: Option[String] = where

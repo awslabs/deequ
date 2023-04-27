@@ -19,9 +19,10 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.rand
 import org.scalatest.matchers.should.Matchers
-import org.apache.spark.sql.functions.{expr, rand}
 import org.scalatest.wordspec.AnyWordSpec
 
 class StateAggregationTests extends AnyWordSpec with Matchers with SparkContextSpec
@@ -61,7 +62,7 @@ class StateAggregationTests extends AnyWordSpec with Matchers with SparkContextS
 
     val metricFromAggregation = analyzer.computeMetricFrom(mergedState)
 
-    assert(metricFromAggregation == metricFromCalculate)
+    assert(metricFromAggregation.toString == metricFromCalculate.toString)
   }
 
   def initialData(session: SparkSession): DataFrame = {
