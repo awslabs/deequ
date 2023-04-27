@@ -87,6 +87,13 @@ class RowLevelAssertedConstraint(private[deequ] override val constraint: Constra
   extends RowLevelConstraint(constraint, name, columnName) {
 }
 
+class RowLevelGroupedConstraint(private[deequ] override val constraint: Constraint,
+                                name: String,
+                                columns: Seq[String])
+  extends NamedConstraint(constraint, name) {
+  val getColumnName: String = columns.head
+}
+
 /**
   * Companion object to create constraint objects
   * These methods can be used from the unit tests or during creation of Check configuration
@@ -234,7 +241,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueness, assertion, hint = hint)
 
-    new NamedConstraint(constraint, s"UniquenessConstraint($uniqueness)")
+    new RowLevelGroupedConstraint(constraint,
+      s"UniquenessConstraint($uniqueness)",
+      columns)
   }
 
   /**
@@ -281,7 +290,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueValueRatio, assertion, hint = hint)
 
-    new NamedConstraint(constraint, s"UniqueValueRatioConstraint($uniqueValueRatio")
+    new RowLevelGroupedConstraint(constraint,
+      s"UniqueValueRatioConstraint($uniqueValueRatio",
+      columns)
   }
 
   /**

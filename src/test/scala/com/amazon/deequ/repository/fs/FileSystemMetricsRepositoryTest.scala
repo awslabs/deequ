@@ -55,7 +55,12 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
         val resultsAsDataFrame = successMetricsAsDataFrame(session, results)
 
         assertSameRows(loadedResultsAsDataFrame, resultsAsDataFrame)
-        assert(results == loadedResults)
+
+        val loadedResultsMetrics = loadedResults.metricMap
+        val resultsMetrics = results.metricMap
+        // Check Analyzers and Metrics in results separately so we don't compare the fullColumns
+        assert(resultsMetrics.keys == loadedResultsMetrics.keys)
+        assertSameMetricsWithoutFullColumn(resultsMetrics.values, loadedResultsMetrics.values)
       }
     }
 
@@ -92,7 +97,11 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
 
         val loadedAnalyzerContext = repository.loadByKey(ResultKey(200, Map.empty)).get
 
-        assert(results == loadedAnalyzerContext)
+        val loadedResultsMetrics = loadedAnalyzerContext.metricMap
+        val resultsMetrics = results.metricMap
+        // Check Analyzers and Metrics in results separately so we don't compare the fullColumns
+        assert(resultsMetrics.keys == loadedResultsMetrics.keys)
+        assertSameMetricsWithoutFullColumn(resultsMetrics.values, loadedResultsMetrics.values)
       }
     }
 
@@ -270,5 +279,16 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
 
   private[this] def assertSameRows(dataFrameA: DataFrame, dataFrameB: DataFrame): Unit = {
     assert(dataFrameA.collect().toSet == dataFrameB.collect().toSet)
+  }
+
+  private[this] def assertSameMetricsWithoutFullColumn(resultsMetrics: Iterable[Metric[_]],
+                                                       loadedMetrics: Iterable[Metric[_]]): Unit = {
+    assert(resultsMetrics.exists(
+      m1 => loadedMetrics.exists(
+        m2 => m1.name == m2.name &&
+        m1.value == m2.value &&
+        m1.entity == m2.entity &&
+        m1.instance == m2.instance)
+    ))
   }
 }

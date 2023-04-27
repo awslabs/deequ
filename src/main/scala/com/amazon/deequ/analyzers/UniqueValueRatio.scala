@@ -18,6 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
 import com.amazon.deequ.metrics.DoubleMetric
+import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{col, count, lit, sum}
 import org.apache.spark.sql.types.DoubleType
@@ -30,11 +31,11 @@ case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
     sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) :: count("*") :: Nil
   }
 
-  override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
+  override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column] = None): DoubleMetric = {
     val numUniqueValues = result.getDouble(offset)
     val numDistinctValues = result.getLong(offset + 1).toDouble
-
-    toSuccessMetric(numUniqueValues / numDistinctValues)
+    val fullColumnUniqueness = when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false)
+    toSuccessMetric(numUniqueValues / numDistinctValues, Option(fullColumnUniqueness))
   }
 
   override def filterCondition: Option[String] = where

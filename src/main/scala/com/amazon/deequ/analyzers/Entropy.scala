@@ -17,7 +17,9 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
+import com.amazon.deequ.metrics.DoubleMetric
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.{col, sum, udf}
 
 /**
@@ -39,6 +41,10 @@ case class Entropy(column: String, where: Option[String] = None)
     }
 
     sum(summands(col(COUNT_COL))) :: Nil
+  }
+
+  override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column] = None): DoubleMetric = {
+    super.fromAggregationResult(result, offset, None)
   }
 
   override def filterCondition: Option[String] = where

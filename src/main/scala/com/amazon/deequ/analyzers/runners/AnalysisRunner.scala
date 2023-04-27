@@ -20,9 +20,11 @@ import com.amazon.deequ.analyzers._
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
+
 import scala.util.Success
 
 private[deequ] case class AnalysisRunnerRepositoryOptions(
@@ -366,11 +368,12 @@ object AnalysisRunner {
   private def successOrFailureMetricFrom(
       analyzer: ScanShareableFrequencyBasedAnalyzer,
       aggregationResult: Row,
-      offset: Int)
+      offset: Int,
+      fullColumn: Option[Column] = None)
     : Metric[_] = {
 
     try {
-      analyzer.fromAggregationResult(aggregationResult, offset)
+      analyzer.fromAggregationResult(aggregationResult, offset, fullColumn)
     } catch {
       case error: Exception => analyzer.toFailureMetric(error)
     }
@@ -524,7 +527,7 @@ object AnalysisRunner {
 
         shareableAnalyzers.zip(offsets)
           .map { case (analyzer, offset) =>
-            analyzer -> successOrFailureMetricFrom(analyzer, results, offset)
+            analyzer -> successOrFailureMetricFrom(analyzer, results, offset, frequenciesAndNumRows.fullColumn)
           }
       } catch {
         case error: Exception =>
