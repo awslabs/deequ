@@ -31,7 +31,6 @@ import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.count
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.types.StructType
 
 /** Base class for all analyzers that operate the frequencies of groups in the data */
@@ -89,9 +88,7 @@ object FrequencyBasedAnalyzer {
       .count()
 
     // Set rows with value count 1 to true, and otherwise false
-    val fullColumn: Column =
-      when(count(UNIQUENESS_ID).over(Window.partitionBy(columnsToGroupBy: _*)).equalTo(1), true)
-        .otherwise(false)
+    val fullColumn: Column = count(UNIQUENESS_ID).over(Window.partitionBy(columnsToGroupBy: _*))
     FrequenciesAndNumRows(frequencies, numRows, Option(fullColumn))
   }
 
