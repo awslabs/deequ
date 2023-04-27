@@ -37,8 +37,6 @@ trait Metric[T] {
    * @see HistogramMetric for sample
    */
   def flatten(): Seq[DoubleMetric]
-
-  def getMetricWithoutFullColumn: Metric[T] = this
 }
 
 /**
@@ -71,10 +69,6 @@ case class DoubleMetric(
   extends Metric[Double] with FullColumn {
 
   override def flatten(): Seq[DoubleMetric] = Seq(this)
-
-  override def getMetricWithoutFullColumn: DoubleMetric = {
-    DoubleMetric(entity, name, instance, value)
-  }
 }
 
 case class KeyedDoubleMetric(

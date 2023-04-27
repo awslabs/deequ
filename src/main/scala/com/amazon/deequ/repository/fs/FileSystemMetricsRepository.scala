@@ -46,8 +46,6 @@ class FileSystemMetricsRepository(session: SparkSession, path: String) extends M
     * @param analyzerContext The resulting AnalyzerContext of an Analysis
     */
   override def save(resultKey: ResultKey, analyzerContext: AnalyzerContext): Unit = {
-
-
     val successfulMetrics = analyzerContext.metricMap
       .filter { case (_, metric) => metric.value.isSuccess }
 

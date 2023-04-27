@@ -514,6 +514,7 @@ private[deequ] object MetricSerializer extends JsonSerializer[Metric[_]] {
         result.addProperty("name", doubleMetric.name)
         result.addProperty("value", doubleMetric.value.getOrElse(null).asInstanceOf[Double])
         // doubleMetric.fullColumn.foreach(c => result.addProperty("fullColumn", c.expr.sql))
+        // TODO: https://github.com/awslabs/deequ/issues/472
 
       case histogramMetric: HistogramMetric =>
         result.addProperty("metricName", "HistogramMetric")
@@ -559,6 +560,7 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
           jsonObject.get("name").getAsString,
           jsonObject.get("instance").getAsString,
           Try(jsonObject.get("value").getAsDouble))
+          // fullColumn(jsonObject)) TODO: https://github.com/awslabs/deequ/issues/472
 
       case "HistogramMetric" =>
         HistogramMetric(
