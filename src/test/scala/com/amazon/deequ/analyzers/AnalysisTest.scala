@@ -21,6 +21,7 @@ import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalatest.Inside.inside
 import org.scalatest.matchers.should.Matchers
@@ -344,7 +345,8 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
 
         val distinctnessException = new IllegalArgumentException("-test-distinctness-failing-")
         val failingDistinctness = new Distinctness("att1" :: Nil) {
-          override def fromAggregationResult(result: Row, offset: Int): DoubleMetric = {
+          override def fromAggregationResult(result: Row, offset: Int,
+                                             fullColumn: Option[Column] = None): DoubleMetric = {
             throw distinctnessException
           }
         }

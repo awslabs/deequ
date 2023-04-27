@@ -187,7 +187,7 @@ class StateAggregationIntegrationTest extends AnyWordSpec with Matchers with Spa
 
       val results = AnalysisRunner.onData(data).addAnalyzers(analyzersFromChecks).run()
 
-      assert(resultsFromAggregation == results)
+      assert(resultsFromAggregation.toString == results.toString)
 
       // Make sure that the states have been saved
       assert(aggregatedStates.load(UniqueValueRatio(Seq("item"))).isDefined)
@@ -247,7 +247,7 @@ class StateAggregationIntegrationTest extends AnyWordSpec with Matchers with Spa
       val resultsFromStates = VerificationSuite.runOnAggregatedStates(schema, Seq(check),
         Seq(statesNA, statesEU, statesIN))
 
-      assert(resultsFromStates == resultsDirect)
+      assert(resultsFromStates.toString == resultsDirect.toString)
     }
 
     "not throw errors for the example from DEEQU-189" in withSparkSession { session =>

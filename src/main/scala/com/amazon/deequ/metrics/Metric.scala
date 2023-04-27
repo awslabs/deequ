@@ -56,7 +56,7 @@ trait FullColumn {
    * The sum of two different Spark columns is not defined, so an empty Option is returned.
    */
   def sum(colA: Option[Column], colB: Option[Column]): Option[Column] =
-    if (colA.equals(colB)) colA else None
+    if (colA.toString.equals(colB.toString)) colA else None
 }
 
 /** Common trait for all data quality metrics where the value is double */
