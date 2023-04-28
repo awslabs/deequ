@@ -17,12 +17,18 @@
 package com.amazon.deequ.comparison
 
 import com.amazon.deequ.SparkContextSpec
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.scalatest.wordspec.AnyWordSpec
+
+import scala.util.Try
+
+private [comparison] case class Data(name: String, state: String)
+private [comparison] case class DataRow(id: Int, data: Data)
 
 class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
 
   "Data Synchronization Test" should {
-
     "match == 0.66 when id is colKey and name is compCols" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -390,6 +396,199 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion))
       assert(result.isInstanceOf[ComparisonSucceeded])
+    }
+  }
+
+  "Data Synchronization Row Level Test" should {
+    def primaryDataset(spark: SparkSession): DataFrame = {
+      import spark.implicits._
+      spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "TX"),
+        (5, "Nick", "FL"),
+        (6, "Molly", "TX"))
+      ).toDF("id", "name", "state")
+    }
+
+    def referenceDataset(spark: SparkSession): DataFrame = {
+      import spark.implicits._
+      spark.sparkContext.parallelize(Seq(
+        (1, "John", "NY"),
+        (2, "Javier", "WI"),
+        (3, "Helena", "TX"),
+        (4, "Helena", "WA"),
+        (5, "Helena", "FL"),
+        (7, "Megan", "TX"))
+      ).toDF("id2", "name2", "state2")
+    }
+
+    "annotate primary data frame with row level results for name" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val colKeyMap = Map("id" -> "id2")
+      val compCols = Map("name" -> "name2")
+
+      val outcomeColName = "outcome"
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compCols), Some(outcomeColName))
+      assert(result.isRight)
+
+      val dfResult = result.right.get
+
+      // All columns from testDS1 should be in final output
+      assert(compCols.keys.forall(c => Try { dfResult(c) }.isSuccess))
+      // Any columns from testDS2 should not be in final output
+      assert(compCols.values.forall(c => Try { dfResult(c) }.isFailure))
+
+      val rowLevelResults = dfResult.collect().map { row =>
+        row.getAs[Int]("id") -> row.getAs[Boolean](outcomeColName)
+      }.toMap
+
+      val expected = Map(1 -> true, 2 -> true, 3 -> true, 4 -> true, 5 -> false, 6 -> false)
+      assert(expected == rowLevelResults)
+    }
+
+    "annotate primary data frame with row level results for name and state column" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val colKeyMap = Map("id" -> "id2")
+      val compCols = Map("name" -> "name2", "state" -> "state2")
+
+      val outcomeColName = "outcome"
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compCols), Some(outcomeColName))
+      assert(result.isRight)
+
+      val dfResult = result.right.get
+
+      // All columns from testDS1 should be in final output
+      assert(compCols.keys.forall(c => Try { dfResult(c) }.isSuccess))
+      // Any columns from testDS2 should not be in final output
+      assert(compCols.values.forall(c => Try { dfResult(c) }.isFailure))
+
+      val rowLevelResults = dfResult.collect().map { row =>
+        row.getAs[Int]("id") -> row.getAs[Boolean](outcomeColName)
+      }.toMap
+
+      val expected = Map(1 -> true, 2 -> true, 3 -> true, 4 -> false, 5 -> false, 6 -> false)
+      assert(expected == rowLevelResults)
+    }
+
+    "annotate primary data frame with row level results for " +
+      "name and state column with additional id columns" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val colKeyMap = Map("id" -> "id2", "name" -> "name2") // id is enough as primary key but we provided name as well
+      val compCols = Map("name" -> "name2", "state" -> "state2")
+
+      val outcomeColName = "outcome"
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compCols), Some(outcomeColName))
+      assert(result.isRight)
+
+      val dfResult = result.right.get
+
+      // All columns from testDS1 should be in final output
+      assert(compCols.keys.forall(c => Try { dfResult(c) }.isSuccess))
+      // Any columns from testDS2 should not be in final output
+      assert(compCols.values.forall(c => Try { dfResult(c) }.isFailure))
+
+      val rowLevelResults = dfResult.collect().map { row =>
+        row.getAs[Int]("id") -> row.getAs[Boolean](outcomeColName)
+      }.toMap
+
+      val expected = Map(1 -> true, 2 -> true, 3 -> true, 4 -> false, 5 -> false, 6 -> false)
+      assert(expected == rowLevelResults)
+    }
+
+    "fails to annotate row level results when incorrect id column provided" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val compCols = Map("name" -> "name2")
+      val colKeyMap = compCols // Should use id, but used name instead
+
+      val outcomeColName = "outcome"
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compCols), Some(outcomeColName))
+      assert(result.isLeft)
+      assert(result.left.get.errorMessage.contains("Provided key map not suitable for given data frames"))
+    }
+
+    "fails to annotate row level results when column key map is not provided " +
+      "and non key columns do not match" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val colKeyMap = Map("id" -> "id2")
+      val compColsMap: Option[Map[String, String]] = None
+
+      val outcomeColName = "outcome"
+
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, compColsMap, Some(outcomeColName))
+      assert(result.isLeft)
+      assert(result.left.get.errorMessage.contains("Non key columns in the given data frames do not match"))
+    }
+
+    "fails to annotate row level results when empty column comparison map provided" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val colKeyMap = Map("id" -> "id2")
+      val compColsMap: Option[Map[String, String]] = Some(Map.empty)
+
+      val outcomeColName = "outcome"
+
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, compColsMap, Some(outcomeColName))
+      assert(result.isLeft)
+      assert(result.left.get.errorMessage.contains("Empty column comparison map provided"))
+    }
+  }
+
+  "Data Synchronization Row Level Test" should {
+    def primaryDataset(spark: SparkSession): DataFrame = {
+      import spark.implicits._
+      spark.sparkContext.parallelize(Seq(
+        DataRow(1, Data("John", "NY")),
+        DataRow(2, Data("Javier", "WI")),
+        DataRow(3, Data("Helena", "TX")),
+        DataRow(4, Data("Helena", "TX")),
+        DataRow(5, Data("Nick", "FL")),
+        DataRow(6, Data("Molly", "TX")))
+      ).toDF()
+    }
+
+    def referenceDataset(spark: SparkSession): DataFrame = {
+      import spark.implicits._
+      spark.sparkContext.parallelize(Seq(
+        DataRow(1, Data("John", "NY")),
+        DataRow(2, Data("Javier", "WI")),
+        DataRow(3, Data("Helena", "TX")),
+        DataRow(4, Data("Helena", "WA")),
+        DataRow(5, Data("Helena", "FL")),
+        DataRow(7, Data("Megan", "TX")))
+      ).toDF()
+    }
+
+    "annotate primary data frame with row level results for struct type data column" in withSparkSession { spark =>
+      val ds1 = primaryDataset(spark)
+      val ds2 = referenceDataset(spark)
+
+      val colKeyMap = Map("id" -> "id")
+      val compCols = Map("data" -> "data")
+
+      val outcomeColName = "outcome"
+      val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compCols), Some(outcomeColName))
+      assert(result.isRight)
+
+      val dfResult = result.right.get
+      val rowLevelResults = dfResult.collect().map { row =>
+        row.getAs[Int]("id") -> row.getAs[Boolean](outcomeColName)
+      }.toMap
+
+      val expected = Map(1 -> true, 2 -> true, 3 -> true, 4 -> false, 5 -> false, 6 -> false)
+      assert(expected == rowLevelResults)
     }
   }
 }

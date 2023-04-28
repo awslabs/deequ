@@ -18,6 +18,13 @@ package com.amazon.deequ.comparison
 
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.hash
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.when
+
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 /**
  * Compare two DataFrames 1 to 1 with specific columns inputted by the customer.
@@ -68,7 +75,7 @@ import org.apache.spark.sql.functions.col
  * This will evaluate to false. The city column will match, but the state column will not.
  */
 
-object DataSynchronization {
+object DataSynchronization extends ComparisonBase {
   /**
    * This will evaluate to false. The city column will match, but the state column will not.
    *
@@ -130,12 +137,47 @@ object DataSynchronization {
     }
   }
 
+  def columnMatchRowLevel(ds1: DataFrame,
+                          ds2: DataFrame,
+                          colKeyMap: Map[String, String],
+                          optionalCompCols: Option[Map[String, String]] = None,
+                          optionalOutcomeColumnName: Option[String] = None): Either[ComparisonFailed, DataFrame] = {
+    if (areKeyColumnsValid(ds1, ds2, colKeyMap)) {
+      val compColsEither: Either[ComparisonFailed, Map[String, String]] = if (optionalCompCols.isDefined) {
+        optionalCompCols.get match {
+          case compCols if compCols.isEmpty => Left(ComparisonFailed("Empty column comparison map provided."))
+          case compCols => Right(compCols)
+        }
+      } else {
+        val ds1NonKeyCols = ds1.columns.filterNot(x => colKeyMap.keys.toSeq.contains(x)).sorted
+        val ds2NonKeyCols = ds2.columns.filterNot(x => colKeyMap.values.toSeq.contains(x)).sorted
+        if (!(ds1NonKeyCols sameElements ds2NonKeyCols)) {
+          Left(ComparisonFailed("Non key columns in the given data frames do not match."))
+        } else {
+          Right(ds1NonKeyCols.map { c => c -> c}.toMap)
+        }
+      }
+
+      compColsEither.flatMap { compCols =>
+        val outcomeColumn = optionalOutcomeColumnName.getOrElse(defaultOutcomeColumnName)
+        Try { columnMatchRowLevelInner(ds1, ds2, colKeyMap, compCols, outcomeColumn) } match {
+          case Success(df) => Right(df)
+          case Failure(ex) =>
+            ex.printStackTrace()
+            Left(ComparisonFailed(s"Comparison failed due to ${ex.getCause.getClass}"))
+        }
+      }
+    } else {
+      Left(ComparisonFailed("Provided key map not suitable for given data frames."))
+    }
+  }
+
   private def areKeyColumnsValid(ds1: DataFrame,
                                  ds2: DataFrame,
                                  colKeyMap: Map[String, String]): Boolean = {
     // We verify that the key columns provided form a valid primary/composite key.
     // To achieve this, we group the dataframes and compare their count with the original count.
-    // If the key columns provided are valid, then the two columns should match.
+    // If the key columns provided are valid, then the two counts should match.
     val ds1Unique = ds1.groupBy(colKeyMap.keys.toSeq.map(col): _*).count()
     val ds2Unique = ds2.groupBy(colKeyMap.values.toSeq.map(col): _*).count()
     (ds1Unique.count() == ds1.count()) && (ds2Unique.count() == ds2.count())
@@ -165,5 +207,63 @@ object DataSynchronization {
         ComparisonFailed(s"Value: $ratio does not meet the constraint requirement.")
       }
     }
+  }
+
+  private def columnMatchRowLevelInner(ds1: DataFrame,
+                                       ds2: DataFrame,
+                                       colKeyMap: Map[String, String],
+                                       compCols: Map[String, String],
+                                       outcomeColumnName: String): DataFrame = {
+    // We sort in case .keys / .values do not return the elements in the same order
+    val ds1KeyCols = colKeyMap.keys.toSeq.sorted
+    val ds2KeyCols = colKeyMap.values.toSeq.sorted
+
+    val ds1HashColName = java.util.UUID.randomUUID().toString
+    val ds2HashColName = java.util.UUID.randomUUID().toString
+
+    // The hashing allows us to check the equality without having to check cell by cell
+    val ds1HashCol = hash(compCols.keys.toSeq.sorted.map(col): _*)
+    val ds2HashCol = hash(compCols.values.toSeq.sorted.map(col): _*)
+
+    // We need to update the names of the columns in ds2 so that they do not clash with ds1 when we join
+    val ds2KeyColsUpdatedNamesMap = ds2KeyCols.zipWithIndex.map {
+      case (col, i) => col -> s"${referenceColumnNamePrefix}_$i"
+    }.toMap
+
+    val ds1WithHashCol = ds1.withColumn(ds1HashColName, ds1HashCol)
+
+    val ds2ReductionSeed = ds2
+      .withColumn(ds2HashColName, ds2HashCol)
+      .select((ds2KeyColsUpdatedNamesMap.keys.toSeq :+ ds2HashColName).map(col): _*)
+
+    val ds2Reduced = ds2KeyColsUpdatedNamesMap.foldLeft(ds2ReductionSeed) {
+      case (accumulatedDF, (origCol, updatedCol)) =>
+        accumulatedDF.withColumn(updatedCol, col(origCol)).drop(origCol)
+    }
+
+    val joinExpression: Column = ds1KeyCols
+      .map { ds1KeyCol => ds1KeyCol -> ds2KeyColsUpdatedNamesMap(colKeyMap(ds1KeyCol)) }
+      .map { case (ds1Col, ds2ReducedCol) => ds1WithHashCol(ds1Col) === ds2Reduced(ds2ReducedCol) }
+      .reduce((e1, e2) => e1 && e2) && ds1WithHashCol(ds1HashColName) === ds2Reduced(ds2HashColName)
+
+    // After joining, we will have:
+    //  - All the columns from ds1
+    //  - A column containing the hash of the non key columns from ds1
+    //  - All the key columns from ds2, with updated column names
+    //  - A column containing the hash of the non key columns from ds2
+    val joined = ds1WithHashCol.join(ds2Reduced, joinExpression, "left")
+
+    // In order for rows to match,
+    // - The key columns from ds2 must be in the joined dataframe, i.e. not null
+    // - The hash column of the non key cols from ds2 must be in the joined dataframe, i.e. not null
+    val filterExpression = ds2KeyColsUpdatedNamesMap.values
+      .map { ds2ReducedCol => col(ds2ReducedCol).isNotNull }
+      .reduce((e1, e2) => e1 && e2)
+
+    joined
+      .withColumn(outcomeColumnName, when(filterExpression, lit(true)).otherwise(lit(false)))
+      .drop(ds1HashColName)
+      .drop(ds2HashColName)
+      .drop(ds2KeyColsUpdatedNamesMap.values.toSeq: _*)
   }
 }
