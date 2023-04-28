@@ -21,9 +21,7 @@ import org.apache.spark.sql.functions.{col, lit, when}
 
 import scala.util.Try
 
-object ReferentialIntegrity {
-  private val defaultOutcomeColumnName = "outcome"
-  private val referenceColumnNamePrefix = "ref_col"
+object ReferentialIntegrity extends ComparisonBase {
 
   /**
    * Checks to what extent a set of columns from a DataFrame is a subset of another set of columns
