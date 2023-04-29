@@ -369,7 +369,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         ("Column", "att1", "Completeness", 1.0),
         ("Column", "att2", "Completeness", 1.0),
         ("Column", "att2", "Uniqueness", 0.25),
-        ("Mutlicolumn", "att1,att2", "MutualInformation",
+        ("Multicolumn", "att1,att2", "MutualInformation",
           -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
         .toDF("entity", "instance", "name", "value")
 

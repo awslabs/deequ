@@ -42,7 +42,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
           ("Column", "att2", "Completeness", 1.0),
           ("Column", "item", "Distinctness", 1.0),
           ("Column", "att1", "Completeness", 1.0),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25)
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25)
         )
           .toDF("entity", "instance", "name", "value")
 
@@ -63,7 +63,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
           import session.implicits._
           val expected = Seq(
             ("Column", "att1", "Completeness", 1.0),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25)
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25)
           )
             .toDF("entity", "instance", "name", "value")
 
@@ -82,7 +82,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
             """[{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
               |{"entity": "Column", "instance":"att2","name":"Completeness","value":1.0},
               |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25},
               |{"entity":"Dataset","instance":"*","name":"Size","value":4.0}]"""
               .stripMargin.replaceAll("\n", "")
@@ -103,7 +103,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
 
           val expectedJson =
             """[{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25}]"""
               .stripMargin.replaceAll("\n", "")
 
