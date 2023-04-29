@@ -35,7 +35,11 @@ import scala.util.matching.Regex
   * @param pattern    The regular expression to check for
   * @param where      Additional filter to apply before the analyzer is run.
   */
-case class PatternMatch(column: String, pattern: Regex, where: Option[String] = None)
+case class PatternMatch(
+                         column: String,
+                         pattern: Regex,
+                         where: Option[String] = None,
+                         isNullAllowed: Boolean = false)
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("PatternMatch", column)
   with FilterableAnalyzer {
 
@@ -48,6 +52,7 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
   override def aggregationFunctions(): Seq[Column] = {
 
     val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
+      .when(lit(isNullAllowed) && col(column).isNull, 1)
       .otherwise(0)
 
     val summation = sum(conditionalSelection(expression, where).cast(IntegerType))

@@ -645,6 +645,27 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         assertSuccess(baseCheck.hasMaxLength("att1", _ == 4.0), context)
     }
 
+    "ignore null values for hasPattern constraints" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val df = Seq(
+        ("123", 1),
+        (null, 2),
+        ("456", 1)
+      ).toDF("nullable", "id")
+
+      val check = Check(CheckLevel.Error, "some description")
+        .hasPattern("nullable", "\\d{3,3}".r, _ == 1.0)
+      val checkWithNullAllowed = Check(CheckLevel.Error, "some description")
+        .hasPattern("nullable", "\\d{3,3}".r, _ == 1.0, isNullAllowed = true)
+
+      val context = runChecks(df, check)
+      val nullAllowedContext = runChecks(df, checkWithNullAllowed)
+
+      assertEvaluatesTo(check, context, CheckStatus.Error)
+      assertEvaluatesTo(checkWithNullAllowed, nullAllowedContext, CheckStatus.Success)
+    }
+
     "work on regular expression patterns for E-Mails" in withSparkSession { sparkSession =>
       val col = "some"
       val df = dataFrameWithColumn(col, StringType, sparkSession, Row("someone@somewhere.org"),
