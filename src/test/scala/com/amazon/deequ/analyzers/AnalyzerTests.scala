@@ -125,14 +125,14 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         DoubleMetric(Entity.Column, "Uniqueness", "uniqueWithNulls", Success(1.0), uniqueWithNulls.fullColumn))
       val multiColUnique = Uniqueness(Seq("unique", "nonUnique")).calculate(dfFull)
       assert(multiColUnique ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUnique", Success(1.0), multiColUnique.fullColumn))
+        DoubleMetric(Entity.Multicolumn, "Uniqueness", "unique,nonUnique", Success(1.0), multiColUnique.fullColumn))
       val multiColUniqueWithNull = Uniqueness(Seq("unique", "nonUniqueWithNulls")).calculate(dfFull)
       assert(multiColUniqueWithNull ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "unique,nonUniqueWithNulls",
+        DoubleMetric(Entity.Multicolumn, "Uniqueness", "unique,nonUniqueWithNulls",
           Success(1.0), multiColUniqueWithNull.fullColumn))
       val multiColUniqueComb = Uniqueness(Seq("nonUnique", "onlyUniqueWithOtherNonUnique")).calculate(dfFull)
       assert(multiColUniqueComb ==
-        DoubleMetric(Entity.Mutlicolumn, "Uniqueness", "nonUnique,onlyUniqueWithOtherNonUnique",
+        DoubleMetric(Entity.Multicolumn, "Uniqueness", "nonUnique,onlyUniqueWithOtherNonUnique",
           Success(1.0), multiColUniqueComb.fullColumn))
 
     }
@@ -149,7 +149,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
       Uniqueness(Seq("nonExistingColumn", "unique")).calculate(dfFull) match {
         case metric =>
-          assert(metric.entity == Entity.Mutlicolumn)
+          assert(metric.entity == Entity.Multicolumn)
           assert(metric.name == "Uniqueness")
           assert(metric.instance == "nonExistingColumn,unique")
           assert(metric.value.compareFailureTypes(Failure(new NoSuchColumnException(""))))
@@ -175,7 +175,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
     "compute correct metrics " in withSparkSession { sparkSession =>
       val dfFull = getDfFull(sparkSession)
       assert(MutualInformation("att1", "att2").calculate(dfFull) ==
-        DoubleMetric(Entity.Mutlicolumn, "MutualInformation", "att1,att2",
+        DoubleMetric(Entity.Multicolumn, "MutualInformation", "att1,att2",
           Success(-(0.75 * math.log(0.75) + 0.25 * math.log(0.25)))))
     }
     "yields 0 for conditionally uninformative columns" in withSparkSession { sparkSession =>
@@ -677,7 +677,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
     "yield 1.0 for maximal conditionally informative columns" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyInformativeColumns(sparkSession)
       Correlation("att1", "att2").calculate(df) shouldBe DoubleMetric(
-        Entity.Mutlicolumn,
+        Entity.Multicolumn,
         "Correlation",
         "att1,att2",
         Success(1.0)

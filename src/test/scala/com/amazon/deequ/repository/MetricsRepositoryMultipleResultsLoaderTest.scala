@@ -58,12 +58,12 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
             ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
             ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
             ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
             // Second analysisResult
             ("Dataset", "*", "Size", 4.0, DATE_TWO, "NA"),
             ("Column", "item", "Distinctness", 1.0, DATE_TWO, "NA"),
             ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
             .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
           assertSameRows(analysisResultsAsDataFrame, expected)
@@ -88,7 +88,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               |"region":"EU", "dataset_date":$DATE_ONE},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
               |"region":"EU", "dataset_date":$DATE_ONE},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
               |"region":"EU", "dataset_date":$DATE_ONE},
               |
@@ -98,7 +98,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               |"region":"NA", "dataset_date":$DATE_TWO},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
               |"region":"NA", "dataset_date":$DATE_TWO},
-              |{"entity":"Mutlicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25,
+              |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25,
               |"region":"NA", "dataset_date":$DATE_TWO}]"""
               .stripMargin.replaceAll("\n", "")
 
@@ -166,7 +166,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               null.asInstanceOf[String], "Some"),
             ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU",
               null.asInstanceOf[String], "Some"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU",
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU",
               null.asInstanceOf[String], "Some"),
             // Second analysisResult
             ("Dataset", "*", "Size", 4.0, DATE_TWO, "NA",
@@ -175,7 +175,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               "2.0", null.asInstanceOf[String]),
             ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA",
               "2.0", null.asInstanceOf[String]),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA",
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA",
               "2.0", null.asInstanceOf[String]))
             .toDF("entity", "instance", "name",
               "value", "dataset_date", "region", "dataset_version", "dataset_name")
@@ -205,7 +205,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
               |"region":"EU", "dataset_date":$DATE_ONE,
               |"dataset_name":"Some", "dataset_version":null},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
               |"region":"EU", "dataset_date":$DATE_ONE,
               |"dataset_name":"Some", "dataset_version":null},
@@ -219,7 +219,7 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
               |"region":"NA", "dataset_date":$DATE_TWO,
               |"dataset_name":null, "dataset_version":"2.0"},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
               |"region":"NA", "dataset_date":$DATE_TWO,
               |"dataset_name":null, "dataset_version":"2.0"}]"""

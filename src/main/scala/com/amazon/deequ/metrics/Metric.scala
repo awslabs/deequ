@@ -21,7 +21,7 @@ import org.apache.spark.sql.Column
 import scala.util.{Failure, Success, Try}
 
 object Entity extends Enumeration {
-  val Dataset, Column, Mutlicolumn = Value
+  val Dataset, Column, Multicolumn = Value
 }
 
 /** Common trait for all data quality metrics */

@@ -122,12 +122,12 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
           ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
           // Second analysisResult
           ("Dataset", "*", "Size", 4.0, DATE_TWO, "NA"),
           ("Column", "item", "Distinctness", 1.0, DATE_TWO, "NA"),
           ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -154,7 +154,7 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
             ("Dataset", "*", "Size", 4.0, DATE_TWO, "NA"),
             ("Column", "item", "Distinctness", 1.0, DATE_TWO, "NA"),
             ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
             .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
           assertSameRows(analysisResultsAsDataFrame, expected)
@@ -179,7 +179,7 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
           ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -203,10 +203,10 @@ class FileSystemMetricsRepositoryTest extends AnyWordSpec
           val expected = Seq(
             // First analysisResult
             ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"),
             // Second analysisResult
             ("Column", "att1", "Completeness", 1.0, DATE_TWO, "NA"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_TWO, "NA"))
             .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
           assertSameRows(analysisResultsAsDataFrame, expected)
