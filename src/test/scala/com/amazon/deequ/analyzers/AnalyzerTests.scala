@@ -31,6 +31,7 @@ import org.apache.spark.sql.types._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import scala.collection.immutable.Set
 import scala.util.Failure
 import scala.util.Success
 
@@ -236,6 +237,24 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
           assert(hv.numberOfBins == 3)
           assert(hv.values.size == 3)
           assert(hv.values.keys == Set("a", "b", Histogram.NullFieldReplacement))
+
+      }
+    }
+
+    "compute correct sum metrics " in withSparkSession { sparkSession =>
+      val dfFull = getDateDf(sparkSession)
+      val histogram = Histogram("product", aggregateColumn = Some("units"),
+        aggregateFunction = Histogram.Sum).calculate(dfFull)
+      assert(histogram.value.isSuccess)
+
+      histogram.value.get match {
+        case hv =>
+          assert(hv.numberOfBins == 3)
+          assert(hv.values.size == 3)
+          assert(hv.values.keys == Set("Furniture", "Cosmetics", "Electronics"))
+          assert(hv("Furniture").absolute == 55)
+          assert(hv("Cosmetics").absolute == 20)
+          assert(hv("Electronics").absolute == 60)
 
       }
     }

@@ -20,8 +20,9 @@ import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, Me
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.types.{DoubleType, LongType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
+
 import scala.util.{Failure, Try}
 
 /**
@@ -43,7 +44,9 @@ case class Histogram(
     binningUdf: Option[UserDefinedFunction] = None,
     maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
     where: Option[String] = None,
-    computeFrequenciesAsRatio: Boolean = true)
+    computeFrequenciesAsRatio: Boolean = true,
+    aggregateFunction: String = Histogram.Count,
+    aggregateColumn: Option[String] = None)
   extends Analyzer[FrequenciesAndNumRows, HistogramMetric]
   with FilterableAnalyzer {
 
@@ -63,14 +66,10 @@ case class Histogram(
       1
     }
 
-    val frequencies = data
+    val df = data
       .transform(filterOptional(where))
       .transform(binOptional(binningUdf))
-      .select(col(column).cast(StringType))
-      .na.fill(Histogram.NullFieldReplacement)
-      .groupBy(column)
-      .count()
-      .withColumnRenamed("count", Analyzers.COUNT_COL)
+    val frequencies = query(df)
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))
   }
@@ -125,11 +124,33 @@ case class Histogram(
       case _ => data
     }
   }
+
+  private def query(data: DataFrame): DataFrame = {
+    aggregateFunction match {
+      case Histogram.Count => countQuery(data)
+      case Histogram.Sum => sumQuery(data)
+      case _ => throw new IllegalStateException()
+    }
+  }
+
+  private def countQuery(data: DataFrame): DataFrame = {
+      data.select(col(column).cast(StringType))
+      .na.fill(Histogram.NullFieldReplacement)
+      .groupBy(column).count().withColumnRenamed("count", Analyzers.COUNT_COL)
+  }
+
+  private def sumQuery(data: DataFrame): DataFrame = {
+    data.select(col(column).cast(StringType), col(aggregateColumn.get).cast(LongType))
+      .na.fill(Histogram.NullFieldReplacement)
+      .groupBy(column).sum(aggregateColumn.get).withColumnRenamed("count", Analyzers.COUNT_COL)
+  }
 }
 
 object Histogram {
   val NullFieldReplacement = "NullValue"
   val MaximumAllowedDetailBins = 1000
+  val Count = "count"
+  val Sum = "sum"
 }
 
 object OrderByAbsoluteCount extends Ordering[Row] {
