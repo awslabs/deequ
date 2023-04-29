@@ -40,7 +40,7 @@ class AnalyzerContextTest extends AnyWordSpec
         val expected = Seq(
           ("Column", "att1", "Histogram.abs.a", 3.0),
           ("Dataset", "*", "Size", 4.0),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25),
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25),
           ("Column", "att1", "Histogram.bins", 2.0),
           ("Column", "att1", "Completeness", 1.0),
           ("Column", "item", "Distinctness", 1.0),
@@ -67,7 +67,7 @@ class AnalyzerContextTest extends AnyWordSpec
           import session.implicits._
           val expected = Seq(
             ("Column", "att1", "Completeness", 1.0),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25))
             .toDF("entity", "instance", "name", "value")
 
           assertSameRows(successMetricsAsDataFrame, expected)
@@ -85,7 +85,7 @@ class AnalyzerContextTest extends AnyWordSpec
             """[
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
               |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
+              |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
               |{"entity":"Column","instance":"att1","name":"Histogram.bins","value":2.0},
               |{"entity":"Column","instance":"att1","name":"Histogram.abs.a","value":3.0},
               |{"entity":"Column","instance":"att1","name":"Histogram.ratio.a","value":0.75},
@@ -112,7 +112,7 @@ class AnalyzerContextTest extends AnyWordSpec
 
           val expectedJson =
             """[{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25}]"""
             .stripMargin.replaceAll("\n", "")
 

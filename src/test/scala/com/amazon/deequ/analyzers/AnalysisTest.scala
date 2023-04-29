@@ -51,7 +51,7 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         ("Dataset", "*", "Size", 4.0),
         ("Column", "item", "Distinctness", 1.0),
         ("Column", "att1", "Completeness", 1.0),
-        ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+        ("Multicolumn", "att1,att2", "Uniqueness", 0.25))
         .toDF("entity", "instance", "name", "value")
 
       assertSameRows(successMetricsAsDataFrame, expected)
@@ -76,7 +76,7 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         ("Dataset", "*", "Size", 4.0),
         ("Column", "`item.one`", "Distinctness", 1.0),
         ("Column", "att1", "Completeness", 1.0),
-        ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25))
+        ("Multicolumn", "att1,att2", "Uniqueness", 0.25))
         .toDF("entity", "instance", "name", "value")
 
       assertSameRows(successMetricsAsDataFrame, expected)
@@ -104,7 +104,7 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
           ("Dataset", "*", "Size", 4.0),
           ("Column", "ITEM", "Distinctness", 1.0),
           ("Column", "ATT1", "Completeness", 1.0),
-          ("Mutlicolumn", "ATT1,ATT2", "Uniqueness", 0.25))
+          ("Multicolumn", "ATT1,ATT2", "Uniqueness", 0.25))
           .toDF("entity", "instance", "name", "value")
         assertSameRows(successMetricsAsDataFrame, expected)
       }

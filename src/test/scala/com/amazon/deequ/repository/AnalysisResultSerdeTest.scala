@@ -228,7 +228,7 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
           |"instance":"att2","name":"Completeness","value":1.0},
           |{"dataset_date":1507975810,"entity":"Column","region":"EU",
           |"instance":"att1","name":"Completeness","value":1.0},
-          |{"dataset_date":1507975810,"entity":"Mutlicolumn","region":"EU",
+          |{"dataset_date":1507975810,"entity":"Multicolumn","region":"EU",
           |"instance":"att1,att2","name":"MutualInformation","value":0.5623351446188083},
           |{"dataset_date":1507975810,"entity":"Dataset","region":"EU",
           |"instance":"*","name":"Size","value":4.0},
