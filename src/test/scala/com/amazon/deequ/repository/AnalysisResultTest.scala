@@ -55,7 +55,7 @@ class AnalysisResultTest extends AnyWordSpec
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
           ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -78,7 +78,7 @@ class AnalysisResultTest extends AnyWordSpec
               |"region":"EU", "dataset_date":$DATE_ONE},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
               |"region":"EU", "dataset_date":$DATE_ONE},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
               |"region":"EU", "dataset_date":$DATE_ONE}]"""
               .stripMargin.replaceAll("\n", "")
@@ -103,7 +103,7 @@ class AnalysisResultTest extends AnyWordSpec
 
         val expected = Seq(
           ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -126,7 +126,7 @@ class AnalysisResultTest extends AnyWordSpec
           val expected =
             s"""[{"entity":"Column","instance":"att1","name":"Completeness","value":1.0,
               |"region":"EU", "dataset_date":$DATE_ONE},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
               |"region":"EU", "dataset_date":$DATE_ONE}]"""
               .stripMargin.replaceAll("\n", "")
@@ -150,7 +150,7 @@ class AnalysisResultTest extends AnyWordSpec
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
           ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -173,7 +173,7 @@ class AnalysisResultTest extends AnyWordSpec
             |"region":"EU", "dataset_date":$DATE_ONE},
             |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
             |"region":"EU", "dataset_date":$DATE_ONE},
-            |{"entity":"Mutlicolumn","instance":"att1,att2",
+            |{"entity":"Multicolumn","instance":"att1,att2",
             |"name":"Uniqueness","value":0.25,
             |"region":"EU", "dataset_date":$DATE_ONE}]"""
             .stripMargin.replaceAll("\n", "")
@@ -197,7 +197,7 @@ class AnalysisResultTest extends AnyWordSpec
           ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
           ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
           ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-          ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+          ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
           .toDF("entity", "instance", "name", "value", "dataset_date", "name_2")
 
         assertSameRows(analysisResultsAsDataFrame, expected)
@@ -220,7 +220,7 @@ class AnalysisResultTest extends AnyWordSpec
             |"name_2":"EU", "dataset_date":$DATE_ONE},
             |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
             |"name_2":"EU", "dataset_date":$DATE_ONE},
-            |{"entity":"Mutlicolumn","instance":"att1,att2",
+            |{"entity":"Multicolumn","instance":"att1,att2",
             |"name":"Uniqueness","value":0.25,
             |"name_2":"EU", "dataset_date":$DATE_ONE}]"""
             .stripMargin.replaceAll("\n", "")
@@ -246,7 +246,7 @@ class AnalysisResultTest extends AnyWordSpec
             ("Dataset", "*", "Size", 4.0, DATE_ONE, "EU"),
             ("Column", "item", "Distinctness", 1.0, DATE_ONE, "EU"),
             ("Column", "att1", "Completeness", 1.0, DATE_ONE, "EU"),
-            ("Mutlicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
+            ("Multicolumn", "att1,att2", "Uniqueness", 0.25, DATE_ONE, "EU"))
             .toDF("entity", "instance", "name", "value", "dataset_date", "region")
 
           assertSameRows(analysisResultsAsDataFrame, expected)
@@ -271,7 +271,7 @@ class AnalysisResultTest extends AnyWordSpec
               |"region":"EU", "dataset_date":$DATE_ONE},
               |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
               |"region":"EU", "dataset_date":$DATE_ONE},
-              |{"entity":"Mutlicolumn","instance":"att1,att2",
+              |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
               |"region":"EU", "dataset_date":$DATE_ONE}]"""
               .stripMargin.replaceAll("\n", "")
