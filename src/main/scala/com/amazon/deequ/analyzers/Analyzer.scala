@@ -460,7 +460,7 @@ private[deequ] object Analyzers {
   }
 
   def entityFrom(columns: Seq[String]): Entity.Value = {
-    if (columns.size == 1) Entity.Column else Entity.Mutlicolumn
+    if (columns.size == 1) Entity.Column else Entity.Multicolumn
   }
 
   def conditionalSelection(selection: String, where: Option[String]): Column = {

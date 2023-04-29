@@ -16,12 +16,14 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.apache.spark.sql.functions.{col, sum, udf}
+import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.sum
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.StructType
-import Analyzers.COUNT_COL
-import com.amazon.deequ.analyzers.runners.MetricCalculationException
 
 /**
   * Mutual Information describes how much information about one column can be inferred from another
@@ -75,14 +77,14 @@ case class MutualInformation(columns: Seq[String], where: Option[String] = None)
         val resultRow = value.head()
 
         if (resultRow.isNullAt(0)) {
-          metricFromEmpty(this, "MutualInformation", columns.mkString(","), Entity.Mutlicolumn)
+          metricFromEmpty(this, "MutualInformation", columns.mkString(","), Entity.Multicolumn)
         } else {
           metricFromValue(resultRow.getDouble(0), "MutualInformation", columns.mkString(","),
-            Entity.Mutlicolumn)
+            Entity.Multicolumn)
         }
 
       case None =>
-        metricFromEmpty(this, "MutualInformation", columns.mkString(","), Entity.Mutlicolumn)
+        metricFromEmpty(this, "MutualInformation", columns.mkString(","), Entity.Multicolumn)
     }
   }
 
@@ -93,7 +95,7 @@ case class MutualInformation(columns: Seq[String], where: Option[String] = None)
   }
 
   override def toFailureMetric(exception: Exception): DoubleMetric = {
-    metricFromFailure(exception, "MutualInformation", columns.mkString(","), Entity.Mutlicolumn)
+    metricFromFailure(exception, "MutualInformation", columns.mkString(","), Entity.Multicolumn)
   }
 
   override def filterCondition: Option[String] = where
