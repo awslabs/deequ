@@ -22,9 +22,7 @@ import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.Preconditions.isString
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.length
-import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.functions.{col, length, min}
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.StructType
 

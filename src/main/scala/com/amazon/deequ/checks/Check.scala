@@ -17,9 +17,9 @@
 package com.amazon.deequ.checks
 
 import com.amazon.deequ.analyzers.AnalyzerOptions
+import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
 import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
