@@ -79,10 +79,10 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         Completeness("att1"), data)
-      assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
+      assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         Compliance("att1", "att1 = 'b'"), data)
 
-      assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
+      assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         PatternMatch("att1", Patterns.EMAIL), data)
 
       assertCorrectlyRestoresState[SumState](provider, provider, Sum("price"), data)
