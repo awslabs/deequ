@@ -58,6 +58,7 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
       case _ => length(conditionalSelection(column, where)).cast(DoubleType)
     }
   }
+
   private def getNullBehavior: NullBehavior = {
     analyzerOptions
       .map { options => options.nullBehavior }

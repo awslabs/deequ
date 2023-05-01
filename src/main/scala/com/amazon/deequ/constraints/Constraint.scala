@@ -316,7 +316,13 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
       compliance, assertion, hint = hint)
 
-    new NamedConstraint(constraint, s"ComplianceConstraint($compliance)")
+//    new NamedConstraint(constraint, s"ComplianceConstraint($compliance)")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"ComplianceConstraint($compliance)",
+      s"ColumnsCompliance-$column",
+      sparkAssertion)
   }
 
   /**
@@ -347,7 +353,7 @@ object Constraint {
       case _ => s"PatternMatchConstraint($column, $pattern)"
     }
 
-    new NamedConstraint(constraint, constraintName)
+    new RowLevelConstraint(constraint, constraintName, s"ColumnPattern-$column")
   }
 
   /**
@@ -504,7 +510,12 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minimum, assertion,
       hint = hint)
 
-    new NamedConstraint(constraint, s"MinimumConstraint($minimum)")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"MinimumConstraint($minimum)",
+      s"ColumnMax-$column",
+      sparkAssertion)
   }
 
   /**
@@ -526,7 +537,12 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maximum, assertion,
       hint = hint)
 
-    new NamedConstraint(constraint, s"MaximumConstraint($maximum)")
+    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    new RowLevelAssertedConstraint(
+      constraint,
+      s"MaximumConstraint($maximum)",
+      s"ColumnMax-$column",
+      sparkAssertion)
   }
 
   /**

@@ -128,8 +128,25 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
       resultMetrics should contain(DoubleMetric(Entity.Column, "Mean", "att1", Success(3.5)))
       resultMetrics should contain(DoubleMetric(Entity.Column, "StandardDeviation", "att1",
         Success(1.707825127659933)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "Minimum", "att1", Success(1.0)))
-      resultMetrics should contain(DoubleMetric(Entity.Column, "Maximum", "att1", Success(6.0)))
+
+      val minimumMetric = resultMetrics.find(_.name == "Minimum").head
+      inside(minimumMetric) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "Minimum"
+        instance shouldBe "att1"
+        value shouldBe Success(1.0)
+        fullColumn.isDefined shouldBe true
+      }
+
+      val maximumMetric = resultMetrics.find(_.name == "Maximum").head
+      inside(maximumMetric) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "Maximum"
+        instance shouldBe "att1"
+        value shouldBe Success(6.0)
+        fullColumn.isDefined shouldBe true
+      }
+
       resultMetrics should contain(DoubleMetric(Entity.Column, "ApproxCountDistinct", "att1",
         Success(6.0)))
       resultMetrics should contain(DoubleMetric(Entity.Column, "CountDistinct", "att1",
