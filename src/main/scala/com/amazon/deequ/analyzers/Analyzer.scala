@@ -257,7 +257,6 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
 }
 
 case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore)
-
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
   val Ignore, EmptyString, Fail = Value
