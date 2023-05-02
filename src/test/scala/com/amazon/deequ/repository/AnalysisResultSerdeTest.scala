@@ -37,7 +37,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
       Completeness("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
-      Compliance("rule1", "att1 > 3") ->
+      Compliance("rule1", "att1 > 3", List("att1")) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       ApproxCountDistinct("columnA", Some("test")) ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),

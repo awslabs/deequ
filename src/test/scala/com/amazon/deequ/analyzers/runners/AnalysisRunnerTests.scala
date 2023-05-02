@@ -16,8 +16,9 @@
 
 package com.amazon.deequ.analyzers.runners
 
-import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
@@ -64,9 +65,9 @@ class AnalysisRunnerTests extends AnyWordSpec
         val df = getDfWithNumericValues(sparkSession)
 
         val analyzers =
-          Completeness("att1") :: Compliance("rule1", "att1 > 3") ::
-          Completeness("att2") :: Compliance("rule1", "att1 > 2") ::
-          Compliance("rule1", "att2 > 2") ::
+          Completeness("att1") :: Compliance("rule1", "att1 > 3", List("att1")) ::
+          Completeness("att2") :: Compliance("rule1", "att1 > 2", List("att1")) ::
+          Compliance("rule1", "att2 > 2", List("att1")) ::
           ApproxQuantile("att2", 0.5) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
@@ -385,5 +386,60 @@ class AnalysisRunnerTests extends AnyWordSpec
           .run()
       }
     }
-  }
+
+    "A well-defined check should pass even if an ill-defined check is also configured" in withSparkSession {
+      sparkSession =>
+      val df = getDfWithNameAndAge(sparkSession)
+
+        val checkThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForValue").isComplete("name")
+
+        val complianceCheckThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForAge").isContainedIn("age", 1, 100)
+
+        val complianceCheckThatShouldFailForAge =
+          Check(CheckLevel.Error, "shouldFailForAge").isContainedIn("age", 1, 19)
+
+        val checkThatShouldFail = Check(CheckLevel.Error, "shouldErrorColumnNA")
+          .isContainedIn("fakeColumn", 10, 90)
+
+        val complianceCheckThatShouldFail = Check(CheckLevel.Error, "shouldErrorStringType")
+          .isContainedIn("name", 1, 3)
+
+        val complianceCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
+          .hasCompleteness("fake", x => x > 0)
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(checkThatShouldSucceed)
+          .addCheck(complianceCheckThatShouldSucceed)
+          .addCheck(complianceCheckThatShouldFailForAge)
+          .addCheck(checkThatShouldFail)
+          .addCheck(complianceCheckThatShouldFail)
+          .addCheck(complianceCheckThatShouldFailCompleteness)
+          .run()
+
+        val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkSuccessResult.status == CheckStatus.Success)
+
+        val checkAgeSuccessResult = verificationResult.checkResults(complianceCheckThatShouldSucceed)
+        checkAgeSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkAgeSuccessResult.status == CheckStatus.Success)
+
+        val checkFailedResult = verificationResult.checkResults(checkThatShouldFail)
+        checkFailedResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fakeColumn!"))
+        assert(checkFailedResult.status == CheckStatus.Error)
+
+        val checkFailedResultStringType = verificationResult.checkResults(complianceCheckThatShouldFail)
+        checkFailedResultStringType.constraintResults.map(_.message) shouldBe
+          List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name` IS NULL OR (`name` >= 1.0 AND `name` <= 3.0),List(name),None), all input values were NULL."))
+        assert(checkFailedResultStringType.status == CheckStatus.Error)
+
+        val checkFailedCompletenessResult = verificationResult.checkResults(complianceCheckThatShouldFailCompleteness)
+        checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fake!"))
+        assert(checkFailedCompletenessResult.status == CheckStatus.Error)
+
+      }
+    }
 }
