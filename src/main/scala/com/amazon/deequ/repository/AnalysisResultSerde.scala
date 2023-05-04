@@ -242,6 +242,7 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(WHERE_FIELD, compliance.where.orNull)
         result.addProperty("instance", compliance.instance)
         result.addProperty("predicate", compliance.predicate)
+        result.add(COLUMNS_FIELD, context.serialize(compliance.columns.asJava))
 
       case patternMatch: PatternMatch =>
         result.addProperty(ANALYZER_NAME_FIELD, "PatternMatch")
@@ -384,6 +385,7 @@ private[deequ] object AnalyzerDeserializer
         Compliance(
           json.get("instance").getAsString,
           json.get("predicate").getAsString,
+          getColumnsAsSeq(context, json).toList,
           getOptionalWhereParam(json))
 
       case "PatternMatch" =>

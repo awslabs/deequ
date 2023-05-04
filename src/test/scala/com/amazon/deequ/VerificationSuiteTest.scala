@@ -242,7 +242,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val min = new Check(CheckLevel.Error, "rule7").hasMin("val1", _ > 1)
       val max = new Check(CheckLevel.Error, "rule8").hasMax("val1", _ <= 3)
       val compliance = new Check(CheckLevel.Error, "rule9")
-        .satisfies("item < 1000", "rule9")
+        .satisfies("item < 1000", "rule9", List("item"))
       val expectedColumn1 = isComplete.description
       val expectedColumn2 = completeness.description
       val expectedColumn3 = minLength.description
@@ -308,7 +308,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val patternMatchNullString = new Check(CheckLevel.Error, "rule3")
         .hasPattern("att2", """\w""".r)
       val complianceNullValue = new Check(CheckLevel.Error, "rule4")
-        .satisfies("val2 > 3", "rule4")
+        .satisfies("val2 > 3", "rule4", List("val2"))
 
       val expectedColumn1 = min.description
       val expectedColumn2 = max.description
@@ -758,7 +758,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val expectedConstraints = Seq(
         Constraint.completenessConstraint("att1", _ == 1.0),
-        Constraint.complianceConstraint("att1 is positive", "att1", _ == 1.0)
+        Constraint.complianceConstraint("att1 is positive", "att1", List("att1"), _ == 1.0)
       )
 
       val check = expectedConstraints.foldLeft(Check(CheckLevel.Error, "check")) {

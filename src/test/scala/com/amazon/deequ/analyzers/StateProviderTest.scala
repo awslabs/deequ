@@ -41,7 +41,7 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
-        Compliance("att1", "att1 = 'b'"), data)
+        Compliance("att1", "att1 = 'b'", List("att1")), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
         PatternMatch("att1", Patterns.EMAIL), data)
 
@@ -80,7 +80,7 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
-        Compliance("att1", "att1 = 'b'"), data)
+        Compliance("att1", "att1 = 'b'", List("att1")), data)
 
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         PatternMatch("att1", Patterns.EMAIL), data)
