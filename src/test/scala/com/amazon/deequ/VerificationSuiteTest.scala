@@ -1,18 +1,18 @@
 /**
-  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
-  * use this file except in compliance with the License. A copy of the License
-  * is located at
-  *
-  *     http://aws.amazon.com/apache2.0/
-  *
-  * or in the "license" file accompanying this file. This file is distributed on
-  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-  * express or implied. See the License for the specific language governing
-  * permissions and limitations under the License.
-  *
-  */
+ * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ * http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ */
 
 package com.amazon.deequ
 
@@ -38,7 +38,6 @@ import org.scalatest.Matchers
 import org.scalatest.WordSpec
 
 
-
 class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
   with FixtureSupport with MockFactory {
 
@@ -49,7 +48,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         def assertStatusFor(data: DataFrame, checks: Check*)
                            (expectedStatus: CheckStatus.Value)
-          : Unit = {
+        : Unit = {
           val verificationSuiteStatus =
             VerificationSuite().onData(data).addChecks(checks).run().status
           assert(verificationSuiteStatus == expectedStatus)
@@ -465,7 +464,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           assert(result.status == CheckStatus.Success)
 
           val analysisDf = AnalyzerContext.successMetricsAsDataFrame(sparkSession,
-              AnalyzerContext(result.metrics))
+            AnalyzerContext(result.metrics))
 
           val expected = Seq(
             ("Dataset", "*", "Size", 4.0)
@@ -493,7 +492,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val analyzers = analyzerToTestReusingResults :: Uniqueness(Seq("att2", "item")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map {
+            _.calculate(df)
+          }.toSet
           (results, stat.jobCount)
         }
 
@@ -558,27 +559,27 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     "if there are previous results in the repository new results should pre preferred in case of " +
       "conflicts" in withSparkSession { sparkSession =>
 
-        val df = getDfWithNumericValues(sparkSession)
+      val df = getDfWithNumericValues(sparkSession)
 
-        val repository = new InMemoryMetricsRepository
-        val resultKey = ResultKey(0, Map.empty)
+      val repository = new InMemoryMetricsRepository
+      val resultKey = ResultKey(0, Map.empty)
 
-        val analyzers = Size() :: Completeness("item") :: Nil
+      val analyzers = Size() :: Completeness("item") :: Nil
 
-        val actualResult = VerificationSuite().onData(df).useRepository(repository)
-            .addRequiredAnalyzers(analyzers).run()
-        val expectedAnalyzerContextOnLoadByKey = AnalyzerContext(actualResult.metrics)
+      val actualResult = VerificationSuite().onData(df).useRepository(repository)
+        .addRequiredAnalyzers(analyzers).run()
+      val expectedAnalyzerContextOnLoadByKey = AnalyzerContext(actualResult.metrics)
 
-        val resultWhichShouldBeOverwritten = AnalyzerContext(Map(Size() -> DoubleMetric(
-          Entity.Dataset, "", "", util.Try(100.0))))
+      val resultWhichShouldBeOverwritten = AnalyzerContext(Map(Size() -> DoubleMetric(
+        Entity.Dataset, "", "", util.Try(100.0))))
 
-        repository.save(resultKey, resultWhichShouldBeOverwritten)
+      repository.save(resultKey, resultWhichShouldBeOverwritten)
 
-        // This should overwrite the previous Size value
-        VerificationSuite().onData(df).useRepository(repository)
-          .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run()
+      // This should overwrite the previous Size value
+      VerificationSuite().onData(df).useRepository(repository)
+        .addRequiredAnalyzers(analyzers).saveOrAppendResult(resultKey).run()
 
-        assert(expectedAnalyzerContextOnLoadByKey == repository.loadByKey(resultKey).get)
+      assert(expectedAnalyzerContextOnLoadByKey == repository.loadByKey(resultKey).get)
     }
 
     "addAnomalyCheck should work" in withSparkSession { sparkSession =>
@@ -637,46 +638,46 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     "addAnomalyCheck with duplicate check analyzer should work" in
       withSparkSession { sparkSession =>
-      evaluateWithRepositoryWithHistory { repository =>
+        evaluateWithRepositoryWithHistory { repository =>
 
-        val df = getDfWithNRows(sparkSession, 11)
-        val saveResultsWithKey = ResultKey(5, Map.empty)
+          val df = getDfWithNRows(sparkSession, 11)
+          val saveResultsWithKey = ResultKey(5, Map.empty)
 
-        val analyzers = Completeness("item") :: Nil
+          val analyzers = Completeness("item") :: Nil
 
-        val verificationResultOne = VerificationSuite()
-          .onData(df)
-          .addCheck(Check(CheckLevel.Error, "group-1").hasSize(_ == 11))
-          .useRepository(repository)
-          .addRequiredAnalyzers(analyzers)
-          .saveOrAppendResult(saveResultsWithKey)
-          .addAnomalyCheck(
-            AbsoluteChangeStrategy(Some(-2.0), Some(2.0)),
-            Size(),
-            Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
-          )
-          .run()
+          val verificationResultOne = VerificationSuite()
+            .onData(df)
+            .addCheck(Check(CheckLevel.Error, "group-1").hasSize(_ == 11))
+            .useRepository(repository)
+            .addRequiredAnalyzers(analyzers)
+            .saveOrAppendResult(saveResultsWithKey)
+            .addAnomalyCheck(
+              AbsoluteChangeStrategy(Some(-2.0), Some(2.0)),
+              Size(),
+              Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
+            )
+            .run()
 
-        val verificationResultTwo = VerificationSuite()
-          .onData(df)
-          .useRepository(repository)
-          .addRequiredAnalyzers(analyzers)
-          .saveOrAppendResult(saveResultsWithKey)
-          .addAnomalyCheck(
-            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
-            Size(),
-            Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
-              Map.empty, Some(0), Some(11)))
-          )
-          .run()
+          val verificationResultTwo = VerificationSuite()
+            .onData(df)
+            .useRepository(repository)
+            .addRequiredAnalyzers(analyzers)
+            .saveOrAppendResult(saveResultsWithKey)
+            .addAnomalyCheck(
+              AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
+              Size(),
+              Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
+                Map.empty, Some(0), Some(11)))
+            )
+            .run()
 
-        val checkResultsOne = verificationResultOne.checkResults.values.toSeq(1).status
-        val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+          val checkResultsOne = verificationResultOne.checkResults.values.toSeq(1).status
+          val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
 
-        assert(checkResultsOne == CheckStatus.Warning)
-        assert(checkResultsTwo == CheckStatus.Success)
+          assert(checkResultsOne == CheckStatus.Warning)
+          assert(checkResultsTwo == CheckStatus.Success)
+        }
       }
-    }
 
     "write output files to specified locations" in withSparkSession { sparkSession =>
 
@@ -781,9 +782,64 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           assert(checkConstraint == checkResultConstraint.constraint)
       }
     }
+
+    "A well-defined check should pass even if an ill-defined check is also configured" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithNameAndAge(sparkSession)
+
+        val checkThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForValue").isComplete("name")
+
+        val complianceCheckThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForAge").isContainedIn("age", 1, 100)
+
+        val complianceCheckThatShouldFailForAge =
+          Check(CheckLevel.Error, "shouldFailForAge").isContainedIn("age", 1, 19)
+
+        val checkThatShouldFail = Check(CheckLevel.Error, "shouldErrorColumnNA")
+          .isContainedIn("fakeColumn", 10, 90)
+
+        val complianceCheckThatShouldFail = Check(CheckLevel.Error, "shouldErrorStringType")
+          .isContainedIn("name", 1, 3)
+
+        val complianceCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
+          .hasCompleteness("fake", x => x > 0)
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(checkThatShouldSucceed)
+          .addCheck(complianceCheckThatShouldSucceed)
+          .addCheck(complianceCheckThatShouldFailForAge)
+          .addCheck(checkThatShouldFail)
+          .addCheck(complianceCheckThatShouldFail)
+          .addCheck(complianceCheckThatShouldFailCompleteness)
+          .run()
+
+        val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkSuccessResult.status == CheckStatus.Success)
+
+        val checkAgeSuccessResult = verificationResult.checkResults(complianceCheckThatShouldSucceed)
+        checkAgeSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkAgeSuccessResult.status == CheckStatus.Success)
+
+        val checkFailedResult = verificationResult.checkResults(checkThatShouldFail)
+        checkFailedResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fakeColumn!"))
+        assert(checkFailedResult.status == CheckStatus.Error)
+
+        val checkFailedResultStringType = verificationResult.checkResults(complianceCheckThatShouldFail)
+        checkFailedResultStringType.constraintResults.map(_.message) shouldBe
+          List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name` IS NULL OR (`name` >= 1.0 AND `name` <= 3.0),List(name),None), all input values were NULL."))
+        assert(checkFailedResultStringType.status == CheckStatus.Error)
+
+        val checkFailedCompletenessResult = verificationResult.checkResults(complianceCheckThatShouldFailCompleteness)
+        checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fake!"))
+        assert(checkFailedCompletenessResult.status == CheckStatus.Error)
+
+    }
   }
 
-   /** Run anomaly detection using a repository with some previous analysis results for testing */
+  /** Run anomaly detection using a repository with some previous analysis results for testing */
   private[this] def evaluateWithRepositoryWithHistory(test: MetricsRepository => Unit): Unit = {
 
     val repository = new InMemoryMetricsRepository()
