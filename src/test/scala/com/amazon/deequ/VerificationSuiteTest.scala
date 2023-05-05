@@ -781,6 +781,25 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           assert(checkConstraint == checkResultConstraint.constraint)
       }
     }
+
+    "pass the data check contains data with escape (') character characters" in withSparkSession { sparkSession =>
+
+      val df = getDfWithEscapeCharacters(sparkSession)
+
+      val someData = Seq("'foo'", "Yes This's My Name", "It's foo", "foo", "foo '' name", "'''")
+
+      val checkThatShouldSucceed =
+        Check(CheckLevel.Error, "shouldSucceedForValue").isContainedIn("name", someData.toArray)
+
+      val verificationResult = VerificationSuite()
+        .onData(df)
+        .addCheck(checkThatShouldSucceed)
+        .run()
+
+      val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
+      checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+      assert(checkSuccessResult.status == CheckStatus.Success)
+    }
   }
 
    /** Run anomaly detection using a repository with some previous analysis results for testing */

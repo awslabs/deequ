@@ -232,6 +232,19 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2", "att3", "attNull")
   }
 
+  def getDfWithEscapeCharacters(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+    // The names are with escape characters '
+    Seq(
+      ("'foo'", 50),
+      ("Yes This's My Name", 29),
+      ("It's foo", 33),
+      ("foo", 22),
+      ("foo '' name", 22),
+      ("'''", 25)
+    ).toDF("name", "age")
+  }
+
   def getDfWithNumericFractionalValues(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
     Seq(
