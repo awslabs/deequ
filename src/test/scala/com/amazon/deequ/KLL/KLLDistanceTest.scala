@@ -30,7 +30,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
   "KLL distance calculator should compute correct linf_simple" in {
     val sample1 = new QuantileNonSample[Double](4, 0.64)
     val sample2 = new QuantileNonSample[Double](4, 0.64)
-    sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4, 4, 4, 4, 4, 4)))
+    sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4)))
     sample2.reconstruct(4, 0.64, Array(Array(2, 3, 4, 5)))
     val distance = Distance.numericalDistance(sample1, sample2, correctForLowNumberOfSamples = true)
     assert(distance == 0.25)
