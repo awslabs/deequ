@@ -344,7 +344,6 @@ object Distance {
     actualPercent.zip(expectedPercent).map{
       case (actual, expected) => (actual - expected) * log(actual / expected)
     }.sum
-
   }
 
 }
