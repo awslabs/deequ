@@ -21,7 +21,7 @@ import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.mllib.stat.test.ChiSqTestResult
 import scala.math._
 import scala.annotation.tailrec
-import com.amazon.deequ.metrics.{BucketValue}
+import com.amazon.deequ.metrics.BucketValue
 
 object Distance {
     // Chi-square constants
@@ -337,13 +337,13 @@ object Distance {
     val expectedSum : Long = expected.map(e => e.count).sum
 
     // Calculate percentage per bucket
-    val actualPercent: List[Double] = actual.map( b => (b.count / actualSum.toDouble))
-    val expectedPercent: List[Double] = expected.map( b => (b.count / expectedSum.toDouble))
-
-    val zippedSamples : List[(Double, Double)] = actualPercent.zip(expectedPercent)
+    val actualPercent: List[Double] = actual.map(b => (b.count / actualSum.toDouble))
+    val expectedPercent: List[Double] = expected.map(b => (b.count / expectedSum.toDouble))
 
     // Apply PSI formula PSI = (P - Q) * ln(P/Q)
-    zippedSamples.map(e => (e._1-e._2) * log(e._1 / e._2)).sum
+    actualPercent.zip(expectedPercent).map{
+      case (actual, expected) => (actual - expected) * log(actual / expected)
+    }.sum
   }
 
 }
