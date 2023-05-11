@@ -19,8 +19,10 @@ package com.amazon.deequ.KLL
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers.Distance.{ChisquareMethod, LInfinityMethod}
 import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
+import com.amazon.deequ.metrics.BucketValue
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.WordSpec
+import com.amazon.deequ.metrics.{BucketValue}
 
 class KLLDistanceTest extends WordSpec with SparkContextSpec
   with FixtureSupport{
@@ -28,7 +30,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
   "KLL distance calculator should compute correct linf_simple" in {
     val sample1 = new QuantileNonSample[Double](4, 0.64)
     val sample2 = new QuantileNonSample[Double](4, 0.64)
-    sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4)))
+    sample1.reconstruct(4, 0.64, Array(Array(1, 2, 3, 4, 4, 4, 4, 4, 4)))
     sample2.reconstruct(4, 0.64, Array(Array(2, 3, 4, 5)))
     val distance = Distance.numericalDistance(sample1, sample2, correctForLowNumberOfSamples = true)
     assert(distance == 0.25)
@@ -179,5 +181,22 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     val distance = Distance.categoricalDistance(
       sample, baseline, correctForLowNumberOfSamples = true, method = ChisquareMethod())
     assert(distance.isNaN)
+  }
+
+  "Population Stability Index (PSI) test with deciles " in {
+
+    val expected: List[BucketValue] = List(BucketValue(1.0, 1.05, 428), BucketValue(1.05, 1.1, 425), BucketValue(1.1, 1.15, 414),
+      BucketValue(1.15, 1.2, 427), BucketValue(1.2, 1.25, 440), BucketValue(1.25, 1.3, 447),
+      BucketValue(1.3, 1.35, 380), BucketValue(1.35, 1.4, 386), BucketValue(1.4, 1.45, 444),
+      BucketValue(1.45, 1.5, 386))
+
+    val actual: List[BucketValue] = List(BucketValue(1.0, 1.05, 426), BucketValue(1.05, 1.1, 437), BucketValue(1.1, 1.15, 429),
+      BucketValue(1.15, 1.2, 391), BucketValue(1.2, 1.25, 469), BucketValue(1.25, 1.3, 433),
+      BucketValue(1.3, 1.35, 360), BucketValue(1.35, 1.4, 443), BucketValue(1.4, 1.45, 371),
+      BucketValue(1.45, 1.5, 418))
+
+    val distance = Distance.populationStabilityIndex(actual, expected)
+    assert(distance == 0.007406694184014186)
+
   }
 }

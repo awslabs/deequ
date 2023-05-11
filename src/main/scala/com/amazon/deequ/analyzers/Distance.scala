@@ -15,11 +15,13 @@
  */
 
 package com.amazon.deequ.analyzers
+
 import org.apache.spark.mllib.linalg._
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.mllib.stat.test.ChiSqTestResult
-
+import scala.math._
 import scala.annotation.tailrec
+import com.amazon.deequ.metrics.{BucketValue}
 
 object Distance {
     // Chi-square constants
@@ -311,4 +313,36 @@ object Distance {
        linfRobust
      }
    }
+
+
+  /** Calculate Population Stability Index from two distributions defined as buckets
+    *
+    * PSI is a measure of the degree to which the distribution of a population has shifted over time or between two different samples of a population in a single number.
+    * https://xai.arya.ai/wiki/population-stability-index-psi
+    *
+    * @param actual                      the actual distribution as a list of buckets
+    * @param expected                    the expected distribution as a list of buckets
+    * @return Double                     a value closer to 0 means the distributions are stable, common thresholds are 0.1, 0.2
+    */
+
+  def populationStabilityIndex(actual: List[BucketValue],
+                               expected: List[BucketValue]): Double = {
+
+    // Number of buckets has to be identical for actual and expected
+    assert(actual.length==expected.length)
+
+    // Calculate sums
+    val actualSum : Long = actual.map(e => e.count).sum
+    val expectedSum : Long = expected.map(e => e.count).sum
+
+    // Calculate percentage per bucket
+    val actualPercent: List[Double] = actual.map( b => (b.count / actualSum.toDouble))
+    val expectedPercent: List[Double] = expected.map( b => (b.count / expectedSum.toDouble))
+
+    val zippedSamples : List[(Double,Double)] = actualPercent.zip(expectedPercent)
+
+    // Apply PSI formula PSI = (P - Q) * ln(P/Q)
+    zippedSamples.map(e => (e._1-e._2) * log(e._1/e._2)).sum
+  }
+
 }
