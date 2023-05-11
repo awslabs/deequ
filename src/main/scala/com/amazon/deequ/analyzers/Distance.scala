@@ -317,12 +317,13 @@ object Distance {
 
   /** Calculate Population Stability Index from two distributions defined as buckets
     *
-    * PSI is a measure of the degree to which the distribution of a population has shifted over time or between two different samples of a population in a single number.
-    * https://xai.arya.ai/wiki/population-stability-index-psi
+    * PSI is a measure of the degree to which the distribution of a population has shifted over time or between
+    * two different samples of a population in a single number. https://xai.arya.ai/wiki/population-stability-index-psi
     *
     * @param actual                      the actual distribution as a list of buckets
     * @param expected                    the expected distribution as a list of buckets
-    * @return Double                     a value closer to 0 means the distributions are stable, common thresholds are 0.1, 0.2
+    * @return Double                     a value closer to 0 means the distributions are stable,
+    *                                    common thresholds are 0.1, 0.2
     */
 
   def populationStabilityIndex(actual: List[BucketValue],
@@ -339,10 +340,10 @@ object Distance {
     val actualPercent: List[Double] = actual.map( b => (b.count / actualSum.toDouble))
     val expectedPercent: List[Double] = expected.map( b => (b.count / expectedSum.toDouble))
 
-    val zippedSamples : List[(Double,Double)] = actualPercent.zip(expectedPercent)
+    val zippedSamples : List[(Double, Double)] = actualPercent.zip(expectedPercent)
 
     // Apply PSI formula PSI = (P - Q) * ln(P/Q)
-    zippedSamples.map(e => (e._1-e._2) * log(e._1/e._2)).sum
+    zippedSamples.map(e => (e._1-e._2) * log(e._1 / e._2)).sum
   }
 
 }
