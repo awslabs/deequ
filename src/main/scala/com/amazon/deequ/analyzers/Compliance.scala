@@ -37,7 +37,7 @@ import com.google.common.annotations.VisibleForTesting
   * @param where Additional filter to apply before the analyzer is run.
   * @param columns List of columns used for predicate - This is needed to run pre condition check!
   */
-case class Compliance(instance: String, predicate: String, columns: List[String], where: Option[String] = None)
+case class Compliance(instance: String, predicate: String, where: Option[String] = None, columns: Option[List[String]] = None)
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
   with FilterableAnalyzer {
 
@@ -63,5 +63,5 @@ case class Compliance(instance: String, predicate: String, columns: List[String]
   }
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] =
-    columns.map(hasColumn)
+    columns.map(_.map(hasColumn)).getOrElse(Seq.empty)
 }

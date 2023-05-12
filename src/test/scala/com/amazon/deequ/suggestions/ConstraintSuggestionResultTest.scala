@@ -255,7 +255,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |    },
               |    {
               |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
-              | negative values,item \u003e\u003d 0,List(item),None))",
+              | negative values,item \u003e\u003d 0,None,Some(List(item))))",
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
               |      "description": "\u0027item\u0027 has no negative values",
@@ -341,7 +341,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |    },
               |    {
               |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
-              | negative values,item \u003e\u003d 0,List(item),None))",
+              | negative values,item \u003e\u003d 0,None,Some(List(item))))",
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
               |      "description": "\u0027item\u0027 has no negative values",
@@ -428,7 +428,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |    },
               |    {
               |      "constraint_name": "ComplianceConstraint(Compliance(\u0027item\u0027 has no
-              | negative values,item \u003e\u003d 0,List(item),None))",
+              | negative values,item \u003e\u003d 0,None,Some(List(item))))",
               |      "column_name": "item",
               |      "current_value": "Minimum: 1.0",
               |      "description": "\u0027item\u0027 has no negative values",
@@ -494,7 +494,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             |    },
             |    {
             |      "constraint_name": "ComplianceConstraint(Compliance(\u0027`item.one`\u0027 has no
-            | negative values,`item.one` \u003e\u003d 0,List(`item.one`),None))",
+            | negative values,`item.one` \u003e\u003d 0,None,Some(List(`item.one`))))",
             |      "column_name": "`item.one`",
             |      "current_value": "Minimum: 1.0",
             |      "description": "\u0027`item.one`\u0027 has no negative values",

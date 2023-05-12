@@ -155,7 +155,7 @@ case class Check(
       columns: Seq[String],
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNotNull(columns), "Combined Completeness", columns.toList, Check.IsOne, hint)
+    satisfies(isEachNotNull(columns), "Combined Completeness", Check.IsOne, hint, columns = Some(columns.toList))
   }
 
   /**
@@ -171,7 +171,7 @@ case class Check(
       assertion: Double => Boolean,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNotNull(columns), "Combined Completeness", columns.toList, assertion, hint)
+    satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint, columns = Some(columns.toList))
   }
 
   /**
@@ -185,7 +185,7 @@ case class Check(
       columns: Seq[String],
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isAnyNotNull(columns), "Any Completeness", columns.toList, Check.IsOne, hint)
+    satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint, columns = Some(columns.toList))
   }
 
   /**
@@ -201,7 +201,7 @@ case class Check(
       assertion: Double => Boolean,
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isAnyNotNull(columns), "Any Completeness", columns.toList, assertion, hint)
+    satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint, columns = Some(columns.toList))
   }
 
   /**
@@ -682,13 +682,13 @@ case class Check(
   def satisfies(
       columnCondition: String,
       constraintName: String,
-      columns: List[String],
       assertion: Double => Boolean = Check.IsOne,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      columns: Option[List[String]] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      complianceConstraint(constraintName, columnCondition, columns, assertion, filter, hint)
+      complianceConstraint(constraintName, columnCondition, assertion, filter, hint, columns)
     }
   }
 
@@ -825,9 +825,9 @@ case class Check(
       // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
       s"COALESCE(CAST($column AS DECIMAL(20,10)), 0.0) >= 0",
       s"$column is non-negative",
-      List(column),
       assertion,
-      hint = hint
+      hint = hint,
+      columns = Some(List(column))
     )
   }
 
@@ -849,9 +849,9 @@ case class Check(
     satisfies(
       s"COALESCE(CAST($column AS DECIMAL(20,10)), 1.0) > 0",
       s"$column is positive",
-      List(column),
       assertion,
-      hint
+      hint,
+      columns = Some(List(column))
     )
   }
 
@@ -872,8 +872,8 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", List(columnA, columnB), assertion,
-      hint = hint)
+    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", assertion,
+      hint = hint, columns = Some(List(columnA, columnB)))
   }
 
   /**
@@ -893,7 +893,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
-      List(columnA, columnB), assertion, hint = hint)
+      assertion, hint = hint, columns = Some(List(columnA, columnB)))
   }
 
   /**
@@ -913,7 +913,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
-      List(columnA, columnB), assertion, hint = hint)
+      assertion, hint = hint, columns = Some(List(columnA, columnB)))
   }
 
   /**
@@ -934,7 +934,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
-      List(columnA, columnB), assertion, hint = hint)
+      assertion, hint = hint, columns = Some(List(columnA, columnB)))
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -1015,7 +1015,7 @@ case class Check(
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}",
-      List(column), assertion, hint)
+      assertion, hint, Some(List(column)))
   }
 
   /**
@@ -1044,7 +1044,7 @@ case class Check(
     val predicate = s"`$column` IS NULL OR " +
       s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", List(column), hint = hint)
+    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint, columns = Some(List(column)))
   }
 
   /**

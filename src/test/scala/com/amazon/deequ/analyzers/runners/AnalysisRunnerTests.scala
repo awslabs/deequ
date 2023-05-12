@@ -64,9 +64,9 @@ class AnalysisRunnerTests extends AnyWordSpec
         val df = getDfWithNumericValues(sparkSession)
 
         val analyzers =
-          Completeness("att1") :: Compliance("rule1", "att1 > 3", List("att1")) ::
-          Completeness("att2") :: Compliance("rule1", "att1 > 2", List("att1")) ::
-          Compliance("rule1", "att2 > 2", List("att1")) ::
+          Completeness("att1") :: Compliance("rule1", "att1 > 3", columns = Some(List("att1"))) ::
+          Completeness("att2") :: Compliance("rule1", "att1 > 2", columns = Some(List("att1"))) ::
+          Compliance("rule1", "att2 > 2", columns = Some(List("att1"))) ::
           ApproxQuantile("att2", 0.5) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
