@@ -298,13 +298,13 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
     "return the correct check status for columns constraints" in withSparkSession { sparkSession =>
 
       val check1 = Check(CheckLevel.Error, "group-1")
-        .satisfies("att1 > 0", "rule1", columns = Some(List("att1")))
+        .satisfies("att1 > 0", "rule1", columns = List("att1"))
 
       val check2 = Check(CheckLevel.Error, "group-2-to-fail")
-        .satisfies("att1 > 3", "rule2", columns = Some(List("att1")))
+        .satisfies("att1 > 3", "rule2", columns = List("att1"))
 
       val check3 = Check(CheckLevel.Error, "group-2-to-succeed")
-        .satisfies("att1 > 3", "rule3", _ == 0.5, columns = Some(List("att1")))
+        .satisfies("att1 > 3", "rule3", _ == 0.5, columns = List("att1"))
 
       val context = runChecks(getDfWithNumericValues(sparkSession), check1, check2, check3)
 
@@ -317,13 +317,13 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       withSparkSession { sparkSession =>
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
-          .satisfies("att1 < att2", "rule1", columns = Some(List("att1"))).where("att1 > 3")
+          .satisfies("att1 < att2", "rule1", columns = List("att1")).where("att1 > 3")
 
         val checkToFail = Check(CheckLevel.Error, "group-1")
-          .satisfies("att2 > 0", "rule2", columns = Some(List("att1"))).where("att1 > 0")
+          .satisfies("att2 > 0", "rule2", columns = List("att1")).where("att1 > 0")
 
         val checkPartiallyGetsSatisfied = Check(CheckLevel.Error, "group-1")
-          .satisfies("att2 > 0", "rule3", _ == 0.5, columns = Some(List("att1"))).where("att1 > 0")
+          .satisfies("att2 > 0", "rule3", _ == 0.5, columns = List("att1")).where("att1 > 0")
 
         val context = runChecks(getDfWithNumericValues(sparkSession), checkToSucceed, checkToFail,
           checkPartiallyGetsSatisfied)

@@ -157,7 +157,7 @@ class ApplicabilityTest extends AnyWordSpec with SparkContextSpec {
 
       val applicability = new Applicability(session)
 
-      val analyzerWithInvalidExpression1 = Compliance("", "", columns = Some(List.empty))
+      val analyzerWithInvalidExpression1 = Compliance("", "")
 
       val resultForAnalyzerWithInvalidExpression1 =
         applicability.isApplicable(Seq(analyzerWithInvalidExpression1), schema)

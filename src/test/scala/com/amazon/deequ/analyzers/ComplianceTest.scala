@@ -31,7 +31,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
       val data = getDfWithNumericValues(session)
 
-      val att1Compliance = Compliance("rule1", "att1 > 3", columns = Some(List("att1")))
+      val att1Compliance = Compliance("rule1", "att1 > 3", columns = List("att1"))
       val state = att1Compliance.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
@@ -42,7 +42,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
       val data = getDfWithNumericValues(session)
 
-      val att1Compliance = Compliance("rule1", "attNull > 3", columns = Some(List("att1")))
+      val att1Compliance = Compliance("rule1", "attNull > 3", columns = List("att1"))
       val state = att1Compliance.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 

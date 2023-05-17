@@ -37,7 +37,7 @@ case class NonNegativeNumbersRule() extends ConstraintRule[ColumnProfile] {
     val constraint = complianceConstraint(description,
                                           s"${profile.column} >= 0",
                                           Check.IsOne,
-                                          columns = Some(List(profile.column)))
+                                          columns = List(profile.column))
 
     val minimum = profile match {
       case numericProfile: NumericColumnProfile

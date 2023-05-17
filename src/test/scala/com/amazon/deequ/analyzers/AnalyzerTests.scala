@@ -200,7 +200,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
   "Compliance analyzer" should {
     "compute correct metrics " in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result1 = Compliance("rule1", "att1 > 3", columns = Some(List("att1"))).calculate(df)
+      val result1 = Compliance("rule1", "att1 > 3", columns = List("att1")).calculate(df)
       inside(result1) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
         entity shouldBe Entity.Column
         name shouldBe "Compliance"
@@ -209,7 +209,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         fullColumn.isDefined shouldBe true
       }
 
-      val result2 = Compliance("rule2", "att1 > 2", columns = Some(List("att1"))).calculate(df)
+      val result2 = Compliance("rule2", "att1 > 2", columns = List("att1")).calculate(df)
       inside(result2) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
         entity shouldBe Entity.Column
         name shouldBe "Compliance"
@@ -221,7 +221,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "compute correct metrics with filtering" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Compliance("rule1", "att2 = 0", Some("att1 < 4"), columns = Some(List("att1"))).calculate(df)
+      val result = Compliance("rule1", "att2 = 0", Some("att1 < 4"), columns = List("att1")).calculate(df)
       inside(result) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
         entity shouldBe Entity.Column
         name shouldBe "Compliance"
@@ -233,7 +233,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "fail on wrong column input" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      Compliance("rule1", "attNoSuchColumn > 3", columns = Some(List("attNoSuchColumn"))).calculate(df) match {
+      Compliance("rule1", "attNoSuchColumn > 3", columns = List("attNoSuchColumn")).calculate(df) match {
         case metric =>
           assert(metric.entity == Entity.Column)
           assert(metric.name == "Compliance")

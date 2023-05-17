@@ -40,7 +40,7 @@ import com.google.common.annotations.VisibleForTesting
 case class Compliance(instance: String,
                       predicate: String,
                       where: Option[String] = None,
-                      columns: Option[List[String]] = None)
+                      columns: List[String] = List.empty[String])
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
   with FilterableAnalyzer {
 
@@ -66,5 +66,5 @@ case class Compliance(instance: String,
   }
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] =
-    columns.map(_.map(hasColumn)).getOrElse(Seq.empty)
+    columns.map(hasColumn)
 }

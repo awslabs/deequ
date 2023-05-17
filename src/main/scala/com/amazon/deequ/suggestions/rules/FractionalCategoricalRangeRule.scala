@@ -87,7 +87,7 @@ case class FractionalCategoricalRangeRule(
     val columnCondition = s"`${profile.column}` IN ($categoriesSql)"
     val hint = s"It should be above $targetCompliance!"
     val constraint = complianceConstraint(description, columnCondition, _ >= targetCompliance,
-      hint = Some(hint), columns = Some(List(profile.column)))
+      hint = Some(hint), columns = List(profile.column))
 
     ConstraintSuggestion(
       constraint,

@@ -69,7 +69,7 @@ case class CategoricalRangeRule(
     val constraint = complianceConstraint(description,
                                           columnCondition,
                                           Check.IsOne,
-                                          columns = Some(List(profile.column)))
+                                          columns = List(profile.column))
 
     ConstraintSuggestion(
       constraint,

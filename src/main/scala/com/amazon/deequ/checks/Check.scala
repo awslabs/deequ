@@ -155,7 +155,7 @@ case class Check(
       columns: Seq[String],
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNotNull(columns), "Combined Completeness", Check.IsOne, hint, columns = Some(columns.toList))
+    satisfies(isEachNotNull(columns), "Combined Completeness", Check.IsOne, hint, columns = columns.toList)
   }
 
   /**
@@ -171,7 +171,7 @@ case class Check(
       assertion: Double => Boolean,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint, columns = Some(columns.toList))
+    satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint, columns = columns.toList)
   }
 
   /**
@@ -185,7 +185,7 @@ case class Check(
       columns: Seq[String],
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint, columns = Some(columns.toList))
+    satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint, columns = columns.toList)
   }
 
   /**
@@ -201,7 +201,7 @@ case class Check(
       assertion: Double => Boolean,
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint, columns = Some(columns.toList))
+    satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint, columns = columns.toList)
   }
 
   /**
@@ -684,7 +684,7 @@ case class Check(
       constraintName: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None,
-      columns: Option[List[String]] = None)
+      columns: List[String] = List.empty[String])
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
@@ -827,7 +827,7 @@ case class Check(
       s"$column is non-negative",
       assertion,
       hint = hint,
-      columns = Some(List(column))
+      columns = List(column)
     )
   }
 
@@ -851,7 +851,7 @@ case class Check(
       s"$column is positive",
       assertion,
       hint,
-      columns = Some(List(column))
+      columns = List(column)
     )
   }
 
@@ -873,7 +873,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", assertion,
-      hint = hint, columns = Some(List(columnA, columnB)))
+      hint = hint, columns = List(columnA, columnB))
   }
 
   /**
@@ -893,7 +893,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
-      assertion, hint = hint, columns = Some(List(columnA, columnB)))
+      assertion, hint = hint, columns = List(columnA, columnB))
   }
 
   /**
@@ -913,7 +913,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
-      assertion, hint = hint, columns = Some(List(columnA, columnB)))
+      assertion, hint = hint, columns = List(columnA, columnB))
   }
 
   /**
@@ -934,7 +934,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
-      assertion, hint = hint, columns = Some(List(columnA, columnB)))
+      assertion, hint = hint, columns = List(columnA, columnB))
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -1015,7 +1015,7 @@ case class Check(
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}",
-      assertion, hint, Some(List(column)))
+      assertion, hint, List(column))
   }
 
   /**
@@ -1044,7 +1044,7 @@ case class Check(
     val predicate = s"`$column` IS NULL OR " +
       s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint, columns = Some(List(column)))
+    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint, columns = List(column))
   }
 
   /**

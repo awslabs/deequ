@@ -309,7 +309,7 @@ object Constraint {
       assertion: Double => Boolean,
       where: Option[String] = None,
       hint: Option[String] = None,
-      columns: Option[List[String]] = None)
+      columns: List[String] = List.empty[String])
     : Constraint = {
 
     val compliance = Compliance(name, column, where, columns)
