@@ -823,7 +823,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         assert(checkSuccessResult.status == CheckStatus.Success)
 
         val checkIsCompleteFailedResult = verificationResult.checkResults(isCompleteCheckThatShouldFailCompleteness)
-        checkIsCompleteFailedResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fake!"))
+        checkIsCompleteFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
         assert(checkIsCompleteFailedResult.status == CheckStatus.Error)
 
         val checkAgeSuccessResult = verificationResult.checkResults(complianceCheckThatShouldSucceed)
@@ -831,16 +832,20 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         assert(checkAgeSuccessResult.status == CheckStatus.Success)
 
         val checkFailedResult = verificationResult.checkResults(checkThatShouldFail)
-        checkFailedResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fakeColumn!"))
+        checkFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fakeColumn!"))
         assert(checkFailedResult.status == CheckStatus.Error)
 
         val checkFailedResultStringType = verificationResult.checkResults(complianceCheckThatShouldFail)
         checkFailedResultStringType.constraintResults.map(_.message) shouldBe
-          List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name` IS NULL OR (`name` >= 1.0 AND `name` <= 3.0),None,Some(List(name))), all input values were NULL."))
+          List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name`" +
+            " IS NULL OR (`name` >= 1.0 AND `name` <= 3.0)," +
+            "None,Some(List(name))), all input values were NULL."))
         assert(checkFailedResultStringType.status == CheckStatus.Error)
 
         val checkFailedCompletenessResult = verificationResult.checkResults(complianceCheckThatShouldFailCompleteness)
-        checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fake!"))
+        checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
         assert(checkFailedCompletenessResult.status == CheckStatus.Error)
     }
 
@@ -865,7 +870,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         assert(checkSuccessResult.status == CheckStatus.Success)
 
         val checkFailedResult = verificationResult.checkResults(checkThatShouldFail)
-        checkFailedResult.constraintResults.map(_.message) shouldBe List(Some("Input data does not include column fake!"))
+        checkFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
         assert(checkFailedResult.status == CheckStatus.Error)
     }
   }
