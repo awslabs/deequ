@@ -67,9 +67,9 @@ class IncrementalAnalysisTest extends AnyWordSpec with Matchers with SparkContex
         val initialStates = InMemoryStateProvider()
 
         val analyzers = Seq(
-          Compliance("attributeNonNull", "attribute IS NOT NULL"),
-          Compliance("categoryAttribute", "attribute LIKE 'CATEGORY%'"),
-          Compliance("attributeKeyword", "attribute LIKE '%keyword%'"),
+          Compliance("attributeNonNull", "attribute IS NOT NULL", columns = List("attribute")),
+          Compliance("categoryAttribute", "attribute LIKE 'CATEGORY%'", columns = List("attribute")),
+          Compliance("attributeKeyword", "attribute LIKE '%keyword%'", columns = List("attribute")),
           Completeness("marketplace_id"),
           Completeness("item"))
 

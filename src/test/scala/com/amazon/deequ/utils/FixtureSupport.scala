@@ -391,4 +391,12 @@ trait FixtureSupport {
       ("6", "a", "f")
     ).toDF("item.one", "att.1", "att.2")
   }
+
+  def getDfWithNameAndAge(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+    Seq(
+      ("foo", 50),
+      ("bar", 20)
+    ).toDF("name", "age")
+  }
 }

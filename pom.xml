@@ -16,7 +16,7 @@
         <scala.major.version>2.12</scala.major.version>
         <scala.version>${scala.major.version}.10</scala.version>
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
-        <scala-maven-plugin.version>4.4.0</scala-maven-plugin.version>
+        <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 
         <spark.version>3.2.1</spark.version>
     </properties>

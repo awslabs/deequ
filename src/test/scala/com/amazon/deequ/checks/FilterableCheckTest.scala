@@ -35,8 +35,8 @@ class FilterableCheckTest extends AnyWordSpec
         .isComplete("col1")
         .isComplete("col2").where("marketplace = 'EU'")
         .hasCompleteness("col3", _ >= 0.9).where("marketplace = 'NA'")
-        .satisfies("someCol > 5", "const1")
-        .satisfies("someCol > 10", "const2").where("marketplace = 'EU'")
+        .satisfies("someCol > 5", "const1", columns = List("someCol"))
+        .satisfies("someCol > 10", "const2", columns = List("someCol")).where("marketplace = 'EU'")
 
       val completenessAnalyzers =
         check.requiredAnalyzers()

@@ -16,10 +16,11 @@
 
 package com.amazon.deequ.analyzers
 
-import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.{IntegerType, StructType}
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions._
 import Analyzers._
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.google.common.annotations.VisibleForTesting
 
 /**
@@ -34,8 +35,12 @@ import com.google.common.annotations.VisibleForTesting
   *                         describing what the analysis being done for.
   * @param predicate SQL-predicate to apply per row
   * @param where Additional filter to apply before the analyzer is run.
+  * @param columns List of columns used for predicate - This is needed to run pre condition check!
   */
-case class Compliance(instance: String, predicate: String, where: Option[String] = None)
+case class Compliance(instance: String,
+                      predicate: String,
+                      where: Option[String] = None,
+                      columns: List[String] = List.empty[String])
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
   with FilterableAnalyzer {
 
@@ -59,4 +64,7 @@ case class Compliance(instance: String, predicate: String, where: Option[String]
   private def criterion: Column = {
     conditionalSelection(expr(predicate), where).cast(IntegerType)
   }
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] =
+    columns.map(hasColumn)
 }
