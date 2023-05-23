@@ -308,10 +308,11 @@ object Constraint {
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      columns: List[String] = List.empty[String])
     : Constraint = {
 
-    val compliance = Compliance(name, column, where)
+    val compliance = Compliance(name, column, where, columns)
 
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
       compliance, assertion, hint = hint)

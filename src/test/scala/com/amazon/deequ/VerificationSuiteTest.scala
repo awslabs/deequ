@@ -242,7 +242,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val min = new Check(CheckLevel.Error, "rule7").hasMin("val1", _ > 1)
       val max = new Check(CheckLevel.Error, "rule8").hasMax("val1", _ <= 3)
       val compliance = new Check(CheckLevel.Error, "rule9")
-        .satisfies("item < 1000", "rule9")
+        .satisfies("item < 1000", "rule9", columns = List("item"))
       val expectedColumn1 = isComplete.description
       val expectedColumn2 = completeness.description
       val expectedColumn3 = minLength.description
@@ -308,7 +308,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val patternMatchNullString = new Check(CheckLevel.Error, "rule3")
         .hasPattern("att2", """\w""".r)
       val complianceNullValue = new Check(CheckLevel.Error, "rule4")
-        .satisfies("val2 > 3", "rule4")
+        .satisfies("val2 > 3", "rule4", columns = List("val2"))
 
       val expectedColumn1 = min.description
       val expectedColumn2 = max.description
@@ -758,7 +758,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val expectedConstraints = Seq(
         Constraint.completenessConstraint("att1", _ == 1.0),
-        Constraint.complianceConstraint("att1 is positive", "att1", _ == 1.0)
+        Constraint.complianceConstraint("att1 is positive", "att1", _ == 1.0, columns = List("att1"))
       )
 
       val check = expectedConstraints.foldLeft(Check(CheckLevel.Error, "check")) {
@@ -780,6 +780,99 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         case (checkConstraint, checkResultConstraint) =>
           assert(checkConstraint == checkResultConstraint.constraint)
       }
+    }
+
+    "A well-defined check should pass even if an ill-defined check is also configured" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithNameAndAge(sparkSession)
+
+        val checkThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForValue").isComplete("name")
+
+        val isCompleteCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
+          .isComplete("fake")
+
+        val complianceCheckThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForAge").isContainedIn("age", 1, 100)
+
+        val complianceCheckThatShouldFailForAge =
+          Check(CheckLevel.Error, "shouldFailForAge").isContainedIn("age", 1, 19)
+
+        val checkThatShouldFail = Check(CheckLevel.Error, "shouldErrorColumnNA")
+          .isContainedIn("fakeColumn", 10, 90)
+
+        val complianceCheckThatShouldFail = Check(CheckLevel.Error, "shouldErrorStringType")
+          .isContainedIn("name", 1, 3)
+
+        val complianceCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
+          .hasCompleteness("fake", x => x > 0)
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(checkThatShouldSucceed)
+          .addCheck(isCompleteCheckThatShouldFailCompleteness)
+          .addCheck(complianceCheckThatShouldSucceed)
+          .addCheck(complianceCheckThatShouldFailForAge)
+          .addCheck(checkThatShouldFail)
+          .addCheck(complianceCheckThatShouldFail)
+          .addCheck(complianceCheckThatShouldFailCompleteness)
+          .run()
+
+        val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkSuccessResult.status == CheckStatus.Success)
+
+        val checkIsCompleteFailedResult = verificationResult.checkResults(isCompleteCheckThatShouldFailCompleteness)
+        checkIsCompleteFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
+        assert(checkIsCompleteFailedResult.status == CheckStatus.Error)
+
+        val checkAgeSuccessResult = verificationResult.checkResults(complianceCheckThatShouldSucceed)
+        checkAgeSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkAgeSuccessResult.status == CheckStatus.Success)
+
+        val checkFailedResult = verificationResult.checkResults(checkThatShouldFail)
+        checkFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fakeColumn!"))
+        assert(checkFailedResult.status == CheckStatus.Error)
+
+        val checkFailedResultStringType = verificationResult.checkResults(complianceCheckThatShouldFail)
+        checkFailedResultStringType.constraintResults.map(_.message) shouldBe
+          List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name`" +
+            " IS NULL OR (`name` >= 1.0 AND `name` <= 3.0)," +
+            "None,List(name)), all input values were NULL."))
+        assert(checkFailedResultStringType.status == CheckStatus.Error)
+
+        val checkFailedCompletenessResult = verificationResult.checkResults(complianceCheckThatShouldFailCompleteness)
+        checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
+        assert(checkFailedCompletenessResult.status == CheckStatus.Error)
+    }
+
+    "A well-defined completeness check should pass even with a single column" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithVariableStringLengthValues(sparkSession)
+
+        val checkThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForValue").isComplete("att1")
+
+        val checkThatShouldFail = Check(CheckLevel.Error, "shouldErrorStringType")
+          .isComplete("fake")
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(checkThatShouldSucceed)
+          .addCheck(checkThatShouldFail)
+          .run()
+
+        val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkSuccessResult.status == CheckStatus.Success)
+
+        val checkFailedResult = verificationResult.checkResults(checkThatShouldFail)
+        checkFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
+        assert(checkFailedResult.status == CheckStatus.Error)
     }
   }
 
