@@ -155,7 +155,7 @@ case class Check(
       columns: Seq[String],
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNotNull(columns), "Combined Completeness", Check.IsOne, hint)
+    satisfies(isEachNotNull(columns), "Combined Completeness", Check.IsOne, hint, columns = columns.toList)
   }
 
   /**
@@ -171,7 +171,7 @@ case class Check(
       assertion: Double => Boolean,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
-    satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint)
+    satisfies(isEachNotNull(columns), "Combined Completeness", assertion, hint, columns = columns.toList)
   }
 
   /**
@@ -185,7 +185,7 @@ case class Check(
       columns: Seq[String],
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint)
+    satisfies(isAnyNotNull(columns), "Any Completeness", Check.IsOne, hint, columns = columns.toList)
   }
 
   /**
@@ -201,7 +201,7 @@ case class Check(
       assertion: Double => Boolean,
       hint: Option[String] = None)
   : CheckWithLastConstraintFilterable = {
-    satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint)
+    satisfies(isAnyNotNull(columns), "Any Completeness", assertion, hint, columns = columns.toList)
   }
 
   /**
@@ -683,11 +683,12 @@ case class Check(
       columnCondition: String,
       constraintName: String,
       assertion: Double => Boolean = Check.IsOne,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      columns: List[String] = List.empty[String])
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      complianceConstraint(constraintName, columnCondition, assertion, filter, hint)
+      complianceConstraint(constraintName, columnCondition, assertion, filter, hint, columns)
     }
   }
 
@@ -825,7 +826,8 @@ case class Check(
       s"COALESCE(CAST($column AS DECIMAL(20,10)), 0.0) >= 0",
       s"$column is non-negative",
       assertion,
-      hint = hint
+      hint = hint,
+      columns = List(column)
     )
   }
 
@@ -848,7 +850,8 @@ case class Check(
       s"COALESCE(CAST($column AS DECIMAL(20,10)), 1.0) > 0",
       s"$column is positive",
       assertion,
-      hint
+      hint,
+      columns = List(column)
     )
   }
 
@@ -870,7 +873,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", assertion,
-      hint = hint)
+      hint = hint, columns = List(columnA, columnB))
   }
 
   /**
@@ -890,7 +893,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
-      assertion, hint = hint)
+      assertion, hint = hint, columns = List(columnA, columnB))
   }
 
   /**
@@ -909,8 +912,8 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB", assertion,
-      hint = hint)
+    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
+      assertion, hint = hint, columns = List(columnA, columnB))
   }
 
   /**
@@ -931,7 +934,7 @@ case class Check(
     : CheckWithLastConstraintFilterable = {
 
     satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
-      assertion, hint = hint)
+      assertion, hint = hint, columns = List(columnA, columnB))
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -1011,7 +1014,8 @@ case class Check(
       .mkString("'", "','", "'")
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
-    satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}", assertion, hint)
+    satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}",
+      assertion, hint, List(column))
   }
 
   /**
@@ -1040,7 +1044,7 @@ case class Check(
     val predicate = s"`$column` IS NULL OR " +
       s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint)
+    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint, columns = List(column))
   }
 
   /**
