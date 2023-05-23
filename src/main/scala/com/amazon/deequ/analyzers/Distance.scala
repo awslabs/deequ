@@ -155,7 +155,7 @@ object Distance {
       sample.map(e => (e._1, e._2.toDouble)), expectedNorm, absThresholdYates, percThresholdYates, absThresholdCochran)
 
     // If less than 2 categories remain we cannot conduct the test
-    if (regroupedSample.keySet.size < chisquareMinDimension) {
+    if (regroupedExpected.keySet.size < chisquareMinDimension) {
       Double.NaN
     } else {
       // run chi-square test and return statistics or p-value
