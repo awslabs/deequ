@@ -1010,7 +1010,7 @@ case class Check(
 
 
     val valueList = allowedValues
-      .map { _.replaceAll("'", "''") }
+      .map { _.replaceAll("'", "\\\\\'") }
       .mkString("'", "','", "'")
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
