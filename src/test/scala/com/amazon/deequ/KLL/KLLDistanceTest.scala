@@ -54,6 +54,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     assert(distance == 0.06015037593984962)
   }
 
+
   "Categorial distance should compute correct linf_robust" in {
     val sample1 = scala.collection.mutable.Map(
       "a" -> 10L, "b" -> 20L, "c" -> 25L, "d" -> 10L, "e" -> 5L)
@@ -181,6 +182,33 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     val distance = Distance.categoricalDistance(
       sample, baseline, correctForLowNumberOfSamples = true, method = ChisquareMethod())
     assert(distance.isNaN)
+  }
+
+  "Categorial chi-square distance when number of expected categories below minimum" in {
+    val sample = scala.collection.mutable.Map(
+      "a" -> 10L, "b" -> 20L)
+    val expected = scala.collection.mutable.Map(
+      "b" -> 20L)
+    val distance = Distance.categoricalDistance(sample, expected, method = ChisquareMethod())
+    assert(distance.equals(Double.NaN))
+  }
+
+  "Categorial chi-square distance when categories do not match" in {
+    val sample = scala.collection.mutable.Map(
+      "a" -> 15L, "b" -> 20L)
+    val expected = scala.collection.mutable.Map(
+      "c" -> 20L, "d" -> 20L)
+    val distance = Distance.categoricalDistance(sample, expected, method = ChisquareMethod())
+    assert(distance.equals(Double.NaN))
+  }
+
+  "Categorial chi-square distance when number of sample categories is below minimum" in {
+    val sample = scala.collection.mutable.Map(
+      "a" -> 30L)
+    val expected = scala.collection.mutable.Map(
+      "a" -> 20L, "b" -> 20L)
+    val distance = Distance.categoricalDistance(sample, expected, method = ChisquareMethod())
+    assert(distance == 4.3204630539861455E-8)
   }
 
   "Population Stability Index (PSI) test with deciles " in {
