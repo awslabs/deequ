@@ -213,7 +213,11 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val assertion: Double => Boolean = _ >= 0.40
 
       val result = (DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compCols, assertion))
-      assert(result.isInstanceOf[ComparisonFailed])
+      assert(result.asInstanceOf[ComparisonFailed].errorMessage == "The selected dataset columns are not comparable " +
+        "using the specified keys. " +
+        s"Dataframe 1 has 6 unique combinations and 7 rows," +
+        s" and " +
+        s"Dataframe 2 has 6 unique combinations and 6 rows.")
     }
 
     "return false because the id col in ds2 isn't unique" in withSparkSession { spark =>
@@ -513,7 +517,7 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val outcomeColName = "outcome"
       val result = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compCols), Some(outcomeColName))
       assert(result.isLeft)
-      assert(result.left.get.errorMessage.contains("Provided key map not suitable for given data frames"))
+      assert(result.left.get.errorMessage.contains("The selected dataset columns are not comparable"))
     }
 
     "fails to annotate row level results when column key map is not provided " +
