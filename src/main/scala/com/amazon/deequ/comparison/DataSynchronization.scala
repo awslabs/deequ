@@ -194,10 +194,14 @@ object DataSynchronization extends ComparisonBase {
     if (ds1UniqueCount == ds1Count && ds2UniqueCount == ds2Count) {
       None
     } else {
-      Some(s"The selected dataset columns are not comparable using the specified keys. " +
-        s"Dataframe 1 has $ds1UniqueCount unique combinations and $ds1Count rows," +
+      val combo1 = ds1Cols.mkString(", ")
+      val combo2 = ds2Cols.mkString(", ")
+      Some(s"The selected columns are not comparable due to duplicates present in the dataset." +
+        s"Comparison keys must be unique, but " +
+        s"in Dataframe 1, there are $ds1UniqueCount unique records and $ds1Count rows," +
         s" and " +
-        s"Dataframe 2 has $ds2UniqueCount unique combinations and $ds2Count rows.")
+        s"in Dataframe 2, there are $ds2UniqueCount unique records and $ds2Count rows, " +
+        s"based on the combination of keys {$combo1} in Dataframe 1 and {$combo2} in Dataframe 2")
     }
   }
 
