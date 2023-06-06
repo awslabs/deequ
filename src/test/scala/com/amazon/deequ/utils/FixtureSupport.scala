@@ -161,13 +161,13 @@ trait FixtureSupport {
     import sparkSession.implicits._
 
     Seq(
-      ("1", "a", "f"),
-      ("22", "b", "d"),
-      ("333", "a", null),
-      ("4444", "a", "f"),
-      ("55555", "b", null),
-      ("666666", "a", "f")
-    ).toDF("item", "att1", "att2")
+      ("1", "a", "f", 1, Some(1)),
+      ("22", "b", "d", 2, None),
+      ("333", "a", null, 3, Some(3)),
+      ("4444", "a", "f", 4, Some(4)),
+      ("55555", "b", null, 5, None),
+      ("666666", "a", "f", 6, Some(6))
+    ).toDF("item", "att1", "att2", "val1", "val2")
   }
 
   def getDateDf(sparkSession: SparkSession): DataFrame = {
@@ -223,13 +223,13 @@ trait FixtureSupport {
     import sparkSession.implicits._
     // att2 is always bigger than att1
     Seq(
-      ("1", 1, 0, 0),
-      ("2", 2, 0, 0),
-      ("3", 3, 0, 0),
-      ("4", 4, 5, 4),
-      ("5", 5, 6, 6),
-      ("6", 6, 7, 7)
-    ).toDF("item", "att1", "att2", "att3")
+      ("1", 1, 0, 0, None),
+      ("2", 2, 0, 0, None),
+      ("3", 3, 0, 0, None),
+      ("4", 4, 5, 4, Some(5)),
+      ("5", 5, 6, 6, Some(6)),
+      ("6", 6, 7, 7, Some(7))
+    ).toDF("item", "att1", "att2", "att3", "attNull")
   }
 
   def getDfWithNumericFractionalValues(sparkSession: SparkSession): DataFrame = {
@@ -390,5 +390,13 @@ trait FixtureSupport {
       ("5", "b", null),
       ("6", "a", "f")
     ).toDF("item.one", "att.1", "att.2")
+  }
+
+  def getDfWithNameAndAge(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+    Seq(
+      ("foo", 50),
+      ("bar", 20)
+    ).toDF("name", "age")
   }
 }

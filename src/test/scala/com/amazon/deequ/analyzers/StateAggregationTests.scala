@@ -38,7 +38,8 @@ class StateAggregationTests extends AnyWordSpec with Matchers with SparkContextS
       correctlyAggregatesStates(session, CountDistinct("value" :: Nil))
       correctlyAggregatesStates(session, UniqueValueRatio("attribute" :: "value" :: Nil))
       correctlyAggregatesStates(session, Completeness("attribute"))
-      correctlyAggregatesStates(session, Compliance("attribute", "attribute like '%facets%'"))
+      correctlyAggregatesStates(session, Compliance("attribute", "attribute like '%facets%'",
+                                columns = List("attribute")))
       correctlyAggregatesStates(session, ApproxCountDistinct("attribute"))
       correctlyAggregatesStates(session, MutualInformation("numbersA", "numbersB"))
       correctlyAggregatesStates(session, Correlation("numbersA", "numbersB"))

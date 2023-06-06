@@ -16,10 +16,12 @@
 
 package com.amazon.deequ.analyzers
 
-import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.{IntegerType, StructType}
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions._
 import Analyzers._
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.google.common.annotations.VisibleForTesting
 
 /**
   * Compliance is a measure of the fraction of rows that complies with the given column constraint.
@@ -33,24 +35,36 @@ import Analyzers._
   *                         describing what the analysis being done for.
   * @param predicate SQL-predicate to apply per row
   * @param where Additional filter to apply before the analyzer is run.
+  * @param columns List of columns used for predicate - This is needed to run pre condition check!
   */
-case class Compliance(instance: String, predicate: String, where: Option[String] = None)
+case class Compliance(instance: String,
+                      predicate: String,
+                      where: Option[String] = None,
+                      columns: List[String] = List.empty[String])
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
   with FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion))
     }
   }
 
   override def aggregationFunctions(): Seq[Column] = {
 
-    val summation = sum(conditionalSelection(expr(predicate), where).cast(IntegerType))
+    val summation = sum(criterion)
 
     summation :: conditionalCount(where) :: Nil
   }
 
   override def filterCondition: Option[String] = where
+
+  @VisibleForTesting
+  private def criterion: Column = {
+    conditionalSelection(expr(predicate), where).cast(IntegerType)
+  }
+
+  override protected def additionalPreconditions(): Seq[StructType => Unit] =
+    columns.map(hasColumn)
 }

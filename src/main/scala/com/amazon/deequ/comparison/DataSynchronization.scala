@@ -94,7 +94,8 @@ object DataSynchronization extends ComparisonBase {
                   ds2: DataFrame,
                   colKeyMap: Map[String, String],
                   assertion: Double => Boolean): ComparisonResult = {
-    if (areKeyColumnsValid(ds1, ds2, colKeyMap)) {
+    val columnErrors = areKeyColumnsValid(ds1, ds2, colKeyMap)
+    if (columnErrors.isEmpty) {
       val colsDS1 = ds1.columns.filterNot(x => colKeyMap.keys.toSeq.contains(x)).sorted
       val colsDS2 = ds2.columns.filterNot(x => colKeyMap.values.toSeq.contains(x)).sorted
 
@@ -105,7 +106,7 @@ object DataSynchronization extends ComparisonBase {
         finalAssertion(ds1, ds2, mergedMaps, assertion)
       }
     } else {
-      ComparisonFailed("Provided key map not suitable for given data frames.")
+      ComparisonFailed(columnErrors.get)
     }
   }
 
@@ -129,11 +130,12 @@ object DataSynchronization extends ComparisonBase {
                   colKeyMap: Map[String, String],
                   compCols: Map[String, String],
                   assertion: Double => Boolean): ComparisonResult = {
-    if (areKeyColumnsValid(ds1, ds2, colKeyMap)) {
+    val columnErrors = areKeyColumnsValid(ds1, ds2, colKeyMap)
+    if (columnErrors.isEmpty) {
       val mergedMaps = colKeyMap ++ compCols
       finalAssertion(ds1, ds2, mergedMaps, assertion)
     } else {
-      ComparisonFailed("Provided key map not suitable for given data frames.")
+      ComparisonFailed(columnErrors.get)
     }
   }
 
@@ -142,7 +144,8 @@ object DataSynchronization extends ComparisonBase {
                           colKeyMap: Map[String, String],
                           optionalCompCols: Option[Map[String, String]] = None,
                           optionalOutcomeColumnName: Option[String] = None): Either[ComparisonFailed, DataFrame] = {
-    if (areKeyColumnsValid(ds1, ds2, colKeyMap)) {
+    val columnErrors = areKeyColumnsValid(ds1, ds2, colKeyMap)
+    if (columnErrors.isEmpty) {
       val compColsEither: Either[ComparisonFailed, Map[String, String]] = if (optionalCompCols.isDefined) {
         optionalCompCols.get match {
           case compCols if compCols.isEmpty => Left(ComparisonFailed("Empty column comparison map provided."))
@@ -168,19 +171,38 @@ object DataSynchronization extends ComparisonBase {
         }
       }
     } else {
-      Left(ComparisonFailed("Provided key map not suitable for given data frames."))
+      Left(ComparisonFailed(columnErrors.get))
     }
   }
 
   private def areKeyColumnsValid(ds1: DataFrame,
                                  ds2: DataFrame,
-                                 colKeyMap: Map[String, String]): Boolean = {
+                                 colKeyMap: Map[String, String]): Option[String] = {
     // We verify that the key columns provided form a valid primary/composite key.
     // To achieve this, we group the dataframes and compare their count with the original count.
     // If the key columns provided are valid, then the two counts should match.
-    val ds1Unique = ds1.groupBy(colKeyMap.keys.toSeq.map(col): _*).count()
-    val ds2Unique = ds2.groupBy(colKeyMap.values.toSeq.map(col): _*).count()
-    (ds1Unique.count() == ds1.count()) && (ds2Unique.count() == ds2.count())
+    val ds1Cols = colKeyMap.keys.toSeq
+    val ds2Cols = colKeyMap.values.toSeq
+    val ds1Unique = ds1.groupBy(ds1Cols.map(col): _*).count()
+    val ds2Unique = ds2.groupBy(ds2Cols.map(col): _*).count()
+
+    val ds1Count = ds1.count()
+    val ds2Count = ds2.count()
+    val ds1UniqueCount = ds1Unique.count()
+    val ds2UniqueCount = ds2Unique.count()
+
+    if (ds1UniqueCount == ds1Count && ds2UniqueCount == ds2Count) {
+      None
+    } else {
+      val combo1 = ds1Cols.mkString(", ")
+      val combo2 = ds2Cols.mkString(", ")
+      Some(s"The selected columns are not comparable due to duplicates present in the dataset." +
+        s"Comparison keys must be unique, but " +
+        s"in Dataframe 1, there are $ds1UniqueCount unique records and $ds1Count rows," +
+        s" and " +
+        s"in Dataframe 2, there are $ds2UniqueCount unique records and $ds2Count rows, " +
+        s"based on the combination of keys {$combo1} in Dataframe 1 and {$combo2} in Dataframe 2")
+    }
   }
 
   private def finalAssertion(ds1: DataFrame,

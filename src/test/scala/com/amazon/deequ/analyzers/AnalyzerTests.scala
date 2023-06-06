@@ -28,6 +28,8 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types._
+import org.scalatest.Inside.inside
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -199,22 +201,40 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
   "Compliance analyzer" should {
     "compute correct metrics " in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      assert(Compliance("rule1", "att1 > 3").calculate(df) ==
-        DoubleMetric(Entity.Column, "Compliance", "rule1", Success(3.0 / 6)))
-      assert(Compliance("rule2", "att1 > 2").calculate(df) ==
-        DoubleMetric(Entity.Column, "Compliance", "rule2", Success(4.0 / 6)))
+      val result1 = Compliance("rule1", "att1 > 3", columns = List("att1")).calculate(df)
+      inside(result1) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "Compliance"
+        instance shouldBe "rule1"
+        value shouldBe Success(3.0/6)
+        fullColumn.isDefined shouldBe true
+      }
 
+      val result2 = Compliance("rule2", "att1 > 2", columns = List("att1")).calculate(df)
+      inside(result2) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "Compliance"
+        instance shouldBe "rule2"
+        value shouldBe Success(4.0 / 6)
+        fullColumn.isDefined shouldBe true
+      }
     }
 
     "compute correct metrics with filtering" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Compliance("rule1", "att2 = 0", Some("att1 < 4")).calculate(df)
-      assert(result == DoubleMetric(Entity.Column, "Compliance", "rule1", Success(1.0)))
+      val result = Compliance("rule1", "att2 = 0", Some("att1 < 4"), columns = List("att1")).calculate(df)
+      inside(result) { case DoubleMetric(entity, name, instance, value, fullColumn) =>
+        entity shouldBe Entity.Column
+        name shouldBe "Compliance"
+        instance shouldBe "rule1"
+        value shouldBe Success(1.0)
+        fullColumn.isDefined shouldBe true
+      }
     }
 
     "fail on wrong column input" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      Compliance("rule1", "attNoSuchColumn > 3").calculate(df) match {
+      Compliance("rule1", "attNoSuchColumn > 3", columns = List("attNoSuchColumn")).calculate(df) match {
         case metric =>
           assert(metric.entity == Entity.Column)
           assert(metric.name == "Compliance")
@@ -501,8 +521,9 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "compute minimum correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Minimum("att1").calculate(df).value
-      result shouldBe Success(1.0)
+      val result = Minimum("att1").calculate(df)
+      result.value shouldBe Success(1.0)
+      assert(result.fullColumn.isDefined)
     }
     "fail to compute minimum for non numeric type" in withSparkSession { sparkSession =>
       val df = getDfFull(sparkSession)
@@ -511,15 +532,17 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "compute maximum correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
-      val result = Maximum("att1").calculate(df).value
-      result shouldBe Success(6.0)
+      val result = Maximum("att1").calculate(df)
+      result.value shouldBe Success(6.0)
+      assert(result.fullColumn.isDefined)
     }
 
     "compute maximum correctly for numeric data with filtering" in
       withSparkSession { sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
-        val result = Maximum("att1", where = Some("item != '6'")).calculate(df).value
-        result shouldBe Success(5.0)
+        val result = Maximum("att1", where = Some("item != '6'")).calculate(df)
+        result.value shouldBe Success(5.0)
+        assert(result.fullColumn.isDefined)
       }
 
     "fail to compute maximum for non numeric type" in withSparkSession { sparkSession =>
@@ -732,13 +755,17 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "match integers in a String column" in withSparkSession { sparkSession =>
       val df = dataFrameWithColumn(someColumnName, StringType, sparkSession, Row("1"), Row("a"))
-      PatternMatch(someColumnName, """\d""".r).calculate(df).value shouldBe Success(0.5)
+      val result: DoubleMetric = PatternMatch(someColumnName, """\d""".r).calculate(df)
+      result.value shouldBe Success(0.5)
+      assert(result.fullColumn.isDefined)
     }
 
     "match email addresses" in withSparkSession { sparkSession =>
       val df = dataFrameWithColumn(someColumnName, StringType, sparkSession,
         Row("someone@somewhere.org"), Row("someone@else"))
-      PatternMatch(someColumnName, Patterns.EMAIL).calculate(df).value shouldBe Success(0.5)
+      val result: DoubleMetric = PatternMatch(someColumnName, Patterns.EMAIL).calculate(df)
+      result.value shouldBe Success(0.5)
+      assert(result.fullColumn.isDefined)
     }
 
     "match credit card numbers" in withSparkSession { sparkSession =>
@@ -767,6 +794,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val analyzer = PatternMatch(someColumnName, Patterns.CREDITCARD)
 
       analyzer.calculate(df).value shouldBe Success(10.0/13.0)
+      assert(analyzer.calculate(df).fullColumn.isDefined)
     }
 
     "match URLs" in withSparkSession { sparkSession =>
@@ -795,6 +823,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         maybeURLs.map(Row(_)): _*)
       val analyzer = PatternMatch(someColumnName, Patterns.URL)
       analyzer.calculate(df).value shouldBe Success(10.0/13.0)
+      assert(analyzer.calculate(df).fullColumn.isDefined)
     }
 
     "match US social security numbers" in withSparkSession { sparkSession =>
@@ -813,6 +842,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         maybeSSN.map(Row(_)): _*)
       val analyzer = PatternMatch(someColumnName, Patterns.SOCIAL_SECURITY_NUMBER_US)
       analyzer.calculate(df).value shouldBe Success(2.0 / 8.0)
+      assert(analyzer.calculate(df).fullColumn.isDefined)
     }
   }
 }
