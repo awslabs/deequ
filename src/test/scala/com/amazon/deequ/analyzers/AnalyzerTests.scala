@@ -263,8 +263,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "compute correct sum metrics " in withSparkSession { sparkSession =>
       val dfFull = getDateDf(sparkSession)
-      val histogram = Histogram("product", aggregateColumn = Some("units"),
-        aggregateFunction = Histogram.Sum).calculate(dfFull)
+      val histogram = Histogram("product", aggregateFunction = Histogram.Sum("units")).calculate(dfFull)
       assert(histogram.value.isSuccess)
 
       histogram.value.get match {
@@ -273,8 +272,11 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
           assert(hv.values.size == 3)
           assert(hv.values.keys == Set("Furniture", "Cosmetics", "Electronics"))
           assert(hv("Furniture").absolute == 55)
+          assert(hv("Furniture").ratio == 55.0 / (55 + 20 + 60))
           assert(hv("Cosmetics").absolute == 20)
+          assert(hv("Cosmetics").ratio == 20.0 / (55 + 20 + 60))
           assert(hv("Electronics").absolute == 60)
+          assert(hv("Electronics").ratio == 60.0 / (55 + 20 + 60))
 
       }
     }

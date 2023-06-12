@@ -58,7 +58,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       Histogram("ColumnA") ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5)), 10))),
-      Histogram ("ColumnA", None) ->
+      Histogram("ColumnA", None) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5), "other" -> DistributionValue(0, 0)), 10))),
       Histogram("ColumnA", None, 5) ->
@@ -87,7 +87,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     ))
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
-        .toEpochSecond(ZoneOffset.UTC)
+      .toEpochSecond(ZoneOffset.UTC)
     val resultKeyOne = ResultKey(dateTime, Map("Region" -> "EU"))
     val resultKeyTwo = ResultKey(dateTime, Map("Region" -> "NA"))
 
@@ -131,12 +131,12 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       Map(
         Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
         Completeness("ColumnA") ->
-            DoubleMetric(Entity.Column, "Completeness", "ColumnA", Failure(sampleException))
+          DoubleMetric(Entity.Column, "Completeness", "ColumnA", Failure(sampleException))
       )
     )
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
-        .toEpochSecond(ZoneOffset.UTC)
+      .toEpochSecond(ZoneOffset.UTC)
     val resultKeyOne = ResultKey(dateTime, Map("Region" -> "EU"))
     val resultKeyTwo = ResultKey(dateTime, Map("Region" -> "NA"))
 
@@ -145,7 +145,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     val analysisResultTwo = AnalysisResult(resultKeyTwo, analyzerContextWithMixedValues)
 
     assertCorrectlyConvertsAnalysisResults(Seq(analysisResultOne, analysisResultTwo),
-        shouldFail = true)
+      shouldFail = true)
   }
 
   "serialization of ApproxQuantile" should "correctly restore it" in {
@@ -172,6 +172,112 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     assertCorrectlyConvertsAnalysisResults(Seq(result))
   }
+
+  val histogramSumJson =
+    """[
+      |  {
+      |    "resultKey": {
+      |      "dataSetDate": 0,
+      |      "tags": {}
+      |    },
+      |    "analyzerContext": {
+      |      "metricMap": [
+      |        {
+      |          "analyzer": {
+      |            "analyzerName": "Histogram",
+      |            "column": "columnA",
+      |            "maxDetailBins": 1000,
+      |            "aggregateFunction": "sum",
+      |            "aggregateColumn": "columnB"
+      |          },
+      |          "metric": {
+      |            "metricName": "HistogramMetric",
+      |            "column": "columnA",
+      |            "numberOfBins": 10,
+      |            "value": {
+      |              "numberOfBins": 10,
+      |              "values": {
+      |                "some": {
+      |                  "absolute": 10,
+      |                  "ratio": 0.5
+      |                }
+      |              }
+      |            }
+      |          }
+      |        }
+      |      ]
+      |    }
+      |  }
+      |]""".stripMargin
+  val histogramCountJson =
+      """[
+        |  {
+        |    "resultKey": {
+        |      "dataSetDate": 0,
+        |      "tags": {}
+        |    },
+        |    "analyzerContext": {
+        |      "metricMap": [
+        |        {
+        |          "analyzer": {
+        |            "analyzerName": "Histogram",
+        |            "column": "columnA",
+        |            "maxDetailBins": 1000
+        |          },
+        |          "metric": {
+        |            "metricName": "HistogramMetric",
+        |            "column": "columnA",
+        |            "numberOfBins": 10,
+        |            "value": {
+        |              "numberOfBins": 10,
+        |              "values": {
+        |                "some": {
+        |                  "absolute": 10,
+        |                  "ratio": 0.5
+        |                }
+        |              }
+        |            }
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |]""".stripMargin
+
+  "Histogram serialization" should "be backward compatible for count" in {
+      val expected = histogramCountJson
+      val analyzer = Histogram("columnA")
+      val metric = HistogramMetric("columnA", Success(Distribution(Map("some" -> DistributionValue(10, 0.5)), 10)))
+      val context = AnalyzerContext(Map(analyzer -> metric))
+      val result = new AnalysisResult(ResultKey(0), context)
+      assert(serialize(Seq(result)) == expected)
+  }
+
+  "Histogram serialization" should "properly serialize sum" in {
+    val expected = histogramSumJson
+    val analyzer = Histogram("columnA", aggregateFunction = Histogram.Sum("columnB"))
+    val metric = HistogramMetric("columnA", Success(Distribution(Map("some" -> DistributionValue(10, 0.5)), 10)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+    assert(serialize(Seq(result)) == expected)
+  }
+
+  "Histogram deserialization" should "be backward compatible for count" in {
+    val analyzer = Histogram("columnA")
+    val metric = HistogramMetric("columnA", Success(Distribution(Map("some" -> DistributionValue(10, 0.5)), 10)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val expected = new AnalysisResult(ResultKey(0), context)
+    assert(deserialize(histogramCountJson) == List(expected))
+  }
+
+  "Histogram deserialization" should "properly deserialize sum" in {
+    val analyzer = Histogram("columnA", aggregateFunction = Histogram.Sum("columnB"))
+    val metric = HistogramMetric("columnA", Success(Distribution(Map("some" -> DistributionValue(10, 0.5)), 10)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val expected = new AnalysisResult(ResultKey(0), context)
+    assert(deserialize(histogramSumJson) == List(expected))
+  }
+
 
   def assertCorrectlyConvertsAnalysisResults(
       analysisResults: Seq[AnalysisResult],

@@ -302,9 +302,9 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
         result.addProperty(COLUMN_FIELD, histogram.column)
         result.addProperty("maxDetailBins", histogram.maxDetailBins)
-        result.addProperty("aggregateFunction", histogram.aggregateFunction)
-        if (histogram.aggregateColumn.isDefined) {
-          result.addProperty("aggregateColumn", histogram.aggregateColumn.get)
+        if (histogram.aggregateFunction != Histogram.Count) {
+          result.addProperty("aggregateFunction", histogram.aggregateFunction.function())
+          result.addProperty("aggregateColumn", histogram.aggregateFunction.aggregateColumn().get)
         }
 
       case _ : Histogram =>
@@ -441,8 +441,9 @@ private[deequ] object AnalyzerDeserializer
           json.get(COLUMN_FIELD).getAsString,
           None,
           json.get("maxDetailBins").getAsInt,
-          aggregateFunction = getOptionalStringParam(json, "aggregateFunction").getOrElse(Histogram.Count),
-          aggregateColumn = getOptionalStringParam(json, "aggregateColumn"))
+          aggregateFunction = Histogram.createAggregateFunction(
+            getOptionalStringParam(json, "aggregateFunction").getOrElse(Histogram.count_function),
+            getOptionalStringParam(json, "aggregateColumn").getOrElse("")))
 
       case "DataType" =>
         DataType(
