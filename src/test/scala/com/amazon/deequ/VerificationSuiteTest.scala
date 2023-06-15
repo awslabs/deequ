@@ -874,6 +874,57 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           List(Some("Input data does not include column fake!"))
         assert(checkFailedResult.status == CheckStatus.Error)
     }
+
+    "The data check contains data with escape character including all the special characters" in withSparkSession {
+      sparkSession =>
+
+        val df = getDfWithEscapeCharacters(sparkSession)
+
+        val nameData = Seq("'foo'", "Yes This's My Name", "It's foo", "foo", "foo '' name", "'''",
+          "", "Trying !o include: @ll the #$peci@l charac%ers possib^e & test* that (out)~[here] {which} i`s great?\";")
+
+        val nameDataSubset = Seq("")
+
+        val ageData = Seq(22, 25, 29, 33, 50).map(_.toString)
+
+        val nameCheckThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForName").isContainedIn("name", nameData.toArray)
+
+        val ageCheckThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForAge").isContainedIn("age", ageData.toArray)
+
+        val nameCheckThatShouldFail =
+          Check(CheckLevel.Error, "shouldFailForEmptyName").isContainedIn("name", Seq.empty[String].toArray)
+
+        val subsetNameCheckThatShouldFail =
+          Check(CheckLevel.Error, "shouldFailForSubsetNameList").isContainedIn("name", nameDataSubset.toArray)
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(nameCheckThatShouldSucceed)
+          .addCheck(ageCheckThatShouldSucceed)
+          .addCheck(nameCheckThatShouldFail)
+          .addCheck(subsetNameCheckThatShouldFail)
+          .run()
+
+        val checkNameResult = verificationResult.checkResults(nameCheckThatShouldSucceed)
+        checkNameResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkNameResult.status == CheckStatus.Success)
+
+        val checkAgeResult = verificationResult.checkResults(ageCheckThatShouldSucceed)
+        checkAgeResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkAgeResult.status == CheckStatus.Success)
+
+        val checkNameFailResult = verificationResult.checkResults(nameCheckThatShouldFail)
+        checkNameFailResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: 0.125 does not meet the constraint requirement!"))
+        assert(checkNameFailResult.status == CheckStatus.Error)
+
+        val subsetNameFailResult = verificationResult.checkResults(subsetNameCheckThatShouldFail)
+        subsetNameFailResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: 0.125 does not meet the constraint requirement!"))
+        assert(subsetNameFailResult.status == CheckStatus.Error)
+    }
   }
 
    /** Run anomaly detection using a repository with some previous analysis results for testing */
