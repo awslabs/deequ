@@ -1129,7 +1129,7 @@ object Check {
 
     val historicalMetrics = analysisResults
       // If we have multiple DataPoints with the same dateTime, which should not happen in most
-      // cases, we still want consistent behavior, so we sort them by Tags first
+      // cases, we still want consistent behaviour, so we sort them by Tags first
       // (sorting is stable in Scala)
       .sortBy(_.resultKey.tags.values)
       .map { analysisResult =>

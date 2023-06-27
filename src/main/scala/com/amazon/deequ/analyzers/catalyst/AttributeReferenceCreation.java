@@ -73,7 +73,7 @@ public class AttributeReferenceCreation {
     public static AttributeReference createSafe(String name) throws IllegalStateException {
         try {
 
-            Class<?> clazz = AttributeReference$.class;
+            Class clazz = AttributeReference$.class;
             Method apply = null;
 
             for (Method method : clazz.getMethods()) {
@@ -89,7 +89,7 @@ public class AttributeReferenceCreation {
 
             LongType dataType = LongType$.MODULE$.asNullable();
             Metadata emptyMetadata = Metadata$.MODULE$.empty();
-            scala.Option<?> none = scala.Option.apply(null);
+            scala.Option none = scala.Option.apply(null);
             ExprId exprId = NamedExpression$.MODULE$.newExprId();
 
             Object companion = AttributeReference$.MODULE$;

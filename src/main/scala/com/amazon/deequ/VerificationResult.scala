@@ -1,16 +1,18 @@
-/** Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
-  * use this file except in compliance with the License. A copy of the License
-  * is located at
-  *
-  * http://aws.amazon.com/apache2.0/
-  *
-  * or in the "license" file accompanying this file. This file is distributed on
-  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-  * express or implied. See the License for the specific language governing
-  * permissions and limitations under the License.
-  */
+/**
+ * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ */
 
 package com.amazon.deequ
 
@@ -33,20 +35,17 @@ import org.apache.spark.sql.functions.monotonically_increasing_id
 
 import java.util.UUID
 
-/** The result returned from the VerificationSuite
+/**
+  * The result returned from the VerificationSuite
   *
-  * @param status
-  *   The overall status of the Verification run
-  * @param checkResults
-  *   Checks and their CheckResults
-  * @param metrics
-  *   Analyzers and their Metric results
+  * @param status The overall status of the Verification run
+  * @param checkResults Checks and their CheckResults
+  * @param metrics Analyzers and their Metric results
   */
 case class VerificationResult(
     status: CheckStatus.Value,
     checkResults: Map[Check, CheckResult],
-    metrics: Map[Analyzer[_, Metric[_]], Metric[_]]
-)
+    metrics: Map[Analyzer[_, Metric[_]], Metric[_]])
 
 object VerificationResult {
 
@@ -55,22 +54,16 @@ object VerificationResult {
   def successMetricsAsDataFrame(
       sparkSession: SparkSession,
       verificationResult: VerificationResult,
-      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
-  ): DataFrame = {
+      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty)
+    : DataFrame = {
 
     val metricsAsAnalyzerContext = AnalyzerContext(verificationResult.metrics)
 
-    AnalyzerContext.successMetricsAsDataFrame(
-      sparkSession,
-      metricsAsAnalyzerContext,
-      forAnalyzers
-    )
+    AnalyzerContext.successMetricsAsDataFrame(sparkSession, metricsAsAnalyzerContext, forAnalyzers)
   }
 
-  def successMetricsAsJson(
-      verificationResult: VerificationResult,
-      forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
-  ): String = {
+  def successMetricsAsJson(verificationResult: VerificationResult,
+    forAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty): String = {
 
     val metricsAsAnalyzerContext = AnalyzerContext(verificationResult.metrics)
 
@@ -80,23 +73,15 @@ object VerificationResult {
   def checkResultsAsDataFrame(
       sparkSession: SparkSession,
       verificationResult: VerificationResult,
-      forChecks: Seq[Check] = Seq.empty
-  ): DataFrame = {
+      forChecks: Seq[Check] = Seq.empty)
+    : DataFrame = {
 
-    val simplifiedCheckResults = getSimplifiedCheckResultOutput(
-      verificationResult
-    )
+    val simplifiedCheckResults = getSimplifiedCheckResultOutput(verificationResult)
 
     import sparkSession.implicits._
 
-    simplifiedCheckResults.toDF(
-      "check",
-      "check_level",
-      "check_status",
-      "constraint",
-      "constraint_status",
-      "constraint_message"
-    )
+    simplifiedCheckResults.toDF("check", "check_level", "check_status", "constraint",
+      "constraint_status", "constraint_message")
   }
 
   /**
@@ -121,20 +106,18 @@ object VerificationResult {
   def checkResultsAsJson(verificationResult: VerificationResult,
     forChecks: Seq[Check] = Seq.empty): String = {
 
-    val simplifiedCheckResults = getSimplifiedCheckResultOutput(
-      verificationResult
-    )
+    val simplifiedCheckResults = getSimplifiedCheckResultOutput(verificationResult)
 
     val checkResults = simplifiedCheckResults
       .map { simpleCheckResultOutput =>
-        Map(
-          "check" -> simpleCheckResultOutput.checkDescription,
-          "check_level" -> simpleCheckResultOutput.checkLevel,
-          "check_status" -> simpleCheckResultOutput.checkStatus,
-          "constraint" -> simpleCheckResultOutput.constraint,
-          "constraint_status" -> simpleCheckResultOutput.constraintStatus,
-          "constraint_message" -> simpleCheckResultOutput.constraintMessage
-        )
+          Map(
+            "check" -> simpleCheckResultOutput.checkDescription,
+            "check_level" -> simpleCheckResultOutput.checkLevel,
+            "check_status" -> simpleCheckResultOutput.checkStatus,
+            "constraint" -> simpleCheckResultOutput.constraint,
+            "constraint_status" -> simpleCheckResultOutput.constraintStatus,
+            "constraint_message" -> simpleCheckResultOutput.constraintMessage
+          )
       }
 
     SimpleResultSerde.serialize(checkResults)
@@ -180,10 +163,12 @@ object VerificationResult {
 
 
   private[this] def getSimplifiedCheckResultOutput(
-      verificationResult: VerificationResult
-  ): Seq[SimpleCheckResultOutput] = {
+      verificationResult: VerificationResult)
+    : Seq[SimpleCheckResultOutput] = {
 
-    val selectedCheckResults = verificationResult.checkResults.values.toSeq
+    val selectedCheckResults = verificationResult.checkResults
+      .values
+      .toSeq
 
     selectedCheckResults
       .flatMap { checkResult =>
@@ -192,6 +177,7 @@ object VerificationResult {
             checkResult.check.description,
             checkResult.check.level.toString,
             checkResult.status.toString,
+
             constraintResult.constraint.toString,
             constraintResult.status.toString,
             constraintResult.message.getOrElse("")
@@ -200,12 +186,6 @@ object VerificationResult {
       }
   }
 
-  private[this] case class SimpleCheckResultOutput(
-      checkDescription: String,
-      checkLevel: String,
-      checkStatus: String,
-      constraint: String,
-      constraintStatus: String,
-      constraintMessage: String
-  )
+  private[this] case class SimpleCheckResultOutput(checkDescription: String, checkLevel: String,
+    checkStatus: String, constraint: String, constraintStatus: String, constraintMessage: String)
 }

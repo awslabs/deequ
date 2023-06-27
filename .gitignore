@@ -8,4 +8,3 @@ target/
 .DS_Store
 .scalafmt.conf
 *.log
-.scalafmt.conf

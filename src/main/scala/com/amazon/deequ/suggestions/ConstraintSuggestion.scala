@@ -1,16 +1,18 @@
-/** Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
-  * use this file except in compliance with the License. A copy of the License
-  * is located at
-  *
-  * http://aws.amazon.com/apache2.0/
-  *
-  * or in the "license" file accompanying this file. This file is distributed on
-  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-  * express or implied. See the License for the specific language governing
-  * permissions and limitations under the License.
-  */
+/**
+ * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ */
 
 package com.amazon.deequ.suggestions
 
@@ -31,24 +33,23 @@ case class ConstraintSuggestion(
 
 object ConstraintSuggestions {
 
-  private[this] val CONSTRAINT_SUGGESTIONS_FIELD = "constraint_suggestions"
+  private[this] val CONSTRANT_SUGGESTIONS_FIELD = "constraint_suggestions"
 
-  private[suggestions] def toJson(
-      constraintSuggestions: Seq[ConstraintSuggestion]
-  ): String = {
+  private[suggestions] def toJson(constraintSuggestions: Seq[ConstraintSuggestion]): String = {
 
     val json = new JsonObject()
 
     val constraintsJson = new JsonArray()
 
     constraintSuggestions.foreach { constraintSuggestion =>
+
       val constraintJson = new JsonObject()
       addSharedProperties(constraintJson, constraintSuggestion)
 
       constraintsJson.add(constraintJson)
     }
 
-    json.add(CONSTRAINT_SUGGESTIONS_FIELD, constraintsJson)
+    json.add(CONSTRANT_SUGGESTIONS_FIELD, constraintsJson)
 
     val gson = new GsonBuilder()
       .setPrettyPrinting()
@@ -59,13 +60,12 @@ object ConstraintSuggestions {
 
   private[suggestions] def evaluationResultsToJson(
       constraintSuggestions: Seq[ConstraintSuggestion],
-      result: VerificationResult
-  ): String = {
+      result: VerificationResult)
+    : String = {
 
     val constraintResults = result.checkResults
       .map { case (_, checkResult) => checkResult }
-      .headOption
-      .map { checkResult =>
+      .headOption.map { checkResult =>
         checkResult.constraintResults
       }
       .getOrElse(Seq.empty)
@@ -78,21 +78,19 @@ object ConstraintSuggestions {
       checkResult.status.toString
     }
 
-    constraintSuggestions
-      .zipAll(constraintResultsOnTestSet, null, "Unknown")
+    constraintSuggestions.zipAll(constraintResultsOnTestSet, null, "Unknown")
       .foreach { case (constraintSuggestion, constraintResult) =>
+
         val constraintEvaluation = new JsonObject()
         addSharedProperties(constraintEvaluation, constraintSuggestion)
 
-        constraintEvaluation.addProperty(
-          "constraint_result_on_test_set",
-          constraintResult
-        )
+        constraintEvaluation.addProperty("constraint_result_on_test_set",
+          constraintResult)
 
         constraintEvaluations.add(constraintEvaluation)
       }
 
-    json.add(CONSTRAINT_SUGGESTIONS_FIELD, constraintEvaluations)
+    json.add(CONSTRANT_SUGGESTIONS_FIELD, constraintEvaluations)
 
     val gson = new GsonBuilder()
       .setPrettyPrinting()
@@ -103,27 +101,15 @@ object ConstraintSuggestions {
 
   private[this] def addSharedProperties(
       jsonObject: JsonObject,
-      constraintSuggestion: ConstraintSuggestion
-  ): Unit = {
+      constraintSuggestion: ConstraintSuggestion)
+    : Unit = {
 
-    jsonObject.addProperty(
-      "constraint_name",
-      constraintSuggestion.constraint.toString
-    )
+    jsonObject.addProperty("constraint_name", constraintSuggestion.constraint.toString)
     jsonObject.addProperty("column_name", constraintSuggestion.columnName)
     jsonObject.addProperty("current_value", constraintSuggestion.currentValue)
     jsonObject.addProperty("description", constraintSuggestion.description)
-    jsonObject.addProperty(
-      "suggesting_rule",
-      constraintSuggestion.suggestingRule.toString
-    )
-    jsonObject.addProperty(
-      "rule_description",
-      constraintSuggestion.suggestingRule.ruleDescription
-    )
-    jsonObject.addProperty(
-      "code_for_constraint",
-      constraintSuggestion.codeForConstraint
-    )
+    jsonObject.addProperty("suggesting_rule", constraintSuggestion.suggestingRule.toString)
+    jsonObject.addProperty("rule_description", constraintSuggestion.suggestingRule.ruleDescription)
+    jsonObject.addProperty("code_for_constraint", constraintSuggestion.codeForConstraint)
   }
 }
