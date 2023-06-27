@@ -202,7 +202,6 @@ trait ScanShareableAnalyzer[S <: State[_], +M <: Metric[_]] extends Analyzer[S, 
 
     calculateMetric(state, aggregateWith, saveStatesWith)
   }
-
 }
 
 /** A scan-shareable analyzer that produces a DoubleMetric */
