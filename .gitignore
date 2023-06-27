@@ -6,4 +6,5 @@ target/
 .vscode/
 .bloop/
 .DS_Store
-
+.scalafmt.conf
+*.log

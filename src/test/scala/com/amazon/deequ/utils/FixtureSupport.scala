@@ -16,6 +16,8 @@
 
 package com.amazon.deequ.utils
 
+import com.amazon.deequ.analyzers.DataTypeInstances
+import com.amazon.deequ.profiles.NumericColumnProfile
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
@@ -413,5 +415,33 @@ trait FixtureSupport {
       ("foo", 50),
       ("bar", 20)
     ).toDF("name", "age")
+  }
+
+  def getFakeNumericColumnProfileWithMinMaxMeanAndStdDev(
+    columnName: String,
+    completeness: Double,
+    dataType: DataTypeInstances.Value,
+    minimum: Double,
+    maximum: Double,
+    mean: Double,
+    stdDev: Double
+  ): NumericColumnProfile = {
+
+    NumericColumnProfile(
+      column = columnName,
+      completeness = completeness,
+      approximateNumDistinctValues = 1000,
+      dataType = dataType,
+      isDataTypeInferred = false,
+      typeCounts = Map[String, Long](),
+      histogram = None,
+      kll = None,
+      mean = Some(mean),
+      maximum = Some(maximum),
+      minimum = Some(minimum),
+      sum = Some(1000.879),
+      stdDev = Some(1.023),
+      approxPercentiles = None
+    )
   }
 }

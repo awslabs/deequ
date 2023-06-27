@@ -34,6 +34,11 @@ object Rules {
     Seq(CompleteIfCompleteRule(), RetainCompletenessRule(), RetainTypeRule(),
       CategoricalRangeRule(), FractionalCategoricalRangeRule(),
       NonNegativeNumbersRule())
+
+  val NUMERICAL: Seq[ConstraintRule[ColumnProfile]] =
+    Seq(HasMax(), HasMin(), HasMean(), HasStandardDeviation())
+
+  val EXTENDED: Seq[ConstraintRule[ColumnProfile]] = DEFAULT ++ NUMERICAL
 }
 
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
