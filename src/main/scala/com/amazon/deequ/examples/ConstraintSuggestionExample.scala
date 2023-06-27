@@ -50,7 +50,7 @@ private[examples] object ConstraintSuggestionExample extends App {
     // to suggest constraints
     val suggestionResult = ConstraintSuggestionRunner()
       .onData(data)
-      .addConstraintRules(Rules.DEFAULT)
+      .addConstraintRules(Rules.EXTENDED)
       .run()
 
     // We can now investigate the constraints that deequ suggested. We get a textual description
