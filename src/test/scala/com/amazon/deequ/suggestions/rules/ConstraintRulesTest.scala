@@ -37,8 +37,46 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val complete = StandardColumnProfile("col1", 1.0, 100, String, false, Map.empty, None)
       val incomplete = StandardColumnProfile("col1", .25, 100, String, false, Map.empty, None)
 
+      val completeInteger =
+        getFakeNumericColumnProfileWithMinMaxMeanAndStdDev(
+          columnName = "integer1",
+          completeness = 1.0,
+          dataType = DataTypeInstances.Integral,
+          mean = 12,
+          maximum = 123,
+          minimum = -123,
+          stdDev = 1
+        )
+
+      val incompleteFractional =
+        getFakeNumericColumnProfileWithMinMaxMeanAndStdDev(
+          columnName = "fractional1",
+          completeness = 0.9,
+          dataType = DataTypeInstances.Fractional,
+          mean = 12.5,
+          maximum = 123.7,
+          minimum = -123.89,
+          stdDev = 1.023
+        )
+
       assert(CompleteIfCompleteRule().shouldBeApplied(complete, 1000))
       assert(!CompleteIfCompleteRule().shouldBeApplied(incomplete, 1000))
+      assert(!HasMax().shouldBeApplied(complete, 1000))
+      assert(!HasMean().shouldBeApplied(complete, 1000))
+      assert(!HasMin().shouldBeApplied(complete, 1000))
+      assert(!HasStandardDeviation().shouldBeApplied(complete, 1000))
+      assert(CompleteIfCompleteRule().shouldBeApplied(complete, 1000))
+      assert(CompleteIfCompleteRule().shouldBeApplied(complete, 1000))
+      assert(HasMax().shouldBeApplied(completeInteger, 1000))
+      assert(HasMax().shouldBeApplied(incompleteFractional, 1000))
+      assert(HasMean().shouldBeApplied(completeInteger, 1000))
+      assert(HasMean().shouldBeApplied(completeInteger, 1000))
+      assert(HasMin().shouldBeApplied(completeInteger, 1000))
+      assert(HasMin().shouldBeApplied(incompleteFractional, 1000))
+      assert(HasStandardDeviation().shouldBeApplied(completeInteger, 1000))
+      assert(HasStandardDeviation().shouldBeApplied(completeInteger, 1000))
+      assert(HasStandardDeviation().shouldBeApplied(incompleteFractional, 1000))
+      assert(HasStandardDeviation().shouldBeApplied(incompleteFractional, 1000))
     }
 
     "return evaluable constraint candidates" in
