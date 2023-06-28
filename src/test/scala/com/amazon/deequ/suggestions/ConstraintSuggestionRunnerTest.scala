@@ -293,6 +293,4 @@ object ConstraintSuggestionRunnerTest {
       val compiledCode = toolbox.compile(tree)
       compiledCode().asInstanceOf[DataFrame => VerificationResult]
     }
-
-
 }
