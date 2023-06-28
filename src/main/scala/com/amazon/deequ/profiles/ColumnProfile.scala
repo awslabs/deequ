@@ -41,6 +41,18 @@ case class StandardColumnProfile(
     histogram: Option[Distribution])
   extends ColumnProfile
 
+case class StringColumnProfile(
+    column: String,
+    completeness: Double,
+    approximateNumDistinctValues: Long,
+    dataType: DataTypeInstances.Value,
+    isDataTypeInferred: Boolean,
+    typeCounts: Map[String, Long],
+    histogram: Option[Distribution],
+    minLength: Option[Int],
+    maxLength: Option[Int])
+  extends ColumnProfile
+
 case class NumericColumnProfile(
     column: String,
     completeness: Double,

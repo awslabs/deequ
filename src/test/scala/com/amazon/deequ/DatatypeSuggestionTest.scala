@@ -16,9 +16,9 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.profiles.{ColumnProfiler, ColumnProfiles, StandardColumnProfile}
+import com.amazon.deequ.profiles.StringColumnProfile
+import com.amazon.deequ.profiles.ColumnProfiler
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 
@@ -35,9 +35,8 @@ class DatatypeSuggestionTest extends WordSpec with Matchers with SparkContextSpe
                         .profile(df, Option(Seq("att1")))
                         .profiles("att1")
 
-        assert(profile.isInstanceOf[StandardColumnProfile])
+        assert(profile.isInstanceOf[StringColumnProfile])
         assert(profile.isDataTypeInferred && profile.dataType.toString.equalsIgnoreCase("String"))
       }
   }
-
 }
