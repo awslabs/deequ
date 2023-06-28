@@ -35,10 +35,12 @@ object Rules {
       CategoricalRangeRule(), FractionalCategoricalRangeRule(),
       NonNegativeNumbersRule())
 
+  val STRING: Seq[ConstraintRule[ColumnProfile]] = Seq(HasMinLength(), HasMaxLength())
+
   val NUMERICAL: Seq[ConstraintRule[ColumnProfile]] =
     Seq(HasMax(), HasMin(), HasMean(), HasStandardDeviation())
 
-  val EXTENDED: Seq[ConstraintRule[ColumnProfile]] = DEFAULT ++ NUMERICAL
+  val EXTENDED: Seq[ConstraintRule[ColumnProfile]] = DEFAULT ++ STRING ++ NUMERICAL
 }
 
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(

@@ -50,14 +50,14 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
 
   "Column Profiler" should {
 
-    "return correct StandardColumnProfiles" in withSparkSession { session =>
+    "return correct StringColumnProfile" in withSparkSession { session =>
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
       val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 1)
         .profiles("att2")
 
-      val expectedColumnProfile = StandardColumnProfile(
+      val expectedColumnProfile = StringColumnProfile(
         "att2",
         2.0 / 3.0,
         2,
@@ -70,7 +70,10 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           "Unknown" -> 2,
           "String" -> 4
         ),
-        None)
+        None,
+        Some(0),
+        Some(1)
+      )
 
       assert(actualColumnProfile == expectedColumnProfile)
     }
@@ -84,13 +87,15 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
         .profiles("item")
 
-      val expectedColumnProfile = StandardColumnProfile(
+      val expectedColumnProfile = StringColumnProfile(
         "item",
         1.0,
         6,
         DataTypeInstances.String,
         false,
         Map(),
+        None,
+        None,
         None)
 
       assert(actualColumnProfile == expectedColumnProfile)
@@ -105,7 +110,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           Map[String, DataTypeInstances.Value]("item"-> DataTypeInstances.String))
         .profiles("att2")
 
-      val expectedColumnProfile = StandardColumnProfile(
+      val expectedColumnProfile = StringColumnProfile(
         "att2",
         2.0 / 3.0,
         2,
@@ -118,7 +123,10 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
           "Unknown" -> 2,
           "String" -> 4
         ),
-        None)
+        None,
+        Some(0),
+        Some(1)
+      )
 
       assert(actualColumnProfile == expectedColumnProfile)
     }
@@ -321,7 +329,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       val actualColumnProfile = ColumnProfiler.profile(data, Option(Seq("att2")), false, 10)
         .profiles("att2")
 
-      val expectedColumnProfile = StandardColumnProfile(
+      val expectedColumnProfile = StringColumnProfile(
         "att2",
         2.0 / 3.0,
         2,
@@ -337,7 +345,10 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         Some(Distribution(Map(
           "d" -> DistributionValue(1, 0.16666666666666666),
           "f" -> DistributionValue(3, 0.5),
-          NullFieldReplacement -> DistributionValue(2, 0.3333333333333333)), 3)))
+          NullFieldReplacement -> DistributionValue(2, 0.3333333333333333)), 3)),
+        Some(0),
+        Some(1)
+      )
 
       assert(actualColumnProfile == expectedColumnProfile)
     }

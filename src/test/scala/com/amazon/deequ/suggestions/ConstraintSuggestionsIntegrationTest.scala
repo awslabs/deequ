@@ -34,6 +34,7 @@ case class Record(
     propertyA: String,
     measurement2: String,
     measurement3: String,
+    description: String,
     allNullColumn: String,
     allNullColumn2: java.lang.Double
 )
@@ -48,6 +49,9 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       val rng = new Random(0)
 
       val categories = Array("DE", "NA", "IN", "EU")
+
+      val minLength = 5
+      val maxLength = 15
 
       val records = (0 until numRecords)
         .map { record =>
@@ -69,7 +73,10 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
             case _ => null
           }
 
-          Record(id, marketplace, measurement, propertyA, measurement2, measurement3, null, null)
+          val randomLength = minLength + rng.nextInt(maxLength - minLength + 1)
+          val description = rng.nextString(randomLength)
+
+          Record(id, marketplace, measurement, propertyA, measurement2, measurement3, description, null, null)
         }
 
       val data = session.createDataFrame(records)
@@ -183,6 +190,15 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
         analyzer == Completeness("measurement3") && assertionFunc(0.2)
       }
 
+      // Min length for "description"
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
+        analyzer == MinLength("description") && assertionFunc(minLength) && !assertionFunc(minLength - 1)
+      }
+
+      // Max length for "description"
+      assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
+        analyzer == MaxLength("description") && assertionFunc(maxLength) && !assertionFunc(maxLength + 1)
+      }
     }
 
     "issue non negativity constraint for positive data" in withSparkSession { sparkSession =>
@@ -225,7 +241,6 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
     assert(!evaluate(constraintSuggestionResult, func))
   }
 
-
   private[this] def evaluate(
       constraintSuggestionResult: ConstraintSuggestionResult,
       func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
@@ -241,10 +256,9 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
       .exists { constraint =>
         val analysisBasedConstraint = constraint.asInstanceOf[AnalysisBasedConstraint[_, _, _]]
         val assertionFunction = analysisBasedConstraint.assertion.asInstanceOf[Double => Boolean]
+        val analyzer = analysisBasedConstraint.analyzer.asInstanceOf[Analyzer[State[_], Metric[_]]]
 
-      val analyzer = analysisBasedConstraint.analyzer.asInstanceOf[Analyzer[State[_], Metric[_]]]
         func(analyzer, assertionFunction)
       }
   }
-
 }
