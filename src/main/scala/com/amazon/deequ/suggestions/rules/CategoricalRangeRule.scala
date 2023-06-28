@@ -16,13 +16,15 @@
 
 package com.amazon.deequ.suggestions.rules
 
-import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
+import com.amazon.deequ.analyzers.DataTypeInstances
+import com.amazon.deequ.analyzers.Histogram
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
+import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.ConstraintSuggestion
+import com.amazon.deequ.suggestions.ConstraintSuggestionWithValue
 import org.apache.commons.lang3.StringEscapeUtils
-import com.amazon.deequ.metrics.DistributionValue
 
 /** If we see a categorical range for a column, we suggest an IS IN (...) constraint */
 case class CategoricalRangeRule(
@@ -53,15 +55,15 @@ case class CategoricalRangeRule(
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
     val valuesByPopularityNotNull = profile.histogram.get.values.toArray
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
-    val valuesByPopularity = categorySorter(valuesByPopularityNotNull)
+    val valuesByPopularity = categorySorter(valuesByPopularityNotNull).map { case (key, _) => key }
 
     val categoriesSql = valuesByPopularity
       // the character "'" can be contained in category names
-      .map { case (key, _) => key.replace("'", "''") }
+      .map { _.replace("'", "''") }
       .mkString("'", "', '", "'")
 
     val categoriesCode = valuesByPopularity
-      .map { case (key, _) => StringEscapeUtils.escapeJava(key) }
+      .map { StringEscapeUtils.escapeJava }
       .mkString(""""""", """", """", """"""")
 
     val description = s"'${profile.column}' has value range $categoriesSql"
@@ -71,13 +73,14 @@ case class CategoricalRangeRule(
                                           Check.IsOne,
                                           columns = List(profile.column))
 
-    ConstraintSuggestion(
+    ConstraintSuggestionWithValue[Seq[String]](
       constraint,
       profile.column,
       "Compliance: 1",
       description,
       this,
-      s""".isContainedIn("${profile.column}", Array($categoriesCode))"""
+      s""".isContainedIn("${profile.column}", Array($categoriesCode))""",
+      valuesByPopularity.toSeq
     )
   }
 
