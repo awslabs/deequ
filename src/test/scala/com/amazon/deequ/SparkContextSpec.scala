@@ -79,6 +79,7 @@ trait SparkContextSpec {
       .config("spark.ui.enabled", "false")
       .config("spark.sql.shuffle.partitions", 2.toString)
       .config("spark.sql.adaptive.enabled", value = false)
+      .config("spark.driver.bindAddress", "127.0.0.1")
       .getOrCreate()
     session.sparkContext.setCheckpointDir(System.getProperty("java.io.tmpdir"))
     session
