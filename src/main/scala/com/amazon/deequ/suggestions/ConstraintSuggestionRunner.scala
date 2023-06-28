@@ -40,7 +40,9 @@ object Rules {
   val NUMERICAL: Seq[ConstraintRule[ColumnProfile]] =
     Seq(HasMax(), HasMin(), HasMean(), HasStandardDeviation())
 
-  val EXTENDED: Seq[ConstraintRule[ColumnProfile]] = DEFAULT ++ STRING ++ NUMERICAL
+  val COMMON: Seq[ConstraintRule[ColumnProfile]] = Seq(UniqueIfApproximatelyUniqueRule())
+
+  val EXTENDED: Seq[ConstraintRule[ColumnProfile]] = DEFAULT ++ STRING ++ NUMERICAL ++ COMMON
 }
 
 private[suggestions] case class ConstraintSuggestionMetricsRepositoryOptions(
