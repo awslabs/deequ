@@ -57,6 +57,11 @@ private[deequ] case class GenericColumnStatistics(
   }
 }
 
+private[deequ] case class StringColumnStatistics(
+    minLengths: Map[String, Double],
+    maxLengths: Map[String, Double]
+)
+
 private[deequ] case class NumericColumnStatistics(
     means: Map[String, Double],
     stdDevs: Map[String, Double],
@@ -161,6 +166,8 @@ object ColumnProfiler {
       firstPassResults,
       predefinedTypes)
 
+    val stringStatistics = extractStringStatistics(firstPassResults)
+
     // Second pass
     if (printStatusUpdates) {
       println("### PROFILING: Computing numeric column statistics in pass (2/3)...")
@@ -221,7 +228,7 @@ object ColumnProfiler {
 
     val thirdPassResults = CategoricalColumnStatistics(histograms)
 
-    createProfiles(relevantColumns, genericStatistics, numericStatistics, thirdPassResults)
+    createProfiles(relevantColumns, genericStatistics, stringStatistics, numericStatistics, thirdPassResults)
   }
 
   private[this] def getRelevantColumns(
@@ -250,7 +257,12 @@ object ColumnProfiler {
         val name: String = escapeColumn(field.name)
 
         if (field.dataType == StringType && !predefinedTypes.contains(name)) {
-          Seq(Completeness(name), ApproxCountDistinct(name), DataType(name))
+          val analyzerOptions = AnalyzerOptions(NullBehavior.EmptyString)
+          Seq(
+            Completeness(name), ApproxCountDistinct(name), DataType(name),
+            MinLength(name, analyzerOptions = Some(analyzerOptions)),
+            MaxLength(name, analyzerOptions = Some(analyzerOptions))
+          )
         } else {
           Seq(Completeness(name), ApproxCountDistinct(name))
         }
@@ -459,6 +471,16 @@ object ColumnProfiler {
       approximateNumDistincts, completenesses, predefinedTypes)
   }
 
+
+  private[this] def extractStringStatistics(results: AnalyzerContext): StringColumnStatistics = {
+    val minLengths = results.metricMap
+      .collect { case (analyzer: MinLength, metric: DoubleMetric) => analyzer.column -> metric.value.get}
+
+    val maxLengths = results.metricMap
+      .collect { case (analyzer: MaxLength, metric: DoubleMetric) => analyzer.column -> metric.value.get}
+
+    StringColumnStatistics(minLengths, maxLengths)
+  }
 
   private[this] def castNumericStringColumns(
       columns: Seq[String],
@@ -692,6 +714,7 @@ object ColumnProfiler {
   private[this] def createProfiles(
       columns: Seq[String],
       genericStats: GenericColumnStatistics,
+      stringStats: StringColumnStatistics,
       numericStats: NumericColumnStatistics,
       categoricalStats: CategoricalColumnStatistics)
     : ColumnProfiles = {
@@ -725,6 +748,19 @@ object ColumnProfiler {
               numericStats.sums.get(name),
               numericStats.stdDevs.get(name),
               numericStats.approxPercentiles.get(name))
+
+          case String =>
+            StringColumnProfile(
+              name,
+              completeness,
+              approxNumDistinct,
+              dataType,
+              isDataTypeInferred,
+              typeCounts,
+              histogram,
+              stringStats.minLengths.get(name).map(_.floor.toInt),
+              stringStats.maxLengths.get(name).map(_.ceil.toInt)
+            )
 
           case _ =>
             StandardColumnProfile(
