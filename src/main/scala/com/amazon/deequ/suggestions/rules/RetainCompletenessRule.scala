@@ -17,8 +17,10 @@
 package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.constraints.Constraint.completenessConstraint
-import com.amazon.deequ.profiles._
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
+
 import scala.math.BigDecimal.RoundingMode
 
 /**
@@ -47,7 +49,7 @@ case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
 
     val description = s"'${profile.column}' has less than $boundInPercent% missing values"
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       "Completeness: " + profile.completeness.toString,

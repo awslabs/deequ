@@ -16,10 +16,10 @@
 
 package com.amazon.deequ.suggestions.rules
 
-import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.maxLengthConstraint
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.profiles.StringColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 case class HasMaxLength() extends ConstraintRule[ColumnProfile] {
@@ -35,7 +35,7 @@ case class HasMaxLength() extends ConstraintRule[ColumnProfile] {
 
     val constraint = maxLengthConstraint(profile.column, _ <= maxLength)
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       "MaxLength: " + profile.completeness.toString,
