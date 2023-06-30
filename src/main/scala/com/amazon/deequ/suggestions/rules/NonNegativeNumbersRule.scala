@@ -18,7 +18,9 @@ package com.amazon.deequ.suggestions.rules
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
-import com.amazon.deequ.profiles.{ColumnProfile, NumericColumnProfile}
+import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.profiles.NumericColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /** If we see only non-negative numbers in a column, we suggest a corresponding constraint */
@@ -45,7 +47,7 @@ case class NonNegativeNumbersRule() extends ConstraintRule[ColumnProfile] {
       case _ => "Error while calculating minimum!"
     }
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       "Minimum: " + minimum,

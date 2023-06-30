@@ -16,12 +16,11 @@
 
 package com.amazon.deequ.suggestions.rules
 
-import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.meanConstraint
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.profiles.NumericColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
-import com.amazon.deequ.checks
 
 /** If we see only non-negative numbers in a column, we suggest a corresponding
   * constraint
@@ -41,7 +40,7 @@ case class HasMean() extends ConstraintRule[ColumnProfile] {
     val description = s"'${profile.column}' <= $mean"
     val constraint = meanConstraint(profile.column, _ == mean)
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       s"Mean: $mean",

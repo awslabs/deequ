@@ -22,14 +22,33 @@ import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.rules.ConstraintRule
 import com.google.gson.{GsonBuilder, JsonArray, JsonObject}
 
-case class ConstraintSuggestion(
+sealed trait ConstraintSuggestion {
+    val constraint: Constraint
+    val columnName: String
+    val currentValue: String
+    val description: String
+    val suggestingRule: ConstraintRule[ColumnProfile]
+    val codeForConstraint: String
+}
+
+case class CommonConstraintSuggestion(
     constraint: Constraint,
     columnName: String,
     currentValue: String,
     description: String,
     suggestingRule: ConstraintRule[ColumnProfile],
     codeForConstraint: String
-)
+) extends ConstraintSuggestion
+
+case class ConstraintSuggestionWithValue[T](
+    constraint: Constraint,
+    columnName: String,
+    currentValue: String,
+    description: String,
+    suggestingRule: ConstraintRule[ColumnProfile],
+    codeForConstraint: String,
+    value: T
+) extends ConstraintSuggestion
 
 object ConstraintSuggestions {
 

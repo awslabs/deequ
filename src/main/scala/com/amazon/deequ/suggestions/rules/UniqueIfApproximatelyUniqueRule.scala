@@ -19,6 +19,7 @@ package com.amazon.deequ.suggestions.rules
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.uniquenessConstraint
 import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /**
@@ -40,7 +41,7 @@ case class UniqueIfApproximatelyUniqueRule() extends ConstraintRule[ColumnProfil
     val constraint = uniquenessConstraint(Seq(profile.column), Check.IsOne)
     val approximateDistinctness = profile.approximateNumDistinctValues.toDouble / numRecords
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       "ApproxDistinctness: " + approximateDistinctness.toString,
