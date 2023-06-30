@@ -123,6 +123,19 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
             .instance.startsWith(s"'marketplace' has value range")
       }
 
+      // Categorical range for "marketplace" with values
+      assert(
+        constraintSuggestionResult.constraintSuggestions
+          .getOrElse("marketplace", Seq.empty)
+          .exists {
+            case value: ConstraintSuggestionWithValue[Seq[String]] =>
+              val constraintWithValue = value.value
+              println(constraintWithValue)
+              constraintWithValue.sorted == categories.toSeq.sorted
+            case _ => false
+          }
+      )
+
       // IS NOT NULL for "measurement"
       assertConstraintExistsIn(constraintSuggestionResult) { (analyzer, assertionFunc) =>
         analyzer == Completeness("measurement") && assertionFunc(1.0)

@@ -16,10 +16,10 @@
 
 package com.amazon.deequ.suggestions.rules
 
-import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.Constraint.minLengthConstraint
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.profiles.StringColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 case class HasMinLength() extends ConstraintRule[ColumnProfile] {
@@ -36,7 +36,7 @@ case class HasMinLength() extends ConstraintRule[ColumnProfile] {
 
     val constraint = minLengthConstraint(profile.column, _ >= minLength)
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       "MinLength: " + minLength,
