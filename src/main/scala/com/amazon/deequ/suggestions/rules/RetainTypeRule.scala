@@ -21,6 +21,7 @@ import com.amazon.deequ.checks.Check
 import com.amazon.deequ.constraints.ConstrainableDataTypes
 import com.amazon.deequ.constraints.Constraint.dataTypeConstraint
 import com.amazon.deequ.profiles.ColumnProfile
+import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 
 /** If we detect a non-string type, we suggest a type constraint */
@@ -46,7 +47,7 @@ case class RetainTypeRule() extends ConstraintRule[ColumnProfile] {
 
     val constraint = dataTypeConstraint(profile.column, typeToCheck, Check.IsOne)
 
-    ConstraintSuggestion(
+    CommonConstraintSuggestion(
       constraint,
       profile.column,
       "DataType: " + profile.dataType.toString,

@@ -16,12 +16,15 @@
 
 package com.amazon.deequ.suggestions.rules
 
-import com.amazon.deequ.analyzers.{DataTypeInstances, Histogram}
+import com.amazon.deequ.analyzers.DataTypeInstances
+import com.amazon.deequ.analyzers.Histogram
 import com.amazon.deequ.constraints.Constraint.complianceConstraint
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.ConstraintSuggestion
+import com.amazon.deequ.suggestions.ConstraintSuggestionWithValue
 import org.apache.commons.lang3.StringEscapeUtils
+
 import scala.math.BigDecimal.RoundingMode
 
 /** If we see a categorical range for most values in a column, we suggest an IS IN (...)
@@ -63,15 +66,15 @@ case class FractionalCategoricalRangeRule(
 
     val valuesByPopularityNotNull = topCategories.toArray
       .filterNot { case (key, _) => key == Histogram.NullFieldReplacement }
-    val valuesByPopularity = categorySorter(valuesByPopularityNotNull)
+    val valuesByPopularity = categorySorter(valuesByPopularityNotNull).map { case (key, _) => key }
 
     val categoriesSql = valuesByPopularity
       // the character "'" can be contained in category names
-      .map { case (key, _) => key.replace("'", "''") }
+      .map { _.replace("'", "''") }
       .mkString("'", "', '", "'")
 
     val categoriesCode = valuesByPopularity
-      .map { case (key, _) => StringEscapeUtils.escapeJava(key) }
+      .map { StringEscapeUtils.escapeJava }
       .mkString(""""""", """", """", """"""")
 
     val p = ratioSums
@@ -89,14 +92,15 @@ case class FractionalCategoricalRangeRule(
     val constraint = complianceConstraint(description, columnCondition, _ >= targetCompliance,
       hint = Some(hint), columns = List(profile.column))
 
-    ConstraintSuggestion(
+    ConstraintSuggestionWithValue[Seq[String]](
       constraint,
       profile.column,
       "Compliance: " + ratioSums.toString,
       description,
       this,
       s""".isContainedIn("${profile.column}", Array($categoriesCode),
-         | _ >= $targetCompliance, Some("$hint"))""".stripMargin.replaceAll("\n", "")
+         | _ >= $targetCompliance, Some("$hint"))""".stripMargin.replaceAll("\n", ""),
+      valuesByPopularity.toSeq
     )
   }
 
