@@ -159,6 +159,19 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2")
   }
 
+  def getDfCompleteAndInCompleteColumnsWithSpacesInNames(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("1", "ab", "abc1"),
+      ("2", "bc", null),
+      ("3", "ab", "def2ghi"),
+      ("4", "ab", null),
+      ("5", "bcd", "ab"),
+      ("6", "a", "pqrs")
+    ).toDF("some item", "att 1", "att 2")
+  }
+
   def getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 

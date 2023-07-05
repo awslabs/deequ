@@ -49,12 +49,13 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
   override def filterCondition: Option[String] = where
 
   private def criterion(nullBehavior: NullBehavior): Column = {
+    val isNullCheck = col(column).isNull
     nullBehavior match {
       case NullBehavior.Fail =>
         val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-        conditionalSelection(colLengths, Option(s"${column} IS NULL"), replaceWith = Double.MaxValue)
+        conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = Double.MaxValue)
       case NullBehavior.EmptyString =>
-        length(conditionalSelection(col(column), Option(s"${column} IS NULL"), replaceWith = "")).cast(DoubleType)
+        length(conditionSelectionGivenColumn(col(column), Option(isNullCheck), replaceWith = "")).cast(DoubleType)
       case _ => length(conditionalSelection(column, where)).cast(DoubleType)
     }
   }
