@@ -78,6 +78,27 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(actualColumnProfile == expectedColumnProfile)
     }
 
+    "return correct StringColumnProfile for column names with spaces" in withSparkSession { session =>
+      val data = getDfCompleteAndInCompleteColumnsWithSpacesInNames(session)
+      val columnNames = data.columns.toSeq
+
+      val lengthMap = Map(
+        "att 1" -> (1, 3),
+        "att 2" -> (0, 7)
+      )
+
+      lengthMap.foreach { case (columnName, (minLength, maxLength)) =>
+        val actualColumnProfile = ColumnProfiler.profile(data, Option(columnNames), false, 1)
+          .profiles(columnName)
+
+        assert(actualColumnProfile.isInstanceOf[StringColumnProfile])
+        val actualStringColumnProfile = actualColumnProfile.asInstanceOf[StringColumnProfile]
+
+        assert(actualStringColumnProfile.minLength.contains(minLength))
+        assert(actualStringColumnProfile.maxLength.contains(maxLength))
+      }
+    }
+
     "return correct columnProfiles with predefined dataType" in withSparkSession { session =>
 
       val data = getDfCompleteAndInCompleteColumns(session)
@@ -131,7 +152,6 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(actualColumnProfile == expectedColumnProfile)
     }
 
-
     "return correct NumericColumnProfiles for numeric String DataType columns" in
       withSparkSession { session =>
 
@@ -171,6 +191,7 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
         assertProfilesEqual(expectedColumnProfile,
           actualColumnProfile.asInstanceOf[NumericColumnProfile])
     }
+
     "return correct NumericColumnProfiles for numeric String DataType columns when " +
       "kllProfiling disabled" in withSparkSession { session =>
 
@@ -562,7 +583,6 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
     )
 
     assertSameColumnProfiles(columnProfiles.profiles, expectedProfiles)
-
   }
 
   private[this] def assertSameColumnProfiles(
