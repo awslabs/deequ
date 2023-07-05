@@ -465,18 +465,24 @@ private[deequ] object Analyzers {
     conditionalSelection(col(selection), where)
   }
 
-  def conditionalSelection(selection: Column, where: Option[String], replaceWith: Double): Column = {
-    val conditionColumn = where.map(expr)
-    conditionColumn
+  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: Double): Column = {
+    where
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
   }
 
-  def conditionalSelection(selection: Column, where: Option[String], replaceWith: String): Column = {
-    val conditionColumn = where.map(expr)
-    conditionColumn
+  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: String): Column = {
+    where
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
+  }
+
+  def conditionalSelection(selection: Column, where: Option[String], replaceWith: Double): Column = {
+    conditionSelectionGivenColumn(selection, where.map(expr), replaceWith)
+  }
+
+  def conditionalSelection(selection: Column, where: Option[String], replaceWith: String): Column = {
+    conditionSelectionGivenColumn(selection, where.map(expr), replaceWith)
   }
 
   def conditionalSelection(selection: Column, condition: Option[String]): Column = {
