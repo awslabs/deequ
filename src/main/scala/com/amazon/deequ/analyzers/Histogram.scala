@@ -138,15 +138,6 @@ object Histogram {
   val count_function = "count"
   val sum_function = "sum"
 
-
-  def createAggregateFunction(function: String, aggregateColumn: String): AggregateFunction = {
-    function match {
-      case Histogram.count_function => Count
-      case Histogram.sum_function => Sum(aggregateColumn)
-      case _ => throw new IllegalArgumentException("Wrong aggregate function name: " + function)
-    }
-  }
-
   sealed trait AggregateFunction {
     def query(column: String, data: DataFrame): DataFrame
 
@@ -196,40 +187,6 @@ object Histogram {
 
     override def function(): String = sum_function
   }
-
-//  case class Min(aggColumn: String) extends AggregateFunction {
-//    override def query(column: String, data: DataFrame): DataFrame = {
-//      data
-//        .select(col(column).cast(StringType), col(aggColumn).cast(LongType))
-//        .na.fill(Histogram.NullFieldReplacement)
-//        .groupBy(column)
-//        .min(aggColumn)
-//        .withColumnRenamed("count", Analyzers.COUNT_COL)
-//    }
-//
-//    override def aggregateColumn(): Option[String] = {
-//      Some(aggColumn)
-//    }
-//
-//    override def function(): String = min
-//  }
-//
-//  case class Max(aggColumn: String) extends AggregateFunction {
-//    override def query(column: String, data: DataFrame): DataFrame = {
-//      data
-//        .select(col(column).cast(StringType), col(aggColumn).cast(LongType))
-//        .na.fill(Histogram.NullFieldReplacement)
-//        .groupBy(column)
-//        .max(aggColumn)
-//        .withColumnRenamed("count", Analyzers.COUNT_COL)
-//    }
-//
-//    override def aggregateColumn(): Option[String] = {
-//      Some(aggColumn)
-//    }
-//
-//    override def function(): String = max
-//  }
 }
 
 
