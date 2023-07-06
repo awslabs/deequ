@@ -58,7 +58,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       Histogram("ColumnA") ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5)), 10))),
-      Histogram("ColumnA", None) ->
+      Histogram ("ColumnA", None) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5), "other" -> DistributionValue(0, 0)), 10))),
       Histogram("ColumnA", None, 5) ->
@@ -87,7 +87,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     ))
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
-      .toEpochSecond(ZoneOffset.UTC)
+        .toEpochSecond(ZoneOffset.UTC)
     val resultKeyOne = ResultKey(dateTime, Map("Region" -> "EU"))
     val resultKeyTwo = ResultKey(dateTime, Map("Region" -> "NA"))
 
@@ -131,12 +131,12 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       Map(
         Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
         Completeness("ColumnA") ->
-          DoubleMetric(Entity.Column, "Completeness", "ColumnA", Failure(sampleException))
+            DoubleMetric(Entity.Column, "Completeness", "ColumnA", Failure(sampleException))
       )
     )
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
-      .toEpochSecond(ZoneOffset.UTC)
+        .toEpochSecond(ZoneOffset.UTC)
     val resultKeyOne = ResultKey(dateTime, Map("Region" -> "EU"))
     val resultKeyTwo = ResultKey(dateTime, Map("Region" -> "NA"))
 
@@ -145,7 +145,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     val analysisResultTwo = AnalysisResult(resultKeyTwo, analyzerContextWithMixedValues)
 
     assertCorrectlyConvertsAnalysisResults(Seq(analysisResultOne, analysisResultTwo),
-      shouldFail = true)
+        shouldFail = true)
   }
 
   "serialization of ApproxQuantile" should "correctly restore it" in {

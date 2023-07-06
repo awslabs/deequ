@@ -189,9 +189,6 @@ object Histogram {
   }
 }
 
-
-
-
 object OrderByAbsoluteCount extends Ordering[Row] {
   override def compare(x: Row, y: Row): Int = {
     x.getLong(1).compareTo(y.getLong(1))
