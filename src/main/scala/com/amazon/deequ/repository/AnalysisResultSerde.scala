@@ -30,6 +30,7 @@ import scala.collection._
 import scala.collection.JavaConverters._
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
 import JsonSerializationConstants._
+import com.amazon.deequ.analyzers.Histogram.{AggregateFunction, Count => HistogramCount, Sum => HistogramSum}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
 
@@ -302,6 +303,12 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
         result.addProperty(COLUMN_FIELD, histogram.column)
         result.addProperty("maxDetailBins", histogram.maxDetailBins)
+        // Count is initial and default implementation for Histogram
+        // We don't include fields below in json to preserve json backward compatibility.
+        if (histogram.aggregateFunction != Histogram.Count) {
+          result.addProperty("aggregateFunction", histogram.aggregateFunction.function())
+          result.addProperty("aggregateColumn", histogram.aggregateFunction.aggregateColumn().get)
+        }
 
       case _ : Histogram =>
         throw new IllegalArgumentException("Unable to serialize Histogram with binningUdf!")
@@ -436,7 +443,10 @@ private[deequ] object AnalyzerDeserializer
         Histogram(
           json.get(COLUMN_FIELD).getAsString,
           None,
-          json.get("maxDetailBins").getAsInt)
+          json.get("maxDetailBins").getAsInt,
+          aggregateFunction = createAggregateFunction(
+            getOptionalStringParam(json, "aggregateFunction").getOrElse(Histogram.count_function),
+            getOptionalStringParam(json, "aggregateColumn").getOrElse("")))
 
       case "DataType" =>
         DataType(
@@ -489,10 +499,22 @@ private[deequ] object AnalyzerDeserializer
   }
 
   private[this] def getOptionalWhereParam(jsonObject: JsonObject): Option[String] = {
-    if (jsonObject.has(WHERE_FIELD)) {
-      Option(jsonObject.get(WHERE_FIELD).getAsString)
+    getOptionalStringParam(jsonObject, WHERE_FIELD)
+  }
+
+  private[this] def getOptionalStringParam(jsonObject: JsonObject, field: String): Option[String] = {
+    if (jsonObject.has(field)) {
+      Option(jsonObject.get(field).getAsString)
     } else {
       None
+    }
+  }
+
+  private[this] def createAggregateFunction(function: String, aggregateColumn: String): AggregateFunction = {
+    function match {
+      case Histogram.count_function => HistogramCount
+      case Histogram.sum_function => HistogramSum(aggregateColumn)
+      case _ => throw new IllegalArgumentException("Wrong aggregate function name: " + function)
     }
   }
 }

@@ -16,17 +16,20 @@
 
 package com.amazon.deequ.analyzers
 
+import com.amazon.deequ.analyzers.Histogram.{AggregateFunction, Count}
 import com.amazon.deequ.analyzers.runners.{IllegalAnalyzerParameterException, MetricCalculationException}
 import com.amazon.deequ.metrics.{Distribution, DistributionValue, HistogramMetric}
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.functions.{col, sum}
+import org.apache.spark.sql.types.{DoubleType, LongType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
+
 import scala.util.{Failure, Try}
 
 /**
   * Histogram is the summary of values in a column of a DataFrame. Groups the given column's values,
-  * and calculates the number of rows with that specific value and the fraction of this value.
+  * and calculates either number of rows or with that specific value and the fraction of this value or
+  * sum of values in other column.
   *
   * @param column        Column to do histogram analysis on
   * @param binningUdf    Optional binning function to run before grouping to re-categorize the
@@ -37,13 +40,15 @@ import scala.util.{Failure, Try}
   *                      maxBins sets the N.
   *                      This limit does not affect what is being returned as number of bins. It
   *                      always returns the dictinct value count.
+  * @param aggregateFunction function that implements aggregation logic.
   */
 case class Histogram(
     column: String,
     binningUdf: Option[UserDefinedFunction] = None,
     maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
     where: Option[String] = None,
-    computeFrequenciesAsRatio: Boolean = true)
+    computeFrequenciesAsRatio: Boolean = true,
+    aggregateFunction: AggregateFunction = Count)
   extends Analyzer[FrequenciesAndNumRows, HistogramMetric]
   with FilterableAnalyzer {
 
@@ -58,19 +63,15 @@ case class Histogram(
 
     // TODO figure out a way to pass this in if its known before hand
     val totalCount = if (computeFrequenciesAsRatio) {
-      data.count()
+      aggregateFunction.total(data)
     } else {
       1
     }
 
-    val frequencies = data
+    val df = data
       .transform(filterOptional(where))
       .transform(binOptional(binningUdf))
-      .select(col(column).cast(StringType))
-      .na.fill(Histogram.NullFieldReplacement)
-      .groupBy(column)
-      .count()
-      .withColumnRenamed("count", Analyzers.COUNT_COL)
+    val frequencies = query(df)
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))
   }
@@ -125,11 +126,67 @@ case class Histogram(
       case _ => data
     }
   }
+
+  private def query(data: DataFrame): DataFrame = {
+    aggregateFunction.query(this.column, data)
+  }
 }
 
 object Histogram {
   val NullFieldReplacement = "NullValue"
   val MaximumAllowedDetailBins = 1000
+  val count_function = "count"
+  val sum_function = "sum"
+
+  sealed trait AggregateFunction {
+    def query(column: String, data: DataFrame): DataFrame
+
+    def total(data: DataFrame): Long
+
+    def aggregateColumn(): Option[String]
+
+    def function(): String
+  }
+
+  case object Count extends AggregateFunction {
+    override def query(column: String, data: DataFrame): DataFrame = {
+      data
+        .select(col(column).cast(StringType))
+        .na.fill(Histogram.NullFieldReplacement)
+        .groupBy(column)
+        .count()
+        .withColumnRenamed("count", Analyzers.COUNT_COL)
+    }
+
+    override def aggregateColumn(): Option[String] = None
+
+    override def function(): String = count_function
+
+    override def total(data: DataFrame): Long = {
+      data.count()
+    }
+  }
+
+  case class Sum(aggColumn: String) extends AggregateFunction {
+    override def query(column: String, data: DataFrame): DataFrame = {
+      data
+        .select(col(column).cast(StringType), col(aggColumn).cast(LongType))
+        .na.fill(Histogram.NullFieldReplacement)
+        .groupBy(column)
+        .sum(aggColumn)
+        .withColumnRenamed("count", Analyzers.COUNT_COL)
+    }
+
+    override def total(data: DataFrame): Long = {
+      data.groupBy().sum(aggColumn).first().getLong(0)
+    }
+
+    override def aggregateColumn(): Option[String] = {
+      Some(aggColumn)
+    }
+
+    override def function(): String = sum_function
+  }
 }
 
 object OrderByAbsoluteCount extends Ordering[Row] {
