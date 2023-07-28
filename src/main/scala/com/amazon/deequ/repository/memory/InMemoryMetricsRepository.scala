@@ -21,7 +21,7 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import java.util.concurrent.ConcurrentHashMap
 
 /** A simple Repository implementation backed by a concurrent hash map */
@@ -118,6 +118,7 @@ class LimitedInMemoryMetricsRepositoryMultipleResultsLoader(
   /** Get the AnalysisResult */
   def get(): Seq[AnalysisResult] = {
     resultsRepository
+      .asScala
       .filterKeys(key => after.isEmpty || after.get <= key.dataSetDate)
       .filterKeys(key => before.isEmpty || key.dataSetDate <= before.get)
       .filterKeys(key => tagValues.isEmpty || tagValues.get.toSet.subsetOf(key.tags.toSet))
@@ -129,7 +130,7 @@ class LimitedInMemoryMetricsRepositoryMultipleResultsLoader(
           .metricMap
           .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer))
 
-        AnalysisResult(analysisResult.resultKey, AnalyzerContext(requestedMetrics))
+        AnalysisResult(analysisResult.resultKey, AnalyzerContext(requestedMetrics.toMap))
       }
       .toSeq
   }

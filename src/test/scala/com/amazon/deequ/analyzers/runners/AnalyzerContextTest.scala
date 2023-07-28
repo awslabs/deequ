@@ -81,20 +81,20 @@ class AnalyzerContextTest extends AnyWordSpec
 
           val successMetricsResultsJson = AnalyzerContext.successMetricsAsJson(results)
 
-          val expectedJson =
-            """[
-              |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
-              |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
-              |{"entity":"Dataset","instance":"*","name":"Size (where: att2 == 'd')","value":1.0},
-              |{"entity":"Dataset","instance":"*","name":"Size","value":4.0},
-              |{"entity":"Column","instance":"att1","name":"Histogram.bins","value":2.0},
-              |{"entity":"Column","instance":"att1","name":"Histogram.abs.a","value":3.0},
-              |{"entity":"Column","instance":"att1","name":"Histogram.ratio.a","value":0.75},
-              |{"entity":"Column","instance":"att1","name":"Histogram.abs.b","value":1.0},
-              |{"entity":"Column","instance":"att1","name":"Histogram.ratio.b","value":0.25}
-              |]"""
-              .stripMargin.replaceAll("\n", "")
+            val expectedJson =
+              """[
+                |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
+                |{"entity":"Dataset","instance":"*","name":"Size (where: att2 == 'd')","value":1.0},
+                |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
+                |{"entity":"Column","instance":"att1","name":"Histogram.bins","value":2.0},
+                |{"entity":"Column","instance":"att1","name":"Histogram.abs.a","value":3.0},
+                |{"entity":"Column","instance":"att1","name":"Histogram.ratio.a","value":0.75},
+                |{"entity":"Column","instance":"att1","name":"Histogram.abs.b","value":1.0},
+                |{"entity":"Column","instance":"att1","name":"Histogram.ratio.b","value":0.25},
+                |{"entity":"Dataset","instance":"*","name":"Size","value":4.0},
+                |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0}
+                |]"""
+                .stripMargin.replaceAll("\n", "")
 
           assertSameJson(successMetricsResultsJson, expectedJson)
         }
@@ -110,10 +110,11 @@ class AnalyzerContextTest extends AnyWordSpec
           val successMetricsResultsJson =
             AnalyzerContext.successMetricsAsJson(results, metricsForAnalyzers)
 
-          val expectedJson =
-            """[{"entity":"Column","instance":"att1","name":"Completeness","value":1.0},
-              |{"entity":"Multicolumn","instance":"att1,att2",
-              |"name":"Uniqueness","value":0.25}]"""
+           val expectedJson =
+            """[
+              |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25},
+              |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0}
+              |]"""
             .stripMargin.replaceAll("\n", "")
 
           assertSameJson(successMetricsResultsJson, expectedJson)

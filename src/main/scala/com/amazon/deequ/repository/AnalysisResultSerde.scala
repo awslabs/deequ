@@ -27,14 +27,13 @@ import com.google.gson._
 import com.google.gson.reflect.TypeToken
 
 import scala.collection._
-import scala.collection.JavaConverters._
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
 import JsonSerializationConstants._
 import com.amazon.deequ.analyzers.Histogram.{AggregateFunction, Count => HistogramCount, Sum => HistogramSum}
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 
 private[repository] object JsonSerializationConstants {
 
@@ -70,6 +69,7 @@ private[deequ] object SimpleResultSerde {
       .asInstanceOf[JArrayList[JMap[String, String]]]
       .asScala
       .map(map => immutable.Map(map.asScala.toList: _*))
+      .toSeq
   }
 }
 
@@ -422,22 +422,22 @@ private[deequ] object AnalyzerDeserializer
           getOptionalWhereParam(json))
 
       case "CountDistinct" =>
-        CountDistinct(getColumnsAsSeq(context, json))
+        CountDistinct(getColumnsAsSeq(context, json).toSeq)
 
       case "Distinctness" =>
-        Distinctness(getColumnsAsSeq(context, json))
+        Distinctness(getColumnsAsSeq(context, json).toSeq)
 
       case "Entropy" =>
         Entropy(json.get(COLUMN_FIELD).getAsString)
 
       case "MutualInformation" =>
-        MutualInformation(getColumnsAsSeq(context, json))
+        MutualInformation(getColumnsAsSeq(context, json).toSeq)
 
       case "UniqueValueRatio" =>
-        UniqueValueRatio(getColumnsAsSeq(context, json))
+        UniqueValueRatio(getColumnsAsSeq(context, json).toSeq)
 
       case "Uniqueness" =>
-        Uniqueness(getColumnsAsSeq(context, json))
+        Uniqueness(getColumnsAsSeq(context, json).toSeq)
 
       case "Histogram" =>
         Histogram(
@@ -598,7 +598,7 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
         val instance = jsonObject.get("instance").getAsString
         if (jsonObject.has("value")) {
           val entries = jsonObject.get("value").getAsJsonObject
-          val values = entries.entrySet().map { entry =>
+          val values = entries.entrySet().asScala.map { entry =>
             entry.getKey -> entry.getValue.getAsDouble
           }
           .toMap

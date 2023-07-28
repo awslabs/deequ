@@ -186,6 +186,14 @@ object VerificationResult {
       }
   }
 
-  private[this] case class SimpleCheckResultOutput(checkDescription: String, checkLevel: String,
+  // remove private as it breaks somethingwith scala 2.13
+  // java.lang.RuntimeException: Error while encoding: java.util.concurrent.ExecutionException:
+  // org.codehaus.commons.compiler.CompileException:
+  // File 'generated.java', Line 105, Column 25: failed to compile:
+  // org.codehaus.commons.compiler.CompileException: File 'generated.java',
+  // Line 105, Column 25: No applicable constructor/method found for zero actual parameters; candidates are:
+  // "public java.lang.String com.amazon.deequ.VerificationResult$SimpleCheckResultOutput.constraintStatus()"
+  // private[this]
+  case class SimpleCheckResultOutput(checkDescription: String, checkLevel: String,
     checkStatus: String, constraint: String, constraintStatus: String, constraintMessage: String)
 }

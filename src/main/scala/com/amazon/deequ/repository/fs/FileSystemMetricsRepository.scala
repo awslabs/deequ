@@ -153,10 +153,11 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
           .metricMap
           .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer))
 
-        val requestedAnalyzerContext = AnalyzerContext(requestedMetrics)
+        val requestedAnalyzerContext = AnalyzerContext(requestedMetrics.toMap)
 
         AnalysisResult(analysisResult.resultKey, requestedAnalyzerContext)
       }
+      .toSeq
   }
 }
 

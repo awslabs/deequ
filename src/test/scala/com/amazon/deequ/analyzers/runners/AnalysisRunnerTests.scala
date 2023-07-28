@@ -184,12 +184,13 @@ class AnalysisRunnerTests extends AnyWordSpec
           Uniqueness("att1", Some("att3 = 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results: Seq[com.amazon.deequ.metrics.DoubleMetric] =
+            analyzers.map { _.calculate(df) }.toSeq.sortBy(_.name)
           (results, stat.jobCount)
         }
 
         val (runnerResults, numCombinedJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSet
+          val results = AnalysisRunner.onData(df).addAnalyzers(analyzers).run().allMetrics.toSeq.sortBy(_.name)
           (results, stat.jobCount)
         }
 
