@@ -83,7 +83,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
           SampleAnalyzer("att1"), _ == 1.0), df)
 
         assert(resultA.status == ConstraintStatus.Success)
-        assert(resultA.message.isEmpty)
+        assert(resultA.message.contains("Value: 1.0 meets the constraint requirement."))
         assert(resultA.metric.isDefined)
 
         // Analysis result should equal to 1.0 for an existing column

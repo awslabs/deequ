@@ -74,7 +74,10 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
           val assertionOk = runAssertion(assertOn)
 
           if (assertionOk) {
-            ConstraintResult(this, ConstraintStatus.Success, metric = Some(metric))
+            var successMessage = s"Value: $assertOn meets the constraint requirement."
+            hint.foreach(hint => successMessage += s" $hint")
+
+            ConstraintResult(this, ConstraintStatus.Success, Some(successMessage), Some(metric))
           } else {
             var errorMessage = s"Value: $assertOn does not meet the constraint requirement!"
             hint.foreach(hint => errorMessage += s" $hint")
