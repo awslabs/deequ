@@ -1083,6 +1083,12 @@ object Check {
   /** A common assertion function checking if the value is 1 */
   val IsOne: Double => Boolean = { _ == 1.0 }
 
+  def fromConstraint(constraint: Constraint,
+                     description: String,
+                     checkLevel: CheckLevel.Value = CheckLevel.Error): Check = {
+    Check(checkLevel, description, constraints = Seq(constraint))
+  }
+
   /**
     * Common assertion function checking if the value can be considered as normal (that no
     * anomalies were detected), given the anomaly detection strategy and details on how to retrieve
