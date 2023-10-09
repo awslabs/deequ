@@ -17,8 +17,13 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.MetricCalculationException
+import com.amazon.deequ.checks.Check
+import com.amazon.deequ.checks.CheckLevel
+import com.amazon.deequ.checks.CheckResult
+import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.constraints.ConstraintUtils.calculate
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.utils.FixtureSupport
@@ -73,6 +78,24 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
   }
 
   "Analysis based constraint" should {
+
+    "can convert an analyzer to a Check" in
+      withSparkSession { sparkSession =>
+        val completeness = Completeness("att1")
+        val constraint1 = Constraint.fromAnalyzer(completeness, d => d > 1)
+        val size: Size = Size()
+        val sizeAssertion: (Long => Boolean) = d => d > 0
+        val constraint2 = Constraint.fromAnalyzer(size, sizeAssertion, None)
+
+        val check1 = Check.fromConstraint(constraint1, s"Completeness att1")
+        val check2 = Check.fromConstraint(constraint2, "Size")
+
+        val df = getDfMissing(sparkSession)
+
+        val result = new VerificationSuite().onData(df).addCheck(check1).run()
+
+        assert(result.status == CheckStatus.Error)
+      }
 
     "assert correctly on values if analysis is successful" in
       withSparkSession { sparkSession =>
