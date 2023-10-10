@@ -229,6 +229,7 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <phase>process-resources</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>

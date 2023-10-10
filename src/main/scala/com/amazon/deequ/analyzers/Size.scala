@@ -20,6 +20,17 @@ import com.amazon.deequ.metrics.Entity
 import org.apache.spark.sql.{Column, Row}
 import Analyzers._
 
+case class CustomSqlState(stateOrError: Either[Double, String]) extends DoubleValuedState[CustomSqlState] {
+  lazy val state = stateOrError.left.get
+  lazy val error = stateOrError.right.get
+
+  override def sum(other: CustomSqlState): CustomSqlState = {
+    CustomSqlState(Left(state + other.state))
+  }
+
+  override def metricValue(): Double = state
+}
+
 case class NumMatches(numMatches: Long) extends DoubleValuedState[NumMatches] {
 
   override def sum(other: NumMatches): NumMatches = {
