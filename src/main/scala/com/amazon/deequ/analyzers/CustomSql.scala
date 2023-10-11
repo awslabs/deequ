@@ -24,6 +24,7 @@ import org.apache.spark.sql.types.DoubleType
 
 import scala.util.Failure
 import scala.util.Success
+import scala.util.Try
 
 case class CustomSql(expression: String) extends Analyzer[CustomSqlState, DoubleMetric] {
   /**
@@ -33,18 +34,24 @@ case class CustomSql(expression: String) extends Analyzer[CustomSqlState, Double
    * @return
    */
   override def computeStateFrom(data: DataFrame): Option[CustomSqlState] = {
-    val dfSql = data.sqlContext.sql(expression)
-    val cols = dfSql.columns.toSeq
-    cols match {
-      case Seq(resultCol) =>
-        val dfSqlCast = dfSql.withColumn(resultCol, col(resultCol).cast(DoubleType))
-        val results: Seq[Row] = dfSqlCast.collect()
-        if (results.size != 1) {
-          Some(CustomSqlState(Right("Custom SQL did not return exactly 1 row")))
-        } else {
-          Some(CustomSqlState(Left(results.head.get(0).asInstanceOf[Double])))
+
+    Try {
+      data.sqlContext.sql(expression)
+    } match {
+      case Failure(e) => Some(CustomSqlState(Right(e.getMessage)))
+      case Success(dfSql) =>
+        val cols = dfSql.columns.toSeq
+        cols match {
+          case Seq(resultCol) =>
+            val dfSqlCast = dfSql.withColumn(resultCol, col(resultCol).cast(DoubleType))
+            val results: Seq[Row] = dfSqlCast.collect()
+            if (results.size != 1) {
+              Some(CustomSqlState(Right("Custom SQL did not return exactly 1 row")))
+            } else {
+              Some(CustomSqlState(Left(results.head.get(0).asInstanceOf[Double])))
+            }
+          case _ => Some(CustomSqlState(Right("Custom SQL did not return exactly 1 column")))
         }
-      case _ => Some(CustomSqlState(Right("Custom SQL did not return exactly 1 column")))
     }
   }
 
