@@ -68,7 +68,21 @@ class CustomSqlTest extends AnyWordSpec with Matchers with SparkContextSpec with
         case Success(_) => fail("Should have failed")
         case Failure(exception) => exception.getMessage shouldBe "Custom SQL did not return exactly 1 column"
       }
+    }
 
+    "returns the error if the SQL statement has a syntax error" in withSparkSession { session =>
+      val data = getDfWithStringColumns(session)
+      data.createOrReplaceTempView("primary")
+
+      val sql = CustomSql("Select `foo` from primary")
+      val state = sql.computeStateFrom(data)
+      val metric = sql.computeMetricFrom(state)
+
+      metric.value.isFailure shouldBe true
+      metric.value match {
+        case Success(_) => fail("Should have failed")
+        case Failure(exception) => exception.getMessage should include("`foo`")
+      }
     }
   }
 }
