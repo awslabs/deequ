@@ -507,6 +507,26 @@ case class Check(
   }
 
   /**
+   * Creates a constraint that asserts on an exact quantile
+   *
+   * @param column    Column to run the assertion on
+   * @param quantile  Which quantile to assert on
+   * @param assertion Function that receives a double input parameter (the computed quantile)
+   *                  and returns a boolean
+   * @param hint      A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasExactQuantile(column: String,
+                        quantile: Double,
+                        assertion: Double => Boolean,
+                        hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint(filter =>
+      exactQuantileConstraint(column, quantile, assertion, filter, hint))
+  }
+
+  /**
     * Creates a constraint that asserts on the minimum length of the column
     *
     * @param column Column to run the assertion on
