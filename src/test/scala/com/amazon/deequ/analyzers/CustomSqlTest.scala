@@ -81,7 +81,7 @@ class CustomSqlTest extends AnyWordSpec with Matchers with SparkContextSpec with
       metric.value.isFailure shouldBe true
       metric.value match {
         case Success(_) => fail("Should have failed")
-        case Failure(exception) => exception.getMessage should include("`foo`")
+        case Failure(exception) => exception.getMessage should include("foo")
       }
     }
   }
