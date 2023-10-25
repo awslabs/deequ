@@ -59,7 +59,8 @@ private[sql] case class StatefulHyperloglogPlus(
 
   override def dataType: DataType = BinaryType
 
-  override def aggBufferSchema: StructType = StructType.fromAttributes(aggBufferAttributes)
+  override def aggBufferSchema: StructType = StructType(aggBufferAttributes.map(a =>
+    StructField(a.name, a.dataType, a.nullable, a.metadata)))
 
   /** Allocate enough words to store all registers. */
   override val aggBufferAttributes: Seq[AttributeReference] = Seq.tabulate(NUM_WORDS) { i =>
