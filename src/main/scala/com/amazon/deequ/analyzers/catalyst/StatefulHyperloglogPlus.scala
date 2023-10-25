@@ -19,6 +19,7 @@ package org.apache.spark.sql.catalyst.expressions.aggregate
 
 import java.lang.{Long => JLong}
 import java.nio.ByteBuffer
+
 import com.amazon.deequ.analyzers.ApproxCountDistinctState
 import com.amazon.deequ.analyzers.catalyst.AttributeReferenceCreation
 import org.apache.spark.sql.catalyst.InternalRow
