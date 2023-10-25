@@ -19,7 +19,6 @@ package org.apache.spark.sql.catalyst.expressions.aggregate
 
 import java.lang.{Long => JLong}
 import java.nio.ByteBuffer
-
 import com.amazon.deequ.analyzers.ApproxCountDistinctState
 import com.amazon.deequ.analyzers.catalyst.AttributeReferenceCreation
 import org.apache.spark.sql.catalyst.InternalRow
@@ -27,6 +26,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.catalyst.expressions.aggregate.HLLConstants._
 import org.apache.spark.sql.catalyst.trees.UnaryLike
+import org.apache.spark.sql.catalyst.types.DataTypeUtils
 
 /** Adjusted version of org.apache.spark.sql.catalyst.expressions.aggregate.HyperloglogPlus */
 private[sql] case class StatefulHyperloglogPlus(
@@ -59,8 +59,7 @@ private[sql] case class StatefulHyperloglogPlus(
 
   override def dataType: DataType = BinaryType
 
-  override def aggBufferSchema: StructType = StructType(aggBufferAttributes.map(a =>
-    StructField(a.name, a.dataType, a.nullable, a.metadata)))
+  override def aggBufferSchema: StructType = DataTypeUtils.fromAttributes(aggBufferAttributes)
 
   /** Allocate enough words to store all registers. */
   override val aggBufferAttributes: Seq[AttributeReference] = Seq.tabulate(NUM_WORDS) { i =>
