@@ -96,10 +96,11 @@ object DataSynchronization extends ComparisonBase {
                   assertion: Double => Boolean): ComparisonResult = {
     val columnErrors = areKeyColumnsValid(ds1, ds2, colKeyMap)
     if (columnErrors.isEmpty) {
+      // Get all the non-key columns from DS1 and verify that they are present in DS2
       val colsDS1 = ds1.columns.filterNot(x => colKeyMap.keys.toSeq.contains(x)).sorted
-      val colsDS2 = ds2.columns.filterNot(x => colKeyMap.values.toSeq.contains(x)).sorted
+      val nonKeyColsMatch = colsDS1.forall { col => Try { ds2(col) }.isSuccess }
 
-      if (!(colsDS1 sameElements colsDS2)) {
+      if (!nonKeyColsMatch) {
         ComparisonFailed("Non key columns in the given data frames do not match.")
       } else {
         val mergedMaps = colKeyMap ++ colsDS1.map(x => x -> x).toMap
@@ -152,9 +153,11 @@ object DataSynchronization extends ComparisonBase {
           case compCols => Right(compCols)
         }
       } else {
+        // Get all the non-key columns from DS1 and verify that they are present in DS2
         val ds1NonKeyCols = ds1.columns.filterNot(x => colKeyMap.keys.toSeq.contains(x)).sorted
-        val ds2NonKeyCols = ds2.columns.filterNot(x => colKeyMap.values.toSeq.contains(x)).sorted
-        if (!(ds1NonKeyCols sameElements ds2NonKeyCols)) {
+        val nonKeyColsMatch = ds1NonKeyCols.forall { col => Try { ds2(col) }.isSuccess }
+
+        if (!nonKeyColsMatch) {
           Left(ComparisonFailed("Non key columns in the given data frames do not match."))
         } else {
           Right(ds1NonKeyCols.map { c => c -> c}.toMap)
