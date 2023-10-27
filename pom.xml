@@ -211,6 +211,7 @@
                 <artifactId>scalatest-maven-plugin</artifactId>
                 <version>1.0</version>
                 <configuration>
+                    <stdout>F</stdout>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>WDF TestSuite.txt</filereports>

@@ -22,10 +22,9 @@ import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
-import com.amazon.deequ.constraints.Constraint
+import com.amazon.deequ.constraints.{Constraint, ConstraintResult}
 import com.amazon.deequ.io.DfsUtils
-import com.amazon.deequ.metrics.DoubleMetric
-import com.amazon.deequ.metrics.Entity
+import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -847,6 +846,55 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe
           List(Some("Input data does not include column fake!"))
         assert(checkFailedCompletenessResult.status == CheckStatus.Error)
+    }
+
+    "Well-defined checks should produce correct result even if another check throws an exception" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithNameAndAge(sparkSession)
+
+
+        val checkThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForValue").isComplete("name")
+
+
+        val checkThatWillThrow = Check(CheckLevel.Error, "shouldThrow")
+          .hasSize(_ => {
+            throw new IllegalArgumentException("borked")
+          })
+
+        val complianceCheckThatShouldSucceed =
+          Check(CheckLevel.Error, "shouldSucceedForAge").isContainedIn("age", 1, 100)
+
+
+        val isCompleteCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
+          .isComplete("fake")
+
+        val verificationResult = VerificationSuite()
+            .onData(df)
+            .addCheck(checkThatShouldSucceed)
+            .addCheck(checkThatWillThrow)
+            .addCheck(isCompleteCheckThatShouldFailCompleteness)
+            .addCheck(complianceCheckThatShouldSucceed)
+            .run()
+
+        val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkSuccessResult.status == CheckStatus.Success)
+
+        val checkExceptionResult = verificationResult.checkResults(checkThatWillThrow)
+        checkExceptionResult.constraintResults.map(_.message) shouldBe
+          List(Some("Can't execute the assertion: borked!"))
+        assert(checkExceptionResult.status == CheckStatus.Error)
+
+        val checkIsCompleteFailedResult = verificationResult.checkResults(isCompleteCheckThatShouldFailCompleteness)
+        checkIsCompleteFailedResult.constraintResults.map(_.message) shouldBe
+          List(Some("Input data does not include column fake!"))
+        assert(checkIsCompleteFailedResult.status == CheckStatus.Error)
+
+        val checkAgeSuccessResult = verificationResult.checkResults(complianceCheckThatShouldSucceed)
+        checkAgeSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(checkAgeSuccessResult.status == CheckStatus.Success)
+
     }
 
     "A well-defined completeness check should pass even with a single column" in withSparkSession {
