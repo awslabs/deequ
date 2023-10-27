@@ -761,13 +761,15 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
 
       assert(overallResult1.isInstanceOf[ComparisonFailed])
       val failedOverallResult1 = overallResult1.asInstanceOf[ComparisonFailed]
-      assert(failedOverallResult1.errorMessage.contains(s"The following columns were not found in the first dataset: $nonExistCol1"))
+      assert(failedOverallResult1.errorMessage.contains(
+        s"The following columns were not found in the first dataset: $nonExistCol1"))
 
       // Non-key columns not in either dataset (Row level)
       val rowLevelResult1 = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compColsMap1))
       assert(rowLevelResult1.isLeft)
       val failedRowLevelResult1 = rowLevelResult1.left.get
-      assert(failedRowLevelResult1.errorMessage.contains(s"The following columns were not found in the first dataset: $nonExistCol1"))
+      assert(failedRowLevelResult1.errorMessage.contains(
+        s"The following columns were not found in the first dataset: $nonExistCol1"))
 
       // Non-key column not in first dataset
       val compColsMap2 = Map(nonExistCol1 -> "State")
@@ -775,13 +777,15 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
 
       assert(overallResult2.isInstanceOf[ComparisonFailed])
       val failedOverallResult2 = overallResult2.asInstanceOf[ComparisonFailed]
-      assert(failedOverallResult2.errorMessage.contains(s"The following columns were not found in the first dataset: $nonExistCol1"))
+      assert(failedOverallResult2.errorMessage.contains(
+        s"The following columns were not found in the first dataset: $nonExistCol1"))
 
       // Non-key columns not in first dataset (Row level)
       val rowLevelResult2 = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compColsMap2))
       assert(rowLevelResult2.isLeft)
       val failedRowLevelResult2 = rowLevelResult2.left.get
-      assert(failedRowLevelResult2.errorMessage.contains(s"The following columns were not found in the first dataset: $nonExistCol1"))
+      assert(failedRowLevelResult2.errorMessage.contains(
+        s"The following columns were not found in the first dataset: $nonExistCol1"))
 
       // Non-key column not in second dataset
       val compColsMap3 = Map("state" -> nonExistCol2)
@@ -789,13 +793,15 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
 
       assert(overallResult3.isInstanceOf[ComparisonFailed])
       val failedOverallResult3 = overallResult3.asInstanceOf[ComparisonFailed]
-      assert(failedOverallResult3.errorMessage.contains(s"The following columns were not found in the second dataset: $nonExistCol2"))
+      assert(failedOverallResult3.errorMessage.contains(
+        s"The following columns were not found in the second dataset: $nonExistCol2"))
 
       // Non-key column not in second dataset (Row level)
       val rowLevelResult3 = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, Some(compColsMap3))
       assert(rowLevelResult3.isLeft)
       val failedRowLevelResult3 = rowLevelResult3.left.get
-      assert(failedOverallResult3.errorMessage.contains(s"The following columns were not found in the second dataset: $nonExistCol2"))
+      assert(failedOverallResult3.errorMessage.contains(
+        s"The following columns were not found in the second dataset: $nonExistCol2"))
     }
   }
 }

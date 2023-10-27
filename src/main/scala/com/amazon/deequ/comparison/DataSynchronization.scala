@@ -161,7 +161,7 @@ object DataSynchronization extends ComparisonBase {
       val compColsEither: Either[ComparisonFailed, Map[String, String]] = if (optionalCompCols.isDefined) {
         optionalCompCols.get match {
           case compCols if compCols.isEmpty => Left(ComparisonFailed("Empty column comparison map provided."))
-          case compCols => {
+          case compCols =>
             val ds1CompColsNotInDataset = compCols.keys.filterNot(columnExists(ds1, _))
             val ds2CompColsNotInDataset = compCols.values.filterNot(columnExists(ds2, _))
             if (ds1CompColsNotInDataset.nonEmpty) {
@@ -177,7 +177,6 @@ object DataSynchronization extends ComparisonBase {
             } else {
               Right(compCols)
             }
-          }
         }
       } else {
         // Get all the non-key columns from DS1 and verify that they are present in DS2
