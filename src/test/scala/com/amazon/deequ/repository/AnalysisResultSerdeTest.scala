@@ -83,7 +83,9 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       MinLength("ColumnA") ->
         DoubleMetric(Entity.Column, "MinLength", "ColumnA", Success(5.0)),
       MaxLength("ColumnA") ->
-        DoubleMetric(Entity.Column, "MaxLength", "ColumnA", Success(5.0))
+        DoubleMetric(Entity.Column, "MaxLength", "ColumnA", Success(5.0)),
+      ExactQuantile("ColumnA", 0.5) ->
+        DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0))
     ))
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
@@ -167,6 +169,16 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     val analyzer = ApproxQuantiles("col", Seq(0.25, 0.5, 0.75), relativeError = 0.2)
     val metric = KeyedDoubleMetric(Entity.Column, "ApproxQuantiles", "col", Success(quartiles))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    assertCorrectlyConvertsAnalysisResults(Seq(result))
+  }
+
+  "serialization of ExactQuantile" should "correctly restore it" in {
+
+    val analyzer = ExactQuantile("col", 0.5)
+    val metric = DoubleMetric(Entity.Column, "ExactQuantile", "col", Success(0.5))
     val context = AnalyzerContext(Map(analyzer -> metric))
     val result = new AnalysisResult(ResultKey(0), context)
 

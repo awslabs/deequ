@@ -583,7 +583,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val numericAnalysis = AnalysisRunner.onData(dfNumeric).addAnalyzers(Seq(
         Minimum("att1"), Maximum("att1"), Mean("att1"), Sum("att1"),
         StandardDeviation("att1"), ApproxCountDistinct("att1"),
-        ApproxQuantile("att1", quantile = 0.5)))
+        ApproxQuantile("att1", quantile = 0.5), ExactQuantile("att1", quantile = 0.5)))
 
       val contextNumeric = numericAnalysis.run()
 
@@ -594,6 +594,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertSuccess(baseCheck.hasStandardDeviation("att1", _ == 1.707825127659933), contextNumeric)
       assertSuccess(baseCheck.hasApproxCountDistinct("att1", _ == 6.0), contextNumeric)
       assertSuccess(baseCheck.hasApproxQuantile("att1", quantile = 0.5, _ == 3.0), contextNumeric)
+      assertSuccess(baseCheck.hasExactQuantile("att1", quantile = 0.5, _ == 3.5), contextNumeric)
 
       val correlationAnalysisInformative = AnalysisRunner.onData(dfInformative)
         .addAnalyzer(Correlation("att1", "att2"))
@@ -632,6 +633,19 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
 
       assertSuccess(hasApproxQuantileCheck, context)
       assertSuccess(hasApproxQuantileCheckWithFilter, context)
+    }
+
+    "correctly evaluate hasExactQuantile constraints" in withSparkSession { sparkSession =>
+      val hasExactQuantileCheck = Check(CheckLevel.Error, "a")
+        .hasExactQuantile("att1", quantile = 0.5, _ == 3.5)
+      val hasExactQuantileCheckWithFilter = Check(CheckLevel.Error, "a")
+        .hasExactQuantile("att1", quantile = 0.5, _ == 5.0).where("att2 > 0")
+
+      val context = runChecks(getDfWithNumericValues(sparkSession), hasExactQuantileCheck,
+        hasExactQuantileCheckWithFilter)
+
+      assertSuccess(hasExactQuantileCheck, context)
+      assertSuccess(hasExactQuantileCheckWithFilter, context)
     }
 
     "yield correct results for minimum and maximum length stats" in

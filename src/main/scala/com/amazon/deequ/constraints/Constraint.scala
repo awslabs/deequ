@@ -489,6 +489,36 @@ object Constraint {
   }
 
   /**
+   * Runs exact quantile analysis on the given column and executes the assertion
+   *
+   * @param column    Column to run the assertion on
+   * @param quantile  Which quantile to assert on
+   * @param assertion Function that receives a double input parameter (the computed quantile)
+   *                  and returns a boolean
+   * @param where     Additional filter to apply before the analyzer is run.
+   * @param hint      A hint to provide additional context why a constraint could have failed
+   */
+  def exactQuantileConstraint(
+                                column: String,
+                                quantile: Double,
+                                assertion: Double => Boolean,
+                                where: Option[String] = None,
+                                hint: Option[String] = None)
+  : Constraint = {
+
+    val exactQuantile = ExactQuantile(column, quantile, where = where)
+
+    fromAnalyzer(exactQuantile, assertion, hint)
+  }
+
+  def fromAnalyzer(exactQuantile: ExactQuantile, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+    val constraint = AnalysisBasedConstraint[ExactQuantileState, Double, Double](
+      exactQuantile, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"ExactQuantileConstraint($exactQuantile)")
+  }
+
+  /**
     * Runs max length analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on
