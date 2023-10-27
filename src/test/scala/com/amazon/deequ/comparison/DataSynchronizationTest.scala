@@ -596,4 +596,95 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       assert(expected == rowLevelResults)
     }
   }
+
+  "Data Synchronization Schema Test for non key columns" should {
+    def primaryDataset(spark: SparkSession, idColumnName: String): DataFrame = {
+      import spark.implicits._
+      spark.sparkContext.parallelize(
+        Seq(
+          (1, "John", "NY"),
+          (2, "Javier", "WI"),
+          (3, "Helena", "TX"),
+          (4, "Helena", "TX"),
+          (5, "Nick", "FL"),
+          (6, "Molly", "TX")
+        )
+      ).toDF(idColumnName, "name", "state") // all lower case
+    }
+
+    def referenceDataset(spark: SparkSession, idColumnName: String): DataFrame = {
+      import spark.implicits._
+      spark.sparkContext.parallelize(
+        Seq(
+          (1, "John", "NY"),
+          (2, "Javier", "WI"),
+          (3, "Helena", "TX"),
+          (4, "Helena", "TX"),
+          (5, "Nicholas", "FL"),
+          (6, "Ms Molly", "TX")
+        )
+      ).toDF(idColumnName, "Name", "State") // upper case except for id
+    }
+
+    "works when key column names have different casings" in withSparkSession { spark =>
+      val id1ColumnName = "id"
+      val id2ColumnName = "ID"
+      val ds1 = primaryDataset(spark, id1ColumnName)
+      val ds2 = referenceDataset(spark, id2ColumnName)
+
+      // Not using id1ColumnName -> id2ColumnName intentionally.
+      // In Glue DQ, we accept the column names in two formats: mapping and non-mapping
+      // Mapping format is "col1 -> col2", when customer wants to compare columns with different names.
+      // Non-mapping format is just "col1", when customer has same column, regardless of case, in both datasets.
+      // A non-mapping format would translate it into the map below.
+      // We want to test that the functionality works as expected in that case.
+      val colKeyMap = Map(id1ColumnName -> id1ColumnName)
+
+      // Overall
+      val assertion: Double => Boolean = _ >= 0.6 // 4 out of 6 rows match
+      val overallResult = DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion)
+      assert(overallResult.isInstanceOf[ComparisonSucceeded])
+
+      // Row Level
+      val outcomeColName = "outcome"
+      val rowLevelResult = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, None, Some(outcomeColName))
+
+      assert(rowLevelResult.isRight)
+
+      val dfResult = rowLevelResult.right.get
+      val rowLevelResults = dfResult.collect().map { row =>
+        row.getAs[Int]("id") -> row.getAs[Boolean](outcomeColName)
+      }.toMap
+
+      val expected = Map(1 -> true, 2 -> true, 3 -> true, 4 -> true, 5 -> false, 6 -> false)
+      assert(expected == rowLevelResults)
+    }
+
+    "works when non-key column names have different casings" in withSparkSession { spark =>
+      val idColumnName = "id"
+      val ds1 = primaryDataset(spark, idColumnName)
+      val ds2 = referenceDataset(spark, idColumnName)
+
+      val colKeyMap = Map(idColumnName -> idColumnName)
+
+      // Overall
+      val assertion: Double => Boolean = _ >= 0.6 // 4 out of 6 rows match
+      val overallResult = DataSynchronization.columnMatch(ds1, ds2, colKeyMap, assertion)
+      assert(overallResult.isInstanceOf[ComparisonSucceeded])
+
+      // Row Level
+      val outcomeColName = "outcome"
+      val rowLevelResult = DataSynchronization.columnMatchRowLevel(ds1, ds2, colKeyMap, None, Some(outcomeColName))
+
+      assert(rowLevelResult.isRight)
+
+      val dfResult = rowLevelResult.right.get
+      val rowLevelResults = dfResult.collect().map { row =>
+        row.getAs[Int]("id") -> row.getAs[Boolean](outcomeColName)
+      }.toMap
+
+      val expected = Map(1 -> true, 2 -> true, 3 -> true, 4 -> true, 5 -> false, 6 -> false)
+      assert(expected == rowLevelResults)
+    }
+  }
 }
