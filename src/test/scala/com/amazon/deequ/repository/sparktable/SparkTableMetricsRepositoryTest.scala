@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -35,7 +35,7 @@ class SparkTableMetricsRepositoryTest extends AnyWordSpec
   private val analyzer = Size()
 
   "spark table metrics repository " should {
-    "save and load a single metric" in withSparkSession { spark => {
+    "save and load a single metric" in withSparkSessionCustomWareHouse { spark =>
       val resultKey = ResultKey(System.currentTimeMillis(), Map("tag" -> "value"))
       val metric = DoubleMetric(Entity.Column, "m1", "", Try(100))
       val context = AnalyzerContext(Map(analyzer -> metric))
@@ -49,11 +49,10 @@ class SparkTableMetricsRepositoryTest extends AnyWordSpec
 
       assert(loadedContext.isDefined)
       assert(loadedContext.get.metric(analyzer).contains(metric))
-    }
 
     }
 
-    "save multiple metrics and load them" in withSparkSession { spark => {
+    "save multiple metrics and load them" in withSparkSessionCustomWareHouse { spark =>
       val repository = new SparkTableMetricsRepository(spark, "metrics_table")
 
       val resultKey1 = ResultKey(System.currentTimeMillis(), Map("tag" -> "tagValue1"))
@@ -72,10 +71,10 @@ class SparkTableMetricsRepositoryTest extends AnyWordSpec
       assert(loadedMetrics.length == 2)
 
       loadedMetrics.flatMap(_.resultKey.tags)
-    }
+
     }
 
-    "save and load metrics with tag" in withSparkSession { spark => {
+    "save and load metrics with tag" in withSparkSessionCustomWareHouse { spark =>
       val repository = new SparkTableMetricsRepository(spark, "metrics_table")
 
       val resultKey1 = ResultKey(System.currentTimeMillis(), Map("tag" -> "A"))
@@ -90,12 +89,15 @@ class SparkTableMetricsRepositoryTest extends AnyWordSpec
       repository.save(resultKey2, context2)
       val loadedMetricsForTagA = repository.load().withTagValues(Map("tag" -> "A")).get()
       assert(loadedMetricsForTagA.length == 1)
-      // additional assertions to ensure the loaded metric is the one with tag "A"
 
-      val loadedMetricsForMetricM1 = repository.load().forAnalyzers(Seq(analyzer))
-      assert(loadedMetricsForTagA.length == 1)
+      val tagsMapA = loadedMetricsForTagA.flatMap(_.resultKey.tags).toMap
+      assert(tagsMapA.size == 1, "should have 1 result")
+      assert(tagsMapA.contains("tag"), "should contain tag")
+      assert(tagsMapA("tag") == "A", "tag should be A")
 
-    }
+      val loadedMetricsForAllMetrics = repository.load().forAnalyzers(Seq(analyzer)).get()
+      assert(loadedMetricsForAllMetrics.length == 2, "should have 2 results")
+
     }
 
     "save and load to iceberg a single metric" in withSparkSessionIcebergCatalog { spark => {

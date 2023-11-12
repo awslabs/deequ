@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -27,13 +27,13 @@ import scala.collection.convert.ImplicitConversions.`iterator asScala`
   */
 trait SparkContextSpec {
 
-  val warehouseDir: Path = Files.createTempDirectory("my_temp_dir_")
+  val tmpWareHouseDir: Path = Files.createTempDirectory("deequ_tmp")
 
   /**
     * @param testFun thunk to run with SparkSession as an argument
     */
   def withSparkSession(testFun: SparkSession => Any): Unit = {
-    val session = setupSparkSession
+    val session = setupSparkSession()
     try {
       testFun(session)
     } finally {
@@ -42,11 +42,20 @@ trait SparkContextSpec {
     }
   }
 
+  def withSparkSessionCustomWareHouse(testFun: SparkSession => Any): Unit = {
+    val session = setupSparkSession(Some(tmpWareHouseDir.toAbsolutePath.toString))
+    try {
+      testFun(session)
+    } finally {
+      tearDownSparkSession(session)
+    }
+  }
+
   def withSparkSessionIcebergCatalog(testFun: SparkSession => Any): Unit = {
-    val session = setupSparkSession
+    val session = setupSparkSession(Some(tmpWareHouseDir.toAbsolutePath.toString))
     session.conf.set("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
     session.conf.set("spark.sql.catalog.local.type", "hadoop")
-    session.conf.set("spark.sql.catalog.local.warehouse", warehouseDir.toAbsolutePath.toString)
+    session.conf.set("spark.sql.catalog.local.warehouse", tmpWareHouseDir.toAbsolutePath.toString)
 
     try {
       testFun(session)
@@ -63,7 +72,7 @@ trait SparkContextSpec {
     */
   def withMonitorableSparkSession(testFun: (SparkSession, SparkMonitor) => Any): Unit = {
     val monitor = new SparkMonitor
-    val session = setupSparkSession
+    val session = setupSparkSession()
     session.sparkContext.addSparkListener(monitor)
     try {
       testFun(session, monitor)
@@ -91,16 +100,18 @@ trait SparkContextSpec {
     *
     * @return sparkSession to be used
     */
-  private def setupSparkSession = {
-    val session = SparkSession.builder()
+  private def setupSparkSession(wareHouseDir: Option[String] = None) = {
+    val sessionBuilder = SparkSession.builder()
       .master("local")
       .appName("test")
       .config("spark.ui.enabled", "false")
       .config("spark.sql.shuffle.partitions", 2.toString)
       .config("spark.sql.adaptive.enabled", value = false)
       .config("spark.driver.bindAddress", "127.0.0.1")
-      .config("spark.sql.warehouse.dir", warehouseDir.toAbsolutePath.toString)
-      .getOrCreate()
+
+    val session = wareHouseDir.fold(sessionBuilder.getOrCreate())(sessionBuilder
+      .config("spark.sql.warehouse.dir", _).getOrCreate())
+
     session.sparkContext.setCheckpointDir(System.getProperty("java.io.tmpdir"))
     session
   }
@@ -124,7 +135,7 @@ trait SparkContextSpec {
   private def tearDownSparkSession(session: SparkSession) = {
     session.stop()
     System.clearProperty("spark.driver.port")
-    deleteDirectory(warehouseDir)
+    deleteDirectory(tmpWareHouseDir)
 
   }
 

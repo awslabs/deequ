@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -20,28 +20,22 @@ import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 class SparkTableMetricsRepository(session: SparkSession, tableName: String) extends MetricsRepository {
 
-  private val SCHEMA = StructType(Array(
-    StructField("result_key", StringType),
-    StructField("metric_name", StringType),
-    StructField("metric_value", StringType),
-    StructField("result_timestamp", StringType),
-    StructField("serialized_context", StringType)
-  ))
+  import session.implicits._
 
   override def save(resultKey: ResultKey, analyzerContext: AnalyzerContext): Unit = {
     val serializedContext = AnalysisResultSerde.serialize(Seq(AnalysisResult(resultKey, analyzerContext)))
 
-    val rows = analyzerContext.metricMap.map { case (analyzer, metric) =>
-      Row(resultKey.toString, analyzer.toString, metric.value.toString,
-        resultKey.dataSetDate.toString, serializedContext)
-    }.toSeq
+    val successfulMetrics = analyzerContext.metricMap
+      .filter { case (_, metric) => metric.value.isSuccess }
 
-    val metricDF = session.createDataFrame(session.sparkContext.parallelize(rows), SCHEMA)
+    val metricDF = successfulMetrics.map { case (analyzer, metric) =>
+      SparkTableMetric(resultKey.toString, analyzer.toString, metric.value.toString,
+        resultKey.dataSetDate, serializedContext)
+    }.toSeq.toDF()
 
     metricDF.write
       .mode(SaveMode.Append)
@@ -50,14 +44,13 @@ class SparkTableMetricsRepository(session: SparkSession, tableName: String) exte
 
   override def loadByKey(resultKey: ResultKey): Option[AnalyzerContext] = {
     val df: DataFrame = session.table(tableName)
-    val matchingRows = df.filter(col("result_key") === resultKey.toString).collect()
+    val matchingRows = df.filter(col("resultKey") === resultKey.toString).collect()
 
     if (matchingRows.isEmpty) {
       None
     } else {
-      val serializedContext = matchingRows(0).getAs[String]("serialized_context")
-      val analysisResult = AnalysisResultSerde.deserialize(serializedContext).head
-      Some(analysisResult.analyzerContext)
+      val serializedContext = matchingRows(0).getAs[String]("serializedContext")
+      AnalysisResultSerde.deserialize(serializedContext).headOption.map(_.analyzerContext)
     }
   }
 
@@ -67,13 +60,16 @@ class SparkTableMetricsRepository(session: SparkSession, tableName: String) exte
 
 }
 
+case class SparkTableMetric(resultKey: String, metricName: String, metricValue: String, resultTimestamp: Long,
+                            serializedContext: String)
 
 case class SparkTableMetricsRepositoryMultipleResultsLoader(session: SparkSession,
                                                             tableName: String,
-                                                            tagValues: Option[Map[String, String]] = None,
-                                                            analyzers: Option[Seq[Analyzer[_, Metric[_]]]] = None,
-                                                            timeAfter: Option[Long] = None,
-                                                            timeBefore: Option[Long] = None
+                                                            private val tagValues: Option[Map[String, String]] = None,
+                                                            private val analyzers: Option[Seq[Analyzer[_, Metric[_]]]]
+                                                            = None,
+                                                            private val timeAfter: Option[Long] = None,
+                                                            private val timeBefore: Option[Long] = None
                                                            ) extends MetricsRepositoryMultipleResultsLoader {
 
   override def withTagValues(tagValues: Map[String, String]): MetricsRepositoryMultipleResultsLoader =
@@ -91,12 +87,11 @@ case class SparkTableMetricsRepositoryMultipleResultsLoader(session: SparkSessio
   override def get(): Seq[AnalysisResult] = {
     val initialDF: DataFrame = session.table(tableName)
 
-    initialDF.printSchema()
     val tagValuesFilter: DataFrame => DataFrame = df => {
       tagValues.map { tags =>
         tags.foldLeft(df) { (currentDF, tag) =>
           currentDF.filter(row => {
-            val ser = row.getAs[String]("serialized_context")
+            val ser = row.getAs[String]("serializedContext")
             AnalysisResultSerde.deserialize(ser).exists(ar => {
               val tags = ar.resultKey.tags
               tags.contains(tag._1) && tags(tag._1) == tag._2
@@ -107,16 +102,16 @@ case class SparkTableMetricsRepositoryMultipleResultsLoader(session: SparkSessio
     }
 
     val specificAnalyzersFilter: DataFrame => DataFrame = df => {
-      analyzers.map(analyzers => df.filter(col("metric_name").isin(analyzers.map(_.toString): _*)))
+      analyzers.map(analyzers => df.filter(col("metricName").isin(analyzers.map(_.toString): _*)))
         .getOrElse(df)
     }
 
     val timeAfterFilter: DataFrame => DataFrame = df => {
-      timeAfter.map(time => df.filter(col("result_timestamp") > time.toString)).getOrElse(df)
+      timeAfter.map(time => df.filter(col("resultTimestamp") > time.toString)).getOrElse(df)
     }
 
     val timeBeforeFilter: DataFrame => DataFrame = df => {
-      timeBefore.map(time => df.filter(col("result_timestamp") < time.toString)).getOrElse(df)
+      timeBefore.map(time => df.filter(col("resultTimestamp") < time.toString)).getOrElse(df)
     }
 
     val filteredDF = Seq(tagValuesFilter, specificAnalyzersFilter, timeAfterFilter, timeBeforeFilter)
@@ -126,7 +121,7 @@ case class SparkTableMetricsRepositoryMultipleResultsLoader(session: SparkSessio
 
     // Convert the final DataFrame to the desired output format
     filteredDF.collect().flatMap(row => {
-      val serializedContext = row.getAs[String]("serialized_context")
+      val serializedContext = row.getAs[String]("serializedContext")
       AnalysisResultSerde.deserialize(serializedContext)
     }).toSeq
   }
