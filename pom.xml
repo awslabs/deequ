@@ -155,6 +155,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>iceberg-spark-runtime-3.3_2.12</artifactId>
+            <version>0.14.0</version>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
