@@ -39,7 +39,7 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
   def isNewPointAnomalous(
       historicalDataPoints: Seq[DataPoint[Double]],
       newPoint: DataPoint[Double])
-    : DetectionResult = {
+    : AnomalyDetectionResult = {
 
     require(historicalDataPoints.nonEmpty, "historicalDataPoints must not be empty!")
 
@@ -57,11 +57,7 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
     val allDataPoints = sortedDataPoints :+ newPoint
 
     // Run anomaly
-    val anomalies = detectAnomaliesInHistory(allDataPoints, (newPoint.time, Long.MaxValue))
-      .anomalies
-
-    // Create a Detection result with all anomalies
-    DetectionResult(anomalies)
+    detectAnomaliesInHistory(allDataPoints, (newPoint.time, Long.MaxValue))
   }
 
   /**
@@ -74,7 +70,7 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
   def detectAnomaliesInHistory(
       dataSeries: Seq[DataPoint[Double]],
       searchInterval: (Long, Long) = (Long.MinValue, Long.MaxValue))
-    : DetectionResult = {
+    : AnomalyDetectionResult = {
 
     def findIndexForBound(sortedTimestamps: Seq[Long], boundValue: Long): Int = {
       sortedTimestamps.search(boundValue).insertionPoint
@@ -97,6 +93,6 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
     val anomalies = strategy.detect(
       sortedSeries.flatMap { _.metricValue }.toVector, (lowerBoundIndex, upperBoundIndex))
 
-    DetectionResult(anomalies.map { case (index, anomaly) => (sortedTimestamps(index), anomaly) })
+    AnomalyDetectionResult(anomalies.map { case (index, anomaly) => (sortedTimestamps(index), anomaly) })
   }
 }

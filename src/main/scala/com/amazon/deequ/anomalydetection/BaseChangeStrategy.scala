@@ -80,7 +80,7 @@ trait BaseChangeStrategy
   override def detect(
     dataSeries: Vector[Double],
     searchInterval: (Int, Int))
-  : Seq[(Int, Anomaly)] = {
+  : Seq[(Int, AnomalyDetectionDataPoint)] = {
     val (start, end) = searchInterval
 
     require(start <= end,
@@ -89,15 +89,24 @@ trait BaseChangeStrategy
     val startPoint = Seq(start - order, 0).max
     val data = diff(DenseVector(dataSeries.slice(startPoint, end): _*), order).data
 
-    data.zipWithIndex.filter { case (value, _) =>
-      (value < maxRateDecrease.getOrElse(Double.MinValue)
-        || value > maxRateIncrease.getOrElse(Double.MaxValue))
-    }
-      .map { case (change, index) =>
-      (index + startPoint + order, Anomaly(Option(dataSeries(index + startPoint + order)), 1.0,
-        Some(s"[AbsoluteChangeStrategy]: Change of $change is not in bounds [" +
-          s"${maxRateDecrease.getOrElse(Double.MinValue)}, " +
-          s"${maxRateIncrease.getOrElse(Double.MaxValue)}]. Order=$order")))
+    val lowerBound = maxRateDecrease.getOrElse(Double.MinValue)
+    val upperBound = maxRateIncrease.getOrElse(Double.MaxValue)
+
+
+    data.zipWithIndex.map {
+      case (change, index) =>
+        val outputSequenceIndex = index + startPoint + order
+        val value = dataSeries(outputSequenceIndex)
+        val (detail, isAnomaly) = if (change < lowerBound || change > upperBound) {
+          (Some(s"[AbsoluteChangeStrategy]: Change of $change is not in bounds [" +
+            s"$lowerBound, " +
+            s"$upperBound]. Order=$order"), true)
+        }
+        else {
+          (None, false)
+        }
+        (outputSequenceIndex, AnomalyDetectionDataPoint(value, change,
+          AnomalyThreshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)), isAnomaly, 1.0, detail))
     }
   }
 }

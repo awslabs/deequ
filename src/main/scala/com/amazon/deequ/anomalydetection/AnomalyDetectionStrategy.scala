@@ -28,5 +28,5 @@ trait AnomalyDetectionStrategy {
     */
   def detect(
     dataSeries: Vector[Double],
-    searchInterval: (Int, Int) = (0, Int.MaxValue)): Seq[(Int, Anomaly)]
+    searchInterval: (Int, Int) = (0, Int.MaxValue)): Seq[(Int, AnomalyDetectionDataPoint)]
 }

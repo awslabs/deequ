@@ -17,6 +17,7 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionAssertionResult, AnomalyDetectionDataPoint, AnomalyDetectionMetadata, AnomalyDetectionResult}
 import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
@@ -26,11 +27,24 @@ object ConstraintStatus extends Enumeration {
   val Success, Failure = Value
 }
 
+/**
+ * ConstraintResult Class
+ *
+ * @param constraint Constraint associated with result
+ * @param status Status of constraint (Success, Failure)
+ * @param message Optional message for errors
+ * @param metric Optional Metric from calculation
+ * @param anomalyDetectionMetadata anomaly detection metadata details (including anomaly thresholds) for users
+ * TODO figure out if the new anomaly metadata field should be here or use inheritance/composition
+ *   in a separate AnomalyConstraintResult class that extends a ConstraintResult trait/abstract class
+ *   since it will only be populated for anomaly constraints and not other constraints
+ */
 case class ConstraintResult(
     constraint: Constraint,
     status: ConstraintStatus.Value,
     message: Option[String] = None,
-    metric: Option[Metric[_]] = None)
+    metric: Option[Metric[_]] = None,
+    anomalyDetectionMetadata: Option[AnomalyDetectionMetadata] = None)
 
 /** Common trait for all data quality constraints */
 trait Constraint extends Serializable {
@@ -215,17 +229,16 @@ object Constraint {
     *
     * @param analyzer           Analyzer for the metric to do Anomaly Detection on
     * @param anomalyAssertion   Function that receives a double input parameter
-    *                           (since the metric is double metric) and returns a boolean
+    *                           (since the metric is double metric) and returns an Anomaly Detection Assertion Result
     * @param hint A hint to provide additional context why a constraint could have failed
     */
   def anomalyConstraint[S <: State[S]](
-      analyzer: Analyzer[S, Metric[Double]],
-      anomalyAssertion: Double => Boolean,
-      hint: Option[String] = None)
+                                        analyzer: Analyzer[S, Metric[Double]],
+                                        anomalyAssertion: Double => AnomalyDetectionAssertionResult,
+                                        hint: Option[String] = None)
     : Constraint = {
 
-    val constraint = AnalysisBasedConstraint[S, Double, Double](analyzer, anomalyAssertion,
-      hint = hint)
+    val constraint = AnomalyBasedConstraint[S, Double, Double](analyzer, anomalyAssertion, hint = hint)
 
     new NamedConstraint(constraint, s"AnomalyConstraint($analyzer)")
   }

@@ -25,6 +25,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DoubleType, StringType}
 import Constraint._
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionAssertionResult, AnomalyDetectionDataPoint, AnomalyDetectionMetadata}
 
 class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
@@ -163,15 +164,32 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
   "Anomaly constraint" should {
     "assert on anomaly analyzer values" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
-      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
-        Completeness("att1"), _ > 0.4), df).status == ConstraintStatus.Success)
-      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
-        Completeness("att1"), _ < 0.4), df).status == ConstraintStatus.Failure)
 
       assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
-        Completeness("att2"), _ > 0.7), df).status == ConstraintStatus.Success)
+        Completeness("att1"), (metric: Double) => {
+          AnomalyDetectionAssertionResult(metric > 0.4,
+            AnomalyDetectionMetadata(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)))
+        } ), df)
+        .status == ConstraintStatus.Success)
       assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
-        Completeness("att2"), _ < 0.7), df).status == ConstraintStatus.Failure)
+        Completeness("att1"), (metric: Double) => {
+          AnomalyDetectionAssertionResult(metric < 0.4,
+            AnomalyDetectionMetadata(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)))
+        }), df)
+        .status == ConstraintStatus.Failure)
+
+      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
+        Completeness("att2"), (metric: Double) => {
+          AnomalyDetectionAssertionResult(metric > 0.7,
+            AnomalyDetectionMetadata(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)))
+        }), df)
+        .status == ConstraintStatus.Success)
+      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
+        Completeness("att2"), (metric: Double) => {
+          AnomalyDetectionAssertionResult(metric < 0.7,
+            AnomalyDetectionMetadata(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)))
+        }), df)
+        .status == ConstraintStatus.Failure)
     }
   }
 }

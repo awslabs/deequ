@@ -21,7 +21,7 @@ import java.util.Calendar
 
 import com.amazon.deequ.analyzers.{Analyzer, State}
 import com.amazon.deequ.checks.Check
-import com.amazon.deequ.constraints.{AnalysisBasedConstraint, Constraint, ConstraintDecorator}
+import com.amazon.deequ.constraints.{AnalysisBasedConstraint, AnomalyBasedConstraint, Constraint, ConstraintDecorator}
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -187,9 +187,13 @@ private[deequ] class Applicability(session: SparkSession) {
         case (name, nc: ConstraintDecorator) => name -> nc.inner
         case (name, c: Constraint) => name -> c
       }
-      .collect { case (name, constraint: AnalysisBasedConstraint[_, _, _]) =>
-        val metric = constraint.analyzer.calculate(data).value
-        name -> metric
+      .collect {
+        case (name, constraint: AnalysisBasedConstraint[_, _, _]) =>
+          val metric = constraint.analyzer.calculate(data).value
+          name -> metric
+        case (name, constraint: AnomalyBasedConstraint[_, _, _]) =>
+          val metric = constraint.analyzer.calculate(data).value
+          name -> metric
       }
 
     val constraintApplicabilities = check.constraints.zip(namedMetrics).map {

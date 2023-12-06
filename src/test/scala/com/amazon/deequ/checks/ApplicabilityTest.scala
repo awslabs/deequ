@@ -18,11 +18,14 @@ package com.amazon.deequ
 package checks
 
 import com.amazon.deequ.analyzers.applicability.Applicability
-import com.amazon.deequ.analyzers.{Completeness, Compliance, Maximum, Minimum}
+import com.amazon.deequ.analyzers.{Completeness, Compliance, Maximum, Minimum, Size}
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.types._
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 
-class ApplicabilityTest extends AnyWordSpec with SparkContextSpec {
+class ApplicabilityTest extends AnyWordSpec with SparkContextSpec with MockFactory {
 
   private[this] val schema = StructType(Array(
       StructField("stringCol", StringType, nullable = true),
@@ -48,7 +51,7 @@ class ApplicabilityTest extends AnyWordSpec with SparkContextSpec {
 
   "Applicability tests for checks" should {
 
-    "recognize applicable checks as applicable" in withSparkSession { session =>
+    "recognize applicable analysis based checks as applicable" in withSparkSession { session =>
 
       val applicability = new Applicability(session)
 
@@ -64,6 +67,25 @@ class ApplicabilityTest extends AnyWordSpec with SparkContextSpec {
       resultForValidCheck.constraintApplicabilities.foreach { case (_, applicable) =>
         assert(applicable)
       }
+    }
+
+    "recognize applicable anomaly based checks as applicable" in withSparkSession { session =>
+
+        val applicability = new Applicability(session)
+        val fakeAnomalyDetector = mock[AnomalyDetectionStrategy]
+        val repository = mock[MetricsRepository]
+        val validCheck = Check(CheckLevel.Error, "anomaly test")
+          .isNewestPointNonAnomalous(repository, fakeAnomalyDetector, Size(), Map.empty,
+            None, None)
+
+        val resultForValidCheck = applicability.isApplicable(validCheck, schema)
+
+        assert(resultForValidCheck.isApplicable)
+        assert(resultForValidCheck.failures.isEmpty)
+        assert(resultForValidCheck.constraintApplicabilities.size == validCheck.constraints.size)
+        resultForValidCheck.constraintApplicabilities.foreach { case (_, applicable) =>
+          assert(applicable)
+        }
     }
 
     "detect checks with non existing columns" in withSparkSession { session =>

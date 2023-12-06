@@ -17,25 +17,26 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers.{Analyzer, State}
-import com.amazon.deequ.anomalydetection.{AnomalyAssertionResult, AnomalyThreshold, DetectionResult}
+import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /**
  * Case class for anomaly based constraints that provides unified way to access
  * AnalyzerContext and metrics stored in it.
  * TODO this differs from AnalysisBasedConstraint only in that it uses an assertion function that
- * TODO returns an AnomalyAssertionResult with a potential anomaly as well as the default boolean
- * TODO figure out if it's better to use some inheritance/composition
+ *   returns an AnomalyAssertionResult with an anomaly detection metadata as well as the assertion boolean.
+ *   Figure out if it's better to use some inheritance/composition from a common trait/abstract class.
  *
  * Runs the analysis and get the value of the metric returned by the analysis,
  * picks the numeric value that will be used in the assertion function with metric picker
  * runs the assertion.
  *
  * @param analyzer    Analyzer to be run on the data frame
- * @param assertion   Assertion function that returns an AnomalyAssertionResult with a potential anomaly
+ * @param assertion   Assertion function that returns an AnomalyDetectionAssertionResult with
+ *                    anomaly detection metadata as well as the assertion boolean
  * @param valuePicker Optional function to pick the interested part of the metric value that the
  *                    assertion will be running on. Absence of such function means the metric
  *                    value would be used in the assertion as it is.
@@ -45,10 +46,10 @@ import scala.util.{Failure, Success, Try}
  *
  */
 private[deequ] case class AnomalyBasedConstraint[S <: State[S], M, V](
-                                                     analyzer: Analyzer[S, Metric[M]],
-                                                     private[deequ] val assertion: V => AnomalyAssertionResult,
-                                                     private[deequ] val valuePicker: Option[M => V] = None,
-                                                     private[deequ] val hint: Option[String] = None)
+                          analyzer: Analyzer[S, Metric[M]],
+                          private[deequ] val assertion: V => AnomalyDetectionAssertionResult,
+                          private[deequ] val valuePicker: Option[M => V] = None,
+                          private[deequ] val hint: Option[String] = None)
   extends Constraint {
 
   private[deequ] def calculateAndEvaluate(data: DataFrame) = {
@@ -80,13 +81,14 @@ private[deequ] case class AnomalyBasedConstraint[S <: State[S], M, V](
 
           if (anomalyAssertionResult.hasNoAnomaly) {
             ConstraintResult(this, ConstraintStatus.Success, metric = Some(metric),
-              anomaly = anomalyAssertionResult.anomaly)
+              anomalyDetectionMetadata = Some(anomalyAssertionResult.anomalyDetectionMetadata))
           } else {
-            var errorMessage = s"Value: $assertOn does not meet the constraint requirement, has anomaly, check result!"
+            var errorMessage = s"Value: $assertOn does not meet the constraint requirement," +
+              s" check the anomaly detection metadata!"
             hint.foreach(hint => errorMessage += s" $hint")
 
             ConstraintResult(this, ConstraintStatus.Failure, Some(errorMessage), Some(metric),
-              anomaly = anomalyAssertionResult.anomaly)
+              anomalyDetectionMetadata = Some(anomalyAssertionResult.anomalyDetectionMetadata))
           }
 
         } catch {
@@ -110,7 +112,7 @@ private[deequ] case class AnomalyBasedConstraint[S <: State[S], M, V](
       case e: Exception => throw AnomalyBasedConstraint.ValuePickerException(e.getMessage)
     }
 
-  private def runAssertion(assertOn: V): AnomalyAssertionResult =
+  private def runAssertion(assertOn: V): AnomalyDetectionAssertionResult =
     try {
       assertion(assertOn)
     } catch {
