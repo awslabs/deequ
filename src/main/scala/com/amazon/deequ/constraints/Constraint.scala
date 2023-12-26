@@ -17,9 +17,10 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
+import com.amazon.deequ.metrics.{BucketDistribution, Distribution, DoubleMetric, Metric}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
+import scala.util.{Success, Try}
 import scala.util.matching.Regex
 
 object ConstraintStatus extends Enumeration {
@@ -896,4 +897,30 @@ object Constraint {
         .getOrElse(0.0)
     }
 
+}
+
+/**
+ * Data Synchronization Constraint
+ * @param analyzer Data Synchronization Analyzer
+ * @param hint hint
+ */
+case class DataSynchronizationConstraint(analyzer: DataSynchronizationAnalyzer, hint: Option[String])
+  extends Constraint {
+
+  override def evaluate(metrics: Map[Analyzer[_, Metric[_]], Metric[_]]): ConstraintResult = {
+
+    val anz = Try(metrics.filter(i => i._1.isInstanceOf[DataSynchronizationAnalyzer]).head._2)
+    anz match {
+      case Success(m: DoubleMetric) =>
+        val result = m.value match {
+          case Success(value) => analyzer.assertion(value)
+          case _ => false
+        }
+        val status = if (result) ConstraintStatus.Success else ConstraintStatus.Failure
+        ConstraintResult(this, status, hint, Some(m))
+
+      case _ =>
+        ConstraintResult(this, ConstraintStatus.Failure, hint, anz.toOption)
+    }
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -17,5 +17,11 @@
 package com.amazon.deequ.comparison
 
 sealed trait ComparisonResult
-case class ComparisonFailed(errorMessage: String) extends ComparisonResult
-case class ComparisonSucceeded() extends ComparisonResult
+
+case class ComparisonFailed(errorMessage: String, ratio: Double = 0) extends ComparisonResult
+case class ComparisonSucceeded(ratio: Double = 0) extends ComparisonResult
+
+case class DataSynchronizationFailed(errorMessage: String, passedCount: Option[Long] = None,
+                                     totalCount: Option[Long] = None) extends ComparisonResult
+case class DataSynchronizationSucceeded(passedCount: Option[Long] = None, totalCount: Option[Long] = None)
+  extends ComparisonResult

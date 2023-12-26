@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -107,7 +107,7 @@ object DataSynchronization extends ComparisonBase {
         finalAssertion(ds1, ds2, mergedMaps, assertion)
       }
     } else {
-      ComparisonFailed(columnErrors.get)
+      DataSynchronizationFailed(columnErrors.get)
     }
   }
 
@@ -147,7 +147,7 @@ object DataSynchronization extends ComparisonBase {
         finalAssertion(ds1, ds2, mergedMaps, assertion)
       }
     } else {
-      ComparisonFailed(keyColumnErrors.get)
+      DataSynchronizationFailed(keyColumnErrors.get)
     }
   }
 
@@ -260,12 +260,15 @@ object DataSynchronization extends ComparisonBase {
         .reduce((e1, e2) => e1 && e2)
 
       val joined = ds1.join(ds2, joinExpression, "inner")
-      val ratio = joined.count().toDouble / ds1Count
+      val passedCount = joined.count()
+      val totalCount = ds1Count
+      val ratio = passedCount.toDouble / totalCount.toDouble
 
       if (assertion(ratio)) {
-        ComparisonSucceeded()
+        DataSynchronizationSucceeded(Some(passedCount), Some(totalCount))
       } else {
-        ComparisonFailed(s"Value: $ratio does not meet the constraint requirement.")
+        DataSynchronizationFailed(s"Data Synchronization Comparison Metric Value: $ratio does not meet the constraint" +
+          s"requirement.", Some(passedCount), Some(totalCount))
       }
     }
   }

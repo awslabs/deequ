@@ -19,21 +19,15 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
-import com.amazon.deequ.metrics.FullColumn
+import com.amazon.deequ.comparison.{DataSynchronization, DataSynchronizationFailed, DataSynchronizationSucceeded}
+import com.amazon.deequ.metrics.{DoubleMetric, Entity, FullColumn, Metric}
 import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
-import com.amazon.deequ.metrics.DoubleMetric
-import com.amazon.deequ.metrics.Entity
-import com.amazon.deequ.metrics.Metric
+import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.Column
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
 
 import scala.language.existentials
-import scala.util.Failure
-import scala.util.Success
+import scala.util.{Failure, Success, Try}
 
 /**
   * A state (sufficient statistic) computed from data, from which we can compute a metric.
@@ -298,6 +292,56 @@ abstract class GroupingAnalyzer[S <: State[_], +M <: Metric[_]] extends Analyzer
     groupingColumns().map { name => Preconditions.hasColumn(name) } ++ super.preconditions
   }
 }
+
+/**
+ * Data Synchronization Analyzer
+ *
+ * @param dfToCompare    DataFrame to compare
+ * @param columnMappings columns mappings
+ * @param assertion      assertion logic
+ */
+case class DataSynchronizationAnalyzer(dfToCompare: DataFrame,
+                                       columnMappings: Map[String, String],
+                                       assertion: Double => Boolean)
+  extends Analyzer[DataSynchronizationState, DoubleMetric] {
+
+  override def computeStateFrom(data: DataFrame): Option[DataSynchronizationState] = {
+
+    val result = DataSynchronization.columnMatch(data, dfToCompare, columnMappings, assertion)
+
+    result match {
+      case succeeded: DataSynchronizationSucceeded =>
+        Some(DataSynchronizationState(succeeded.passedCount.getOrElse(0), succeeded.totalCount.getOrElse(0)))
+      case failed: DataSynchronizationFailed =>
+        Some(DataSynchronizationState(failed.passedCount.getOrElse(0), failed.totalCount.getOrElse(0)))
+      case _ => None
+    }
+  }
+
+  override def computeMetricFrom(state: Option[DataSynchronizationState]): DoubleMetric = {
+
+    state match {
+      case Some(s) => DoubleMetric(
+        Entity.Dataset,
+        "DataSynchronization",
+        "",
+        Try(s.synchronizedDataCount.toDouble / s.dataCount.toDouble),
+        None
+      )
+      case None => DoubleMetric(
+        Entity.Dataset,
+        "DataSynchronization",
+        "",
+        Try(0.0),
+        None
+      )
+    }
+  }
+
+  override private[deequ] def toFailureMetric(failure: Exception) =
+    metricFromFailure(failure, "DataSynchronization", "", Entity.Dataset)
+}
+
 
 /** Helper method to check conditions on the schema of the data */
 object Preconditions {

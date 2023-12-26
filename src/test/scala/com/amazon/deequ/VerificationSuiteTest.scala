@@ -19,9 +19,7 @@ package com.amazon.deequ
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
-import com.amazon.deequ.checks.Check
-import com.amazon.deequ.checks.CheckLevel
-import com.amazon.deequ.checks.CheckStatus
+import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
 import com.amazon.deequ.constraints.{Constraint, ConstraintResult}
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
@@ -806,6 +804,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val complianceCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
           .hasCompleteness("fake", x => x > 0)
 
+        val checkHasDataInSyncTest = Check(CheckLevel.Error, "shouldSucceedForAge")
+          .isDataSynchronized(df, Map("age" -> "age"), _ > 0.99, Some("shouldpass"))
+
         val verificationResult = VerificationSuite()
           .onData(df)
           .addCheck(checkThatShouldSucceed)
@@ -815,6 +816,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .addCheck(checkThatShouldFail)
           .addCheck(complianceCheckThatShouldFail)
           .addCheck(complianceCheckThatShouldFailCompleteness)
+          .addCheck(checkHasDataInSyncTest)
           .run()
 
         val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
@@ -846,6 +848,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe
           List(Some("Input data does not include column fake!"))
         assert(checkFailedCompletenessResult.status == CheckStatus.Error)
+
+        val checkDataSyncResult = verificationResult.checkResults(checkHasDataInSyncTest)
+        checkDataSyncResult.status shouldBe CheckStatus.Success
     }
 
     "Well-defined checks should produce correct result even if another check throws an exception" in withSparkSession {
