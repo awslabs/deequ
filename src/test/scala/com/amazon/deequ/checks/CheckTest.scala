@@ -1134,6 +1134,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .isDataSynchronized(dfInformativeRenamed, colMapAtt1, _ > 0.9, Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
+      println(context)
     }
 
     "yield failure when row count varies in data sync test for 1 col" in withSparkSession { sparkSession =>

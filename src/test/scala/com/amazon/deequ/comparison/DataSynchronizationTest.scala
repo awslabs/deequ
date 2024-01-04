@@ -759,8 +759,8 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val compColsMap1 = Map(nonExistCol1 -> nonExistCol2)
       val overallResult1 = DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compColsMap1, assertion)
 
-      assert(overallResult1.isInstanceOf[ComparisonFailed])
-      val failedOverallResult1 = overallResult1.asInstanceOf[ComparisonFailed]
+      assert(overallResult1.isInstanceOf[DataSynchronizationFailed])
+      val failedOverallResult1 = overallResult1.asInstanceOf[DataSynchronizationFailed]
       assert(failedOverallResult1.errorMessage.contains(
         s"The following columns were not found in the first dataset: $nonExistCol1"))
 
@@ -775,8 +775,8 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val compColsMap2 = Map(nonExistCol1 -> "State")
       val overallResult2 = DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compColsMap2, assertion)
 
-      assert(overallResult2.isInstanceOf[ComparisonFailed])
-      val failedOverallResult2 = overallResult2.asInstanceOf[ComparisonFailed]
+      assert(overallResult2.isInstanceOf[DataSynchronizationFailed])
+      val failedOverallResult2 = overallResult2.asInstanceOf[DataSynchronizationFailed]
       assert(failedOverallResult2.errorMessage.contains(
         s"The following columns were not found in the first dataset: $nonExistCol1"))
 
@@ -791,8 +791,8 @@ class DataSynchronizationTest extends AnyWordSpec with SparkContextSpec {
       val compColsMap3 = Map("state" -> nonExistCol2)
       val overallResult3 = DataSynchronization.columnMatch(ds1, ds2, colKeyMap, compColsMap3, assertion)
 
-      assert(overallResult3.isInstanceOf[ComparisonFailed])
-      val failedOverallResult3 = overallResult3.asInstanceOf[ComparisonFailed]
+      assert(overallResult3.isInstanceOf[DataSynchronizationFailed])
+      val failedOverallResult3 = overallResult3.asInstanceOf[DataSynchronizationFailed]
       assert(failedOverallResult3.errorMessage.contains(
         s"The following columns were not found in the second dataset: $nonExistCol2"))
 

@@ -16,17 +16,29 @@
 
 package com.amazon.deequ.checks
 
-import com.amazon.deequ.analyzers.{Analyzer, AnalyzerOptions, DataSynchronizationState, DataSynchronizationAnalyzer, Histogram, KLLParameters, Patterns, State}
-import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.AnalyzerOptions
+import com.amazon.deequ.analyzers.DataSynchronizationAnalyzer
+import com.amazon.deequ.analyzers.DataSynchronizationState
+import com.amazon.deequ.analyzers.Histogram
+import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.Patterns
+import com.amazon.deequ.analyzers.State
+import com.amazon.deequ.anomalydetection.HistoryUtils
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetector
+import com.amazon.deequ.anomalydetection.DataPoint
+import com.amazon.deequ.checks.ColumnCondition.isAnyNotNull
+import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
-import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
+import com.amazon.deequ.metrics.BucketDistribution
+import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.MetricsRepository
-import org.apache.spark.sql.expressions.UserDefinedFunction
-import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.checks.ColumnCondition.{isAnyNotNull, isEachNotNull}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.expressions.UserDefinedFunction
 
 import scala.util.matching.Regex
 
@@ -363,11 +375,10 @@ case class Check(
    */
   def isDataSynchronized(otherDf: DataFrame, columnMappings: Map[String, String], assertion: Double => Boolean,
                          hint: Option[String] = None): Check = {
-
     val dataSyncAnalyzer = DataSynchronizationAnalyzer(otherDf, columnMappings, assertion)
-    val constraint = DataSynchronizationConstraint(dataSyncAnalyzer, hint)
+    val constraint = AnalysisBasedConstraint[DataSynchronizationState, Double, Double](dataSyncAnalyzer, assertion,
+      hint = hint)
     addConstraint(constraint)
-
   }
 
   /**
@@ -1126,7 +1137,6 @@ case class Check(
       }
       .collect {
         case constraint: AnalysisBasedConstraint[_, _, _] => constraint.analyzer
-        case constraint: DataSynchronizationConstraint => constraint.analyzer
       }
       .map { _.asInstanceOf[Analyzer[_, Metric[_]]] }
       .toSet

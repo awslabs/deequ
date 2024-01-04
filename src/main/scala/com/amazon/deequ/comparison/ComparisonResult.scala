@@ -23,5 +23,4 @@ case class ComparisonSucceeded(ratio: Double = 0) extends ComparisonResult
 
 case class DataSynchronizationFailed(errorMessage: String, passedCount: Option[Long] = None,
                                      totalCount: Option[Long] = None) extends ComparisonResult
-case class DataSynchronizationSucceeded(passedCount: Option[Long] = None, totalCount: Option[Long] = None)
-  extends ComparisonResult
+case class DataSynchronizationSucceeded(passedCount: Long, totalCount: Long) extends ComparisonResult
