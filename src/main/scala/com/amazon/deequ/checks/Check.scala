@@ -359,6 +359,27 @@ case class Check(
    * Utilizes [[com.amazon.deequ.analyzers.DataSynchronizationAnalyzer]] for comparing the data
    * and Constraint [[com.amazon.deequ.constraints.DataSynchronizationConstraint]].
    *
+   * Usage:
+   * To use this method, create a VerificationSuite and invoke this method as part of adding checks:
+   * {{{
+   *   val baseDataFrame: DataFrame = ...
+   *   val otherDataFrame: DataFrame = ...
+   *   val columnMappings: Map[String, String] = Map("baseCol1" -> "otherCol1", "baseCol2" -> "otherCol2")
+   *   val assertionFunction: Double => Boolean = _ > 0.7
+   *
+   *   val check = new Check(CheckLevel.Error, "Data Synchronization Check")
+   *     .isDataSynchronized(otherDataFrame, columnMappings, assertionFunction)
+   *
+   *   val verificationResult = VerificationSuite()
+   *     .onData(baseDataFrame)
+   *     .addCheck(check)
+   *     .run()
+   * }}}
+   *
+   * This will add a data synchronization check to the VerificationSuite, comparing the specified columns of
+   * baseDataFrame and otherDataFrame based on the provided assertion function.
+   *
+   *
    * @param otherDf         The DataFrame to be compared with the current one. Analyzed in conjunction with the
    *                        current DataFrame to assess data synchronization.
    * @param columnMappings  A map defining the column correlations between the current DataFrame and otherDf.
@@ -372,6 +393,7 @@ case class Check(
    * @return                A [[com.amazon.deequ.checks.Check]] object representing the outcome
    *                        of the synchronization check. This object can be used in Deequ's verification suite to
    *                        assert data quality constraints.
+   *
    */
   def isDataSynchronized(otherDf: DataFrame, columnMappings: Map[String, String], assertion: Double => Boolean,
                          hint: Option[String] = None): Check = {

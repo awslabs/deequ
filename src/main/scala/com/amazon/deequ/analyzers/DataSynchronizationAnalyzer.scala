@@ -81,7 +81,7 @@ case class DataSynchronizationAnalyzer(dfToCompare: DataFrame,
   override def computeMetricFrom(state: Option[DataSynchronizationState]): DoubleMetric = {
 
     val metric = state match {
-      case Some(s) => Try(s.synchronizedDataCount.toDouble / s.dataCount.toDouble)
+      case Some(s) => Try(s.synchronizedDataCount.toDouble / s.totalDataCount.toDouble)
       case _ => Failure(new IllegalStateException("No state available for DataSynchronizationAnalyzer"))
     }
 
