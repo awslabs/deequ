@@ -22,9 +22,10 @@ import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
-import com.amazon.deequ.constraints.{Constraint, ConstraintResult}
+import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.io.DfsUtils
-import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
+import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -32,6 +33,9 @@ import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.TempFileUtils
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.when
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers
 import org.scalatest.WordSpec
@@ -806,6 +810,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val complianceCheckThatShouldFailCompleteness = Check(CheckLevel.Error, "shouldErrorStringType")
           .hasCompleteness("fake", x => x > 0)
 
+        val checkHasDataInSyncTest = Check(CheckLevel.Error, "shouldSucceedForAge")
+          .isDataSynchronized(df, Map("age" -> "age"), _ > 0.99, Some("shouldPass"))
+
         val verificationResult = VerificationSuite()
           .onData(df)
           .addCheck(checkThatShouldSucceed)
@@ -815,6 +822,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .addCheck(checkThatShouldFail)
           .addCheck(complianceCheckThatShouldFail)
           .addCheck(complianceCheckThatShouldFailCompleteness)
+          .addCheck(checkHasDataInSyncTest)
           .run()
 
         val checkSuccessResult = verificationResult.checkResults(checkThatShouldSucceed)
@@ -846,6 +854,9 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         checkFailedCompletenessResult.constraintResults.map(_.message) shouldBe
           List(Some("Input data does not include column fake!"))
         assert(checkFailedCompletenessResult.status == CheckStatus.Error)
+
+        val checkDataSyncResult = verificationResult.checkResults(checkHasDataInSyncTest)
+        checkDataSyncResult.status shouldBe CheckStatus.Success
     }
 
     "Well-defined checks should produce correct result even if another check throws an exception" in withSparkSession {
@@ -972,6 +983,170 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         subsetNameFailResult.constraintResults.map(_.message) shouldBe
           List(Some("Value: 0.125 does not meet the constraint requirement!"))
         assert(subsetNameFailResult.status == CheckStatus.Error)
+    }
+
+    "Should work Data Synchronization checks for single column" in withSparkSession {
+      sparkSession =>
+        val df = getDateDf(sparkSession).select("id", "product", "product_id", "units")
+        val dfModified = df.withColumn("id", when(col("id") === 100, 99)
+          .otherwise(col("id")))
+        val dfColRenamed = df.withColumnRenamed("id", "id_renamed")
+
+        val dataSyncCheckPass = Check(CheckLevel.Error, "data synchronization check pass")
+          .isDataSynchronized(dfModified, Map("id" -> "id"), _ > 0.7, Some("shouldPass"))
+
+        val dataSyncCheckFail = Check(CheckLevel.Error, "data synchronization check fail")
+          .isDataSynchronized(dfModified, Map("id" -> "id"), _ > 0.9, Some("shouldFail"))
+
+        val emptyDf = sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], df.schema)
+        val dataSyncCheckEmpty = Check(CheckLevel.Error, "data synchronization check on empty DataFrame")
+          .isDataSynchronized(emptyDf, Map("id" -> "id"), _ < 0.5)
+
+        val dataSyncCheckColMismatchDestination =
+          Check(CheckLevel.Error, "data synchronization check col mismatch in destination")
+            .isDataSynchronized(dfModified, Map("id" -> "id2"), _ < 0.5)
+
+        val dataSyncCheckColMismatchSource =
+          Check(CheckLevel.Error, "data synchronization check col mismatch in source")
+            .isDataSynchronized(dfModified, Map("id2" -> "id"), _ < 0.5)
+
+        val dataSyncCheckColRenamed =
+          Check(CheckLevel.Error, "data synchronization check col names renamed")
+            .isDataSynchronized(dfColRenamed, Map("id" -> "id_renamed"), _ == 1.0)
+
+        val dataSyncFullMatch =
+          Check(CheckLevel.Error, "data synchronization check full match")
+            .isDataSynchronized(df, Map("id" -> "id"), _ == 1.0)
+
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(dataSyncCheckPass)
+          .addCheck(dataSyncCheckFail)
+          .addCheck(dataSyncCheckEmpty)
+          .addCheck(dataSyncCheckColMismatchDestination)
+          .addCheck(dataSyncCheckColMismatchSource)
+          .addCheck(dataSyncCheckColRenamed)
+          .addCheck(dataSyncFullMatch)
+          .run()
+
+        val passResult = verificationResult.checkResults(dataSyncCheckPass)
+        passResult.constraintResults.map(_.message) shouldBe
+          List(None)
+        assert(passResult.status == CheckStatus.Success)
+
+        val failResult = verificationResult.checkResults(dataSyncCheckFail)
+        failResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: 0.8 does not meet the constraint requirement! shouldFail"))
+        assert(failResult.status == CheckStatus.Error)
+
+        val emptyResult = verificationResult.checkResults(dataSyncCheckEmpty)
+        emptyResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: NaN does not meet the constraint requirement!"))
+        assert(emptyResult.status == CheckStatus.Error)
+
+        val colMismatchDestResult = verificationResult.checkResults(dataSyncCheckColMismatchDestination)
+        colMismatchDestResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: NaN does not meet the constraint requirement!"))
+        assert(colMismatchDestResult.status == CheckStatus.Error)
+
+        val colMismatchSourceResult = verificationResult.checkResults(dataSyncCheckColMismatchSource)
+        colMismatchSourceResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: NaN does not meet the constraint requirement!"))
+        assert(colMismatchSourceResult.status == CheckStatus.Error)
+
+        val colRenamedResult = verificationResult.checkResults(dataSyncCheckColRenamed)
+        colRenamedResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(colRenamedResult.status == CheckStatus.Success)
+
+        val fullMatchResult = verificationResult.checkResults(dataSyncFullMatch)
+        fullMatchResult.constraintResults.map(_.message) shouldBe List(None)
+        assert(fullMatchResult.status == CheckStatus.Success)
+
+    }
+
+    "Should work Data Synchronization checks for multiple column" in withSparkSession {
+      sparkSession =>
+        val df = getDateDf(sparkSession).select("id", "product", "product_id", "units")
+        val dfModified = df.withColumn("id", when(col("id") === 100, 99)
+          .otherwise(col("id")))
+        val dfColRenamed = df.withColumnRenamed("id", "id_renamed")
+        val colMap = Map("id" -> "id", "product" -> "product")
+
+        val dataSyncCheckPass = Check(CheckLevel.Error, "data synchronization check")
+          .isDataSynchronized(dfModified, colMap, _ > 0.7, Some("shouldPass"))
+
+        val dataSyncCheckFail = Check(CheckLevel.Error, "data synchronization check")
+          .isDataSynchronized(dfModified, colMap, _ > 0.9, Some("shouldFail"))
+
+        val emptyDf = sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], df.schema)
+        val dataSyncCheckEmpty = Check(CheckLevel.Error, "data synchronization check on empty DataFrame")
+          .isDataSynchronized(emptyDf, colMap, _ < 0.5)
+
+        val dataSyncCheckColMismatchDestination =
+          Check(CheckLevel.Error, "data synchronization check col mismatch in destination")
+            .isDataSynchronized(dfModified, colMap, _ > 0.9)
+
+        val dataSyncCheckColMismatchSource =
+          Check(CheckLevel.Error, "data synchronization check col mismatch in source")
+            .isDataSynchronized(dfModified, Map("id2" -> "id", "product" -> "product"), _ < 0.5)
+
+        val dataSyncCheckColRenamed =
+          Check(CheckLevel.Error, "data synchronization check col names renamed")
+            .isDataSynchronized(dfColRenamed, Map("id" -> "id_renamed", "product" -> "product"), _ == 1.0,
+              Some("shouldPass"))
+
+        val dataSyncFullMatch =
+          Check(CheckLevel.Error, "data synchronization check col full match")
+            .isDataSynchronized(df, colMap, _ == 1, Some("shouldPass"))
+
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(dataSyncCheckPass)
+          .addCheck(dataSyncCheckFail)
+          .addCheck(dataSyncCheckEmpty)
+          .addCheck(dataSyncCheckColMismatchDestination)
+          .addCheck(dataSyncCheckColMismatchSource)
+          .addCheck(dataSyncCheckColRenamed)
+          .addCheck(dataSyncFullMatch)
+          .run()
+
+        val passResult = verificationResult.checkResults(dataSyncCheckPass)
+        passResult.constraintResults.map(_.message) shouldBe
+          List(None)
+        assert(passResult.status == CheckStatus.Success)
+
+        val failResult = verificationResult.checkResults(dataSyncCheckFail)
+        failResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: 0.8 does not meet the constraint requirement! shouldFail"))
+        assert(failResult.status == CheckStatus.Error)
+
+        val emptyResult = verificationResult.checkResults(dataSyncCheckEmpty)
+        emptyResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: NaN does not meet the constraint requirement!"))
+        assert(emptyResult.status == CheckStatus.Error)
+
+        val colMismatchDestResult = verificationResult.checkResults(dataSyncCheckColMismatchDestination)
+        colMismatchDestResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: 0.8 does not meet the constraint requirement!"))
+        assert(colMismatchDestResult.status == CheckStatus.Error)
+
+        val colMismatchSourceResult = verificationResult.checkResults(dataSyncCheckColMismatchSource)
+        colMismatchSourceResult.constraintResults.map(_.message) shouldBe
+          List(Some("Value: NaN does not meet the constraint requirement!"))
+        assert(colMismatchSourceResult.status == CheckStatus.Error)
+
+        val colRenamedResult = verificationResult.checkResults(dataSyncCheckColRenamed)
+        colRenamedResult.constraintResults.map(_.message) shouldBe
+          List(None)
+        assert(colRenamedResult.status == CheckStatus.Success)
+
+        val fullMatchResult = verificationResult.checkResults(dataSyncFullMatch)
+        fullMatchResult.constraintResults.map(_.message) shouldBe
+          List(None)
+        assert(fullMatchResult.status == CheckStatus.Success)
+
     }
   }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -19,17 +19,17 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
-import com.amazon.deequ.metrics.FullColumn
-import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.Entity
+import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
+import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
 
 import scala.language.existentials
 import scala.util.Failure
