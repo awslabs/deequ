@@ -1,5 +1,5 @@
 /**
- * Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -16,7 +16,8 @@
 
 package com.amazon.deequ.comparison
 
-import org.apache.spark.sql.{Column, DataFrame}
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.hash
 import org.apache.spark.sql.functions.lit
@@ -101,13 +102,13 @@ object DataSynchronization extends ComparisonBase {
       val nonKeyColsMatch = colsDS1.forall(columnExists(ds2, _))
 
       if (!nonKeyColsMatch) {
-        ComparisonFailed("Non key columns in the given data frames do not match.")
+        DataSynchronizationFailed("Non key columns in the given data frames do not match.")
       } else {
         val mergedMaps = colKeyMap ++ colsDS1.map(x => x -> x).toMap
         finalAssertion(ds1, ds2, mergedMaps, assertion)
       }
     } else {
-      ComparisonFailed(columnErrors.get)
+      DataSynchronizationFailed(columnErrors.get)
     }
   }
 
@@ -137,17 +138,17 @@ object DataSynchronization extends ComparisonBase {
       val nonKeyColumns2NotInDataset = compCols.values.filterNot(columnExists(ds2, _))
 
       if (nonKeyColumns1NotInDataset.nonEmpty) {
-        ComparisonFailed(s"The following columns were not found in the first dataset: " +
+        DataSynchronizationFailed(s"The following columns were not found in the first dataset: " +
           s"${nonKeyColumns1NotInDataset.mkString(", ")}")
       } else if (nonKeyColumns2NotInDataset.nonEmpty) {
-        ComparisonFailed(s"The following columns were not found in the second dataset: " +
+        DataSynchronizationFailed(s"The following columns were not found in the second dataset: " +
           s"${nonKeyColumns2NotInDataset.mkString(", ")}")
       } else {
         val mergedMaps = colKeyMap ++ compCols
         finalAssertion(ds1, ds2, mergedMaps, assertion)
       }
     } else {
-      ComparisonFailed(keyColumnErrors.get)
+      DataSynchronizationFailed(keyColumnErrors.get)
     }
   }
 
@@ -155,23 +156,24 @@ object DataSynchronization extends ComparisonBase {
                           ds2: DataFrame,
                           colKeyMap: Map[String, String],
                           optionalCompCols: Option[Map[String, String]] = None,
-                          optionalOutcomeColumnName: Option[String] = None): Either[ComparisonFailed, DataFrame] = {
+                          optionalOutcomeColumnName: Option[String] = None):
+  Either[DataSynchronizationFailed, DataFrame] = {
     val columnErrors = areKeyColumnsValid(ds1, ds2, colKeyMap)
     if (columnErrors.isEmpty) {
-      val compColsEither: Either[ComparisonFailed, Map[String, String]] = if (optionalCompCols.isDefined) {
+      val compColsEither: Either[DataSynchronizationFailed, Map[String, String]] = if (optionalCompCols.isDefined) {
         optionalCompCols.get match {
-          case compCols if compCols.isEmpty => Left(ComparisonFailed("Empty column comparison map provided."))
+          case compCols if compCols.isEmpty => Left(DataSynchronizationFailed("Empty column comparison map provided."))
           case compCols =>
             val ds1CompColsNotInDataset = compCols.keys.filterNot(columnExists(ds1, _))
             val ds2CompColsNotInDataset = compCols.values.filterNot(columnExists(ds2, _))
             if (ds1CompColsNotInDataset.nonEmpty) {
               Left(
-                ComparisonFailed(s"The following columns were not found in the first dataset: " +
+                DataSynchronizationFailed(s"The following columns were not found in the first dataset: " +
                   s"${ds1CompColsNotInDataset.mkString(", ")}")
               )
             } else if (ds2CompColsNotInDataset.nonEmpty) {
               Left(
-                ComparisonFailed(s"The following columns were not found in the second dataset: " +
+                DataSynchronizationFailed(s"The following columns were not found in the second dataset: " +
                   s"${ds2CompColsNotInDataset.mkString(", ")}")
               )
             } else {
@@ -184,7 +186,7 @@ object DataSynchronization extends ComparisonBase {
         val nonKeyColsMatch = ds1NonKeyCols.forall(columnExists(ds2, _))
 
         if (!nonKeyColsMatch) {
-          Left(ComparisonFailed("Non key columns in the given data frames do not match."))
+          Left(DataSynchronizationFailed("Non key columns in the given data frames do not match."))
         } else {
           Right(ds1NonKeyCols.map { c => c -> c}.toMap)
         }
@@ -196,11 +198,11 @@ object DataSynchronization extends ComparisonBase {
           case Success(df) => Right(df)
           case Failure(ex) =>
             ex.printStackTrace()
-            Left(ComparisonFailed(s"Comparison failed due to ${ex.getCause.getClass}"))
+            Left(DataSynchronizationFailed(s"Comparison failed due to ${ex.getCause.getClass}"))
         }
       }
     } else {
-      Left(ComparisonFailed(columnErrors.get))
+      Left(DataSynchronizationFailed(columnErrors.get))
     }
   }
 
@@ -253,19 +255,22 @@ object DataSynchronization extends ComparisonBase {
     val ds2Count = ds2.count()
 
     if (ds1Count != ds2Count) {
-      ComparisonFailed(s"The row counts of the two data frames do not match.")
+      DataSynchronizationFailed(s"The row counts of the two data frames do not match.")
     } else {
       val joinExpression: Column = mergedMaps
         .map { case (col1, col2) => ds1(col1) === ds2(col2)}
         .reduce((e1, e2) => e1 && e2)
 
       val joined = ds1.join(ds2, joinExpression, "inner")
-      val ratio = joined.count().toDouble / ds1Count
+      val passedCount = joined.count()
+      val totalCount = ds1Count
+      val ratio = passedCount.toDouble / totalCount.toDouble
 
       if (assertion(ratio)) {
-        ComparisonSucceeded()
+        DataSynchronizationSucceeded(passedCount, totalCount)
       } else {
-        ComparisonFailed(s"Value: $ratio does not meet the constraint requirement.")
+        DataSynchronizationFailed(s"Data Synchronization Comparison Metric Value: $ratio does not meet the constraint" +
+          s"requirement.", Some(passedCount), Some(totalCount))
       }
     }
   }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -17,9 +17,13 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
+import com.amazon.deequ.metrics.BucketDistribution
+import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
+import scala.util.Failure
+import scala.util.Success
 import scala.util.matching.Regex
 
 object ConstraintStatus extends Enumeration {
@@ -896,4 +900,31 @@ object Constraint {
         .getOrElse(0.0)
     }
 
+}
+
+/**
+ * Data Synchronization Constraint
+ * @param analyzer Data Synchronization Analyzer
+ * @param hint hint
+ */
+case class DataSynchronizationConstraint(analyzer: DataSynchronizationAnalyzer, hint: Option[String])
+  extends Constraint {
+
+  override def evaluate(metrics: Map[Analyzer[_, Metric[_]], Metric[_]]): ConstraintResult = {
+
+    metrics.collectFirst {
+      case (_: DataSynchronizationAnalyzer, metric: Metric[Double]) => metric
+    } match {
+      case Some(metric) =>
+        val result = metric.value match {
+          case Success(value) => analyzer.assertion(value)
+          case Failure(_) => false
+        }
+        val status = if (result) ConstraintStatus.Success else ConstraintStatus.Failure
+        ConstraintResult(this, status, hint, Some(metric))
+
+      case None =>
+        ConstraintResult(this, ConstraintStatus.Failure, hint, None)
+    }
+  }
 }

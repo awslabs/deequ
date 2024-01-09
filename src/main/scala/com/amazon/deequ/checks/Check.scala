@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -16,17 +16,29 @@
 
 package com.amazon.deequ.checks
 
-import com.amazon.deequ.analyzers.AnalyzerOptions
-import com.amazon.deequ.analyzers.{Analyzer, Histogram, KLLParameters, Patterns, State}
-import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetector, DataPoint}
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.AnalyzerOptions
+import com.amazon.deequ.analyzers.DataSynchronizationAnalyzer
+import com.amazon.deequ.analyzers.DataSynchronizationState
+import com.amazon.deequ.analyzers.Histogram
+import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.Patterns
+import com.amazon.deequ.analyzers.State
+import com.amazon.deequ.anomalydetection.HistoryUtils
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetector
+import com.amazon.deequ.anomalydetection.DataPoint
+import com.amazon.deequ.checks.ColumnCondition.isAnyNotNull
+import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
-import com.amazon.deequ.metrics.{BucketDistribution, Distribution, Metric}
+import com.amazon.deequ.metrics.BucketDistribution
+import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.MetricsRepository
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.checks.ColumnCondition.{isAnyNotNull, isEachNotNull}
 
 import scala.util.matching.Regex
 
@@ -336,6 +348,59 @@ case class Check(
 
     addFilterableConstraint { filter =>
       uniqueValueRatioConstraint(columns, assertion, filter, hint) }
+  }
+
+  /**
+   * Performs a data synchronization check between the base DataFrame supplied to
+   * [[com.amazon.deequ.VerificationSuite.onData]] and other DataFrame supplied to this check using Deequ's
+   * [[com.amazon.deequ.comparison.DataSynchronization.columnMatch]] framework.
+   * This method compares specified columns of both DataFrames and assesses synchronization based on a custom assertion.
+   *
+   * Utilizes [[com.amazon.deequ.analyzers.DataSynchronizationAnalyzer]] for comparing the data
+   * and Constraint [[com.amazon.deequ.constraints.DataSynchronizationConstraint]].
+   *
+   * Usage:
+   * To use this method, create a VerificationSuite and invoke this method as part of adding checks:
+   * {{{
+   *   val baseDataFrame: DataFrame = ...
+   *   val otherDataFrame: DataFrame = ...
+   *   val columnMappings: Map[String, String] = Map("baseCol1" -> "otherCol1", "baseCol2" -> "otherCol2")
+   *   val assertionFunction: Double => Boolean = _ > 0.7
+   *
+   *   val check = new Check(CheckLevel.Error, "Data Synchronization Check")
+   *     .isDataSynchronized(otherDataFrame, columnMappings, assertionFunction)
+   *
+   *   val verificationResult = VerificationSuite()
+   *     .onData(baseDataFrame)
+   *     .addCheck(check)
+   *     .run()
+   * }}}
+   *
+   * This will add a data synchronization check to the VerificationSuite, comparing the specified columns of
+   * baseDataFrame and otherDataFrame based on the provided assertion function.
+   *
+   *
+   * @param otherDf         The DataFrame to be compared with the current one. Analyzed in conjunction with the
+   *                        current DataFrame to assess data synchronization.
+   * @param columnMappings  A map defining the column correlations between the current DataFrame and otherDf.
+   *                        Keys represent column names in the current DataFrame,
+   *                        and values are corresponding column names in otherDf.
+   * @param assertion       A function that takes a Double (result of the comparison) and returns a Boolean.
+   *                        Defines the condition under which the data in both DataFrames is considered synchronized.
+   *                        For example (_ > 0.7) denoting metric value > 0.7 or 70% of records.
+   * @param hint            Optional. Additional context or information about the synchronization check.
+   *                        Helpful for understanding the intent or specifics of the check. Default is None.
+   * @return                A [[com.amazon.deequ.checks.Check]] object representing the outcome
+   *                        of the synchronization check. This object can be used in Deequ's verification suite to
+   *                        assert data quality constraints.
+   *
+   */
+  def isDataSynchronized(otherDf: DataFrame, columnMappings: Map[String, String], assertion: Double => Boolean,
+                         hint: Option[String] = None): Check = {
+    val dataSyncAnalyzer = DataSynchronizationAnalyzer(otherDf, columnMappings, assertion)
+    val constraint = AnalysisBasedConstraint[DataSynchronizationState, Double, Double](dataSyncAnalyzer, assertion,
+      hint = hint)
+    addConstraint(constraint)
   }
 
   /**
@@ -1092,7 +1157,9 @@ case class Check(
         case nc: ConstraintDecorator => nc.inner
         case c: Constraint => c
       }
-      .collect { case constraint: AnalysisBasedConstraint[_, _, _] => constraint.analyzer }
+      .collect {
+        case constraint: AnalysisBasedConstraint[_, _, _] => constraint.analyzer
+      }
       .map { _.asInstanceOf[Analyzer[_, Metric[_]]] }
       .toSet
   }
