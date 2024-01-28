@@ -40,8 +40,8 @@ import scala.util.Try
  * @param columnMappings A map where each key-value pair represents a column in the primary DataFrame
  *                       and its corresponding column in dfToCompare.
  * @param matchColumnMappings A map defining the column correlations between the current DataFrame and otherDf.
- *                        These are the columns which we will check for equality, post joining. It's an optional value
- *                        with defaults to None.
+ *                            These are the columns which we will check for equality, post joining.
+ *                            It's an optional value with defaults to None.
  * @param assertion A function that takes a Double (the match ratio) and returns a Boolean.
  *                  It defines the condition for successful synchronization.
  *

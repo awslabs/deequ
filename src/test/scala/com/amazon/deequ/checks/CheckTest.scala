@@ -1,5 +1,5 @@
 /**
-  * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the "License"). You may not
   * use this file except in compliance with the License. A copy of the License
@@ -1129,13 +1129,13 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
 
       val check = Check(CheckLevel.Error, "must have data in sync")
-        .isDatasetMatched(dfInformative, colMapAtt1, _ > 0.9, hint = Some("show be in sync"))
+        .doesDatasetMatch(dfInformative, colMapAtt1, _ > 0.9, hint = Some("show be in sync"))
       val context = runChecks(dfInformative, check)
 
       assertSuccess(check, context)
 
       val check2 = Check(CheckLevel.Error, "must have data in sync")
-        .isDatasetMatched(dfInformative, colMapAtt1, _ > 0.9, Some(colMapAtt1), Some("show be in sync with match col"))
+        .doesDatasetMatch(dfInformative, colMapAtt1, _ > 0.9, Some(colMapAtt1), Some("show be in sync with match col"))
       val context2 = runChecks(dfInformative, check2)
 
       assertSuccess(check2, context2)
@@ -1146,7 +1146,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformativeRenamed = dfInformative.withColumnRenamed("att1", "att1_renamed")
 
       val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-        .isDatasetMatched(dfInformativeRenamed, colMapAtt1, _ > 0.9,
+        .doesDatasetMatch(dfInformativeRenamed, colMapAtt1, _ > 0.9,
           hint = Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
@@ -1158,7 +1158,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformativeFiltered = dfInformative.filter("att1 > 2")
 
       val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-        .isDatasetMatched(dfInformativeFiltered, colMapAtt1, _ > 0.9,
+        .doesDatasetMatch(dfInformativeFiltered, colMapAtt1, _ > 0.9,
           hint = Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
@@ -1170,7 +1170,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must fail as rows mismatches")
-        .isDatasetMatched(modifiedDf, colMapAtt1, _ > 0.9, hint = Some("must fail as rows mismatches"))
+        .doesDatasetMatch(modifiedDf, colMapAtt1, _ > 0.9, hint = Some("must fail as rows mismatches"))
       val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
 
@@ -1182,7 +1182,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must be success as rows count mismatches at assertion 0.6")
-        .isDatasetMatched(modifiedDf, colMapAtt1, _ > 0.6,
+        .doesDatasetMatch(modifiedDf, colMapAtt1, _ > 0.6,
           hint = Some("must be success as rows count mismatches at assertion 0.6"))
       val context = runChecks(df, check)
       assertSuccess(check, context)
@@ -1193,7 +1193,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
 
       val check = Check(CheckLevel.Error, "must have data in sync")
-        .isDatasetMatched(dfInformative, colMapTwoCols, _ > 0.9, hint = Some("show be in sync"))
+        .doesDatasetMatch(dfInformative, colMapTwoCols, _ > 0.9, hint = Some("show be in sync"))
       val context = runChecks(dfInformative, check)
 
       assertSuccess(check, context)
@@ -1204,7 +1204,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
 
         val check = Check(CheckLevel.Error, "must have data in sync")
-          .isDatasetMatched(dfInformative, colMapTwoCols, _ > 0.9, Some(colMapAtt1), hint = Some("show be in sync"))
+          .doesDatasetMatch(dfInformative, colMapTwoCols, _ > 0.9, Some(colMapAtt1), hint = Some("show be in sync"))
         val context = runChecks(dfInformative, check)
 
         assertSuccess(check, context)
@@ -1216,7 +1216,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val dfInformativeRenamed = dfInformative.withColumnRenamed("att1", "att1_renamed")
 
         val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-          .isDatasetMatched(dfInformativeRenamed, colMapTwoCols, _ > 0.9,
+          .doesDatasetMatch(dfInformativeRenamed, colMapTwoCols, _ > 0.9,
             hint = Some("must fail as columns does not exist"))
         val context = runChecks(dfInformative, check)
 
@@ -1228,7 +1228,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformativeFiltered = dfInformative.filter("att1 > 2")
 
       val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-        .isDatasetMatched(dfInformativeFiltered, colMapTwoCols, _ > 0.9,
+        .doesDatasetMatch(dfInformativeFiltered, colMapTwoCols, _ > 0.9,
           hint = Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
 
@@ -1241,7 +1241,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must fail as rows mismatches")
-        .isDatasetMatched(modifiedDf, colMapTwoCols, _ > 0.9, hint = Some("must fail as rows mismatches"))
+        .doesDatasetMatch(modifiedDf, colMapTwoCols, _ > 0.9, hint = Some("must fail as rows mismatches"))
       val context = runChecks(df, check)
 
       assertEvaluatesTo(check, context, CheckStatus.Error)
@@ -1254,7 +1254,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must be success as metric value is 0.66")
-        .isDatasetMatched(modifiedDf, colMapTwoCols, _ > 0.6,
+        .doesDatasetMatch(modifiedDf, colMapTwoCols, _ > 0.6,
           hint = Some("must be success as metric value is 0.66"))
       val context = runChecks(df, check)
 

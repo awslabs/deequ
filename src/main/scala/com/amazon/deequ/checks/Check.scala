@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -368,7 +368,7 @@ case class Check(
    *   val assertionFunction: Double => Boolean = _ > 0.7
    *
    *   val check = new Check(CheckLevel.Error, "Data Synchronization Check")
-   *     .isDatasetMatched(otherDataFrame, columnMappings, assertionFunction)
+   *     .doesDatasetMatch(otherDataFrame, columnMappings, assertionFunction)
    *
    *   val verificationResult = VerificationSuite()
    *     .onData(baseDataFrame)
@@ -379,30 +379,29 @@ case class Check(
    * This will add a dataset match check to the VerificationSuite, comparing the specified columns of
    * baseDataFrame and otherDataFrame based on the provided assertion function.
    *
-   * @param otherDf         The DataFrame to be compared with the current one. Analyzed in conjunction with the
-   *                        current DataFrame to assess data synchronization.
+   * @param otherDataset The DataFrame to be compared with the current one. Analyzed in conjunction with the
+   *                     current DataFrame to assess data synchronization.
    * @param keyColumnMappings  A map defining the column correlations between the current DataFrame and otherDf.
-   *                        Keys represent column names in the current DataFrame,
-   *                        and values are corresponding column names in otherDf.
-   * @param assertion       A function that takes a Double (result of the comparison) and returns a Boolean.
-   *                        Defines the condition under which the data in both DataFrames is considered synchronized.
-   *                        For example (_ > 0.7) denoting metric value > 0.7 or 70% of records.
+   *                           Keys represent column names in the current DataFrame, and values are corresponding
+   *                           column names in otherDf.
+   * @param assertion A function that takes a Double (result of the comparison) and returns a Boolean. Defines the
+   *                  condition under which the data in both DataFrames is considered synchronized. For example
+   *                  (_ > 0.7) denoting metric value > 0.7 or 70% of records.
    * @param matchColumnMappings A map defining the column correlations between the current DataFrame and otherDf.
-   *                        These are the columns which we will check for equality, post joining. It's an optional value
-   *                        with defaults to None, which will be derived from `keyColumnMappings` if None.
-   * @param hint            Optional. Additional context or information about the synchronization check.
-   *                        Helpful for understanding the intent or specifics of the check. Default is None.
-   * @return                A [[com.amazon.deequ.checks.Check]] object representing the outcome
-   *                        of the dataset match check. This object can be used in Deequ's verification suite to
-   *                        assert data quality constraints.
+   *                            These are the columns which we will check for equality, post joining. It's an optional
+   *                            value with defaults to None, which will be derived from `keyColumnMappings` if None.
+   * @param hint Optional. Additional context or information about the synchronization check.
+   *             Helpful for understanding the intent or specifics of the check. Default is None.
+   * @return A [[com.amazon.deequ.checks.Check]] object representing the outcome of the dataset match check.
+   *         This object can be used in Deequ's verification suite to assert data quality constraints.
    *
    */
-  def isDatasetMatched(otherDf: DataFrame,
+  def doesDatasetMatch(otherDataset: DataFrame,
                        keyColumnMappings: Map[String, String],
                        assertion: Double => Boolean,
                        matchColumnMappings: Option[Map[String, String]] = None,
                        hint: Option[String] = None): Check = {
-    val dataMatchAnalyzer = DatasetMatchAnalyzer(otherDf, keyColumnMappings, assertion, matchColumnMappings)
+    val dataMatchAnalyzer = DatasetMatchAnalyzer(otherDataset, keyColumnMappings, assertion, matchColumnMappings)
     val constraint = AnalysisBasedConstraint[DatasetMatchState, Double, Double](dataMatchAnalyzer, assertion,
       hint = hint)
     addConstraint(constraint)

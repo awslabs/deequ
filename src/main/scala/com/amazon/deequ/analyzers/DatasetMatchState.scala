@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -19,8 +19,7 @@ package com.amazon.deequ.analyzers
 /**
  * Represents the state of datasetMatch between two DataFrames in Deequ.
  * This state keeps track of the count of matched record count and the total record count.
- * It is used to calculate a ratio of match, which is a measure of how well the data
- * in the two DataFrames are matched.
+ * It measures how well the data in the two DataFrames matches.
  *
  * @param matchedDataCount The count of records that are considered match between the two DataFrames.
  * @param totalDataCount The total count of records for check.
@@ -28,10 +27,9 @@ package com.amazon.deequ.analyzers
  * The `sum` method allows for aggregation of this state with another, combining the counts from both states.
  * This is useful in distributed computations where states from different partitions need to be aggregated.
  *
- * The `metricValue` method computes the synchronization ratio. It is the ratio of `matchedDataCount`
- * to `dataCount`.
- * If `dataCount` is zero, which means no data points were examined, the method returns `Double.NaN`
- * to indicate the undefined state.
+ * The `metricValue` method computes the synchronization ratio. It is the ratio of `matchedDataCount` to `dataCount`.
+ * If `dataCount` is zero, which means no data points were examined, the method returns `Double.NaN` to indicate
+ * the undefined state.
  *
  */
 case class DatasetMatchState(matchedDataCount: Long, totalDataCount: Long)
