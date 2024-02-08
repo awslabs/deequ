@@ -130,7 +130,7 @@ case class OnlineNormalStrategy(
   override def detect(
       dataSeries: Vector[Double],
       searchInterval: (Int, Int))
-    : Seq[(Int, Anomaly)] = {
+    : Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     val (searchStart, searchEnd) = searchInterval
 
@@ -139,7 +139,6 @@ case class OnlineNormalStrategy(
     computeStatsAndAnomalies(dataSeries, searchInterval)
       .zipWithIndex
       .slice(searchStart, searchEnd)
-      .filter { case (result, _) => result.isAnomaly }
       .map { case (calcRes, index) =>
         val lowerBound =
           calcRes.mean - lowerDeviationFactor.getOrElse(Double.MaxValue) * calcRes.stdDev
@@ -149,7 +148,11 @@ case class OnlineNormalStrategy(
         val detail = Some(s"[OnlineNormalStrategy]: Value ${dataSeries(index)} is not in " +
           s"bounds [$lowerBound, $upperBound].")
 
-        (index, Anomaly(Option(dataSeries(index)), 1.0, detail))
+        val value = dataSeries(index)
+
+        (index, AnomalyDetectionDataPoint(value, value,
+          AnomalyThreshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)),
+          calcRes.isAnomaly, 1.0, detail))
       }
   }
 }

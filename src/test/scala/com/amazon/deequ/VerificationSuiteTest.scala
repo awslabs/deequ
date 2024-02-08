@@ -18,7 +18,7 @@ package com.amazon.deequ
 
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
+import com.amazon.deequ.anomalydetection.{AbsoluteChangeStrategy, AnomalyDetectionDataPoint, AnomalyThreshold, Bound}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
@@ -629,12 +629,33 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .run()
 
         val checkResultsOne = verificationResultOne.checkResults.head._2.status
+        val actualResultsOneAnomalyDetectionDataPoint =
+          verificationResultOne.checkResults.head._2.constraintResults.head
+            .anomalyDetectionMetadata.get.anomalyDetectionDataPoint
+        val expectedResultsOneAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 7.0, AnomalyThreshold(Bound(-2.0), Bound(2.0)), isAnomaly = true, 1.0)
+
+
         val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+        val actualResultsTwoAnomalyDetectionDataPoint =
+          verificationResultTwo.checkResults.head._2.constraintResults.head
+          .anomalyDetectionMetadata.get.anomalyDetectionDataPoint
+        val expectedResultsTwoAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 0.0, AnomalyThreshold(Bound(-7.0), Bound(7.0)), isAnomaly = false, 1.0)
+
         val checkResultsThree = verificationResultThree.checkResults.head._2.status
+        val actualResultsThreeAnomalyDetectionDataPoint =
+          verificationResultThree.checkResults.head._2.constraintResults.head
+          .anomalyDetectionMetadata.get.anomalyDetectionDataPoint
+        val expectedResultsThreeAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 0.0, AnomalyThreshold(Bound(-7.0), Bound(7.0)), isAnomaly = false, 1.0)
 
         assert(checkResultsOne == CheckStatus.Warning)
+        assert(actualResultsOneAnomalyDetectionDataPoint == expectedResultsOneAnomalyDetectionDataPoint)
         assert(checkResultsTwo == CheckStatus.Success)
+        assert(actualResultsTwoAnomalyDetectionDataPoint == expectedResultsTwoAnomalyDetectionDataPoint)
         assert(checkResultsThree == CheckStatus.Success)
+        assert(actualResultsThreeAnomalyDetectionDataPoint == expectedResultsThreeAnomalyDetectionDataPoint)
       }
     }
 
@@ -674,10 +695,23 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .run()
 
         val checkResultsOne = verificationResultOne.checkResults.values.toSeq(1).status
+        val actualResultsOneAnomalyDetectionDataPoint =
+          verificationResultOne.checkResults.values.toSeq(1).constraintResults.head
+            .anomalyDetectionMetadata.get.anomalyDetectionDataPoint
+        val expectedResultsOneAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 7.0, AnomalyThreshold(Bound(-2.0), Bound(2.0)), isAnomaly = true, 1.0)
+
         val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+        val actualResultsTwoAnomalyDetectionDataPoint =
+          verificationResultTwo.checkResults.head._2.constraintResults.head
+          .anomalyDetectionMetadata.get.anomalyDetectionDataPoint
+        val expectedResultsTwoAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 0.0, AnomalyThreshold(Bound(-7.0), Bound(7.0)), isAnomaly = false, 1.0)
 
         assert(checkResultsOne == CheckStatus.Warning)
+        assert(actualResultsOneAnomalyDetectionDataPoint == expectedResultsOneAnomalyDetectionDataPoint)
         assert(checkResultsTwo == CheckStatus.Success)
+        assert(actualResultsTwoAnomalyDetectionDataPoint == expectedResultsTwoAnomalyDetectionDataPoint)
       }
     }
 

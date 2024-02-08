@@ -38,7 +38,7 @@ case class SimpleThresholdStrategy(
     */
   override def detect(
     dataSeries: Vector[Double],
-    searchInterval: (Int, Int)): Seq[(Int, Anomaly)] = {
+    searchInterval: (Int, Int)): Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     val (searchStart, searchEnd) = searchInterval
 
@@ -46,13 +46,17 @@ case class SimpleThresholdStrategy(
 
     dataSeries.zipWithIndex
       .slice(searchStart, searchEnd)
-      .filter { case (value, _) => value < lowerBound || value > upperBound }
       .map { case (value, index) =>
 
-        val detail = Some(s"[SimpleThresholdStrategy]: Value $value is not in " +
-          s"bounds [$lowerBound, $upperBound]")
+        val (detail, isAnomaly) = if ( value < lowerBound || value > upperBound ) {
+          (Some(s"[SimpleThresholdStrategy]: Value $value is not in " +
+            s"bounds [$lowerBound, $upperBound]"), true)
+        } else {
+          (None, false)
+        }
 
-        (index, Anomaly(Option(value), 1.0, detail))
+        (index, AnomalyDetectionDataPoint(value, value,
+          AnomalyThreshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)), isAnomaly, 1.0, detail))
       }
   }
 }

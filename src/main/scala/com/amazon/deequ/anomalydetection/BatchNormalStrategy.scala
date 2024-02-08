@@ -51,7 +51,7 @@ case class BatchNormalStrategy(
     */
   override def detect(
     dataSeries: Vector[Double],
-    searchInterval: (Int, Int)): Seq[(Int, Anomaly)] = {
+    searchInterval: (Int, Int)): Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     val (searchStart, searchEnd) = searchInterval
 
@@ -83,13 +83,15 @@ case class BatchNormalStrategy(
 
     dataSeries.zipWithIndex
       .slice(searchStart, searchEnd)
-      .filter { case (value, _) => value > upperBound || value < lowerBound }
       .map { case (value, index) =>
-
-        val detail = Some(s"[BatchNormalStrategy]: Value $value is not in " +
-          s"bounds [$lowerBound, $upperBound].")
-
-        (index, Anomaly(Option(value), 1.0, detail))
+        val (detail, isAnomaly) = if (value > upperBound || value < lowerBound) {
+          (Some(s"[BatchNormalStrategy]: Value $value is not in " +
+            s"bounds [$lowerBound, $upperBound]."), true)
+        } else {
+          (None, false)
+        }
+        (index, AnomalyDetectionDataPoint(value, value,
+          AnomalyThreshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)), isAnomaly, 1.0, detail))
       }
   }
 }

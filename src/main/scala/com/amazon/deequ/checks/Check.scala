@@ -16,19 +16,22 @@
 
 package com.amazon.deequ.checks
 
+import com.amazon.deequ.analyzers.AnalyzerOptions
+import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionMetadata
+import com.amazon.deequ.anomalydetection.AnomalyDetectionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetector
+import com.amazon.deequ.anomalydetection.DataPoint
+import com.amazon.deequ.anomalydetection.HistoryUtils
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 import com.amazon.deequ.analyzers.Analyzer
-import com.amazon.deequ.analyzers.AnalyzerOptions
 import com.amazon.deequ.analyzers.DataSynchronizationAnalyzer
 import com.amazon.deequ.analyzers.DataSynchronizationState
 import com.amazon.deequ.analyzers.Histogram
 import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.analyzers.Patterns
 import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
-import com.amazon.deequ.anomalydetection.AnomalyDetector
-import com.amazon.deequ.anomalydetection.DataPoint
 import com.amazon.deequ.checks.ColumnCondition.isAnyNotNull
 import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
@@ -39,7 +42,6 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-
 import scala.util.matching.Regex
 
 object CheckLevel extends Enumeration {
@@ -1159,6 +1161,7 @@ case class Check(
       }
       .collect {
         case constraint: AnalysisBasedConstraint[_, _, _] => constraint.analyzer
+        case constraint: AnomalyBasedConstraint[_, _, _] => constraint.analyzer
       }
       .map { _.asInstanceOf[Analyzer[_, Metric[_]]] }
       .toSet
@@ -1201,7 +1204,7 @@ object Check {
       afterDate: Option[Long],
       beforeDate: Option[Long])(
       currentMetricValue: Double)
-    : Boolean = {
+    : AnomalyDetectionAssertionResult = {
 
     // Get history keys
     var repositoryLoader = metricsRepository.load()
@@ -1245,10 +1248,32 @@ object Check {
 
     // Run given anomaly detection strategy and return false if the newest value is an Anomaly
     val anomalyDetector = AnomalyDetector(anomalyDetectionStrategy)
-    val detectedAnomalies = anomalyDetector.isNewPointAnomalous(
+    val anomalyDetectionResult: AnomalyDetectionResult = anomalyDetector.isNewPointAnomalous(
       HistoryUtils.extractMetricValues[Double](historicalMetrics),
       DataPoint(testDateTime, Some(currentMetricValue)))
 
-    detectedAnomalies.anomalies.isEmpty
+
+    // this function checks if the newest point is anomalous and returns a boolean for assertion,
+    // along with that newest point with anomaly check details
+    getNewestPointAnomalyResults(anomalyDetectionResult)
+  }
+
+  private[deequ] def getNewestPointAnomalyResults(anomalyDetectionResult: AnomalyDetectionResult):
+  AnomalyDetectionAssertionResult = {
+    val (hasNoAnomaly, anomalyDetectionMetaData): (Boolean, AnomalyDetectionMetadata) = {
+
+      // Based on upstream code, this anomaly detection data point sequence should never be empty
+      require(anomalyDetectionResult.anomalyDetectionDataPointSequence != Nil,
+        "AnomalyDetectionDataPointSequence cannot be empty")
+
+      // get the last anomaly detection data point of sequence (there should only be one element for now)
+      // and check the isAnomaly boolean, also return the last anomaly detection data point
+      // wrapped in the anomaly detection metadata class
+      anomalyDetectionResult.anomalyDetectionDataPointSequence match {
+        case _ :+ lastAnomalyDataPoint =>
+          (!lastAnomalyDataPoint._2.isAnomaly, AnomalyDetectionMetadata(lastAnomalyDataPoint._2))
+      }
+    }
+    AnomalyDetectionAssertionResult(hasNoAnomaly = hasNoAnomaly, anomalyDetectionMetadata = anomalyDetectionMetaData)
   }
 }

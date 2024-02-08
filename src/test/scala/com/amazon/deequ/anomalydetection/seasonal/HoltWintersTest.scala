@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.anomalydetection.seasonal
 
-import com.amazon.deequ.anomalydetection.Anomaly
+import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -76,6 +76,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
     "predict no anomaly for normally distributed errors" in {
       val seriesWithOutlier = twoWeeksOfData ++ Vector(twoWeeksOfData.head)
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(seriesWithOutlier, 14 -> 15)
+        .filter({case (_, anom) => anom.isAnomaly})
       anomalies shouldBe empty
     }
 
@@ -92,19 +93,21 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
     "predict no anomalies on longer series" in {
       val seriesWithOutlier = twoWeeksOfData ++ twoWeeksOfData
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(
-        seriesWithOutlier, 26 -> Int.MaxValue)
+        seriesWithOutlier, 26 -> Int.MaxValue).filter({case (_, anom) => anom.isAnomaly})
       anomalies shouldBe empty
     }
 
     "detect no anomalies on constant series" in {
       val series = (0 until 21).map(_ => 1.0).toVector
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(series, 14 -> Int.MaxValue)
+        .filter({case (_, anom) => anom.isAnomaly})
       anomalies shouldBe empty
     }
 
     "detect a single anomaly in constant series with a single error" in {
       val series = ((0 until 20).map(_ => 1.0) ++ Seq(0.0)).toVector
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(series, 14 -> Int.MaxValue)
+        .filter({case (_, anom) => anom.isAnomaly})
 
       anomalies should have size 1
       val (detectionIndex, _) = anomalies.head
@@ -114,6 +117,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
     "detect no anomalies on exact linear trend series" in {
       val series = (0 until 48).map(_.toDouble).toVector
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(series, 36 -> Int.MaxValue)
+        .filter({case (_, anom) => anom.isAnomaly})
       anomalies shouldBe empty
     }
 
@@ -123,6 +127,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
         .zipWithIndex.map { case (s, level) => s + level }.toVector
 
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(series, 36 -> Int.MaxValue)
+        .filter({case (_, anom) => anom.isAnomaly})
       anomalies shouldBe empty
     }
 
@@ -132,6 +137,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
       val series = train ++ test
 
       val anomalies = dailyMetricsWithWeeklySeasonalityAnomalies(series, 14 -> 21)
+        .filter({case (_, anom) => anom.isAnomaly})
 
       anomalies should have size 1
       val (detectionIndex, _) = anomalies.head
@@ -170,7 +176,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
       val anomalies = strategy.detect(
         monthlyMilkProduction.take(nTotal),
         trainSize -> nTotal
-      )
+      ).filter({case (_, anom) => anom.isAnomaly})
 
       anomalies should have size 7
     }
@@ -202,7 +208,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
       val anomalies = strategy.detect(
         monthlyCarSalesQuebec.take(nTotal),
         trainSize -> nTotal
-      )
+      ).filter({case (_, anom) => anom.isAnomaly})
 
       anomalies should have size 3
     }
@@ -213,7 +219,7 @@ object HoltWintersTest {
 
   def dailyMetricsWithWeeklySeasonalityAnomalies(
                                                   series: Vector[Double],
-                                                  interval: (Int, Int)): Seq[(Int, Anomaly)] = {
+                                                  interval: (Int, Int)): Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     val strategy = new HoltWinters(
       HoltWinters.MetricInterval.Daily,

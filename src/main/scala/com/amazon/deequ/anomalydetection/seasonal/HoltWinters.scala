@@ -18,7 +18,7 @@ package com.amazon.deequ.anomalydetection.seasonal
 
 import breeze.linalg.DenseVector
 import breeze.optimize.{ApproximateGradientFunction, DiffFunction, LBFGSB}
-import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionDataPoint, AnomalyDetectionStrategy, AnomalyThreshold, Bound}
 
 import collection.mutable.ListBuffer
 
@@ -178,17 +178,27 @@ class HoltWinters(
       forecasts: Seq[Double],
       startIndex: Int,
       residualSD: Double)
-    : Seq[(Int, Anomaly)] = {
+    : Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     testSeries.zip(forecasts).zipWithIndex
-      .collect { case ((inputValue, forecastedValue), detectionIndex)
-        if math.abs(inputValue - forecastedValue) > 1.96 * residualSD =>
+      .collect { case ((inputValue, forecastedValue), detectionIndex) =>
+        val anomalyMetricValue = math.abs(inputValue - forecastedValue)
+        val upperBound = 1.96 * residualSD
 
-        detectionIndex + startIndex -> Anomaly(
-          value = Some(inputValue),
-          confidence = 1.0,
-          detail = Some(s"Forecasted $forecastedValue for observed value $inputValue")
+        val (detail, isAnomaly) = if (anomalyMetricValue > upperBound) {
+          (Some(s"Forecasted $forecastedValue for observed value $inputValue"), true)
+        } else {
+          (None, false)
+        }
+        detectionIndex + startIndex -> AnomalyDetectionDataPoint(
+            dataMetricValue = inputValue,
+            anomalyMetricValue = anomalyMetricValue,
+            anomalyThreshold = AnomalyThreshold(upperBound = Bound(upperBound)),
+            isAnomaly = isAnomaly,
+            confidence = 1.0,
+            detail = detail
         )
+
     }
   }
 
@@ -202,7 +212,7 @@ class HoltWinters(
   override def detect(
       dataSeries: Vector[Double],
       searchInterval: (Int, Int) = (0, Int.MaxValue))
-    : Seq[(Int, Anomaly)] = {
+    : Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     require(dataSeries.nonEmpty, "Provided data series is empty")
 
