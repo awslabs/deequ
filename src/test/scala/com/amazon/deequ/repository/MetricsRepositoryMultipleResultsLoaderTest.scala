@@ -81,8 +81,17 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
           val analysisResultsAsJson = repository.load()
             .getSuccessMetricsAsJson()
 
-          val expected =
-            s"""[{"entity":"Dataset","instance":"*","name":"Size","value":4.0,
+            val expected =
+              s"""[{"entity":"Dataset","instance":"*","name":"Size","value":4.0,
+              |"region":"NA", "dataset_date":$DATE_TWO},
+              |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0,
+              |"region":"NA", "dataset_date":$DATE_TWO},
+              |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
+              |"region":"NA", "dataset_date":$DATE_TWO},
+              |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25,
+              |"region":"NA", "dataset_date":$DATE_TWO},
+              |
+              |{"entity":"Dataset","instance":"*","name":"Size","value":4.0,
               |"region":"EU", "dataset_date":$DATE_ONE},
               |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0,
               |"region":"EU", "dataset_date":$DATE_ONE},
@@ -90,17 +99,8 @@ class MetricsRepositoryMultipleResultsLoaderTest extends AnyWordSpec with Matche
               |"region":"EU", "dataset_date":$DATE_ONE},
               |{"entity":"Multicolumn","instance":"att1,att2",
               |"name":"Uniqueness","value":0.25,
-              |"region":"EU", "dataset_date":$DATE_ONE},
-              |
-              |{"entity":"Dataset","instance":"*","name":"Size","value":4.0,
-              |"region":"NA", "dataset_date":$DATE_TWO},
-              |{"entity":"Column","instance":"att1","name":"Completeness","value":1.0,
-              |"region":"NA", "dataset_date":$DATE_TWO},
-              |{"entity":"Column","instance":"item","name":"Distinctness","value":1.0,
-              |"region":"NA", "dataset_date":$DATE_TWO},
-              |{"entity":"Multicolumn","instance":"att1,att2","name":"Uniqueness","value":0.25,
-              |"region":"NA", "dataset_date":$DATE_TWO}]"""
-              .stripMargin.replaceAll("\n", "")
+              |"region":"EU", "dataset_date":$DATE_ONE}]"""
+                .stripMargin.replaceAll("\n", "")
 
           assertSameJson(analysisResultsAsJson, expected)
         }

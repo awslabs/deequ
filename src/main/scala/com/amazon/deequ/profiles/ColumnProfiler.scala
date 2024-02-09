@@ -347,7 +347,7 @@ object ColumnProfiler {
                   Histogram(histogram.column).equals(histogram)
               case _ => false
             }
-          analyzerContextExistingValues = AnalyzerContext(relevantEntries)
+          analyzerContextExistingValues = AnalyzerContext(relevantEntries.toMap)
         }
       }
     }

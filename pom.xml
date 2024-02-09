@@ -13,8 +13,8 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
 
-        <scala.major.version>2.12</scala.major.version>
-        <scala.version>${scala.major.version}.10</scala.version>
+        <scala.major.version>2.13</scala.major.version>
+        <scala.version>${scala.major.version}.11</scala.version>
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
         <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 
@@ -103,7 +103,7 @@
         <dependency>
             <groupId>org.scalanlp</groupId>
             <artifactId>breeze_${scala.major.version}</artifactId>
-            <version>0.13.2</version>
+            <version>1.2</version>
         </dependency>
 
         <dependency>
