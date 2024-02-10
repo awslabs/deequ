@@ -46,7 +46,7 @@ import scala.util.Try
  *                  It defines the condition for successful synchronization.
  *
  * Usage:
- * This analyzer is used in Deequ's VerificationSuite based if `isDatasetMatched` check is defined or could be used
+ * This analyzer is used in Deequ's VerificationSuite based if `doesDatasetMatch` check is defined or could be used
  * manually as well.
  *
  * Example:
@@ -54,7 +54,7 @@ import scala.util.Try
  * val verificationResult = VerificationSuite().onData(df).addAnalyzer(analyzer).run()
  *
  * // or could do something like below
- * val verificationResult = VerificationSuite().onData(df).isDatasetMatched(dfToCompare, Map("col1" -> "col2"),
+ * val verificationResult = VerificationSuite().onData(df).doesDatasetMatch(dfToCompare, Map("col1" -> "col2"),
  *                                                                              _ > 0.8).run()
  *
  *
