@@ -17,11 +17,14 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
+import com.amazon.deequ.analyzers.Analyzers.conditionalCount
 import com.amazon.deequ.metrics.DoubleMetric
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.not
+import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.DoubleType
@@ -33,11 +36,16 @@ case class Uniqueness(columns: Seq[String], where: Option[String] = None)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
-    (sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) / numRows) :: Nil
+   (sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) / numRows) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column]): DoubleMetric = {
-    val fullColumnUniqueness = when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false)
+    val conditionColumn = where.map { expression => expr(expression) }
+    val fullColumnUniqueness = conditionColumn.map {
+      condition => {
+        when(not(condition), expr(FilteredRow.NULL.toString)).when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false)
+      }
+    }.getOrElse(when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false))
     super.fromAggregationResult(result, offset, Option(fullColumnUniqueness))
   }
 

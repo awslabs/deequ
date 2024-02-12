@@ -62,18 +62,39 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val check3 = Check(CheckLevel.Warning, "group-2-W")
         .hasCompleteness("att2", _ > 0.8) // 0.75
 
+      val check4 = Check(CheckLevel.Error, "group-3")
+        .isComplete("att2", None) // 1.0 with filter
+        .where("att2 is NOT NULL")
+        .hasCompleteness("att2", _ == 1.0, None) // 1.0 with filter
+        .where("att2 is NOT NULL")
+
       val context = runChecks(getDfCompleteAndInCompleteColumns(sparkSession),
-        check1, check2, check3)
+        check1, check2, check3, check4)
 
       context.metricMap.foreach { println }
 
       assertEvaluatesTo(check1, context, CheckStatus.Success)
       assertEvaluatesTo(check2, context, CheckStatus.Error)
       assertEvaluatesTo(check3, context, CheckStatus.Warning)
+      assertEvaluatesTo(check4, context, CheckStatus.Success)
 
       assert(check1.getRowLevelConstraintColumnNames() == Seq("Completeness-att1", "Completeness-att1"))
       assert(check2.getRowLevelConstraintColumnNames() == Seq("Completeness-att2"))
       assert(check3.getRowLevelConstraintColumnNames() == Seq("Completeness-att2"))
+      assert(check4.getRowLevelConstraintColumnNames() == Seq("Completeness-att2", "Completeness-att2"))
+    }
+
+    "return the correct check status for completeness with where" in withSparkSession { sparkSession =>
+
+      val check = Check(CheckLevel.Error, "group-3")
+        .hasCompleteness("ZipCode", _ > 0.6, None) // 1.0 with filter
+        .where("City is NOT NULL")
+
+      val context = runChecks(getDfForWhereClause(sparkSession), check)
+
+      assertEvaluatesTo(check, context, CheckStatus.Success)
+
+      assert(check.getRowLevelConstraintColumnNames() == Seq("Completeness-ZipCode"))
     }
 
     "return the correct check status for combined completeness" in
@@ -164,7 +185,6 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assert(constraintStatuses.head == ConstraintStatus.Success)
       assert(constraintStatuses(1) == ConstraintStatus.Success)
       assert(constraintStatuses(2) == ConstraintStatus.Success)
-
       assert(constraintStatuses(3) == ConstraintStatus.Failure)
       assert(constraintStatuses(4) == ConstraintStatus.Failure)
     }
@@ -513,6 +533,14 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertEvaluatesTo(numericRangeCheck7, numericRangeResults, CheckStatus.Success)
       assertEvaluatesTo(numericRangeCheck8, numericRangeResults, CheckStatus.Error)
       assertEvaluatesTo(numericRangeCheck9, numericRangeResults, CheckStatus.Success)
+    }
+
+    "correctly evaluate range constraints when values have single quote(') in string" in withSparkSession { sparkSession =>
+      val rangeCheck = Check(CheckLevel.Error, "a")
+        .isContainedIn("att2", Array("can't", "help", "but", "wouldn't"))
+
+      val rangeResults = runChecks(getDfWithDistinctValuesQuotes(sparkSession), rangeCheck)
+      assertEvaluatesTo(rangeCheck, rangeResults, CheckStatus.Success)
     }
 
     "return the correct check status for histogram constraints" in

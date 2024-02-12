@@ -117,4 +117,34 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       .withColumn("new", metric.fullColumn.get).orderBy("unique")
       .collect().map(_.getAs[Boolean]("new")) shouldBe Seq(true, true, true, true, true, true)
   }
+
+  "return filtered row-level results for uniqueness with null" in withSparkSession { session =>
+
+    val data = getDfWithUniqueColumns(session)
+
+    val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique"), Option("unique < 4"))
+    val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique < 4"))
+    val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
+
+    // Adding column with UNIQUENESS_ID, since it's only added in VerificationResult.getRowLevelResults
+    val resultDf = data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+      .withColumn("new", metric.fullColumn.get).orderBy("unique")
+    resultDf
+      .collect().map(_.getAs[Any]("new")) shouldBe Seq(true, true, true, null, null, null)
+  }
+
+  "return filtered row-level results for uniqueness with null on multiple columns" in withSparkSession { session =>
+
+    val data = getDfWithUniqueColumns(session)
+
+    val addressLength = Uniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"), Option("unique > 2"))
+    val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique > 2"))
+    val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
+
+    // Adding column with UNIQUENESS_ID, since it's only added in VerificationResult.getRowLevelResults
+    val resultDf = data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+      .withColumn("new", metric.fullColumn.get).orderBy("unique")
+    resultDf
+      .collect().map(_.getAs[Any]("new")) shouldBe Seq(null, null, true, true, true, true)
+  }
 }

@@ -72,6 +72,8 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
     */
   def computeStateFrom(data: DataFrame): Option[S]
 
+  def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[S]
+
   /**
     * Compute the metric from the state (sufficient statistics)
     * @param state wrapper holding a state of type S (required due to typing issues...)
@@ -98,13 +100,14 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
   def calculate(
       data: DataFrame,
       aggregateWith: Option[StateLoader] = None,
-      saveStatesWith: Option[StatePersister] = None)
+      saveStatesWith: Option[StatePersister] = None,
+      filterCondition: Option[String] = None)
     : M = {
 
     try {
       preconditions.foreach { condition => condition(data.schema) }
 
-      val state = computeStateFrom(data)
+      val state = computeStateFrom(data, filterCondition)
 
       calculateMetric(state, aggregateWith, saveStatesWith)
     } catch {
@@ -189,6 +192,10 @@ trait ScanShareableAnalyzer[S <: State[_], +M <: Metric[_]] extends Analyzer[S, 
     val aggregations = aggregationFunctions()
     val result = data.agg(aggregations.head, aggregations.tail: _*).collect().head
     fromAggregationResult(result, 0)
+  }
+
+  override def computeStateFrom(data: DataFrame, where: Option[String]): Option[S] = {
+    computeStateFrom(data)
   }
 
   /** Produces a metric from the aggregation result */
