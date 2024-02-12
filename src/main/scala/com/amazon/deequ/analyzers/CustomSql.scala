@@ -55,6 +55,10 @@ case class CustomSql(expression: String) extends Analyzer[CustomSqlState, Double
     }
   }
 
+  override def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[CustomSqlState] = {
+    computeStateFrom(data)
+  }
+
   /**
    * Compute the metric from the state (sufficient statistics)
    *

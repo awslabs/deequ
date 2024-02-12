@@ -76,6 +76,10 @@ case class Histogram(
     Some(FrequenciesAndNumRows(frequencies, totalCount))
   }
 
+  override def computeStateFrom(data: DataFrame, where: Option[String]): Option[FrequenciesAndNumRows] = {
+    computeStateFrom(data)
+  }
+
   override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramMetric = {
 
     state match {

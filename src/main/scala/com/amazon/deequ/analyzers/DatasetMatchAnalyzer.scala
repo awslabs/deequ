@@ -86,6 +86,10 @@ case class DatasetMatchAnalyzer(dfToCompare: DataFrame,
     }
   }
 
+  override def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[DatasetMatchState] = {
+    computeStateFrom(data)
+  }
+
   override def computeMetricFrom(state: Option[DatasetMatchState]): DoubleMetric = {
 
     val metric = state match {

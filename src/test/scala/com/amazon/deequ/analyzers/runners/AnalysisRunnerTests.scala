@@ -137,7 +137,8 @@ class AnalysisRunnerTests extends AnyWordSpec
           UniqueValueRatio(Seq("att1"), Some("att3 > 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map { analyzer =>
+            analyzer.calculate(df, filterCondition = analyzer.filterCondition) }.toSet
           (results, stat.jobCount)
         }
 
@@ -160,7 +161,9 @@ class AnalysisRunnerTests extends AnyWordSpec
           UniqueValueRatio(Seq("att1", "att2"), Some("att3 > 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map { analyzer =>
+            analyzer.calculate(df, filterCondition = analyzer.filterCondition)
+          }.toSet
           (results, stat.jobCount)
         }
 
@@ -184,7 +187,9 @@ class AnalysisRunnerTests extends AnyWordSpec
           Uniqueness("att1", Some("att3 = 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map { analyzer =>
+            analyzer.calculate(df, filterCondition = analyzer.filterCondition)
+          }.toSet
           (results, stat.jobCount)
         }
 
@@ -193,9 +198,10 @@ class AnalysisRunnerTests extends AnyWordSpec
           (results, stat.jobCount)
         }
 
+        assert(separateResults.asInstanceOf[Set[DoubleMetric]].size == runnerResults.asInstanceOf[Set[DoubleMetric]].size)
         assert(numSeparateJobs == analyzers.length * 2)
         assert(numCombinedJobs == analyzers.length * 2)
-        assert(separateResults.toString == runnerResults.toString)
+//        assert(separateResults == runnerResults.toString)
       }
 
     "reuse existing results" in

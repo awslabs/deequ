@@ -58,7 +58,8 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
     override def calculate(
         data: DataFrame,
         stateLoader: Option[StateLoader],
-        statePersister: Option[StatePersister])
+        statePersister: Option[StatePersister],
+        filterCondition: Option[String])
       : DoubleMetric = {
       val value: Try[Double] = Try {
         require(data.columns.contains(column), s"Missing column $column")
@@ -71,6 +72,9 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       throw new NotImplementedError()
     }
 
+    override def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[NumMatches] = {
+      computeStateFrom(data)
+    }
 
     override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {
       throw new NotImplementedError()
