@@ -23,6 +23,8 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import scala.util.Success
+
 class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "Completeness" should {
@@ -36,6 +38,34 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
 
       data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Boolean]("new")) shouldBe
         Seq(true, true, true, true, false, true, true, false)
+    }
+
+    "return row-level results for columns filtered using where" in withSparkSession { session =>
+
+      val data = getDfForWhereClause(session)
+
+      val completenessCountry = Completeness("ZipCode", Option("State = \"CA\""))
+      val state = completenessCountry.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = completenessCountry.computeMetricFrom(state)
+
+      // Address Line 3 is null only where Address Line 2 is null. With the where clause, completeness should be 1.0
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Boolean]("new")) shouldBe
+        Seq(true, true, false, false)
+    }
+
+    "return row-level results for columns filtered as null" in withSparkSession { session =>
+
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val completenessAtt2 = Completeness("att2", Option("att1 = \"a\""))
+      val state = completenessAtt2.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = completenessAtt2.computeMetricFrom(state)
+
+      val df = data.withColumn("new", metric.fullColumn.get)
+      println("Filtered as null")
+      df.show(false)
+      df.collect().map(_.getAs[Any]("new")).toSeq  shouldBe
+        Seq(true, null, false, true, null, true)
     }
   }
 }

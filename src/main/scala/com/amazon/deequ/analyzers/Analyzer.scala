@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.DoubleMetric
@@ -255,10 +256,16 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
-case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore)
+case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore,
+                           filteredRow: FilteredRow = FilteredRow.NULL)
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
   val Ignore, EmptyString, Fail = Value
+}
+
+object FilteredRow extends Enumeration {
+  type FilteredRow = Value
+  val NULL, TRUE = Value
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */
@@ -488,6 +495,18 @@ private[deequ] object Analyzers {
   def conditionalSelection(selection: Column, condition: Option[String]): Column = {
     val conditionColumn = condition.map { expression => expr(expression) }
     conditionalSelectionFromColumns(selection, conditionColumn)
+  }
+
+  def conditionalSelectionFilteredFromColumns(
+                                       selection: Column,
+                                       conditionColumn: Option[Column],
+                                       filterTreatment: String)
+  : Column = {
+    conditionColumn
+      .map { condition => {
+        when(not(condition), expr(filterTreatment)).when(condition, selection)
+      } }
+      .getOrElse(selection)
   }
 
   private[this] def conditionalSelectionFromColumns(
