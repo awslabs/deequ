@@ -535,7 +535,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertEvaluatesTo(numericRangeCheck9, numericRangeResults, CheckStatus.Success)
     }
 
-    "correctly evaluate range constraints when values have single quote(') in string" in withSparkSession { sparkSession =>
+    "correctly evaluate range constraints when values have single quote in string" in withSparkSession { sparkSession =>
       val rangeCheck = Check(CheckLevel.Error, "a")
         .isContainedIn("att2", Array("can't", "help", "but", "wouldn't"))
 

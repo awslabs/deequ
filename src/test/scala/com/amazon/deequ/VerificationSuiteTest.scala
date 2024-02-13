@@ -305,12 +305,17 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       assert(Seq(true, true, true, false, false, false).sameElements(rowLevel8))
     }
 
-    "generate a result that contains row-level results with filter with true for filtered rows" in withSparkSession { session =>
+    "generate a result that contains row-level results with true for filtered rows" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      val completeness = new Check(CheckLevel.Error, "rule1").hasCompleteness("att2", _ > 0.7, None).where("att1 = \"a\"")
-      val uniqueness = new Check(CheckLevel.Error, "rule2").hasUniqueness("att1", _ > 0.5, None)
-      val uniquenessWhere = new Check(CheckLevel.Error, "rule3").isUnique("att1").where("item < 3")
+      val completeness = new Check(CheckLevel.Error, "rule1")
+        .hasCompleteness("att2", _ > 0.7, None)
+        .where("att1 = \"a\"")
+      val uniqueness = new Check(CheckLevel.Error, "rule2")
+        .hasUniqueness("att1", _ > 0.5, None)
+      val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
+        .isUnique("att1")
+        .where("item < 3")
       val expectedColumn1 = completeness.description
       val expectedColumn2 = uniqueness.description
       val expectedColumn3 = uniquenessWhere.description
@@ -342,12 +347,17 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     }
 
-    "generate a result that contains row-level results with filter with null for filtered rows" in withSparkSession { session =>
+    "generate a result that contains row-level results with null for filtered rows" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      val completeness = new Check(CheckLevel.Error, "rule1").hasCompleteness("att2", _ > 0.7, None).where("att1 = \"a\"")
-      val uniqueness = new Check(CheckLevel.Error, "rule2").hasUniqueness("att1", _ > 0.5, None)
-      val uniquenessWhere = new Check(CheckLevel.Error, "rule3").isUnique("att1").where("item < 3")
+      val completeness = new Check(CheckLevel.Error, "rule1")
+        .hasCompleteness("att2", _ > 0.7, None)
+        .where("att1 = \"a\"")
+      val uniqueness = new Check(CheckLevel.Error, "rule2")
+        .hasUniqueness("att1", _ > 0.5, None)
+      val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
+        .isUnique("att1")
+        .where("item < 3")
       val expectedColumn1 = completeness.description
       val expectedColumn2 = uniqueness.description
       val expectedColumn3 = uniquenessWhere.description

@@ -45,7 +45,7 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      // Explicitly setting RowLevelFilterTreatment for test purposes, but this should be set at the VerificationRunBuilder
+      // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
       val completenessAtt2 = Completeness("att2", Option("att1 = \"a\"")).withRowLevelFilterTreatment(FilteredRow.NULL)
       val state = completenessAtt2.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = completenessAtt2.computeMetricFrom(state)
@@ -60,7 +60,7 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
 
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      // Explicitly setting RowLevelFilterTreatment for test purposes, but this should be set at the VerificationRunBuilder
+      // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
       val completenessAtt2 = Completeness("att2", Option("att1 = \"a\"")).withRowLevelFilterTreatment(FilteredRow.TRUE)
       val state = completenessAtt2.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = completenessAtt2.computeMetricFrom(state)

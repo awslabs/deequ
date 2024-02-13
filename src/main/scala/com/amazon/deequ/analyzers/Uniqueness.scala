@@ -42,7 +42,8 @@ case class Uniqueness(columns: Seq[String], where: Option[String] = None)
     val conditionColumn = where.map { expression => expr(expression) }
     val fullColumnUniqueness = conditionColumn.map {
       condition => {
-        when(not(condition), expr(rowLevelFilterTreatment.toString)).when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false)
+        when(not(condition), expr(rowLevelFilterTreatment.toString))
+          .when(fullColumn.getOrElse(null).equalTo(1), true).otherwise(false)
       }
     }.getOrElse(when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false))
     super.fromAggregationResult(result, offset, Option(fullColumnUniqueness))

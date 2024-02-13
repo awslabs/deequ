@@ -155,7 +155,7 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     val data = getDfWithUniqueColumns(session)
 
-    // Explicitly setting RowLevelFilterTreatment for test purposes, but this should be set at the VerificationRunBuilder
+    // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
     val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique"), Option("unique < 4"))
                         .withRowLevelFilterTreatment(FilteredRow.TRUE)
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique < 4"))
@@ -172,7 +172,7 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     val data = getDfWithUniqueColumns(session)
 
-    // Explicitly setting RowLevelFilterTreatment for test purposes, but this should be set at the VerificationRunBuilder
+    // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
     val addressLength = Uniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"), Option("unique > 2"))
                         .withRowLevelFilterTreatment(FilteredRow.TRUE)
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique > 2"))
