@@ -198,10 +198,15 @@ class AnalysisRunnerTests extends AnyWordSpec
           (results, stat.jobCount)
         }
 
-        assert(separateResults.asInstanceOf[Set[DoubleMetric]].size == runnerResults.asInstanceOf[Set[DoubleMetric]].size)
         assert(numSeparateJobs == analyzers.length * 2)
         assert(numCombinedJobs == analyzers.length * 2)
-//        assert(separateResults == runnerResults.toString)
+        // assert(separateResults == runnerResults.toString)
+        // Used to be tested with the above line, but adding filters changed the order of the results.
+        assert(separateResults.asInstanceOf[Set[DoubleMetric]].size == runnerResults.asInstanceOf[Set[DoubleMetric]].size)
+        separateResults.asInstanceOf[Set[DoubleMetric]].foreach( result => {
+            assert(runnerResults.toString.contains(result.toString))
+          }
+          )
       }
 
     "reuse existing results" in

@@ -84,7 +84,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assert(check4.getRowLevelConstraintColumnNames() == Seq("Completeness-att2", "Completeness-att2"))
     }
 
-    "return the correct check status for completeness with where" in withSparkSession { sparkSession =>
+    "return the correct check status for completeness with where filter" in withSparkSession { sparkSession =>
 
       val check = Check(CheckLevel.Error, "group-3")
         .hasCompleteness("ZipCode", _ > 0.6, None) // 1.0 with filter

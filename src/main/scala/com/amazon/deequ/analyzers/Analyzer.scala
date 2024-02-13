@@ -17,7 +17,6 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.DoubleMetric
@@ -25,6 +24,11 @@ import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
+import com.amazon.deequ.utilities.FilteredRow
+import com.amazon.deequ.utilities.FilteredRow.FilteredRow
+import com.amazon.deequ.utilities.RowLevelFilterTreatment
+import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
+import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
@@ -63,7 +67,7 @@ trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
 }
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
-trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
+trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable with RowLevelFilterTreatment {
 
   /**
     * Compute the state (sufficient statistics) from the data
@@ -175,6 +179,14 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
     source.load[S](this).foreach { state => target.persist(this, state) }
   }
 
+  @VisibleForTesting
+  private[deequ] def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
+    RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
+    this
+  }
+
+  def rowLevelFilterTreatment: FilteredRow.Value = RowLevelFilterTreatment.sharedInstance.rowLevelFilterTreatment
+
 }
 
 /** An analyzer that runs a set of aggregation functions over the data,
@@ -263,16 +275,10 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
-case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore,
-                           filteredRow: FilteredRow = FilteredRow.NULL)
+case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore)
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
   val Ignore, EmptyString, Fail = Value
-}
-
-object FilteredRow extends Enumeration {
-  type FilteredRow = Value
-  val NULL, TRUE = Value
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */
