@@ -22,14 +22,13 @@ import com.amazon.deequ.analyzers.{State, _}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
-import com.amazon.deequ.utilities.FilteredRow
 import com.amazon.deequ.utilities.FilteredRow.FilteredRow
 import com.amazon.deequ.utilities.RowLevelFilterTreatment
 import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a VerificationRun using a fluent API */
-class VerificationRunBuilder(val data: DataFrame) extends RowLevelFilterTreatment {
+class VerificationRunBuilder(val data: DataFrame)  {
 
   protected var requiredAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
 
@@ -48,6 +47,7 @@ class VerificationRunBuilder(val data: DataFrame) extends RowLevelFilterTreatmen
 
   protected var statePersister: Option[StatePersister] = None
   protected var stateLoader: Option[StateLoader] = None
+  protected var rowLevelFilterTreatment: RowLevelFilterTreatment = RowLevelFilterTreatment.sharedInstance
 
   protected def this(verificationRunBuilder: VerificationRunBuilder) {
 
@@ -70,6 +70,7 @@ class VerificationRunBuilder(val data: DataFrame) extends RowLevelFilterTreatmen
 
     stateLoader = verificationRunBuilder.stateLoader
     statePersister = verificationRunBuilder.statePersister
+    rowLevelFilterTreatment = verificationRunBuilder.rowLevelFilterTreatment
   }
 
   /**
@@ -146,10 +147,9 @@ class VerificationRunBuilder(val data: DataFrame) extends RowLevelFilterTreatmen
    */
   def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
     RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
+    rowLevelFilterTreatment = RowLevelFilterTreatment.sharedInstance
     this
   }
-
-  def rowLevelFilterTreatment: FilteredRow.Value = RowLevelFilterTreatment.sharedInstance.rowLevelFilterTreatment
 
   /**
     * Set a metrics repository associated with the current data to enable features like reusing

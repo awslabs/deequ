@@ -46,3 +46,7 @@ object FilteredRow extends Enumeration {
   type FilteredRow = Value
   val NULL, TRUE = Value
 }
+
+trait RowLevelAnalyzer extends RowLevelFilterTreatment {
+  def rowLevelFilterTreatment: FilteredRow.Value = RowLevelFilterTreatment.sharedInstance.rowLevelFilterTreatment
+}

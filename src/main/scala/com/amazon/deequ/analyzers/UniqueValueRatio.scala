@@ -18,6 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
 import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.utilities.RowLevelAnalyzer
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.not
 import org.apache.spark.sql.functions.when
@@ -27,7 +28,7 @@ import org.apache.spark.sql.types.DoubleType
 
 case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
   extends ScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns)
-  with FilterableAnalyzer {
+  with FilterableAnalyzer with RowLevelAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
     sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) :: count("*") :: Nil

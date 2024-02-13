@@ -20,6 +20,10 @@ import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import Analyzers._
+import com.amazon.deequ.utilities.FilteredRow.FilteredRow
+import com.amazon.deequ.utilities.RowLevelAnalyzer
+import com.amazon.deequ.utilities.RowLevelFilterTreatment
+import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
 import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.expr
@@ -28,7 +32,7 @@ import org.apache.spark.sql.{Column, Row}
 /** Completeness is the fraction of non-null values in a column of a DataFrame. */
 case class Completeness(column: String, where: Option[String] = None) extends
   StandardScanShareableAnalyzer[NumMatchesAndCount]("Completeness", column) with
-  FilterableAnalyzer {
+  FilterableAnalyzer with RowLevelAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
@@ -58,4 +62,9 @@ case class Completeness(column: String, where: Option[String] = None) extends
     conditionalSelectionFilteredFromColumns(col(column).isNotNull, whereCondition, rowLevelFilterTreatment.toString)
   }
 
+  @VisibleForTesting
+  private[deequ] def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
+    RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
+    this
+  }
 }

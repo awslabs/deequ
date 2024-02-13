@@ -18,6 +18,12 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
 import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.utilities.FilteredRow
+import com.amazon.deequ.utilities.FilteredRow.FilteredRow
+import com.amazon.deequ.utilities.RowLevelAnalyzer
+import com.amazon.deequ.utilities.RowLevelFilterTreatment
+import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
+import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.when
@@ -32,7 +38,7 @@ import org.apache.spark.sql.types.DoubleType
   * values that occur exactly once. */
 case class Uniqueness(columns: Seq[String], where: Option[String] = None)
   extends ScanShareableFrequencyBasedAnalyzer("Uniqueness", columns)
-  with FilterableAnalyzer {
+  with FilterableAnalyzer with RowLevelAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
    (sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) / numRows) :: Nil
@@ -50,6 +56,13 @@ case class Uniqueness(columns: Seq[String], where: Option[String] = None)
   }
 
   override def filterCondition: Option[String] = where
+
+
+  @VisibleForTesting
+  private[deequ] def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
+    RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
+    this
+  }
 }
 
 object Uniqueness {

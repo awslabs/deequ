@@ -67,7 +67,7 @@ trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
 }
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
-trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable with RowLevelFilterTreatment {
+trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
 
   /**
     * Compute the state (sufficient statistics) from the data
@@ -178,15 +178,6 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable with RowLeve
   private[deequ] def copyStateTo(source: StateLoader, target: StatePersister): Unit = {
     source.load[S](this).foreach { state => target.persist(this, state) }
   }
-
-  @VisibleForTesting
-  private[deequ] def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
-    RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
-    this
-  }
-
-  def rowLevelFilterTreatment: FilteredRow.Value = RowLevelFilterTreatment.sharedInstance.rowLevelFilterTreatment
-
 }
 
 /** An analyzer that runs a set of aggregation functions over the data,
