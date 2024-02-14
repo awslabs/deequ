@@ -21,6 +21,6 @@ sealed trait ComparisonResult
 case class ComparisonFailed(errorMessage: String, ratio: Double = 0) extends ComparisonResult
 case class ComparisonSucceeded(ratio: Double = 0) extends ComparisonResult
 
-case class DataSynchronizationFailed(errorMessage: String, passedCount: Option[Long] = None,
-                                     totalCount: Option[Long] = None) extends ComparisonResult
-case class DataSynchronizationSucceeded(passedCount: Long, totalCount: Long) extends ComparisonResult
+case class DatasetMatchFailed(errorMessage: String, passedCount: Option[Long] = None,
+                              totalCount: Option[Long] = None) extends ComparisonResult
+case class DatasetMatchSucceeded(passedCount: Long, totalCount: Long) extends ComparisonResult
