@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.DoubleMetric
@@ -24,11 +25,6 @@ import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.utilities.ColumnUtil.removeEscapeColumn
-import com.amazon.deequ.utilities.FilteredRow
-import com.amazon.deequ.utilities.FilteredRow.FilteredRow
-import com.amazon.deequ.utilities.RowLevelFilterTreatment
-import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
-import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
@@ -266,10 +262,16 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
-case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore)
+case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore,
+                           filteredRow: FilteredRow = FilteredRow.TRUE)
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
   val Ignore, EmptyString, Fail = Value
+}
+
+object FilteredRow extends Enumeration {
+  type FilteredRow = Value
+  val NULL, TRUE = Value
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */

@@ -17,12 +17,8 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
+import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.amazon.deequ.metrics.DoubleMetric
-import com.amazon.deequ.utilities.FilteredRow
-import com.amazon.deequ.utilities.FilteredRow.FilteredRow
-import com.amazon.deequ.utilities.RowLevelAnalyzer
-import com.amazon.deequ.utilities.RowLevelFilterTreatment
-import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
 import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
@@ -36,9 +32,10 @@ import org.apache.spark.sql.types.DoubleType
 
 /** Uniqueness is the fraction of unique values of a column(s), i.e.,
   * values that occur exactly once. */
-case class Uniqueness(columns: Seq[String], where: Option[String] = None)
+case class Uniqueness(columns: Seq[String], where: Option[String] = None,
+                      analyzerOptions: Option[AnalyzerOptions] = None)
   extends ScanShareableFrequencyBasedAnalyzer("Uniqueness", columns)
-  with FilterableAnalyzer with RowLevelAnalyzer {
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
    (sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) / numRows) :: Nil
@@ -46,22 +43,25 @@ case class Uniqueness(columns: Seq[String], where: Option[String] = None)
 
   override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column]): DoubleMetric = {
     val conditionColumn = where.map { expression => expr(expression) }
-    val fullColumnUniqueness = conditionColumn.map {
-      condition => {
-        when(not(condition), expr(rowLevelFilterTreatment.toString))
-          .when(fullColumn.getOrElse(null).equalTo(1), true).otherwise(false)
+    val fullColumnUniqueness = fullColumn.map {
+      rowLevelColumn => {
+        conditionColumn.map {
+          condition => {
+            when(not(condition), expr(getRowLevelFilterTreatment.toString))
+              .when(rowLevelColumn.equalTo(1), true).otherwise(false)
+          }
+        }.getOrElse(when(rowLevelColumn.equalTo(1), true).otherwise(false))
       }
-    }.getOrElse(when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false))
-    super.fromAggregationResult(result, offset, Option(fullColumnUniqueness))
+    }
+    super.fromAggregationResult(result, offset, fullColumnUniqueness)
   }
 
   override def filterCondition: Option[String] = where
 
-
-  @VisibleForTesting
-  private[deequ] def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
-    RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
-    this
+  private def getRowLevelFilterTreatment: FilteredRow = {
+    analyzerOptions
+      .map { options => options.filteredRow }
+      .getOrElse(FilteredRow.TRUE)
   }
 }
 

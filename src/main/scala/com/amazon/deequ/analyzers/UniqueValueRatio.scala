@@ -17,8 +17,8 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
+import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.amazon.deequ.metrics.DoubleMetric
-import com.amazon.deequ.utilities.RowLevelAnalyzer
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.not
 import org.apache.spark.sql.functions.when
@@ -26,9 +26,10 @@ import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{col, count, lit, sum}
 import org.apache.spark.sql.types.DoubleType
 
-case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
+case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None,
+                            analyzerOptions: Option[AnalyzerOptions] = None)
   extends ScanShareableFrequencyBasedAnalyzer("UniqueValueRatio", columns)
-  with FilterableAnalyzer with RowLevelAnalyzer {
+  with FilterableAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {
     sum(col(COUNT_COL).equalTo(lit(1)).cast(DoubleType)) :: count("*") :: Nil
@@ -38,17 +39,26 @@ case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None)
     val numUniqueValues = result.getDouble(offset)
     val numDistinctValues = result.getLong(offset + 1).toDouble
     val conditionColumn = where.map { expression => expr(expression) }
-    val fullColumnUniqueness = conditionColumn.map {
-      condition => {
-        when(not(condition), expr(rowLevelFilterTreatment.toString))
-          .when((fullColumn.getOrElse(null)).equalTo(1), true)
-          .otherwise(false)
+    val fullColumnUniqueness = fullColumn.map {
+      rowLevelColumn => {
+        conditionColumn.map {
+          condition => {
+            when(not(condition), expr(getRowLevelFilterTreatment.toString))
+              .when(rowLevelColumn.equalTo(1), true).otherwise(false)
+          }
+        }.getOrElse(when(rowLevelColumn.equalTo(1), true).otherwise(false))
       }
-    }.getOrElse(when((fullColumn.getOrElse(null)).equalTo(1), true).otherwise(false))
-    toSuccessMetric(numUniqueValues / numDistinctValues, Option(fullColumnUniqueness))
+    }
+    toSuccessMetric(numUniqueValues / numDistinctValues, fullColumnUniqueness)
   }
 
   override def filterCondition: Option[String] = where
+
+  private def getRowLevelFilterTreatment: FilteredRow = {
+    analyzerOptions
+      .map { options => options.filteredRow }
+      .getOrElse(FilteredRow.TRUE)
+  }
 }
 
 object UniqueValueRatio {

@@ -19,7 +19,6 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn
-import com.amazon.deequ.utilities.FilteredRow
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -46,7 +45,8 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
       val data = getDfCompleteAndInCompleteColumns(session)
 
       // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
-      val completenessAtt2 = Completeness("att2", Option("att1 = \"a\"")).withRowLevelFilterTreatment(FilteredRow.NULL)
+      val completenessAtt2 = Completeness("att2", Option("att1 = \"a\""),
+                              Option(AnalyzerOptions(filteredRow = FilteredRow.NULL)))
       val state = completenessAtt2.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = completenessAtt2.computeMetricFrom(state)
 
@@ -61,7 +61,7 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
       val data = getDfCompleteAndInCompleteColumns(session)
 
       // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
-      val completenessAtt2 = Completeness("att2", Option("att1 = \"a\"")).withRowLevelFilterTreatment(FilteredRow.TRUE)
+      val completenessAtt2 = Completeness("att2", Option("att1 = \"a\""))
       val state = completenessAtt2.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = completenessAtt2.computeMetricFrom(state)
 

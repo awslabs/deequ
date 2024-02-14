@@ -22,9 +22,6 @@ import com.amazon.deequ.analyzers.{State, _}
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
-import com.amazon.deequ.utilities.FilteredRow.FilteredRow
-import com.amazon.deequ.utilities.RowLevelFilterTreatment
-import com.amazon.deequ.utilities.RowLevelFilterTreatmentImpl
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /** A class to build a VerificationRun using a fluent API */
@@ -47,7 +44,6 @@ class VerificationRunBuilder(val data: DataFrame)  {
 
   protected var statePersister: Option[StatePersister] = None
   protected var stateLoader: Option[StateLoader] = None
-  protected var rowLevelFilterTreatment: RowLevelFilterTreatment = RowLevelFilterTreatment.sharedInstance
 
   protected def this(verificationRunBuilder: VerificationRunBuilder) {
 
@@ -70,7 +66,6 @@ class VerificationRunBuilder(val data: DataFrame)  {
 
     stateLoader = verificationRunBuilder.stateLoader
     statePersister = verificationRunBuilder.statePersister
-    rowLevelFilterTreatment = verificationRunBuilder.rowLevelFilterTreatment
   }
 
   /**
@@ -137,17 +132,6 @@ class VerificationRunBuilder(val data: DataFrame)  {
     */
   def addRequiredAnalyzers(requiredAnalyzers: Seq[Analyzer[_, Metric[_]]]): this.type = {
     this.requiredAnalyzers ++= requiredAnalyzers
-    this
-  }
-
-  /**
-   * Sets how row level results will be treated for the Verification run
-   *
-   * @param filteredRow enum to determine how filtered row level results are labeled (TRUE | NULL)
-   */
-  def withRowLevelFilterTreatment(filteredRow: FilteredRow): this.type = {
-    RowLevelFilterTreatment.setSharedInstance(new RowLevelFilterTreatmentImpl(filteredRow))
-    rowLevelFilterTreatment = RowLevelFilterTreatment.sharedInstance
     this
   }
 

@@ -29,7 +29,6 @@ import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.utilities.FilteredRow
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.utils.TempFileUtils
@@ -350,20 +349,21 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     "generate a result that contains row-level results with null for filtered rows" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumns(session)
 
+      val analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRow.NULL))
+
       val completeness = new Check(CheckLevel.Error, "rule1")
-        .hasCompleteness("att2", _ > 0.7, None)
+        .hasCompleteness("att2", _ > 0.7, None, analyzerOptions)
         .where("att1 = \"a\"")
       val uniqueness = new Check(CheckLevel.Error, "rule2")
-        .hasUniqueness("att1", _ > 0.5, None)
+        .hasUniqueness("att1", _ > 0.5, None, analyzerOptions)
       val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
-        .isUnique("att1")
+        .isUnique("att1", None, analyzerOptions)
         .where("item < 3")
       val expectedColumn1 = completeness.description
       val expectedColumn2 = uniqueness.description
       val expectedColumn3 = uniquenessWhere.description
 
       val suite = new VerificationSuite().onData(data)
-        .withRowLevelFilterTreatment(FilteredRow.NULL)
         .addCheck(completeness)
         .addCheck(uniqueness)
         .addCheck(uniquenessWhere)

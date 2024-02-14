@@ -284,7 +284,7 @@ class AnalysisRunnerTests extends AnyWordSpec
 
         assert(exception.getMessage == "Could not find all necessary results in the " +
           "MetricsRepository, the calculation of the metrics for these analyzers " +
-          "would be needed: Uniqueness(List(item, att2),None), Size(None)")
+          "would be needed: Uniqueness(List(item, att2),None,None), Size(None)")
       }
 
     "save results if specified" in

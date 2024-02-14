@@ -21,7 +21,6 @@ import com.amazon.deequ.VerificationResult.UNIQUENESS_ID
 import com.amazon.deequ.analyzers.runners.AnalysisRunner
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn
-import com.amazon.deequ.utilities.FilteredRow
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
@@ -123,8 +122,8 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     val data = getDfWithUniqueColumns(session)
 
-    val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique"), Option("unique < 4"))
-                        .withRowLevelFilterTreatment(FilteredRow.NULL)
+    val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique"), Option("unique < 4"),
+      Option(AnalyzerOptions(filteredRow = FilteredRow.NULL)))
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique < 4"))
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
@@ -139,8 +138,8 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     val data = getDfWithUniqueColumns(session)
 
-    val addressLength = Uniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"), Option("unique > 2"))
-                        .withRowLevelFilterTreatment(FilteredRow.NULL)
+    val addressLength = Uniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"), Option("unique > 2"),
+      Option(AnalyzerOptions(filteredRow = FilteredRow.NULL)))
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique > 2"))
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
@@ -157,7 +156,6 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
     val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique"), Option("unique < 4"))
-                        .withRowLevelFilterTreatment(FilteredRow.TRUE)
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique < 4"))
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
@@ -174,7 +172,6 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
     // Explicitly setting RowLevelFilterTreatment for test purposes, this should be set at the VerificationRunBuilder
     val addressLength = Uniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"), Option("unique > 2"))
-                        .withRowLevelFilterTreatment(FilteredRow.TRUE)
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique > 2"))
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
