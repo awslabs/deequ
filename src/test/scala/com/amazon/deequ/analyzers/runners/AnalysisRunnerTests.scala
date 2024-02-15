@@ -137,7 +137,8 @@ class AnalysisRunnerTests extends AnyWordSpec
           UniqueValueRatio(Seq("att1"), Some("att3 > 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map { analyzer =>
+            analyzer.calculate(df, filterCondition = analyzer.filterCondition) }.toSet
           (results, stat.jobCount)
         }
 
@@ -160,7 +161,9 @@ class AnalysisRunnerTests extends AnyWordSpec
           UniqueValueRatio(Seq("att1", "att2"), Some("att3 > 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map { analyzer =>
+            analyzer.calculate(df, filterCondition = analyzer.filterCondition)
+          }.toSet
           (results, stat.jobCount)
         }
 
@@ -184,7 +187,9 @@ class AnalysisRunnerTests extends AnyWordSpec
           Uniqueness("att1", Some("att3 = 0")) :: Nil
 
         val (separateResults, numSeparateJobs) = sparkMonitor.withMonitoringSession { stat =>
-          val results = analyzers.map { _.calculate(df) }.toSet
+          val results = analyzers.map { analyzer =>
+            analyzer.calculate(df, filterCondition = analyzer.filterCondition)
+          }.toSet
           (results, stat.jobCount)
         }
 
@@ -195,7 +200,14 @@ class AnalysisRunnerTests extends AnyWordSpec
 
         assert(numSeparateJobs == analyzers.length * 2)
         assert(numCombinedJobs == analyzers.length * 2)
-        assert(separateResults.toString == runnerResults.toString)
+        // assert(separateResults == runnerResults.toString)
+        // Used to be tested with the above line, but adding filters changed the order of the results.
+        assert(separateResults.asInstanceOf[Set[DoubleMetric]].size ==
+          runnerResults.asInstanceOf[Set[DoubleMetric]].size)
+        separateResults.asInstanceOf[Set[DoubleMetric]].foreach( result => {
+            assert(runnerResults.toString.contains(result.toString))
+          }
+          )
       }
 
     "reuse existing results" in
@@ -272,7 +284,7 @@ class AnalysisRunnerTests extends AnyWordSpec
 
         assert(exception.getMessage == "Could not find all necessary results in the " +
           "MetricsRepository, the calculation of the metrics for these analyzers " +
-          "would be needed: Uniqueness(List(item, att2),None), Size(None)")
+          "would be needed: Uniqueness(List(item, att2),None,None), Size(None)")
       }
 
     "save results if specified" in

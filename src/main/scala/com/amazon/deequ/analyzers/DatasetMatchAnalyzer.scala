@@ -69,7 +69,7 @@ case class DatasetMatchAnalyzer(dfToCompare: DataFrame,
                                 matchColumnMappings: Option[Map[String, String]] = None)
   extends Analyzer[DatasetMatchState, DoubleMetric] {
 
-  override def computeStateFrom(data: DataFrame): Option[DatasetMatchState] = {
+  override def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None): Option[DatasetMatchState] = {
 
     val result = if (matchColumnMappings.isDefined) {
       DataSynchronization.columnMatch(data, dfToCompare, columnMappings, matchColumnMappings.get, assertion)

@@ -78,6 +78,13 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
 
           val successMetricsResultsJson = VerificationResult.successMetricsAsJson(results)
 
+          val expectedJsonSet = Set("""{"entity":"Column","instance":"item","name":"Distinctness","value":1.0}""",
+            """{"entity": "Column", "instance":"att2","name":"Completeness","value":1.0}""",
+            """{"entity":"Column","instance":"att1","name":"Completeness","value":1.0}""",
+            """{"entity":"Multicolumn","instance":"att1,att2",
+              "name":"Uniqueness","value":0.25}""",
+            """{"entity":"Dataset","instance":"*","name":"Size","value":4.0}""")
+
           val expectedJson =
             """[{"entity":"Column","instance":"item","name":"Distinctness","value":1.0},
               |{"entity": "Column", "instance":"att2","name":"Completeness","value":1.0},
@@ -123,11 +130,11 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
 
         import session.implicits._
         val expected = Seq(
-          ("group-1", "Error", "Success", "CompletenessConstraint(Completeness(att1,None))",
+          ("group-1", "Error", "Success", "CompletenessConstraint(Completeness(att1,None,None))",
             "Success", ""),
           ("group-2-E", "Error", "Error", "SizeConstraint(Size(None))", "Failure",
             "Value: 4 does not meet the constraint requirement! Should be greater than 5!"),
-          ("group-2-E", "Error", "Error", "CompletenessConstraint(Completeness(att2,None))",
+          ("group-2-E", "Error", "Error", "CompletenessConstraint(Completeness(att2,None,None))",
             "Success", ""),
           ("group-2-W", "Warning", "Warning",
             "DistinctnessConstraint(Distinctness(List(item),None))",
@@ -150,7 +157,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
 
           val expectedJson =
             """[{"check":"group-1","check_level":"Error","check_status":"Success",
-              |"constraint":"CompletenessConstraint(Completeness(att1,None))",
+              |"constraint":"CompletenessConstraint(Completeness(att1,None,None))",
               |"constraint_status":"Success","constraint_message":""},
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
@@ -159,7 +166,7 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
               | Should be greater than 5!"},
               |
               |{"check":"group-2-E","check_level":"Error","check_status":"Error",
-              |"constraint":"CompletenessConstraint(Completeness(att2,None))",
+              |"constraint":"CompletenessConstraint(Completeness(att2,None,None))",
               |"constraint_status":"Success","constraint_message":""},
               |
               |{"check":"group-2-W","check_level":"Warning","check_status":"Warning",
@@ -214,7 +221,6 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
   }
 
   private[this] def assertSameResultsJson(jsonA: String, jsonB: String): Unit = {
-    assert(SimpleResultSerde.deserialize(jsonA) ==
-      SimpleResultSerde.deserialize(jsonB))
+    assert(SimpleResultSerde.deserialize(jsonA).toSet.sameElements(SimpleResultSerde.deserialize(jsonB).toSet))
   }
 }
