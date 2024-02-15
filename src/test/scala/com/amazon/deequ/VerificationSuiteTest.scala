@@ -304,6 +304,91 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       assert(Seq(true, true, true, false, false, false).sameElements(rowLevel8))
     }
 
+    "generate a result that contains row-level results with true for filtered rows" in withSparkSession { session =>
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val completeness = new Check(CheckLevel.Error, "rule1")
+        .hasCompleteness("att2", _ > 0.7, None)
+        .where("att1 = \"a\"")
+      val uniqueness = new Check(CheckLevel.Error, "rule2")
+        .hasUniqueness("att1", _ > 0.5, None)
+      val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
+        .isUnique("att1")
+        .where("item < 3")
+      val expectedColumn1 = completeness.description
+      val expectedColumn2 = uniqueness.description
+      val expectedColumn3 = uniquenessWhere.description
+
+
+      val suite = new VerificationSuite().onData(data)
+        .addCheck(completeness)
+        .addCheck(uniqueness)
+        .addCheck(uniquenessWhere)
+
+      val result: VerificationResult = suite.run()
+
+      assert(result.status == CheckStatus.Error)
+
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data).orderBy("item")
+      resultData.show(false)
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3
+      assert(resultData.columns.toSet == expectedColumns)
+
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, false, true, true, true).sameElements(rowLevel1))
+
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getAs[Any](0))
+      assert(Seq(false, false, false, false, false, false).sameElements(rowLevel2))
+
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel3))
+
+    }
+
+    "generate a result that contains row-level results with null for filtered rows" in withSparkSession { session =>
+      val data = getDfCompleteAndInCompleteColumns(session)
+
+      val analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRow.NULL))
+
+      val completeness = new Check(CheckLevel.Error, "rule1")
+        .hasCompleteness("att2", _ > 0.7, None, analyzerOptions)
+        .where("att1 = \"a\"")
+      val uniqueness = new Check(CheckLevel.Error, "rule2")
+        .hasUniqueness("att1", _ > 0.5, None, analyzerOptions)
+      val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
+        .isUnique("att1", None, analyzerOptions)
+        .where("item < 3")
+      val expectedColumn1 = completeness.description
+      val expectedColumn2 = uniqueness.description
+      val expectedColumn3 = uniquenessWhere.description
+
+      val suite = new VerificationSuite().onData(data)
+        .addCheck(completeness)
+        .addCheck(uniqueness)
+        .addCheck(uniquenessWhere)
+
+      val result: VerificationResult = suite.run()
+
+      assert(result.status == CheckStatus.Error)
+
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data).orderBy("item")
+      resultData.show(false)
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3
+      assert(resultData.columns.toSet == expectedColumns)
+
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, null, false, true, null, true).sameElements(rowLevel1))
+
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getAs[Any](0))
+      assert(Seq(false, false, false, false, false, false).sameElements(rowLevel2))
+
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, null, null, null, null).sameElements(rowLevel3))
+
+    }
+
     "generate a result that contains row-level results for null column values" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
 
@@ -452,6 +537,38 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         ("Column", "att2", "Uniqueness", 0.25),
         ("Multicolumn", "att1,att2", "MutualInformation",
           -(0.75 * math.log(0.75) + 0.25 * math.log(0.25))))
+        .toDF("entity", "instance", "name", "value")
+
+
+      assertSameRows(analysisDf, expected)
+
+    }
+
+    "accept analysis config for mandatory analysis for checks with filters" in withSparkSession { sparkSession =>
+
+      import sparkSession.implicits._
+      val df = getDfCompleteAndInCompleteColumns(sparkSession)
+
+      val result = {
+        val checkToSucceed = Check(CheckLevel.Error, "group-1")
+          .hasCompleteness("att2", _ > 0.7, null) // 0.75
+          .where("att1 = \"a\"")
+        val uniquenessCheck = Check(CheckLevel.Error, "group-2")
+          .isUnique("att1")
+          .where("item < 3")
+
+
+        VerificationSuite().onData(df).addCheck(checkToSucceed).addCheck(uniquenessCheck).run()
+      }
+
+      assert(result.status == CheckStatus.Success)
+
+      val analysisDf = AnalyzerContext.successMetricsAsDataFrame(sparkSession,
+        AnalyzerContext(result.metrics))
+
+      val expected = Seq(
+        ("Column", "att2", "Completeness (where: att1 = \"a\")", 0.75),
+        ("Column", "att1", "Uniqueness (where: item < 3)", 1.0))
         .toDF("entity", "instance", "name", "value")
 
 
@@ -784,6 +901,33 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         case (checkConstraint, checkResultConstraint) =>
           assert(checkConstraint == checkResultConstraint.constraint)
       }
+    }
+
+    "A well-defined check should pass even if an ill-defined check is also configured quotes" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithDistinctValuesQuotes(sparkSession)
+
+        val rangeCheck = Check(CheckLevel.Error, "a")
+          .isContainedIn("att2", Array("can't", "help", "but", "wouldn't"))
+
+        val reasonCheck = Check(CheckLevel.Error, "a")
+          .isContainedIn("reason", Array("Already Has ", " Can't Proceed"))
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(rangeCheck)
+          .addCheck(reasonCheck)
+          .run()
+
+        val checkSuccessResult = verificationResult.checkResults(rangeCheck)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        println(checkSuccessResult.constraintResults.map(_.message))
+        assert(checkSuccessResult.status == CheckStatus.Success)
+
+        val reasonResult = verificationResult.checkResults(reasonCheck)
+        checkSuccessResult.constraintResults.map(_.message) shouldBe List(None)
+        println(checkSuccessResult.constraintResults.map(_.message))
+        assert(checkSuccessResult.status == CheckStatus.Success)
     }
 
     "A well-defined check should pass even if an ill-defined check is also configured" in withSparkSession {
