@@ -192,15 +192,17 @@ object Constraint {
     * @param assertion Function that receives a double input parameter (since the metric is
     *                  double metric) and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def completenessConstraint(
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val completeness = Completeness(column, where)
+    val completeness = Completeness(column, where, analyzerOptions)
 
     this.fromAnalyzer(completeness, assertion, hint)
   }
@@ -242,15 +244,17 @@ object Constraint {
     *                  (since the metric is double metric) and returns a boolean
     * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def uniquenessConstraint(
       columns: Seq[String],
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val uniqueness = Uniqueness(columns, where)
+    val uniqueness = Uniqueness(columns, where, analyzerOptions)
 
     fromAnalyzer(uniqueness, assertion, hint)
   }
@@ -528,6 +532,7 @@ object Constraint {
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint    A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def maxLengthConstraint(
       column: String,
@@ -562,6 +567,7 @@ object Constraint {
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint    A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def minLengthConstraint(
       column: String,

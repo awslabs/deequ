@@ -32,6 +32,7 @@ import org.apache.spark.sql.functions.count
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.functions.when
 
 /** Base class for all analyzers that operate the frequencies of groups in the data */
 abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
@@ -39,8 +40,9 @@ abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
 
   override def groupingColumns(): Seq[String] = { columnsToGroupOn }
 
-  override def computeStateFrom(data: DataFrame): Option[FrequenciesAndNumRows] = {
-    Some(FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns()))
+  override def computeStateFrom(data: DataFrame,
+                                filterCondition: Option[String] = None): Option[FrequenciesAndNumRows] = {
+    Some(FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns(), filterCondition))
   }
 
   /** We need at least one grouping column, and all specified columns must exist */
@@ -88,7 +90,15 @@ object FrequencyBasedAnalyzer {
       .count()
 
     // Set rows with value count 1 to true, and otherwise false
-    val fullColumn: Column = count(UNIQUENESS_ID).over(Window.partitionBy(columnsToGroupBy: _*))
+    val fullColumn: Column = {
+      val window = Window.partitionBy(columnsToGroupBy: _*)
+      where.map {
+        condition => {
+          count(when(expr(condition), UNIQUENESS_ID)).over(window)
+        }
+      }.getOrElse(count(UNIQUENESS_ID).over(window))
+    }
+
     FrequenciesAndNumRows(frequencies, numRows, Option(fullColumn))
   }
 
