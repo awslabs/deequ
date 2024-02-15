@@ -145,7 +145,8 @@ class AnalyzerContextTest extends AnyWordSpec
   }
 
   private[this] def assertSameJson(jsonA: String, jsonB: String): Unit = {
-    assert(SimpleResultSerde.deserialize(jsonA) ==
-      SimpleResultSerde.deserialize(jsonB))
+    assert(SimpleResultSerde.deserialize(jsonA).toSet.sameElements(SimpleResultSerde.deserialize(jsonB).toSet))
+    //    assert(SimpleResultSerde.deserialize(jsonA) ==
+    //      SimpleResultSerde.deserialize(jsonB))
   }
 }

@@ -338,6 +338,19 @@ trait FixtureSupport {
       .toDF("att1", "att2")
   }
 
+  def getDfWithDistinctValuesQuotes(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("a", null, "Already Has "),
+      ("a", null, " Can't Proceed"),
+      (null, "can't", "Already Has "),
+      ("b", "help", " Can't Proceed"),
+      ("b", "but", "Already Has "),
+      ("c", "wouldn't", " Can't Proceed"))
+      .toDF("att1", "att2", "reason")
+  }
+
   def getDfWithConditionallyUninformativeColumns(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
     Seq(
@@ -407,6 +420,17 @@ trait FixtureSupport {
       ("3", "a", "c"),
       ("4", "b", "d")
     ).toDF("item.one", "att1", "att2")
+  }
+
+  def getDfForWhereClause(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("Acme", "90210", "CA", "Los Angeles"),
+      ("Acme", "90211", "CA", "Los Angeles"),
+      ("Robocorp", null, "NJ", null),
+      ("Robocorp", null, "NY", "New York")
+    ).toDF("Company", "ZipCode", "State", "City")
   }
 
   def getDfCompleteAndInCompleteColumnsWithPeriod(sparkSession: SparkSession): DataFrame = {
