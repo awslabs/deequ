@@ -63,7 +63,9 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val result2 = Completeness("att2").calculate(dfMissing)
       assert(result2 == DoubleMetric(Entity.Column,
         "Completeness", "att2", Success(0.75), result2.fullColumn))
-
+      val result3 = Completeness("att2", Option("att1 is NOT NULL")).calculate(dfMissing)
+      assert(result3 == DoubleMetric(Entity.Column,
+      "Completeness", "att2", Success(4.0/6.0), result3.fullColumn))
     }
 
     "fail on wrong column input" in withSparkSession { sparkSession =>
