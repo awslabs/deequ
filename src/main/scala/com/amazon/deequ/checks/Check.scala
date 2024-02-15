@@ -129,10 +129,12 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
-  def isComplete(column: String, hint: Option[String] = None): CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => completenessConstraint(column, Check.IsOne, filter, hint) }
+  def isComplete(column: String, hint: Option[String] = None,
+                 analyzerOptions: Option[AnalyzerOptions] = None): CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter => completenessConstraint(column, Check.IsOne, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -143,14 +145,16 @@ case class Check(
     * @param column    Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasCompleteness(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
-    addFilterableConstraint { filter => completenessConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => completenessConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -218,11 +222,13 @@ case class Check(
     *
     * @param column Column to run the assertion on
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
-  def isUnique(column: String, hint: Option[String] = None): CheckWithLastConstraintFilterable = {
+  def isUnique(column: String, hint: Option[String] = None,
+               analyzerOptions: Option[AnalyzerOptions] = None): CheckWithLastConstraintFilterable = {
     addFilterableConstraint { filter =>
-      uniquenessConstraint(Seq(column), Check.IsOne, filter, hint) }
+      uniquenessConstraint(Seq(column), Check.IsOne, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -267,21 +273,41 @@ case class Check(
   }
 
   /**
+   * Creates a constraint that asserts on uniqueness in a single or combined set of key columns.
+   *
+   * @param columns         Key columns
+   * @param assertion       Function that receives a double input parameter and returns a boolean.
+   *                        Refers to the fraction of unique values
+   * @param hint            A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasUniqueness(
+                     columns: Seq[String],
+                     assertion: Double => Boolean,
+                     hint: Option[String])
+  : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter => uniquenessConstraint(columns, assertion, filter, hint) }
+  }
+
+  /**
     * Creates a constraint that asserts on uniqueness in a single or combined set of key columns.
     *
     * @param columns Key columns
     * @param assertion Function that receives a double input parameter and returns a boolean.
     *                  Refers to the fraction of unique values
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasUniqueness(
       columns: Seq[String],
       assertion: Double => Boolean,
-      hint: Option[String])
+      hint: Option[String],
+      analyzerOptions: Option[AnalyzerOptions])
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => uniquenessConstraint(columns, assertion, filter, hint) }
+    addFilterableConstraint { filter => uniquenessConstraint(columns, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -309,6 +335,22 @@ case class Check(
   def hasUniqueness(column: String, assertion: Double => Boolean, hint: Option[String])
     : CheckWithLastConstraintFilterable = {
     hasUniqueness(Seq(column), assertion, hint)
+  }
+
+  /**
+   * Creates a constraint that asserts on the uniqueness of a key column.
+   *
+   * @param column          Key column
+   * @param assertion       Function that receives a double input parameter and returns a boolean.
+   *                        Refers to the fraction of unique values.
+   * @param hint            A hint to provide additional context why a constraint could have failed
+   * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
+   * @return
+   */
+  def hasUniqueness(column: String, assertion: Double => Boolean, hint: Option[String],
+                    analyzerOptions: Option[AnalyzerOptions])
+  : CheckWithLastConstraintFilterable = {
+    hasUniqueness(Seq(column), assertion, hint, analyzerOptions)
   }
 
   /**
@@ -636,6 +678,7 @@ case class Check(
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasMinLength(
@@ -654,6 +697,7 @@ case class Check(
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasMaxLength(
