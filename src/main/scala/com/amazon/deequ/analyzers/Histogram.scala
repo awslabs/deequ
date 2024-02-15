@@ -59,7 +59,8 @@ case class Histogram(
     }
   }
 
-  override def computeStateFrom(data: DataFrame): Option[FrequenciesAndNumRows] = {
+  override def computeStateFrom(data: DataFrame,
+                                filterCondition: Option[String] = None): Option[FrequenciesAndNumRows] = {
 
     // TODO figure out a way to pass this in if its known before hand
     val totalCount = if (computeFrequenciesAsRatio) {
@@ -74,10 +75,6 @@ case class Histogram(
     val frequencies = query(df)
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))
-  }
-
-  override def computeStateFrom(data: DataFrame, where: Option[String]): Option[FrequenciesAndNumRows] = {
-    computeStateFrom(data)
   }
 
   override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramMetric = {

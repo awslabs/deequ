@@ -68,12 +68,8 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       DoubleMetric(Entity.Column, "sample", column, value)
     }
 
-    override def computeStateFrom(data: DataFrame): Option[NumMatches] = {
+    override def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None): Option[NumMatches] = {
       throw new NotImplementedError()
-    }
-
-    override def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[NumMatches] = {
-      computeStateFrom(data)
     }
 
     override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {

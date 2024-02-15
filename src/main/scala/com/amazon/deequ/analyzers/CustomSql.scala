@@ -33,7 +33,7 @@ case class CustomSql(expression: String) extends Analyzer[CustomSqlState, Double
    * @param data data frame
    * @return
    */
-  override def computeStateFrom(data: DataFrame): Option[CustomSqlState] = {
+  override def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None): Option[CustomSqlState] = {
 
     Try {
       data.sqlContext.sql(expression)
@@ -53,10 +53,6 @@ case class CustomSql(expression: String) extends Analyzer[CustomSqlState, Double
           case _ => Some(CustomSqlState(Right("Custom SQL did not return exactly 1 column")))
         }
     }
-  }
-
-  override def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[CustomSqlState] = {
-    computeStateFrom(data)
   }
 
   /**

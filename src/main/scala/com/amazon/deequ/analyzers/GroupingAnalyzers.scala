@@ -40,12 +40,9 @@ abstract class FrequencyBasedAnalyzer(columnsToGroupOn: Seq[String])
 
   override def groupingColumns(): Seq[String] = { columnsToGroupOn }
 
-  override def computeStateFrom(data: DataFrame): Option[FrequenciesAndNumRows] = {
-    Some(FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns()))
-  }
-
-  override def computeStateFrom(data: DataFrame, where: Option[String]): Option[FrequenciesAndNumRows] = {
-    Some(FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns, where))
+  override def computeStateFrom(data: DataFrame,
+                                filterCondition: Option[String] = None): Option[FrequenciesAndNumRows] = {
+    Some(FrequencyBasedAnalyzer.computeFrequencies(data, groupingColumns(), filterCondition))
   }
 
   /** We need at least one grouping column, and all specified columns must exist */
