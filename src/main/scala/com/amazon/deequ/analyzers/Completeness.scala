@@ -20,19 +20,21 @@ import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import Analyzers._
+import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.google.common.annotations.VisibleForTesting
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.{Column, Row}
 
 /** Completeness is the fraction of non-null values in a column of a DataFrame. */
-case class Completeness(column: String, where: Option[String] = None) extends
+case class Completeness(column: String, where: Option[String] = None,
+                        analyzerOptions: Option[AnalyzerOptions] = None) extends
   StandardScanShareableAnalyzer[NumMatchesAndCount]("Completeness", column) with
   FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
-
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(rowLevelResults))
     }
   }
 
@@ -51,4 +53,16 @@ case class Completeness(column: String, where: Option[String] = None) extends
 
   @VisibleForTesting // required by some tests that compare analyzer results to an expected state
   private[deequ] def criterion: Column = conditionalSelection(column, where).isNotNull
+
+  @VisibleForTesting
+  private[deequ] def rowLevelResults: Column = {
+    val whereCondition = where.map { expression => expr(expression)}
+    conditionalSelectionFilteredFromColumns(col(column).isNotNull, whereCondition, getRowLevelFilterTreatment.toString)
+  }
+
+  private def getRowLevelFilterTreatment: FilteredRow = {
+    analyzerOptions
+      .map { options => options.filteredRow }
+      .getOrElse(FilteredRow.TRUE)
+  }
 }
