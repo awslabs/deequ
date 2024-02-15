@@ -212,7 +212,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             """{
               |  "constraint_suggestions": [
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None,None))",
               |      "column_name": "att2",
               |      "current_value": "Completeness: 1.0",
               |      "description": "'att2' is not null",
@@ -222,7 +222,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "code_for_constraint": ".isComplete(\"att2\")"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None,None))",
               |      "column_name": "att1",
               |      "current_value": "Completeness: 1.0",
               |      "description": "'att1' is not null",
@@ -232,7 +232,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "code_for_constraint": ".isComplete(\"att1\")"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(item,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(item,None,None))",
               |      "column_name": "item",
               |      "current_value": "Completeness: 1.0",
               |      "description": "'item' is not null",
@@ -265,7 +265,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "code_for_constraint": ".isNonNegative(\"item\")"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None))",
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None,None))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "'item' is unique",
@@ -294,7 +294,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             """{
               |  "constraint_suggestions": [
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None,None))",
               |      "column_name": "att2",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027att2\u0027 is not null",
@@ -305,7 +305,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None,None))",
               |      "column_name": "att1",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027att1\u0027 is not null",
@@ -316,7 +316,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(item,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(item,None,None))",
               |      "column_name": "item",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027item\u0027 is not null",
@@ -352,7 +352,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Failure"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None))",
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None,None))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "\u0027item\u0027 is unique",
@@ -381,7 +381,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             """{
               |  "constraint_suggestions": [
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(att2,None,None))",
               |      "column_name": "att2",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027att2\u0027 is not null",
@@ -392,7 +392,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(att1,None,None))",
               |      "column_name": "att1",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027att1\u0027 is not null",
@@ -403,7 +403,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "CompletenessConstraint(Completeness(item,None))",
+              |      "constraint_name": "CompletenessConstraint(Completeness(item,None,None))",
               |      "column_name": "item",
               |      "current_value": "Completeness: 1.0",
               |      "description": "\u0027item\u0027 is not null",
@@ -439,7 +439,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
               |      "constraint_result_on_test_set": "Unknown"
               |    },
               |    {
-              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None))",
+              |      "constraint_name": "UniquenessConstraint(Uniqueness(List(item),None,None))",
               |      "column_name": "item",
               |      "current_value": "ApproxDistinctness: 1.0",
               |      "description": "\u0027item\u0027 is unique",
@@ -471,7 +471,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
           """{
             |  "constraint_suggestions": [
             |  {
-            |      "constraint_name": "CompletenessConstraint(Completeness(`item.one`,None))",
+            |      "constraint_name": "CompletenessConstraint(Completeness(`item.one`,None,None))",
             |      "column_name": "`item.one`",
             |      "current_value": "Completeness: 1.0",
             |      "description": "'`item.one`' is not null",
@@ -504,7 +504,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             |      "code_for_constraint": ".isNonNegative(\"`item.one`\")"
             |    },
             |    {
-            |      "constraint_name": "UniquenessConstraint(Uniqueness(List(`item.one`),None))",
+            |      "constraint_name": "UniquenessConstraint(Uniqueness(List(`item.one`),None,None))",
             |      "column_name": "`item.one`",
             |      "current_value": "ApproxDistinctness: 1.0",
             |      "description": "'`item.one`' is unique",
@@ -515,7 +515,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             |      "code_for_constraint": ".isUnique(\"`item.one`\")"
             |    },
             |    {
-            |      "constraint_name": "CompletenessConstraint(Completeness(att2,None))",
+            |      "constraint_name": "CompletenessConstraint(Completeness(att2,None,None))",
             |      "column_name": "att2",
             |      "current_value": "Completeness: 1.0",
             |      "description": "'att2' is not null",
@@ -525,7 +525,7 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
             |      "code_for_constraint": ".isComplete(\"att2\")"
             |    },
             |    {
-            |      "constraint_name": "CompletenessConstraint(Completeness(att1,None))",
+            |      "constraint_name": "CompletenessConstraint(Completeness(att1,None,None))",
             |      "column_name": "att1",
             |      "current_value": "Completeness: 1.0",
             |      "description": "'att1' is not null",

@@ -363,7 +363,7 @@ class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
             .stripMargin.replaceAll("\n", "")
 
       // ordering of map entries is not guaranteed, so comparing strings is not an option
-      assert(SimpleResultSerde.deserialize(sucessMetricsResultJson) ==
-        SimpleResultSerde.deserialize(expected))
+      assert(SimpleResultSerde.deserialize(sucessMetricsResultJson).toSet.sameElements(
+        SimpleResultSerde.deserialize(expected).toSet))
     }
 }
