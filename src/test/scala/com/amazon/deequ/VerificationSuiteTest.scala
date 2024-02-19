@@ -349,7 +349,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     "generate a result that contains row-level results with null for filtered rows" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumns(session)
 
-      val analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRow.NULL))
+      val analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL))
 
       val completeness = new Check(CheckLevel.Error, "rule1")
         .hasCompleteness("att2", _ > 0.7, None, analyzerOptions)
@@ -386,7 +386,6 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Any](0))
       assert(Seq(true, true, null, null, null, null).sameElements(rowLevel3))
-
     }
 
     "generate a result that contains row-level results for null column values" in withSparkSession { session =>

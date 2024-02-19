@@ -20,7 +20,6 @@ import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNotNested}
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import Analyzers._
-import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
 import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.expr
@@ -54,15 +53,8 @@ case class Completeness(column: String, where: Option[String] = None,
   @VisibleForTesting // required by some tests that compare analyzer results to an expected state
   private[deequ] def criterion: Column = conditionalSelection(column, where).isNotNull
 
-  @VisibleForTesting
   private[deequ] def rowLevelResults: Column = {
     val whereCondition = where.map { expression => expr(expression)}
-    conditionalSelectionFilteredFromColumns(col(column).isNotNull, whereCondition, getRowLevelFilterTreatment.toString)
-  }
-
-  private def getRowLevelFilterTreatment: FilteredRow = {
-    analyzerOptions
-      .map { options => options.filteredRow }
-      .getOrElse(FilteredRow.TRUE)
+    conditionalSelectionFilteredFromColumns(col(column).isNotNull, whereCondition, getRowLevelFilterTreatment(analyzerOptions))
   }
 }
