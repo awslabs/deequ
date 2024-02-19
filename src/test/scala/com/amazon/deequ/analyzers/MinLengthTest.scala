@@ -56,13 +56,13 @@ class MinLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with
       val data = getEmptyColumnDataDf(session)
 
       // It's null in two rows
-      val addressLength = MinLength("att3")
+      val addressLength = MinLength("att3", None, Option(AnalyzerOptions(NullBehavior.Fail)))
       val state: Option[MinState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get)
-        .collect().map( r => if (r == null) null else r.getAs[Double]("new")
-      ) shouldBe Seq(1.0, 1.0, null, 1.0, null, 1.0)
+        .collect().map(_.getAs[Double]("new")
+        ) shouldBe Seq(1.0, 1.0, Double.MinValue, 1.0, Double.MinValue, 1.0)
     }
 
     "return row-level results for null columns with NullBehavior empty option" in withSparkSession { session =>

@@ -55,6 +55,7 @@ case class Completeness(column: String, where: Option[String] = None,
 
   private[deequ] def rowLevelResults: Column = {
     val whereCondition = where.map { expression => expr(expression)}
-    conditionalSelectionFilteredFromColumns(col(column).isNotNull, whereCondition, getRowLevelFilterTreatment(analyzerOptions))
+    conditionalSelectionFilteredFromColumns(
+      col(column).isNotNull, whereCondition, getRowLevelFilterTreatment(analyzerOptions))
   }
 }

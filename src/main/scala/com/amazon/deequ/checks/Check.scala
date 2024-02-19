@@ -681,15 +681,17 @@ case class Check(
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasMin(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => minConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => minConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -698,15 +700,17 @@ case class Check(
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasMax(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => maxConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => maxConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**

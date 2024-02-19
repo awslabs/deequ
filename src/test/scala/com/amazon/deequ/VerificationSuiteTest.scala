@@ -305,7 +305,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     }
 
     "generate a result that contains row-level results with true for filtered rows" in withSparkSession { session =>
-      val data = getDfCompleteAndInCompleteColumns(session)
+      val data = getDfCompleteAndInCompleteColumnsWithIntId(session)
 
       val completeness = new Check(CheckLevel.Error, "rule1")
         .hasCompleteness("att2", _ > 0.7, None)
@@ -315,15 +315,26 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
         .isUnique("att1")
         .where("item < 3")
+      val min = new Check(CheckLevel.Error, "rule4")
+        .hasMin("item", _ > 3, None)
+        .where("item > 3")
+      val max = new Check(CheckLevel.Error, "rule5")
+        .hasMax("item", _ < 4, None)
+        .where("item < 4")
+
       val expectedColumn1 = completeness.description
       val expectedColumn2 = uniqueness.description
       val expectedColumn3 = uniquenessWhere.description
+      val expectedColumn4 = min.description
+      val expectedColumn5 = max.description
 
 
       val suite = new VerificationSuite().onData(data)
         .addCheck(completeness)
         .addCheck(uniqueness)
         .addCheck(uniquenessWhere)
+        .addCheck(min)
+        .addCheck(max)
 
       val result: VerificationResult = suite.run()
 
@@ -332,22 +343,31 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data).orderBy("item")
       resultData.show(false)
       val expectedColumns: Set[String] =
-        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4 + expectedColumn5
       assert(resultData.columns.toSet == expectedColumns)
 
+      // filtered rows 2,5 (where att1 = "a")
       val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getAs[Any](0))
       assert(Seq(true, true, false, true, true, true).sameElements(rowLevel1))
 
       val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getAs[Any](0))
       assert(Seq(false, false, false, false, false, false).sameElements(rowLevel2))
 
+      // filtered rows 3,4,5,6 (where item < 3)
       val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Any](0))
       assert(Seq(true, true, true, true, true, true).sameElements(rowLevel3))
 
+      // filtered rows 1, 2, 3 (where item > 3)
+      val minRowLevel = resultData.select(expectedColumn4).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, true, true, true).sameElements(minRowLevel))
+
+      // filtered rows 4, 5, 6 (where item < 4)
+      val maxRowLevel = resultData.select(expectedColumn5).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, true, true, true).sameElements(maxRowLevel))
     }
 
     "generate a result that contains row-level results with null for filtered rows" in withSparkSession { session =>
-      val data = getDfCompleteAndInCompleteColumns(session)
+      val data = getDfCompleteAndInCompleteColumnsWithIntId(session)
 
       val analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL))
 
@@ -359,14 +379,25 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val uniquenessWhere = new Check(CheckLevel.Error, "rule3")
         .isUnique("att1", None, analyzerOptions)
         .where("item < 3")
+      val min = new Check(CheckLevel.Error, "rule4")
+        .hasMin("item", _ > 3, None, analyzerOptions)
+        .where("item > 3")
+      val max = new Check(CheckLevel.Error, "rule5")
+        .hasMax("item", _ < 4, None, analyzerOptions)
+        .where("item < 4")
+
       val expectedColumn1 = completeness.description
       val expectedColumn2 = uniqueness.description
       val expectedColumn3 = uniquenessWhere.description
+      val expectedColumn4 = min.description
+      val expectedColumn5 = max.description
 
       val suite = new VerificationSuite().onData(data)
         .addCheck(completeness)
         .addCheck(uniqueness)
         .addCheck(uniquenessWhere)
+        .addCheck(min)
+        .addCheck(max)
 
       val result: VerificationResult = suite.run()
 
@@ -375,7 +406,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data).orderBy("item")
       resultData.show(false)
       val expectedColumns: Set[String] =
-        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 + expectedColumn4 + expectedColumn5
       assert(resultData.columns.toSet == expectedColumns)
 
       val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getAs[Any](0))
@@ -384,8 +415,17 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getAs[Any](0))
       assert(Seq(false, false, false, false, false, false).sameElements(rowLevel2))
 
+      // filtered rows 3,4,5,6 (where item < 3)
       val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Any](0))
       assert(Seq(true, true, null, null, null, null).sameElements(rowLevel3))
+
+      // filtered rows 1, 2, 3 (where item > 3)
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getAs[Any](0))
+      assert(Seq(null, null, null, true, true, true).sameElements(rowLevel4))
+
+      // filtered rows 4, 5, 6 (where item < 4)
+      val rowLevel5 = resultData.select(expectedColumn5).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, null, null, null).sameElements(rowLevel5))
     }
 
     "generate a result that contains row-level results for null column values" in withSparkSession { session =>

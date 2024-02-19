@@ -602,16 +602,18 @@ object Constraint {
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint    A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     *
     */
   def minConstraint(
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val minimum = Minimum(column, where)
+    val minimum = Minimum(column, where, analyzerOptions)
 
     fromAnalyzer(minimum, assertion, hint)
   }
@@ -635,15 +637,17 @@ object Constraint {
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint    A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def maxConstraint(
       column: String,
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val maximum = Maximum(column, where)
+    val maximum = Maximum(column, where, analyzerOptions)
 
     fromAnalyzer(maximum, assertion, hint)
   }
