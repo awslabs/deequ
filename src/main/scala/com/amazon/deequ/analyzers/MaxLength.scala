@@ -17,14 +17,17 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.Preconditions.isString
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.length
 import org.apache.spark.sql.functions.max
+import org.apache.spark.sql.functions.not
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.StructType
 
@@ -49,14 +52,31 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
   override def filterCondition: Option[String] = where
 
   private def criterion(nullBehavior: NullBehavior): Column = {
-    val isNullCheck = col(column).isNull
+    val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
+    val nullBehaviorColumn = transformColForNullBehavior(col(column), nullBehavior)
+    transformColForFilteredRow(nullBehaviorColumn, filteredRowOutcome)
+  }
+
+  private def transformColForFilteredRow(col: Column, rowOutcome: FilteredRowOutcome): Column = {
+    val whereNotCondition = where.map { expression => not(expr(expression)) }
+    rowOutcome match {
+      case FilteredRowOutcome.TRUE =>
+        conditionSelectionGivenColumn(col, whereNotCondition, replaceWith = Double.MinValue)
+      case _ =>
+        conditionSelectionGivenColumn(col, whereNotCondition, replaceWith = null)
+    }
+  }
+
+  private def transformColForNullBehavior(col: Column, nullBehavior: NullBehavior): Column = {
+    val isNullCheck = col.isNull
+    val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
     nullBehavior match {
       case NullBehavior.Fail =>
-        val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
         conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = Double.MaxValue)
       case NullBehavior.EmptyString =>
-        length(conditionSelectionGivenColumn(col(column), Option(isNullCheck), replaceWith = "")).cast(DoubleType)
-      case _ => length(conditionalSelection(column, where)).cast(DoubleType)
+        length(conditionSelectionGivenColumn(col, Option(isNullCheck), replaceWith = "")).cast(DoubleType)
+      case _ =>
+        colLengths
     }
   }
 

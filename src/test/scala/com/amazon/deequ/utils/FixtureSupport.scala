@@ -32,13 +32,13 @@ trait FixtureSupport {
     import sparkSession.implicits._
 
     Seq(
-      ("", "a", "f"),
-      ("", "b", "d"),
-      ("", "a", null),
-      ("", "a", "f"),
-      ("", "b", null),
-      ("", "a", "f")
-    ).toDF("att1", "att2", "att3")
+      (0, "", "a", "f"),
+      (1, "", "b", "d"),
+      (2, "", "a", null),
+      (3, "", "a", "f"),
+      (4, "", "b", null),
+      (5, "", "a", "f")
+    ).toDF("id", "att1", "att2", "att3")
   }
 
   def getDfEmpty(sparkSession: SparkSession): DataFrame = {
