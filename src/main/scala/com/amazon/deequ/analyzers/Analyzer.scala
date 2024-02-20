@@ -494,6 +494,12 @@ private[deequ] object Analyzers {
       .getOrElse(selection)
   }
 
+  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: Boolean): Column = {
+    where
+      .map { condition => when(condition, replaceWith).otherwise(selection) }
+      .getOrElse(selection)
+  }
+
   def conditionalSelection(selection: Column, where: Option[String], replaceWith: Double): Column = {
     conditionSelectionGivenColumn(selection, where.map(expr), replaceWith)
   }

@@ -428,6 +428,77 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       assert(Seq(true, true, true, null, null, null).sameElements(rowLevel5))
     }
 
+    "generate a result that contains compliance row-level results " in withSparkSession { session =>
+      val data = getDfWithNumericValues(session)
+      val analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL))
+
+      val complianceRange = new Check(CheckLevel.Error, "rule1")
+        .isContainedIn("attNull", 0, 6, false, false)
+      val complianceFilteredRange = new Check(CheckLevel.Error, "rule2")
+        .isContainedIn("attNull", 0, 6, false, false)
+        .where("att1 < 4")
+      val complianceFilteredRangeNull = new Check(CheckLevel.Error, "rule3")
+        .isContainedIn("attNull", 0, 6, false, false,
+          analyzerOptions = analyzerOptions)
+        .where("att1 < 4")
+      val complianceInArray = new Check(CheckLevel.Error, "rule4")
+        .isContainedIn("att2", Array("5", "6", "7"))
+      val complianceInArrayFiltered = new Check(CheckLevel.Error, "rule5")
+        .isContainedIn("att2", Array("5", "6", "7"))
+        .where("att1 > 3")
+      val complianceInArrayFilteredNull = new Check(CheckLevel.Error, "rule6")
+        .isContainedIn("att2", Array("5", "6", "7"), Check.IsOne, None, analyzerOptions)
+        .where("att1 > 3")
+
+      val expectedColumn1 = complianceRange.description
+      val expectedColumn2 = complianceFilteredRange.description
+      val expectedColumn3 = complianceFilteredRangeNull.description
+      val expectedColumn4 = complianceInArray.description
+      val expectedColumn5 = complianceInArrayFiltered.description
+      val expectedColumn6 = complianceInArrayFilteredNull.description
+
+      val suite = new VerificationSuite().onData(data)
+        .addCheck(complianceRange)
+        .addCheck(complianceFilteredRange)
+        .addCheck(complianceFilteredRangeNull)
+        .addCheck(complianceInArray)
+        .addCheck(complianceInArrayFiltered)
+        .addCheck(complianceInArrayFilteredNull)
+
+      val result: VerificationResult = suite.run()
+
+      assert(result.status == CheckStatus.Error)
+
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data).orderBy("item")
+      resultData.show(false)
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2 + expectedColumn3 +
+          expectedColumn4 + expectedColumn5 + expectedColumn6
+      assert(resultData.columns.toSet == expectedColumns)
+
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, true, false, false).sameElements(rowLevel1))
+
+      // filtered rows 4, 5, 6 (where att1 < 4) as true
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel2))
+
+      // filtered rows 4, 5, 6 (where att1 < 4) as null
+      val rowLevel3 = resultData.select(expectedColumn3).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, null, null, null).sameElements(rowLevel3))
+
+      val rowLevel4 = resultData.select(expectedColumn4).collect().map(r => r.getAs[Any](0))
+      assert(Seq(false, false, false, true, true, true).sameElements(rowLevel4))
+
+      // filtered rows 1,2,3 (where att1 > 3) as true
+      val rowLevel5 = resultData.select(expectedColumn5).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, true, true, true).sameElements(rowLevel5))
+
+      // filtered rows 1,2,3 (where att1 > 3) as null
+      val rowLevel6 = resultData.select(expectedColumn6).collect().map(r => r.getAs[Any](0))
+      assert(Seq(null, null, null, true, true, true).sameElements(rowLevel6))
+    }
+
     "generate a result that contains row-level results for null column values" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
 
@@ -1031,7 +1102,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         checkFailedResultStringType.constraintResults.map(_.message) shouldBe
           List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name`" +
             " IS NULL OR (`name` >= 1.0 AND `name` <= 3.0)," +
-            "None,List(name)), all input values were NULL."))
+            "None,List(name),None), all input values were NULL."))
         assert(checkFailedResultStringType.status == CheckStatus.Error)
 
         val checkFailedCompletenessResult = verificationResult.checkResults(complianceCheckThatShouldFailCompleteness)

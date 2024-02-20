@@ -336,6 +336,7 @@ object Constraint {
     *             metrics for the analysis being done.
     * @param column Data frame column which is a combination of expression and the column name
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def complianceConstraint(
       name: String,
@@ -343,10 +344,11 @@ object Constraint {
       assertion: Double => Boolean,
       where: Option[String] = None,
       hint: Option[String] = None,
-      columns: List[String] = List.empty[String])
+      columns: List[String] = List.empty[String],
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val compliance = Compliance(name, column, where, columns)
+    val compliance = Compliance(name, column, where, columns, analyzerOptions)
 
     fromAnalyzer(compliance, assertion, hint)
   }
