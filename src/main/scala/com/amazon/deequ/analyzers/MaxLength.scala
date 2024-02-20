@@ -36,12 +36,12 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    max(criterion(getNullBehavior)) :: Nil
+    max(criterion) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MaxState(result.getDouble(offset), Some(criterion(getNullBehavior)))
+      MaxState(result.getDouble(offset), Some(rowLevelResults))
     }
   }
 
@@ -51,10 +51,13 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
 
   override def filterCondition: Option[String] = where
 
-  private def criterion(nullBehavior: NullBehavior): Column = {
+  private[deequ] def criterion: Column = {
+    transformColForNullBehavior(col(column), getNullBehavior)
+  }
+
+  private[deequ] def rowLevelResults: Column = {
     val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
-    val nullBehaviorColumn = transformColForNullBehavior(col(column), nullBehavior)
-    transformColForFilteredRow(nullBehaviorColumn, filteredRowOutcome)
+    transformColForFilteredRow(criterion, filteredRowOutcome)
   }
 
   private def transformColForFilteredRow(col: Column, rowOutcome: FilteredRowOutcome): Column = {

@@ -24,13 +24,10 @@ import com.amazon.deequ.analyzers.Preconditions.isString
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.length
 import org.apache.spark.sql.functions.min
 import org.apache.spark.sql.functions.not
-import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.StructType
 
@@ -39,12 +36,12 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    min(criterion(getNullBehavior)) :: Nil
+    min(criterion) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MinState(result.getDouble(offset), Some(criterion(getNullBehavior)))
+      MinState(result.getDouble(offset), Some(rowLevelResults))
     }
   }
 
@@ -54,10 +51,13 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
 
   override def filterCondition: Option[String] = where
 
-  private[deequ] def criterion(nullBehavior: NullBehavior): Column = {
+  private[deequ] def criterion: Column = {
+    transformColForNullBehavior(col(column), getNullBehavior)
+  }
+
+  private[deequ] def rowLevelResults: Column = {
     val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
-    val nullBehaviorColumn = transformColForNullBehavior(col(column), nullBehavior)
-    transformColForFilteredRow(nullBehaviorColumn, filteredRowOutcome)
+    transformColForFilteredRow(criterion, filteredRowOutcome)
   }
 
   private def transformColForFilteredRow(col: Column, rowOutcome: FilteredRowOutcome): Column = {
