@@ -839,6 +839,7 @@ case class Check(
     * @param pattern The columns values will be checked for a match against this pattern.
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasPattern(
@@ -846,11 +847,12 @@ case class Check(
       pattern: Regex,
       assertion: Double => Boolean = Check.IsOne,
       name: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint)
+      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint, analyzerOptions)
     }
   }
 

@@ -412,16 +412,16 @@ trait FixtureSupport {
     import sparkSession.implicits._
 
     Seq(
-      ("India", "Xavier House, 2nd Floor", "St. Peter Colony, Perry Road", "Bandra (West)"),
-      ("India", "503 Godavari", "Sir Pochkhanwala Road", "Worli"),
-      ("India", "4/4 Seema Society", "N Dutta Road, Four Bungalows", "Andheri"),
-      ("India", "1001D Abhishek Apartments", "Juhu Versova Road", "Andheri"),
-      ("India", "95, Hill Road", null, null),
-      ("India", "90 Cuffe Parade", "Taj President Hotel", "Cuffe Parade"),
-      ("India", "4, Seven PM", "Sir Pochkhanwala Rd", "Worli"),
-      ("India", "1453 Sahar Road", null, null)
+      (0, "India", "Xavier House, 2nd Floor", "St. Peter Colony, Perry Road", "Bandra (West)"),
+      (1, "India", "503 Godavari", "Sir Pochkhanwala Road", "Worli"),
+      (2, "India", "4/4 Seema Society", "N Dutta Road, Four Bungalows", "Andheri"),
+      (3, "India", "1001D Abhishek Apartments", "Juhu Versova Road", "Andheri"),
+      (4, "India", "95, Hill Road", null, null),
+      (5, "India", "90 Cuffe Parade", "Taj President Hotel", "Cuffe Parade"),
+      (6, "India", "4, Seven PM", "Sir Pochkhanwala Rd", "Worli"),
+      (7, "India", "1453 Sahar Road", null, null)
     )
-      .toDF("Country", "Address Line 1", "Address Line 2", "Address Line 3")
+      .toDF("id", "Country", "Address Line 1", "Address Line 2", "Address Line 3")
   }
 
   def getDfWithPeriodInName(sparkSession: SparkSession): DataFrame = {

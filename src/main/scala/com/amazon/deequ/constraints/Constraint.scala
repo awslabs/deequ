@@ -373,6 +373,7 @@ object Constraint {
     * @param pattern The regex pattern to check compliance for
     * @param column  Data frame column which is a combination of expression and the column name
     * @param hint    A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def patternMatchConstraint(
       column: String,
@@ -380,10 +381,11 @@ object Constraint {
       assertion: Double => Boolean,
       where: Option[String] = None,
       name: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val patternMatch = PatternMatch(column, pattern, where)
+    val patternMatch = PatternMatch(column, pattern, where, analyzerOptions)
 
     fromAnalyzer(patternMatch, pattern, assertion, name, hint)
   }
