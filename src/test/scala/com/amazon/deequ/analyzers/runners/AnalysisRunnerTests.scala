@@ -204,10 +204,9 @@ class AnalysisRunnerTests extends AnyWordSpec
         // Used to be tested with the above line, but adding filters changed the order of the results.
         assert(separateResults.asInstanceOf[Set[DoubleMetric]].size ==
           runnerResults.asInstanceOf[Set[DoubleMetric]].size)
-        separateResults.asInstanceOf[Set[DoubleMetric]].foreach( result => {
-            assert(runnerResults.toString.contains(result.toString))
-          }
-          )
+        separateResults.asInstanceOf[Set[DoubleMetric]].foreach( result =>
+          assert(runnerResults.toString.contains(result.toString))
+        )
       }
 
     "reuse existing results" in

@@ -123,7 +123,7 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
     val data = getDfWithUniqueColumns(session)
 
     val addressLength = Uniqueness(Seq("onlyUniqueWithOtherNonUnique"), Option("unique < 4"),
-      Option(AnalyzerOptions(filteredRow = FilteredRow.NULL)))
+      Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique < 4"))
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
@@ -139,7 +139,7 @@ class UniquenessTest extends AnyWordSpec with Matchers with SparkContextSpec wit
     val data = getDfWithUniqueColumns(session)
 
     val addressLength = Uniqueness(Seq("halfUniqueCombinedWithNonUnique", "nonUnique"), Option("unique > 2"),
-      Option(AnalyzerOptions(filteredRow = FilteredRow.NULL)))
+      Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
     val state: Option[FrequenciesAndNumRows] = addressLength.computeStateFrom(data, Option("unique > 2"))
     val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
