@@ -23,6 +23,8 @@ import org.apache.spark.sql.types.{DoubleType, StructType}
 import Analyzers._
 import com.amazon.deequ.metrics.FullColumn
 import com.google.common.annotations.VisibleForTesting
+import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.not
 
 case class MinState(minValue: Double, override val fullColumn: Option[Column] = None)
   extends DoubleValuedState[MinState] with FullColumn {
@@ -36,7 +38,7 @@ case class MinState(minValue: Double, override val fullColumn: Option[Column] = 
   }
 }
 
-case class Minimum(column: String, where: Option[String] = None)
+case class Minimum(column: String, where: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[MinState]("Minimum", column)
   with FilterableAnalyzer {
 
@@ -45,9 +47,8 @@ case class Minimum(column: String, where: Option[String] = None)
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MinState] = {
-
     ifNoNullsIn(result, offset) { _ =>
-      MinState(result.getDouble(offset), Some(criterion))
+      MinState(result.getDouble(offset), Some(rowLevelResults))
     }
   }
 
@@ -58,5 +59,19 @@ case class Minimum(column: String, where: Option[String] = None)
   override def filterCondition: Option[String] = where
 
   @VisibleForTesting
-  private def criterion: Column = conditionalSelection(column, where).cast(DoubleType)
+  private def criterion: Column = {
+    conditionalSelection(column, where).cast(DoubleType)
+  }
+
+  private[deequ] def rowLevelResults: Column = {
+    val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
+    val whereNotCondition = where.map { expression => not(expr(expression)) }
+
+    filteredRowOutcome match {
+      case FilteredRowOutcome.TRUE =>
+        conditionSelectionGivenColumn(col(column), whereNotCondition, replaceWith = Double.MaxValue).cast(DoubleType)
+      case _ =>
+        criterion
+    }
+  }
 }
