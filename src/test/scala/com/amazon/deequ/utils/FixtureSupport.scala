@@ -32,13 +32,13 @@ trait FixtureSupport {
     import sparkSession.implicits._
 
     Seq(
-      ("", "a", "f"),
-      ("", "b", "d"),
-      ("", "a", null),
-      ("", "a", "f"),
-      ("", "b", null),
-      ("", "a", "f")
-    ).toDF("att1", "att2", "att3")
+      (0, "", "a", "f"),
+      (1, "", "b", "d"),
+      (2, "", "a", null),
+      (3, "", "a", "f"),
+      (4, "", "b", null),
+      (5, "", "a", "f")
+    ).toDF("id", "att1", "att2", "att3")
   }
 
   def getDfEmpty(sparkSession: SparkSession): DataFrame = {
@@ -156,6 +156,19 @@ trait FixtureSupport {
       ("4", "a", "f"),
       ("5", "b", null),
       ("6", "a", "f")
+    ).toDF("item", "att1", "att2")
+  }
+
+  def getDfCompleteAndInCompleteColumnsWithIntId(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      (1, "a", "f"),
+      (2, "b", "d"),
+      (3, "a", null),
+      (4, "a", "f"),
+      (5, "b", null),
+      (6, "a", "f")
     ).toDF("item", "att1", "att2")
   }
 
@@ -399,16 +412,16 @@ trait FixtureSupport {
     import sparkSession.implicits._
 
     Seq(
-      ("India", "Xavier House, 2nd Floor", "St. Peter Colony, Perry Road", "Bandra (West)"),
-      ("India", "503 Godavari", "Sir Pochkhanwala Road", "Worli"),
-      ("India", "4/4 Seema Society", "N Dutta Road, Four Bungalows", "Andheri"),
-      ("India", "1001D Abhishek Apartments", "Juhu Versova Road", "Andheri"),
-      ("India", "95, Hill Road", null, null),
-      ("India", "90 Cuffe Parade", "Taj President Hotel", "Cuffe Parade"),
-      ("India", "4, Seven PM", "Sir Pochkhanwala Rd", "Worli"),
-      ("India", "1453 Sahar Road", null, null)
+      (0, "India", "Xavier House, 2nd Floor", "St. Peter Colony, Perry Road", "Bandra (West)"),
+      (1, "India", "503 Godavari", "Sir Pochkhanwala Road", "Worli"),
+      (2, "India", "4/4 Seema Society", "N Dutta Road, Four Bungalows", "Andheri"),
+      (3, "India", "1001D Abhishek Apartments", "Juhu Versova Road", "Andheri"),
+      (4, "India", "95, Hill Road", null, null),
+      (5, "India", "90 Cuffe Parade", "Taj President Hotel", "Cuffe Parade"),
+      (6, "India", "4, Seven PM", "Sir Pochkhanwala Rd", "Worli"),
+      (7, "India", "1453 Sahar Road", null, null)
     )
-      .toDF("Country", "Address Line 1", "Address Line 2", "Address Line 3")
+      .toDF("id", "Country", "Address Line 1", "Address Line 2", "Address Line 3")
   }
 
   def getDfWithPeriodInName(sparkSession: SparkSession): DataFrame = {

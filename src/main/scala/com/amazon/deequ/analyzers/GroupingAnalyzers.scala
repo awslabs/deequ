@@ -93,9 +93,8 @@ object FrequencyBasedAnalyzer {
     val fullColumn: Column = {
       val window = Window.partitionBy(columnsToGroupBy: _*)
       where.map {
-        condition => {
+        condition =>
           count(when(expr(condition), UNIQUENESS_ID)).over(window)
-        }
       }.getOrElse(count(UNIQUENESS_ID).over(window))
     }
 

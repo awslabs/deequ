@@ -17,7 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers.COUNT_COL
-import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
+import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.metrics.DoubleMetric
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.not
@@ -43,7 +43,7 @@ case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None,
       rowLevelColumn => {
         conditionColumn.map {
           condition => {
-            when(not(condition), expr(getRowLevelFilterTreatment.toString))
+            when(not(condition), getRowLevelFilterTreatment(analyzerOptions).getExpression)
               .when(rowLevelColumn.equalTo(1), true).otherwise(false)
           }
         }.getOrElse(when(rowLevelColumn.equalTo(1), true).otherwise(false))
@@ -53,12 +53,6 @@ case class UniqueValueRatio(columns: Seq[String], where: Option[String] = None,
   }
 
   override def filterCondition: Option[String] = where
-
-  private def getRowLevelFilterTreatment: FilteredRow = {
-    analyzerOptions
-      .map { options => options.filteredRow }
-      .getOrElse(FilteredRow.TRUE)
-  }
 }
 
 object UniqueValueRatio {
