@@ -19,6 +19,8 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isString}
 import com.google.common.annotations.VisibleForTesting
+import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.not
 import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions.{col, lit, regexp_extract, sum, when}
 import org.apache.spark.sql.types.{BooleanType, IntegerType, StructType}
@@ -36,13 +38,14 @@ import scala.util.matching.Regex
   * @param pattern    The regular expression to check for
   * @param where      Additional filter to apply before the analyzer is run.
   */
-case class PatternMatch(column: String, pattern: Regex, where: Option[String] = None)
+case class PatternMatch(column: String, pattern: Regex, where: Option[String] = None,
+                        analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("PatternMatch", column)
   with FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion.cast(BooleanType)))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(rowLevelResults.cast(BooleanType)))
     }
   }
 
@@ -77,12 +80,25 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
   @VisibleForTesting // required by some tests that compare analyzer results to an expected state
   private[deequ] def criterion: Column = {
-    val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
-      .otherwise(0)
-    conditionalSelection(expression, where).cast(IntegerType)
+    conditionalSelection(getPatternMatchExpression, where).cast(IntegerType)
   }
 
+  private[deequ] def rowLevelResults: Column = {
+    val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
+    val whereNotCondition = where.map { expression => not(expr(expression)) }
 
+    filteredRowOutcome match {
+      case FilteredRowOutcome.TRUE =>
+        conditionSelectionGivenColumn(getPatternMatchExpression, whereNotCondition, replaceWith = 1).cast(IntegerType)
+      case _ =>
+        // The default behavior when using filtering for rows is to treat them as nulls. No special treatment needed.
+        criterion
+    }
+  }
+
+  private def getPatternMatchExpression: Column = {
+    when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1).otherwise(0)
+  }
 }
 
 object Patterns {

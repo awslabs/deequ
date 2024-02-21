@@ -22,6 +22,7 @@ import org.apache.spark.sql.functions._
 import Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.google.common.annotations.VisibleForTesting
+import org.apache.spark.sql.types.DoubleType
 
 /**
   * Compliance is a measure of the fraction of rows that complies with the given column constraint.
@@ -40,14 +41,15 @@ import com.google.common.annotations.VisibleForTesting
 case class Compliance(instance: String,
                       predicate: String,
                       where: Option[String] = None,
-                      columns: List[String] = List.empty[String])
+                      columns: List[String] = List.empty[String],
+                      analyzerOptions: Option[AnalyzerOptions] = None)
   extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
   with FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
 
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
-      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(criterion))
+      NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(rowLevelResults))
     }
   }
 
@@ -63,6 +65,19 @@ case class Compliance(instance: String,
   @VisibleForTesting
   private def criterion: Column = {
     conditionalSelection(expr(predicate), where).cast(IntegerType)
+  }
+
+  private def rowLevelResults: Column = {
+    val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
+    val whereNotCondition = where.map { expression => not(expr(expression)) }
+
+    filteredRowOutcome match {
+      case FilteredRowOutcome.TRUE =>
+        conditionSelectionGivenColumn(expr(predicate), whereNotCondition, replaceWith = true).cast(IntegerType)
+      case _ =>
+        // The default behavior when using filtering for rows is to treat them as nulls. No special treatment needed.
+        criterion
+    }
   }
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] =
