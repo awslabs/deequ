@@ -51,5 +51,36 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
         if (r == null) null else r.getAs[Double]("new")) shouldBe
         Seq(null, null, null, 5.0, 6.0, 7.0)
     }
+
+    "return row-level results for columns with where clause filtered as true" in withSparkSession { session =>
+
+      val data = getDfWithNumericValues(session)
+
+      val att1Maximum = Maximum("att1", Option("item < 4"))
+      val state: Option[MaxState] = att1Maximum.computeStateFrom(data, Option("item < 4"))
+      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
+
+      val result = data.withColumn("new", metric.fullColumn.get)
+      result.show(false)
+      result.collect().map(r =>
+        if (r == null) null else r.getAs[Double]("new")) shouldBe
+        Seq(1.0, 2.0, 3.0, Double.MinValue, Double.MinValue, Double.MinValue)
+    }
+
+    "return row-level results for columns with where clause filtered as null" in withSparkSession { session =>
+
+      val data = getDfWithNumericValues(session)
+
+      val att1Maximum = Maximum("att1", Option("item < 4"),
+        Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
+      val state: Option[MaxState] = att1Maximum.computeStateFrom(data, Option("item < 4"))
+      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
+
+      val result = data.withColumn("new", metric.fullColumn.get)
+      result.show(false)
+      result.collect().map(r =>
+        if (r == null) null else r.getAs[Double]("new")) shouldBe
+        Seq(1.0, 2.0, 3.0, null, null, null)
+    }
   }
 }
