@@ -1127,7 +1127,6 @@ case class Check(
       assertion: Double => Boolean)
     : CheckWithLastConstraintFilterable = {
 
-
     isContainedIn(column, allowedValues, assertion, None, None)
   }
 
@@ -1147,7 +1146,6 @@ case class Check(
                      assertion: Double => Boolean,
                      hint: Option[String])
   : CheckWithLastConstraintFilterable = {
-
 
     isContainedIn(column, allowedValues, assertion, hint, None)
   }
@@ -1170,7 +1168,6 @@ case class Check(
       hint: Option[String],
       analyzerOptions: Option[AnalyzerOptions])
     : CheckWithLastConstraintFilterable = {
-
 
     val valueList = allowedValues
       .map { _.replaceAll("'", "\\\\\'") }

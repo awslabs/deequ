@@ -75,6 +75,7 @@ case class Compliance(instance: String,
       case FilteredRowOutcome.TRUE =>
         conditionSelectionGivenColumn(expr(predicate), whereNotCondition, replaceWith = true).cast(IntegerType)
       case _ =>
+        // The default behavior when using filtering for rows is to treat them as nulls. No special treatment needed.
         criterion
     }
   }

@@ -17,7 +17,6 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.Preconditions.isString
@@ -52,17 +51,16 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
   override def filterCondition: Option[String] = where
 
   private[deequ] def criterion: Column = {
-    transformColForNullBehavior(col(column), getNullBehavior)
+    transformColForNullBehavior
   }
 
   private[deequ] def rowLevelResults: Column = {
-    val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
-    transformColForFilteredRow(criterion, filteredRowOutcome)
+    transformColForFilteredRow(criterion)
   }
 
-  private def transformColForFilteredRow(col: Column, rowOutcome: FilteredRowOutcome): Column = {
+  private def transformColForFilteredRow(col: Column): Column = {
     val whereNotCondition = where.map { expression => not(expr(expression)) }
-    rowOutcome match {
+    getRowLevelFilterTreatment(analyzerOptions) match {
       case FilteredRowOutcome.TRUE =>
         conditionSelectionGivenColumn(col, whereNotCondition, replaceWith = Double.MinValue)
       case _ =>
@@ -70,14 +68,14 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
     }
   }
 
-  private def transformColForNullBehavior(col: Column, nullBehavior: NullBehavior): Column = {
-    val isNullCheck = col.isNull
+  private def transformColForNullBehavior: Column = {
+    val isNullCheck = col(column).isNull
     val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-    nullBehavior match {
+    getNullBehavior match {
       case NullBehavior.Fail =>
         conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = Double.MaxValue)
       case NullBehavior.EmptyString =>
-        length(conditionSelectionGivenColumn(col, Option(isNullCheck), replaceWith = "")).cast(DoubleType)
+        length(conditionSelectionGivenColumn(col(column), Option(isNullCheck), replaceWith = "")).cast(DoubleType)
       case _ =>
         colLengths
     }

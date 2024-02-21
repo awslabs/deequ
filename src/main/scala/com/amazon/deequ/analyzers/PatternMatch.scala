@@ -80,25 +80,25 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
   @VisibleForTesting // required by some tests that compare analyzer results to an expected state
   private[deequ] def criterion: Column = {
-    val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
-      .otherwise(0)
-    conditionalSelection(expression, where).cast(IntegerType)
+    conditionalSelection(getPatternMatchExpression, where).cast(IntegerType)
   }
 
   private[deequ] def rowLevelResults: Column = {
     val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
     val whereNotCondition = where.map { expression => not(expr(expression)) }
-    val expression = when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1)
-      .otherwise(0)
 
     filteredRowOutcome match {
       case FilteredRowOutcome.TRUE =>
-        conditionSelectionGivenColumn(expression, whereNotCondition, replaceWith = 1).cast(IntegerType)
+        conditionSelectionGivenColumn(getPatternMatchExpression, whereNotCondition, replaceWith = 1).cast(IntegerType)
       case _ =>
+        // The default behavior when using filtering for rows is to treat them as nulls. No special treatment needed.
         criterion
     }
   }
 
+  private def getPatternMatchExpression: Column = {
+    when(regexp_extract(col(column), pattern.toString(), 0) =!= lit(""), 1).otherwise(0)
+  }
 }
 
 object Patterns {
