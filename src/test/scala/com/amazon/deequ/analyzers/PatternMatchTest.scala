@@ -33,8 +33,33 @@ class PatternMatchTest extends AnyWordSpec with Matchers with SparkContextSpec w
       val state = patternMatchCountry.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = patternMatchCountry.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Boolean]("new")) shouldBe
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Any]("new")) shouldBe
         Seq(true, true, true, true, true, true, true, true)
+    }
+
+    "return row-level results for non-null columns starts with digit" in withSparkSession { session =>
+
+      val data = getDfWithStringColumns(session)
+
+      val patternMatchCountry = PatternMatch("Address Line 1", """(^[0-4])""".r)
+      val state = patternMatchCountry.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = patternMatchCountry.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Any]("new")) shouldBe
+        Seq(false, false, true, true, false, false, true, true)
+    }
+
+    "return row-level results for non-null columns starts with digit filtered as true" in withSparkSession { session =>
+
+      val data = getDfWithStringColumns(session)
+
+      val patternMatchCountry = PatternMatch("Address Line 1", """(^[0-4])""".r, where = Option("id < 5"),
+        analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE)))
+      val state = patternMatchCountry.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = patternMatchCountry.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Any]("new")) shouldBe
+        Seq(false, false, true, true, false, true, true, true)
     }
 
     "return row-level results for columns with nulls" in withSparkSession { session =>
@@ -45,8 +70,34 @@ class PatternMatchTest extends AnyWordSpec with Matchers with SparkContextSpec w
       val state = patternMatchCountry.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = patternMatchCountry.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Boolean]("new")) shouldBe
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Any]("new")) shouldBe
         Seq(true, true, true, true, false, true, true, false)
+    }
+
+    "return row-level results for columns with nulls filtered as true" in withSparkSession { session =>
+
+      val data = getDfWithStringColumns(session)
+
+      val patternMatchCountry = PatternMatch("Address Line 2", """\w""".r, where = Option("id < 5"),
+        analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE)))
+      val state = patternMatchCountry.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = patternMatchCountry.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Any]("new")) shouldBe
+        Seq(true, true, true, true, false, true, true, true)
+    }
+
+    "return row-level results for columns with nulls filtered as null" in withSparkSession { session =>
+
+      val data = getDfWithStringColumns(session)
+
+      val patternMatchCountry = PatternMatch("Address Line 2", """\w""".r, where = Option("id < 5"),
+        analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
+      val state = patternMatchCountry.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = patternMatchCountry.computeMetricFrom(state)
+
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Any]("new")) shouldBe
+        Seq(true, true, true, true, false, null, null, null)
     }
   }
 }

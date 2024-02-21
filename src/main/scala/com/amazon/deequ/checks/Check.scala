@@ -681,15 +681,17 @@ case class Check(
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasMin(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => minConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => minConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -698,15 +700,17 @@ case class Check(
     * @param column Column to run the assertion on
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasMax(
       column: String,
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
-    addFilterableConstraint { filter => maxConstraint(column, assertion, filter, hint) }
+    addFilterableConstraint { filter => maxConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
@@ -810,6 +814,7 @@ case class Check(
     *                        name the metrics for the analysis being done.
     * @param assertion       Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def satisfies(
@@ -817,11 +822,12 @@ case class Check(
       constraintName: String,
       assertion: Double => Boolean = Check.IsOne,
       hint: Option[String] = None,
-      columns: List[String] = List.empty[String])
+      columns: List[String] = List.empty[String],
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      complianceConstraint(constraintName, columnCondition, assertion, filter, hint, columns)
+      complianceConstraint(constraintName, columnCondition, assertion, filter, hint, columns, analyzerOptions)
     }
   }
 
@@ -833,6 +839,7 @@ case class Check(
     * @param pattern The columns values will be checked for a match against this pattern.
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasPattern(
@@ -840,11 +847,12 @@ case class Check(
       pattern: Regex,
       assertion: Double => Boolean = Check.IsOne,
       name: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint)
+      Constraint.patternMatchConstraint(column, pattern, assertion, filter, name, hint, analyzerOptions)
     }
   }
 
@@ -1083,8 +1091,7 @@ case class Check(
       allowedValues: Array[String])
     : CheckWithLastConstraintFilterable = {
 
-
-    isContainedIn(column, allowedValues, Check.IsOne, None)
+    isContainedIn(column, allowedValues, Check.IsOne, None, None)
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -1102,7 +1109,7 @@ case class Check(
       hint: Option[String])
     : CheckWithLastConstraintFilterable = {
 
-    isContainedIn(column, allowedValues, Check.IsOne, hint)
+    isContainedIn(column, allowedValues, Check.IsOne, hint, None)
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -1120,8 +1127,27 @@ case class Check(
       assertion: Double => Boolean)
     : CheckWithLastConstraintFilterable = {
 
+    isContainedIn(column, allowedValues, assertion, None, None)
+  }
 
-    isContainedIn(column, allowedValues, assertion, None)
+  // We can't use default values here as you can't combine default values and overloading in Scala
+  /**
+   * Asserts that every non-null value in a column is contained in a set of predefined values
+   *
+   * @param column        Column to run the assertion on
+   * @param allowedValues Allowed values for the column
+   * @param assertion     Function that receives a double input parameter and returns a boolean
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def isContainedIn(
+                     column: String,
+                     allowedValues: Array[String],
+                     assertion: Double => Boolean,
+                     hint: Option[String])
+  : CheckWithLastConstraintFilterable = {
+
+    isContainedIn(column, allowedValues, assertion, hint, None)
   }
 
   // We can't use default values here as you can't combine default values and overloading in Scala
@@ -1132,15 +1158,16 @@ case class Check(
     * @param allowedValues Allowed values for the column
     * @param assertion Function that receives a double input parameter and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def isContainedIn(
       column: String,
       allowedValues: Array[String],
       assertion: Double => Boolean,
-      hint: Option[String])
+      hint: Option[String],
+      analyzerOptions: Option[AnalyzerOptions])
     : CheckWithLastConstraintFilterable = {
-
 
     val valueList = allowedValues
       .map { _.replaceAll("'", "\\\\\'") }
@@ -1148,7 +1175,7 @@ case class Check(
 
     val predicate = s"`$column` IS NULL OR `$column` IN ($valueList)"
     satisfies(predicate, s"$column contained in ${allowedValues.mkString(",")}",
-      assertion, hint, List(column))
+      assertion, hint, List(column), analyzerOptions)
   }
 
   /**
@@ -1160,6 +1187,7 @@ case class Check(
     * @param includeLowerBound is a value equal to the lower bound allows?
     * @param includeUpperBound is a value equal to the upper bound allowed?
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def isContainedIn(
@@ -1168,7 +1196,8 @@ case class Check(
       upperBound: Double,
       includeLowerBound: Boolean = true,
       includeUpperBound: Boolean = true,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
     val leftOperand = if (includeLowerBound) ">=" else ">"
@@ -1177,7 +1206,8 @@ case class Check(
     val predicate = s"`$column` IS NULL OR " +
       s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
 
-    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint, columns = List(column))
+    satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint,
+      columns = List(column), analyzerOptions = analyzerOptions)
   }
 
   /**

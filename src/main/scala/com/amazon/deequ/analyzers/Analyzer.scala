@@ -17,7 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Analyzers._
-import com.amazon.deequ.analyzers.FilteredRow.FilteredRow
+import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
 import com.amazon.deequ.metrics.DoubleMetric
@@ -172,6 +172,12 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
   private[deequ] def copyStateTo(source: StateLoader, target: StatePersister): Unit = {
     source.load[S](this).foreach { state => target.persist(this, state) }
   }
+
+  private[deequ] def getRowLevelFilterTreatment(analyzerOptions: Option[AnalyzerOptions]): FilteredRowOutcome = {
+    analyzerOptions
+      .map { options => options.filteredRow }
+      .getOrElse(FilteredRowOutcome.TRUE)
+  }
 }
 
 /** An analyzer that runs a set of aggregation functions over the data,
@@ -257,15 +263,19 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
 }
 
 case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore,
-                           filteredRow: FilteredRow = FilteredRow.TRUE)
+                           filteredRow: FilteredRowOutcome = FilteredRowOutcome.TRUE)
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
   val Ignore, EmptyString, Fail = Value
 }
 
-object FilteredRow extends Enumeration {
-  type FilteredRow = Value
+object FilteredRowOutcome extends Enumeration {
+  type FilteredRowOutcome = Value
   val NULL, TRUE = Value
+
+  implicit class FilteredRowOutcomeOps(value: FilteredRowOutcome) {
+    def getExpression: Column = expr(value.toString)
+  }
 }
 
 /** Base class for analyzers that compute ratios of matching predicates */
@@ -484,6 +494,12 @@ private[deequ] object Analyzers {
       .getOrElse(selection)
   }
 
+  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: Boolean): Column = {
+    where
+      .map { condition => when(condition, replaceWith).otherwise(selection) }
+      .getOrElse(selection)
+  }
+
   def conditionalSelection(selection: Column, where: Option[String], replaceWith: Double): Column = {
     conditionSelectionGivenColumn(selection, where.map(expr), replaceWith)
   }
@@ -500,12 +516,12 @@ private[deequ] object Analyzers {
   def conditionalSelectionFilteredFromColumns(
                                        selection: Column,
                                        conditionColumn: Option[Column],
-                                       filterTreatment: String)
+                                       filterTreatment: FilteredRowOutcome)
   : Column = {
     conditionColumn
-      .map { condition => {
-        when(not(condition), expr(filterTreatment)).when(condition, selection)
-      } }
+      .map { condition =>
+        when(not(condition), filterTreatment.getExpression).when(condition, selection)
+      }
       .getOrElse(selection)
   }
 
