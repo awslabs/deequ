@@ -101,21 +101,24 @@ class SparkTableMetricsRepositoryTest extends AnyWordSpec
     }
 
     "save and load to iceberg a single metric" in withSparkSessionIcebergCatalog { spark => {
-      val resultKey = ResultKey(System.currentTimeMillis(), Map("tag" -> "value"))
-      val metric = DoubleMetric(Entity.Column, "m1", "", Try(100))
-      val context = AnalyzerContext(Map(analyzer -> metric))
+      // The SupportsRowLevelOperations class is available from spark 3.3
+      // We should skip this test for lower spark versions
+      val className = "org.apache.spark.sql.connector.catalog.SupportsRowLevelOperations"
+      if (Try(Class.forName(className)).isSuccess) {
+        val resultKey = ResultKey(System.currentTimeMillis(), Map("tag" -> "value"))
+        val metric = DoubleMetric(Entity.Column, "m1", "", Try(100))
+        val context = AnalyzerContext(Map(analyzer -> metric))
 
-      val repository = new SparkTableMetricsRepository(spark, "local.metrics_table")
-      // Save the metric
-      repository.save(resultKey, context)
+        val repository = new SparkTableMetricsRepository(spark, "local.metrics_table")
+        // Save the metric
+        repository.save(resultKey, context)
 
-      // Load the metric
-      val loadedContext = repository.loadByKey(resultKey)
+        // Load the metric
+        val loadedContext = repository.loadByKey(resultKey)
 
-      assert(loadedContext.isDefined)
-      assert(loadedContext.get.metric(analyzer).contains(metric))
-    }
-
-    }
+        assert(loadedContext.isDefined)
+        assert(loadedContext.get.metric(analyzer).contains(metric))
+      }
+    } }
   }
 }
