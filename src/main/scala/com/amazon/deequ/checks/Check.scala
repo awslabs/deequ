@@ -397,16 +397,18 @@ case class Check(
     * @param assertion Function that receives a double input parameter and returns a boolean.
     *                  Refers to the fraction of distinct values.
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     * @return
     */
   def hasUniqueValueRatio(
       columns: Seq[String],
       assertion: Double => Boolean,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      uniqueValueRatioConstraint(columns, assertion, filter, hint) }
+      uniqueValueRatioConstraint(columns, assertion, filter, hint, analyzerOptions) }
   }
 
   /**
