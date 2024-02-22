@@ -256,10 +256,27 @@ case class Check(
     * @param hint A hint to provide additional context why a constraint could have failed
     * @return
     */
-  def isPrimaryKey(column: String, hint: Option[String], columns: String*)
+  def isPrimaryKey(column: String, hint: Option[String],
+                   analyzerOptions: Option[AnalyzerOptions], columns: String*)
     : CheckWithLastConstraintFilterable = {
     addFilterableConstraint { filter =>
-      uniquenessConstraint(column :: columns.toList, Check.IsOne, filter, hint) }
+      uniquenessConstraint(column :: columns.toList, Check.IsOne, filter, hint, analyzerOptions) }
+  }
+
+  /**
+   * Creates a constraint that asserts on a column(s) primary key characteristics.
+   * Currently only checks uniqueness, but reserved for primary key checks if there is another
+   * assertion to run on primary key columns.
+   *
+   * @param column Columns to run the assertion on
+   * @param hint   A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def isPrimaryKey(column: String, hint: Option[String], columns: String*)
+  : CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter =>
+      uniquenessConstraint(column :: columns.toList, Check.IsOne, filter, hint)
+    }
   }
 
   /**
