@@ -339,15 +339,17 @@ object Constraint {
     *                  (since the metric is double metric) and returns a boolean
     * @param where Additional filter to apply before the analyzer is run.
     * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
     */
   def uniqueValueRatioConstraint(
       columns: Seq[String],
       assertion: Double => Boolean,
       where: Option[String] = None,
-      hint: Option[String] = None)
+      hint: Option[String] = None,
+      analyzerOptions: Option[AnalyzerOptions] = None)
     : Constraint = {
 
-    val uniqueValueRatio = UniqueValueRatio(columns, where)
+    val uniqueValueRatio = UniqueValueRatio(columns, where, analyzerOptions)
     fromAnalyzer(uniqueValueRatio, assertion, hint)
   }
 
