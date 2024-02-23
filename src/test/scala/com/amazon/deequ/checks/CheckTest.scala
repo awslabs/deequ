@@ -697,6 +697,21 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         assertSuccess(baseCheck.hasMaxLength("att1", _ == 4.0), context)
     }
 
+    "yield correct results for minimum and maximum length stats with where clause" in
+      withSparkSession { sparkSession =>
+        val emptyNulLBehavior = Option(AnalyzerOptions(NullBehavior.EmptyString))
+        val baseCheck = Check(CheckLevel.Error, description = "a description")
+        val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+        val context = AnalysisRunner.onData(df)
+          .addAnalyzers(Seq(MinLength("item", Option("val1 > 3"), emptyNulLBehavior),
+            MaxLength("item", Option("val1 <= 3"), emptyNulLBehavior))).run()
+
+        assertSuccess(baseCheck.hasMinLength("item", _ >= 4.0, analyzerOptions = emptyNulLBehavior)
+          .where("val1 > 3"), context) // 1 without where clause
+        assertSuccess(baseCheck.hasMaxLength("item", _ <= 3.0, analyzerOptions = emptyNulLBehavior)
+          .where("val1 <= 3"), context) // 6 without where clause
+      }
+
     "work on regular expression patterns for E-Mails" in withSparkSession { sparkSession =>
       val col = "some"
       val df = dataFrameWithColumn(col, StringType, sparkSession, Row("someone@somewhere.org"),
