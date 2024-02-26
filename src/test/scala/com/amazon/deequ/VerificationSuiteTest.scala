@@ -600,6 +600,47 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       assert(Seq(false, null, false, true, null, true).sameElements(rowLevel4))
     }
 
+    "confirm that minLength and maxLength properly filters with nullBehavior empty" in withSparkSession { session =>
+      val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
+
+      val minLength = new Check(CheckLevel.Error, "rule1")
+        .hasMinLength("item", _ > 3,
+          analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString, FilteredRowOutcome.NULL)))
+        .where("val1 > 3")
+      val maxLength = new Check(CheckLevel.Error, "rule2")
+        .hasMaxLength("item", _ <= 3,
+          analyzerOptions = Option(AnalyzerOptions(NullBehavior.EmptyString, FilteredRowOutcome.NULL)))
+        .where("val1 < 4")
+
+      val expectedColumn1 = minLength.description
+      val expectedColumn2 = maxLength.description
+
+      val suite = new VerificationSuite().onData(data)
+        .addCheck(minLength)
+        .addCheck(maxLength)
+
+      val result: VerificationResult = suite.run()
+
+      val resultData = VerificationResult.rowLevelResultsAsDataFrame(session, result, data)
+
+      resultData.show(false)
+
+      val expectedColumns: Set[String] =
+        data.columns.toSet + expectedColumn1 + expectedColumn2
+      assert(resultData.columns.toSet == expectedColumns)
+
+      // Unfiltered rows are all true - overall result should be Success
+      assert(result.status == CheckStatus.Success)
+
+      // minLength > 3 would fail for the first three rows (length 1,2,3)
+      val rowLevel1 = resultData.select(expectedColumn1).collect().map(r => r.getAs[Any](0))
+      assert(Seq(null, null, null, true, true, true).sameElements(rowLevel1))
+
+      // maxLength <= 3 would fail for the last three rows (length 4,5,6)
+      val rowLevel2 = resultData.select(expectedColumn2).collect().map(r => r.getAs[Any](0))
+      assert(Seq(true, true, true, null, null, null).sameElements(rowLevel2))
+    }
+
     "generate a result that contains length row-level results with nullBehavior fail" in withSparkSession { session =>
       val data = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(session)
 
