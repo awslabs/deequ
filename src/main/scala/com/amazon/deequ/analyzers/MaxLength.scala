@@ -75,7 +75,8 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
       case NullBehavior.Fail =>
         conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = Double.MaxValue)
       case NullBehavior.EmptyString =>
-        length(conditionSelectionGivenColumn(col(column), Option(isNullCheck), replaceWith = "")).cast(DoubleType)
+        // Empty String is 0 length string
+        conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = 0.0).cast(DoubleType)
       case _ =>
         colLengths
     }
