@@ -14,7 +14,6 @@
  *
  */
 
-
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
@@ -25,23 +24,19 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class MinimumTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
-
   "Min" should {
     "return row-level results for columns" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Minimum = Minimum("att1")
       val state: Option[MinState] = att1Minimum.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = att1Minimum.computeMetricFrom(state)
 
-
       data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Double]("new")) shouldBe
         Seq(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
     }
 
     "return row-level results for columns with null" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Minimum = Minimum("attNull")
@@ -53,38 +48,34 @@ class MinimumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
         Seq(null, null, null, 5.0, 6.0, 7.0)
     }
 
-    "return row-level results for columns with where clause filtered as true" in withSparkSession { session =>
-
+    "return row-level results for columns with filtered rows" in withSparkSession { session =>
       val data = getDfWithNumericValues(session)
+      val col = "att1"
+      val whereClause = "item < 4"
+      val tempColName = "new"
 
-      val att1Minimum = Minimum("att1", Option("item < 4"))
-      val state: Option[MinState] = att1Minimum.computeStateFrom(data, Option("item < 4"))
-      print(state)
-      val metric: DoubleMetric with FullColumn = att1Minimum.computeMetricFrom(state)
+      val analyzerOptionsFilteredRowsNull = AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)
+      val analyzerOptionsFilteredRowsTrue = AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE)
 
-      val result = data.withColumn("new", metric.fullColumn.get)
-      result.show(false)
-      result.collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, Double.MaxValue, Double.MaxValue, Double.MaxValue)
-    }
+      val att1MinimumFilteredRowsNull = Minimum(col, Option(whereClause), Some(analyzerOptionsFilteredRowsNull))
+      val att1MinimumFilteredRowsTrue = Minimum(col, Option(whereClause), Some(analyzerOptionsFilteredRowsTrue))
 
-    "return row-level results for columns with where clause filtered as null" in withSparkSession { session =>
+      val filteredRowNullState = att1MinimumFilteredRowsNull.computeStateFrom(data, Option(whereClause))
+      val filteredRowTrueState = att1MinimumFilteredRowsTrue.computeStateFrom(data, Option(whereClause))
 
-      val data = getDfWithNumericValues(session)
+      val filteredRowNullMetric: DoubleMetric with FullColumn =
+        att1MinimumFilteredRowsNull.computeMetricFrom(filteredRowNullState)
+      val filteredRowTrueMetric: DoubleMetric with FullColumn =
+        att1MinimumFilteredRowsTrue.computeMetricFrom(filteredRowTrueState)
 
-      val att1Minimum = Minimum("att1", Option("item < 4"),
-        Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
-      val state: Option[MinState] = att1Minimum.computeStateFrom(data, Option("item < 4"))
-      print(state)
-      val metric: DoubleMetric with FullColumn = att1Minimum.computeMetricFrom(state)
+      val filteredRowNullResult = data.withColumn(tempColName, filteredRowNullMetric.fullColumn.get)
+      val filteredRowTrueResult = data.withColumn(tempColName, filteredRowTrueMetric.fullColumn.get)
 
-      val result = data.withColumn("new", metric.fullColumn.get)
-      result.show(false)
-      result.collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, null, null, null)
+      Seq(filteredRowNullResult, filteredRowTrueResult).foreach { result =>
+        result.collect().map(r =>
+          if (r == null) null else r.getAs[Double](tempColName)) shouldBe
+          Seq(1.0, 2.0, 3.0, null, null, null)
+      }
     }
   }
-
 }

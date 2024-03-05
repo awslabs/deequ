@@ -23,8 +23,6 @@ import org.apache.spark.sql.types.{DoubleType, StructType}
 import Analyzers._
 import com.amazon.deequ.metrics.FullColumn
 import com.google.common.annotations.VisibleForTesting
-import org.apache.spark.sql.functions.expr
-import org.apache.spark.sql.functions.not
 
 case class MaxState(maxValue: Double, override val fullColumn: Option[Column] = None)
   extends DoubleValuedState[MaxState] with FullColumn {
@@ -49,7 +47,7 @@ case class Maximum(column: String, where: Option[String] = None, analyzerOptions
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
 
     ifNoNullsIn(result, offset) { _ =>
-      MaxState(result.getDouble(offset), Some(rowLevelResults))
+      MaxState(result.getDouble(offset), Some(criterion))
     }
   }
 
@@ -61,18 +59,5 @@ case class Maximum(column: String, where: Option[String] = None, analyzerOptions
 
   @VisibleForTesting
   private def criterion: Column = conditionalSelection(column, where).cast(DoubleType)
-
-  private[deequ] def rowLevelResults: Column = {
-    val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
-    val whereNotCondition = where.map { expression => not(expr(expression)) }
-
-    filteredRowOutcome match {
-      case FilteredRowOutcome.TRUE =>
-        conditionSelectionGivenColumn(col(column), whereNotCondition, replaceWith = Double.MinValue).cast(DoubleType)
-      case _ =>
-        criterion
-    }
-  }
-
 }
 

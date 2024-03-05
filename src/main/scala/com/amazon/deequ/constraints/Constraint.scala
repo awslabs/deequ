@@ -629,7 +629,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minimum, assertion,
       hint = hint)
 
-    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    val updatedAssertion = getUpdatedRowLevelAssertion(assertion, minimum.analyzerOptions)
+    val sparkAssertion = org.apache.spark.sql.functions.udf(updatedAssertion)
+
     new RowLevelAssertedConstraint(
       constraint,
       s"MinimumConstraint($minimum)",
@@ -663,7 +665,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maximum, assertion,
       hint = hint)
 
-    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    val updatedAssertion = getUpdatedRowLevelAssertion(assertion, maximum.analyzerOptions)
+    val sparkAssertion = org.apache.spark.sql.functions.udf(updatedAssertion)
+
     new RowLevelAssertedConstraint(
       constraint,
       s"MaximumConstraint($maximum)",
@@ -916,6 +920,20 @@ object Constraint {
         .getOrElse(0.0)
     }
 
+  private[this] def getUpdatedRowLevelAssertion(assertion: Double => Boolean,
+                                                analyzerOpts: Option[AnalyzerOptions])
+  : java.lang.Double => java.lang.Boolean = {
+    (d: java.lang.Double) => {
+      if (Option(d).isDefined) assertion(d)
+      else analyzerOpts match {
+        case Some(analyzerOptions) => analyzerOptions.filteredRow match {
+          case FilteredRowOutcome.TRUE => true
+          case FilteredRowOutcome.NULL => null
+        }
+        case None => null
+      }
+    }
+  }
 }
 
 /**

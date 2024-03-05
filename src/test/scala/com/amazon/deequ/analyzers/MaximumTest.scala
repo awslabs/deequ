@@ -25,7 +25,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
-
   "Max" should {
     "return row-level results for columns" in withSparkSession { session =>
 
@@ -52,35 +51,34 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
         Seq(null, null, null, 5.0, 6.0, 7.0)
     }
 
-    "return row-level results for columns with where clause filtered as true" in withSparkSession { session =>
-
+    "return row-level results for columns with filtered rows" in withSparkSession { session =>
       val data = getDfWithNumericValues(session)
+      val col = "att1"
+      val whereClause = "item < 4"
+      val tempColName = "new"
 
-      val att1Maximum = Maximum("att1", Option("item < 4"))
-      val state: Option[MaxState] = att1Maximum.computeStateFrom(data, Option("item < 4"))
-      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
+      val analyzerOptionsFilteredRowsNull = AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)
+      val analyzerOptionsFilteredRowsTrue = AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE)
 
-      val result = data.withColumn("new", metric.fullColumn.get)
-      result.show(false)
-      result.collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, Double.MinValue, Double.MinValue, Double.MinValue)
-    }
+      val att1MaximumFilteredRowsNull = Maximum(col, Option(whereClause), Some(analyzerOptionsFilteredRowsNull))
+      val att1MaximumFilteredRowsTrue = Maximum(col, Option(whereClause), Some(analyzerOptionsFilteredRowsTrue))
 
-    "return row-level results for columns with where clause filtered as null" in withSparkSession { session =>
+      val filteredRowNullState = att1MaximumFilteredRowsNull.computeStateFrom(data, Option(whereClause))
+      val filteredRowTrueState = att1MaximumFilteredRowsTrue.computeStateFrom(data, Option(whereClause))
 
-      val data = getDfWithNumericValues(session)
+      val filteredRowNullMetric: DoubleMetric with FullColumn =
+        att1MaximumFilteredRowsNull.computeMetricFrom(filteredRowNullState)
+      val filteredRowTrueMetric: DoubleMetric with FullColumn =
+        att1MaximumFilteredRowsTrue.computeMetricFrom(filteredRowTrueState)
 
-      val att1Maximum = Maximum("att1", Option("item < 4"),
-        Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
-      val state: Option[MaxState] = att1Maximum.computeStateFrom(data, Option("item < 4"))
-      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
+      val filteredRowNullResult = data.withColumn(tempColName, filteredRowNullMetric.fullColumn.get)
+      val filteredRowTrueResult = data.withColumn(tempColName, filteredRowTrueMetric.fullColumn.get)
 
-      val result = data.withColumn("new", metric.fullColumn.get)
-      result.show(false)
-      result.collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, null, null, null)
+      Seq(filteredRowNullResult, filteredRowTrueResult).foreach { result =>
+        result.collect().map(r =>
+          if (r == null) null else r.getAs[Double](tempColName)) shouldBe
+          Seq(1.0, 2.0, 3.0, null, null, null)
+      }
     }
   }
 }
