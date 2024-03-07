@@ -371,11 +371,11 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
       // filtered rows 1, 2, 3 (where item > 3)
       val minRowLevel = resultData.select(expectedColumn4).collect().map(r => r.getAs[Any](0))
-      assert(Seq(null, null, null, true, true, true).sameElements(minRowLevel))
+      assert(Seq(true, true, true, true, true, true).sameElements(minRowLevel))
 
       // filtered rows 4, 5, 6 (where item < 4)
       val maxRowLevel = resultData.select(expectedColumn5).collect().map(r => r.getAs[Any](0))
-      assert(Seq(true, true, true, null, null, null).sameElements(maxRowLevel))
+      assert(Seq(true, true, true, true, true, true).sameElements(maxRowLevel))
 
       // filtered rows 4, 5, 6 (where item < 4)
       val rowLevel6 = resultData.select(expectedColumn6).collect().map(r => r.getAs[Any](0))

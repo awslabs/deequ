@@ -960,7 +960,10 @@ object Constraint {
               case FilteredRowOutcome.TRUE => true
               case FilteredRowOutcome.NULL => null
             }
-          case None => null
+          // https://github.com/awslabs/deequ/issues/530
+          // Filtered rows should be marked as true by default.
+          // They can be set to null using the FilteredRowOutcome option.
+          case None => true
         }
       }
 
