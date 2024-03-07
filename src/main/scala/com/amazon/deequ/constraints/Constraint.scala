@@ -920,17 +920,53 @@ object Constraint {
         .getOrElse(0.0)
     }
 
+
+  /*
+   * This function is used by Min/Max constraints and it creates a new assertion based on the provided assertion.
+   * Each value in the outcome column is an array of 2 elements.
+   *   - The first element is a string that denotes whether the row is the filtered dataset or not.
+   *   - The second element is the actual value of the constraint's target column.
+   * The result of the final assertion is one of 3 states: true, false or null.
+   * These values can be tuned using the analyzer options.
+   * Null outcome allows the consumer to decide how to treat filtered rows or rows that were originally null.
+   */
   private[this] def getUpdatedRowLevelAssertion(assertion: Double => Boolean,
-                                                analyzerOpts: Option[AnalyzerOptions])
-  : java.lang.Double => java.lang.Boolean = {
-    (d: java.lang.Double) => {
-      if (Option(d).isDefined) assertion(d)
-      else analyzerOpts match {
-        case Some(analyzerOptions) => analyzerOptions.filteredRow match {
-          case FilteredRowOutcome.TRUE => true
-          case FilteredRowOutcome.NULL => null
+                                                analyzerOptions: Option[AnalyzerOptions])
+  : Seq[String] => java.lang.Boolean = {
+    (d: Seq[String]) => {
+      val (scope, value) = (d.head, Option(d.last).map(_.toDouble))
+
+      def inScopeRowOutcome(value: Option[Double]): java.lang.Boolean = {
+        if (value.isDefined) {
+          // If value is defined, run it through the assertion.
+          assertion(value.get)
+        } else {
+          // If value is not defined (value is null), apply NullBehavior.
+          analyzerOptions match {
+            case Some(opts) =>
+              opts.nullBehavior match {
+                case NullBehavior.Fail => false
+                case NullBehavior.Ignore => null
+              }
+            case None => null
+          }
         }
-        case None => null
+      }
+
+      def filteredRowOutcome: java.lang.Boolean = {
+        analyzerOptions match {
+          case Some(opts) =>
+            opts.filteredRow match {
+              case FilteredRowOutcome.TRUE => true
+              case FilteredRowOutcome.NULL => null
+            }
+          case None => null
+        }
+      }
+
+      scope match {
+        case FilteredData.name => filteredRowOutcome
+        case InScopeData.name => inScopeRowOutcome(value)
       }
     }
   }

@@ -1636,6 +1636,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     def assertCheckResults(verificationResult: VerificationResult): Unit = {
       val passResult = verificationResult.checkResults
+
       val equalityCheck1Result = passResult.values.find(_.check.description == check1Description)
       val equalityCheck2Result = passResult.values.find(_.check.description == check2Description)
       val equalityCheck3Result = passResult.values.find(_.check.description == check3Description)
@@ -1655,19 +1656,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         case FilteredRowOutcome.TRUE => true
         case FilteredRowOutcome.NULL => null
       }
+
       assert(equalityCheck1Results == Seq(filteredOutcome, filteredOutcome, filteredOutcome, true, false, false))
       assert(equalityCheck2Results == Seq(filteredOutcome, filteredOutcome, filteredOutcome, false, false, true))
       assert(equalityCheck3Results == Seq(true, true, true, filteredOutcome, filteredOutcome, filteredOutcome))
     }
 
     def assertMetrics(metricsDF: DataFrame): Unit = {
-      val metricsMap: Map[String, Double] = metricsDF.collect().map { r =>
-        val colName = r.getAs[String]("instance")
-        val metricName = r.getAs[String]("name")
-        val metricValue = r.getAs[Double]("value")
-        s"$colName|$metricName" -> metricValue
-      }.toMap
-
+      val metricsMap = getMetricsAsMap(metricsDF)
       assert(metricsMap(s"$col1|Minimum (where: $check1WhereClause)") == 4.0)
       assert(metricsMap(s"$col1|Maximum (where: $check1WhereClause)") == 6.0)
       assert(metricsMap(s"$col2|Minimum (where: $check2WhereClause)") == 5.0)
@@ -1676,7 +1672,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
       assert(metricsMap(s"$col3|Maximum (where: $check3WhereClause)") == 0.0)
     }
 
-    "mark filtered rows to null" in withSparkSession {
+    "mark filtered rows as null" in withSparkSession {
       sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
         val analyzerOptions = AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)
@@ -1698,7 +1694,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         assertMetrics(metricsDF)
     }
 
-    "mark filtered rows to true" in withSparkSession {
+    "mark filtered rows as true" in withSparkSession {
       sparkSession =>
         val df = getDfWithNumericValues(sparkSession)
         val analyzerOptions = AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE)
@@ -1717,6 +1713,78 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         assertCheckResults(verificationResult)
         assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+        assertMetrics(metricsDF)
+    }
+  }
+
+  "Verification Suite with == based Min/Max checks and null row behavior" should {
+    val col = "attNull"
+    val checkDescription = "equality-check"
+    def mkEqualityCheck(analyzerOptions: AnalyzerOptions): Check = new Check(CheckLevel.Error, checkDescription)
+      .hasMin(col, _ == 6, analyzerOptions = Some(analyzerOptions))
+      .hasMax(col, _ == 6, analyzerOptions = Some(analyzerOptions))
+
+    def assertCheckResults(verificationResult: VerificationResult, checkStatus: CheckStatus.Value): Unit = {
+      val passResult = verificationResult.checkResults
+      val equalityCheckResult = passResult.values.find(_.check.description == checkDescription)
+      assert(equalityCheckResult.isDefined && equalityCheckResult.get.status == checkStatus)
+    }
+
+    def getRowLevelResults(df: DataFrame): Seq[java.lang.Boolean] =
+      df.collect().map { r => r.getAs[java.lang.Boolean](0) }.toSeq
+
+    def assertRowLevelResults(rowLevelResults: DataFrame,
+                              analyzerOptions: AnalyzerOptions): Unit = {
+      val equalityCheckResults = getRowLevelResults(rowLevelResults.select(checkDescription))
+      val nullOutcome: java.lang.Boolean = analyzerOptions.nullBehavior match {
+        case NullBehavior.Fail => false
+        case NullBehavior.Ignore => null
+      }
+
+      assert(equalityCheckResults == Seq(nullOutcome, nullOutcome, nullOutcome, false, true, false))
+    }
+
+    def assertMetrics(metricsDF: DataFrame): Unit = {
+      val metricsMap = getMetricsAsMap(metricsDF)
+      assert(metricsMap(s"$col|Minimum") == 5.0)
+      assert(metricsMap(s"$col|Maximum") == 7.0)
+    }
+
+    "keep non-filtered null rows as null" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithNumericValues(sparkSession)
+        val analyzerOptions = AnalyzerOptions(nullBehavior = NullBehavior.Ignore)
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addChecks(Seq(mkEqualityCheck(analyzerOptions)))
+          .run()
+
+        val passResult = verificationResult.checkResults
+        assertCheckResults(verificationResult, CheckStatus.Error)
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
+        assertMetrics(metricsDF)
+    }
+
+    "mark non-filtered null rows as false" in withSparkSession {
+      sparkSession =>
+        val df = getDfWithNumericValues(sparkSession)
+        val analyzerOptions = AnalyzerOptions(nullBehavior = NullBehavior.Fail)
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addChecks(Seq(mkEqualityCheck(analyzerOptions)))
+          .run()
+
+        val passResult = verificationResult.checkResults
+        assertCheckResults(verificationResult, CheckStatus.Error)
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
         assertMetrics(metricsDF)
     }
   }
@@ -1744,5 +1812,14 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
   private[this] def assertSameRows(dataframeA: DataFrame, dataframeB: DataFrame): Unit = {
     assert(dataframeA.collect().toSet == dataframeB.collect().toSet)
+  }
+
+  private[this] def getMetricsAsMap(metricsDF: DataFrame): Map[String, Double] = {
+    metricsDF.collect().map { r =>
+      val colName = r.getAs[String]("instance")
+      val metricName = r.getAs[String]("name")
+      val metricValue = r.getAs[Double]("value")
+      s"$colName|$metricName" -> metricValue
+    }.toMap
   }
 }

@@ -18,7 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.{col, max}
+import org.apache.spark.sql.functions.{col, element_at, max}
 import org.apache.spark.sql.types.{DoubleType, StructType}
 import Analyzers._
 import com.amazon.deequ.metrics.FullColumn
@@ -41,11 +41,10 @@ case class Maximum(column: String, where: Option[String] = None, analyzerOptions
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    max(criterion) :: Nil
+    max(element_at(criterion, 2).cast(DoubleType)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
-
     ifNoNullsIn(result, offset) { _ =>
       MaxState(result.getDouble(offset), Some(criterion))
     }
@@ -58,6 +57,5 @@ case class Maximum(column: String, where: Option[String] = None, analyzerOptions
   override def filterCondition: Option[String] = where
 
   @VisibleForTesting
-  private def criterion: Column = conditionalSelection(column, where).cast(DoubleType)
+  private def criterion: Column = conditionalSelectionWithAugmentedOutcome(col(column), where, Double.MinValue)
 }
-
