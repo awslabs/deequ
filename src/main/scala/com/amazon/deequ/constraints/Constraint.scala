@@ -946,7 +946,7 @@ object Constraint {
             case Some(opts) =>
               opts.nullBehavior match {
                 case NullBehavior.Fail => false
-                case NullBehavior.Ignore => null
+                case NullBehavior.Ignore | NullBehavior.EmptyString => null
               }
             case None => null
           }
