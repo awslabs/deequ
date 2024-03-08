@@ -21,10 +21,20 @@ import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utils.FixtureSupport
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.element_at
+import org.apache.spark.sql.types.DoubleType
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+  private val tempColName = "new"
+
+  private def getValuesDF(df: DataFrame, outcomeColumn: Column): Seq[Row] = {
+    df.withColumn(tempColName, element_at(outcomeColumn, 2).cast(DoubleType)).collect()
+  }
 
   "Max" should {
     "return row-level results for columns" in withSparkSession { session =>
@@ -35,8 +45,8 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
       val state: Option[MaxState] = att1Maximum.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+      val values = getValuesDF(data, metric.fullColumn.get).map(_.getAs[Double](tempColName))
+      values shouldBe Seq(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
     }
 
     "return row-level results for columns with null" in withSparkSession { session =>
@@ -47,40 +57,9 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
       val state: Option[MaxState] = att1Maximum.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(null, null, null, 5.0, 6.0, 7.0)
-    }
-
-    "return row-level results for columns with where clause filtered as true" in withSparkSession { session =>
-
-      val data = getDfWithNumericValues(session)
-
-      val att1Maximum = Maximum("att1", Option("item < 4"))
-      val state: Option[MaxState] = att1Maximum.computeStateFrom(data, Option("item < 4"))
-      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
-
-      val result = data.withColumn("new", metric.fullColumn.get)
-      result.show(false)
-      result.collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, Double.MinValue, Double.MinValue, Double.MinValue)
-    }
-
-    "return row-level results for columns with where clause filtered as null" in withSparkSession { session =>
-
-      val data = getDfWithNumericValues(session)
-
-      val att1Maximum = Maximum("att1", Option("item < 4"),
-        Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
-      val state: Option[MaxState] = att1Maximum.computeStateFrom(data, Option("item < 4"))
-      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
-
-      val result = data.withColumn("new", metric.fullColumn.get)
-      result.show(false)
-      result.collect().map(r =>
-        if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 2.0, 3.0, null, null, null)
+      val values = getValuesDF(data, metric.fullColumn.get)
+        .map(r => if (r == null) null else r.getAs[Double](tempColName))
+      values shouldBe Seq(null, null, null, 5.0, 6.0, 7.0)
     }
   }
 }

@@ -629,7 +629,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minimum, assertion,
       hint = hint)
 
-    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    val updatedAssertion = getUpdatedRowLevelAssertion(assertion, minimum.analyzerOptions)
+    val sparkAssertion = org.apache.spark.sql.functions.udf(updatedAssertion)
+
     new RowLevelAssertedConstraint(
       constraint,
       s"MinimumConstraint($minimum)",
@@ -663,7 +665,9 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maximum, assertion,
       hint = hint)
 
-    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
+    val updatedAssertion = getUpdatedRowLevelAssertion(assertion, maximum.analyzerOptions)
+    val sparkAssertion = org.apache.spark.sql.functions.udf(updatedAssertion)
+
     new RowLevelAssertedConstraint(
       constraint,
       s"MaximumConstraint($maximum)",
@@ -916,6 +920,59 @@ object Constraint {
         .getOrElse(0.0)
     }
 
+
+  /*
+   * This function is used by Min/Max constraints and it creates a new assertion based on the provided assertion.
+   * Each value in the outcome column is an array of 2 elements.
+   *   - The first element is a string that denotes whether the row is the filtered dataset or not.
+   *   - The second element is the actual value of the constraint's target column.
+   * The result of the final assertion is one of 3 states: true, false or null.
+   * These values can be tuned using the analyzer options.
+   * Null outcome allows the consumer to decide how to treat filtered rows or rows that were originally null.
+   */
+  private[this] def getUpdatedRowLevelAssertion(assertion: Double => Boolean,
+                                                analyzerOptions: Option[AnalyzerOptions])
+  : Seq[String] => java.lang.Boolean = {
+    (d: Seq[String]) => {
+      val (scope, value) = (d.head, Option(d.last).map(_.toDouble))
+
+      def inScopeRowOutcome(value: Option[Double]): java.lang.Boolean = {
+        if (value.isDefined) {
+          // If value is defined, run it through the assertion.
+          assertion(value.get)
+        } else {
+          // If value is not defined (value is null), apply NullBehavior.
+          analyzerOptions match {
+            case Some(opts) =>
+              opts.nullBehavior match {
+                case NullBehavior.Fail => false
+                case NullBehavior.Ignore | NullBehavior.EmptyString => null
+              }
+            case None => null
+          }
+        }
+      }
+
+      def filteredRowOutcome: java.lang.Boolean = {
+        analyzerOptions match {
+          case Some(opts) =>
+            opts.filteredRow match {
+              case FilteredRowOutcome.TRUE => true
+              case FilteredRowOutcome.NULL => null
+            }
+          // https://github.com/awslabs/deequ/issues/530
+          // Filtered rows should be marked as true by default.
+          // They can be set to null using the FilteredRowOutcome option.
+          case None => true
+        }
+      }
+
+      scope match {
+        case FilteredData.name => filteredRowOutcome
+        case InScopeData.name => inScopeRowOutcome(value)
+      }
+    }
+  }
 }
 
 /**
