@@ -262,8 +262,13 @@ case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullCo
   }
 }
 
+sealed trait RowLevelStatusSource { def name: String }
+case object InScopeData extends RowLevelStatusSource { val name = "InScopeData" }
+case object FilteredData extends RowLevelStatusSource { val name = "FilteredData" }
+
 case class AnalyzerOptions(nullBehavior: NullBehavior = NullBehavior.Ignore,
                            filteredRow: FilteredRowOutcome = FilteredRowOutcome.TRUE)
+
 object NullBehavior extends Enumeration {
   type NullBehavior = Value
   val Ignore, EmptyString, Fail = Value
@@ -478,34 +483,34 @@ private[deequ] object Analyzers {
     if (columns.size == 1) Entity.Column else Entity.Multicolumn
   }
 
-  def conditionalSelection(selection: String, where: Option[String]): Column = {
-    conditionalSelection(col(selection), where)
+  def conditionalSelection(selection: String, condition: Option[String]): Column = {
+    conditionalSelection(col(selection), condition)
   }
 
-  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: Double): Column = {
-    where
+  def conditionSelectionGivenColumn(selection: Column, condition: Option[Column], replaceWith: Double): Column = {
+    condition
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
   }
 
-  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: String): Column = {
-    where
+  def conditionSelectionGivenColumn(selection: Column, condition: Option[Column], replaceWith: String): Column = {
+    condition
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
   }
 
-  def conditionSelectionGivenColumn(selection: Column, where: Option[Column], replaceWith: Boolean): Column = {
-    where
+  def conditionSelectionGivenColumn(selection: Column, condition: Option[Column], replaceWith: Boolean): Column = {
+    condition
       .map { condition => when(condition, replaceWith).otherwise(selection) }
       .getOrElse(selection)
   }
 
-  def conditionalSelection(selection: Column, where: Option[String], replaceWith: Double): Column = {
-    conditionSelectionGivenColumn(selection, where.map(expr), replaceWith)
+  def conditionalSelection(selection: Column, condition: Option[String], replaceWith: Double): Column = {
+    conditionSelectionGivenColumn(selection, condition.map(expr), replaceWith)
   }
 
-  def conditionalSelection(selection: Column, where: Option[String], replaceWith: String): Column = {
-    conditionSelectionGivenColumn(selection, where.map(expr), replaceWith)
+  def conditionalSelection(selection: Column, condition: Option[String], replaceWith: String): Column = {
+    conditionSelectionGivenColumn(selection, condition.map(expr), replaceWith)
   }
 
   def conditionalSelection(selection: Column, condition: Option[String]): Column = {
@@ -513,11 +518,20 @@ private[deequ] object Analyzers {
     conditionalSelectionFromColumns(selection, conditionColumn)
   }
 
-  def conditionalSelectionFilteredFromColumns(
-                                       selection: Column,
-                                       conditionColumn: Option[Column],
-                                       filterTreatment: FilteredRowOutcome)
-  : Column = {
+  def conditionalSelectionWithAugmentedOutcome(selection: Column,
+                                               condition: Option[String],
+                                               replaceWith: Double): Column = {
+    val origSelection = array(lit(InScopeData.name).as("source"), selection.as("selection"))
+    val filteredSelection = array(lit(FilteredData.name).as("source"), lit(replaceWith).as("selection"))
+
+    condition
+      .map { cond => when(not(expr(cond)), filteredSelection).otherwise(origSelection) }
+      .getOrElse(origSelection)
+  }
+
+  def conditionalSelectionFilteredFromColumns(selection: Column,
+                                              conditionColumn: Option[Column],
+                                              filterTreatment: FilteredRowOutcome): Column = {
     conditionColumn
       .map { condition =>
         when(not(condition), filterTreatment.getExpression).when(condition, selection)
