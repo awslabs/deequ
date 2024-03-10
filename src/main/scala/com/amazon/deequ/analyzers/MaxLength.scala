@@ -23,10 +23,11 @@ import com.amazon.deequ.analyzers.Preconditions.isString
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.element_at
 import org.apache.spark.sql.functions.length
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.max
-import org.apache.spark.sql.functions.not
+import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.StructType
 
@@ -35,12 +36,12 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    max(criterion) :: Nil
+    max(element_at(criterion, 2).cast(DoubleType)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
     ifNoNullsIn(result, offset) { _ =>
-      MaxState(result.getDouble(offset), Some(rowLevelResults))
+      MaxState(result.getDouble(offset), Some(criterion))
     }
   }
 
@@ -51,35 +52,16 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
   override def filterCondition: Option[String] = where
 
   private[deequ] def criterion: Column = {
-    transformColForNullBehavior
-  }
-
-  private[deequ] def rowLevelResults: Column = {
-    transformColForFilteredRow(criterion)
-  }
-
-  private def transformColForFilteredRow(col: Column): Column = {
-    val whereNotCondition = where.map { expression => not(expr(expression)) }
-    getRowLevelFilterTreatment(analyzerOptions) match {
-      case FilteredRowOutcome.TRUE =>
-        conditionSelectionGivenColumn(col, whereNotCondition, replaceWith = Double.MinValue)
-      case _ =>
-        conditionSelectionGivenColumn(col, whereNotCondition, replaceWith = null)
-    }
-  }
-
-  private def transformColForNullBehavior: Column = {
     val isNullCheck = col(column).isNull
-    val colLengths: Column = length(conditionalSelection(column, where)).cast(DoubleType)
-    getNullBehavior match {
-      case NullBehavior.Fail =>
-        conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = Double.MaxValue)
-      case NullBehavior.EmptyString =>
-        // Empty String is 0 length string
-        conditionSelectionGivenColumn(colLengths, Option(isNullCheck), replaceWith = 0.0).cast(DoubleType)
-      case _ =>
-        colLengths
+    val colLength = length(col(column)).cast(DoubleType)
+    val updatedColumn = getNullBehavior match {
+      case NullBehavior.Fail => when(isNullCheck, Double.MaxValue).otherwise(colLength)
+      // Empty String is 0 length string
+      case NullBehavior.EmptyString => when(isNullCheck, lit(0.0)).otherwise(colLength)
+      case NullBehavior.Ignore => length(col(column))
     }
+
+    conditionalSelectionWithAugmentedOutcome(updatedColumn, where)
   }
 
   private def getNullBehavior: NullBehavior = {

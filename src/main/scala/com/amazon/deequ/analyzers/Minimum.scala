@@ -16,13 +16,18 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
-import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.{col, element_at, min}
-import org.apache.spark.sql.types.{DoubleType, StructType}
-import Analyzers._
+import com.amazon.deequ.analyzers.Analyzers._
+import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.analyzers.Preconditions.isNumeric
 import com.amazon.deequ.metrics.FullColumn
 import com.google.common.annotations.VisibleForTesting
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.element_at
+import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.Row
 
 case class MinState(minValue: Double, override val fullColumn: Option[Column] = None)
   extends DoubleValuedState[MinState] with FullColumn {
@@ -57,5 +62,5 @@ case class Minimum(column: String, where: Option[String] = None, analyzerOptions
   override def filterCondition: Option[String] = where
 
   @VisibleForTesting
-  private def criterion: Column = conditionalSelectionWithAugmentedOutcome(col(column), where, Double.MaxValue)
+  private def criterion: Column = conditionalSelectionWithAugmentedOutcome(col(column), where)
 }

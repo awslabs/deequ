@@ -14,7 +14,6 @@
  *
  */
 
-
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
@@ -50,7 +49,6 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
     }
 
     "return row-level results for columns with null" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Maximum = Maximum("attNull")
