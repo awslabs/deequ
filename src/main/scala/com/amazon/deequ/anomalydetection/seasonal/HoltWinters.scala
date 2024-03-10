@@ -25,11 +25,11 @@ import collection.mutable.ListBuffer
 object HoltWinters {
 
   object SeriesSeasonality extends Enumeration {
-    val Weekly, Yearly: Value = Value
+    val Daily, Weekly, Yearly: Value = Value
   }
 
   object MetricInterval extends Enumeration {
-    val Daily, Monthly: Value = Value
+    val Hourly, Daily, Monthly: Value = Value
   }
 
   private[seasonal] case class ModelResults(
@@ -48,29 +48,30 @@ object HoltWinters {
 
 }
 
-/**
-  * Detects anomalies based on additive Holt-Winters model. The methods has two
-  * parameters, one for the metric frequency, as in how often the metric of interest
-  * is computed (e.g. daily) and one for the expected metric seasonality which
-  * defines the longest cycle in series. This quantity is also referred to as periodicity.
-  *
-  * For example, if a metric is produced daily and repeats itself every Monday, then the
-  * model should be created with a Daily metric interval and a Weekly seasonality parameter.
-  *
-  * @param metricsInterval: How often a metric is available
-  * @param seasonality: Cycle length (or periodicity) of the metric
-  */
-class HoltWinters(
-    metricsInterval: HoltWinters.MetricInterval.Value,
-    seasonality: HoltWinters.SeriesSeasonality.Value)
+class HoltWinters(seriesPeriodicity: Int)
   extends AnomalyDetectionStrategy {
 
   import HoltWinters._
 
-  private val seriesPeriodicity = seasonality -> metricsInterval match {
-    case (SeriesSeasonality.Weekly, MetricInterval.Daily) => 7
-    case (SeriesSeasonality.Yearly, MetricInterval.Monthly) => 12
-  }
+  /**
+   * Detects anomalies based on additive Holt-Winters model. The methods has two
+   * parameters, one for the metric frequency, as in how often the metric of interest
+   * is computed (e.g. daily) and one for the expected metric seasonality which
+   * defines the longest cycle in series. This quantity is also referred to as periodicity.
+   *
+   * For example, if a metric is produced daily and repeats itself every Monday, then the
+   * model should be created with a Daily metric interval and a Weekly seasonality parameter.
+   *
+   * @param metricsInterval : How often a metric is available
+   * @param seasonality     : Cycle length (or periodicity) of the metric
+   */
+  def this(metricsInterval: HoltWinters.MetricInterval.Value,
+           seasonality: HoltWinters.SeriesSeasonality.Value) =
+    this(seasonality -> metricsInterval match {
+      case (HoltWinters.SeriesSeasonality.Daily, HoltWinters.MetricInterval.Hourly) => 24
+      case (HoltWinters.SeriesSeasonality.Weekly, HoltWinters.MetricInterval.Daily) => 7
+      case (HoltWinters.SeriesSeasonality.Yearly, HoltWinters.MetricInterval.Monthly) => 12
+    })
 
   /**
     * Triple exponential smoothing with additive trend and seasonality
