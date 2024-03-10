@@ -36,6 +36,9 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
+    // The criterion returns a column where each row contains an array of 2 elements.
+    // The first element of the array is a string that indicates if the row is "in scope" or "filtered" out.
+    // The second element is the value used for calculating the metric. We use "element_at" to extract it.
     min(element_at(criterion, 2).cast(DoubleType)) :: Nil
   }
 
@@ -58,7 +61,7 @@ case class MinLength(column: String, where: Option[String] = None, analyzerOptio
       case NullBehavior.Fail => when(isNullCheck, Double.MinValue).otherwise(colLength)
       // Empty String is 0 length string
       case NullBehavior.EmptyString => when(isNullCheck, lit(0.0)).otherwise(colLength)
-      case NullBehavior.Ignore => length(col(column))
+      case NullBehavior.Ignore => colLength
     }
 
     conditionalSelectionWithAugmentedOutcome(updatedColumn, where)

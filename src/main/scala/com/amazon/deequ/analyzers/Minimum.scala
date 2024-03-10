@@ -46,6 +46,9 @@ case class Minimum(column: String, where: Option[String] = None, analyzerOptions
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
+    // The criterion returns a column where each row contains an array of 2 elements.
+    // The first element of the array is a string that indicates if the row is "in scope" or "filtered" out.
+    // The second element is the value used for calculating the metric. We use "element_at" to extract it.
     min(element_at(criterion, 2).cast(DoubleType)) :: Nil
   }
 
