@@ -1891,7 +1891,6 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .addChecks(Seq(mkEqualityCheck(analyzerOptions)))
           .run()
 
-        val passResult = verificationResult.checkResults
         assertCheckResults(verificationResult, CheckStatus.Error)
 
         val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
@@ -1910,7 +1909,6 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .addChecks(Seq(mkEqualityCheck(analyzerOptions)))
           .run()
 
-        val passResult = verificationResult.checkResults
         assertCheckResults(verificationResult, CheckStatus.Error)
 
         val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
@@ -1918,6 +1916,212 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
         assertMetrics(metricsDF)
+    }
+  }
+
+  "Verification Suite with ==/!= based MinLength/MaxLength checks and filtered row behavior" should {
+    val col1 = "Company"
+    val col2 = "ZipCode"
+    val col3 = "City"
+
+    val check1Description = "length-equality-check-1"
+    val check2Description = "length-equality-check-2"
+    val check3Description = "length-equality-check-3"
+
+    val check1WhereClause = "ID > 2"
+    val check2WhereClause = "ID in (1, 2, 3)"
+    val check3WhereClause = "ID <= 2"
+
+    def mkLengthCheck1(analyzerOptions: AnalyzerOptions): Check = new Check(CheckLevel.Error, check1Description)
+      .hasMinLength(col1, _ == 8, analyzerOptions = Some(analyzerOptions)).where(check1WhereClause)
+      .hasMaxLength(col1, _ == 8, analyzerOptions = Some(analyzerOptions)).where(check1WhereClause)
+
+    def mkLengthCheck2(analyzerOptions: AnalyzerOptions): Check = new Check(CheckLevel.Error, check2Description)
+      .hasMinLength(col2, _ == 4, analyzerOptions = Some(analyzerOptions)).where(check2WhereClause)
+      .hasMaxLength(col2, _ == 4, analyzerOptions = Some(analyzerOptions)).where(check2WhereClause)
+
+    def mkLengthCheck3(analyzerOptions: AnalyzerOptions): Check = new Check(CheckLevel.Error, check3Description)
+      .hasMinLength(col3, _ != 0, analyzerOptions = Some(analyzerOptions)).where(check3WhereClause)
+      .hasMaxLength(col3, _ != 0, analyzerOptions = Some(analyzerOptions)).where(check3WhereClause)
+
+    def getRowLevelResults(df: DataFrame): Seq[java.lang.Boolean] =
+      df.collect().map { r => r.getAs[java.lang.Boolean](0) }.toSeq
+
+    def assertCheckResults(verificationResult: VerificationResult): Unit = {
+      val passResult = verificationResult.checkResults
+
+      val equalityCheck1Result = passResult.values.find(_.check.description == check1Description)
+      val equalityCheck2Result = passResult.values.find(_.check.description == check2Description)
+      val equalityCheck3Result = passResult.values.find(_.check.description == check3Description)
+
+      assert(equalityCheck1Result.isDefined && equalityCheck1Result.get.status == CheckStatus.Success)
+      assert(equalityCheck2Result.isDefined && equalityCheck2Result.get.status == CheckStatus.Error)
+      assert(equalityCheck3Result.isDefined && equalityCheck3Result.get.status == CheckStatus.Success)
+    }
+
+    def assertRowLevelResults(rowLevelResults: DataFrame,
+                              analyzerOptions: AnalyzerOptions): Unit = {
+      val equalityCheck1Results = getRowLevelResults(rowLevelResults.select(check1Description))
+      val equalityCheck2Results = getRowLevelResults(rowLevelResults.select(check2Description))
+      val equalityCheck3Results = getRowLevelResults(rowLevelResults.select(check3Description))
+
+      val filteredOutcome: java.lang.Boolean = analyzerOptions.filteredRow match {
+        case FilteredRowOutcome.TRUE => true
+        case FilteredRowOutcome.NULL => null
+      }
+
+      assert(equalityCheck1Results == Seq(filteredOutcome, filteredOutcome, true, true))
+      assert(equalityCheck2Results == Seq(false, false, false, filteredOutcome))
+      assert(equalityCheck3Results == Seq(true, true, filteredOutcome, filteredOutcome))
+    }
+
+    def assertMetrics(metricsDF: DataFrame): Unit = {
+      val metricsMap = getMetricsAsMap(metricsDF)
+      assert(metricsMap(s"$col1|MinLength (where: $check1WhereClause)") == 8.0)
+      assert(metricsMap(s"$col1|MaxLength (where: $check1WhereClause)") == 8.0)
+      assert(metricsMap(s"$col2|MinLength (where: $check2WhereClause)") == 0.0)
+      assert(metricsMap(s"$col2|MaxLength (where: $check2WhereClause)") == 5.0)
+      assert(metricsMap(s"$col3|MinLength (where: $check3WhereClause)") == 11.0)
+      assert(metricsMap(s"$col3|MaxLength (where: $check3WhereClause)") == 11.0)
+    }
+
+    "mark filtered rows as null" in withSparkSession {
+      sparkSession =>
+        val df = getDfForWhereClause(sparkSession)
+        val analyzerOptions = AnalyzerOptions(
+          nullBehavior = NullBehavior.EmptyString, filteredRow = FilteredRowOutcome.NULL
+        )
+
+        val equalityCheck1 = mkLengthCheck1(analyzerOptions)
+        val equalityCheck2 = mkLengthCheck2(analyzerOptions)
+        val equalityCheck3 = mkLengthCheck3(analyzerOptions)
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addChecks(Seq(equalityCheck1, equalityCheck2, equalityCheck3))
+          .run()
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
+
+        assertCheckResults(verificationResult)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+        assertMetrics(metricsDF)
+    }
+
+    "mark filtered rows as true" in withSparkSession {
+      sparkSession =>
+        val df = getDfForWhereClause(sparkSession)
+        val analyzerOptions = AnalyzerOptions(
+          nullBehavior = NullBehavior.EmptyString, filteredRow = FilteredRowOutcome.TRUE
+        )
+
+        val equalityCheck1 = mkLengthCheck1(analyzerOptions)
+        val equalityCheck2 = mkLengthCheck2(analyzerOptions)
+        val equalityCheck3 = mkLengthCheck3(analyzerOptions)
+
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addChecks(Seq(equalityCheck1, equalityCheck2, equalityCheck3))
+          .run()
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
+
+        assertCheckResults(verificationResult)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+        assertMetrics(metricsDF)
+    }
+  }
+
+  "Verification Suite with ==/!= based MinLength/MaxLength checks and null row behavior" should {
+    val col = "City"
+    val checkDescription = "length-check"
+    val assertion = (d: Double) => d >= 0.0 && d <= 8.0
+
+    def mkLengthCheck(analyzerOptions: AnalyzerOptions): Check = new Check(CheckLevel.Error, checkDescription)
+      .hasMinLength(col, assertion, analyzerOptions = Some(analyzerOptions))
+      .hasMaxLength(col, assertion, analyzerOptions = Some(analyzerOptions))
+
+    def assertCheckResults(verificationResult: VerificationResult, checkStatus: CheckStatus.Value): Unit = {
+      val passResult = verificationResult.checkResults
+      val equalityCheckResult = passResult.values.find(_.check.description == checkDescription)
+      assert(equalityCheckResult.isDefined && equalityCheckResult.get.status == checkStatus)
+    }
+
+    def getRowLevelResults(df: DataFrame): Seq[java.lang.Boolean] =
+      df.collect().map { r => r.getAs[java.lang.Boolean](0) }.toSeq
+
+    def assertRowLevelResults(rowLevelResults: DataFrame,
+                              analyzerOptions: AnalyzerOptions): Unit = {
+      val equalityCheckResults = getRowLevelResults(rowLevelResults.select(checkDescription))
+      val nullOutcome: java.lang.Boolean = analyzerOptions.nullBehavior match {
+        case NullBehavior.Fail => false
+        case NullBehavior.Ignore => null
+        case NullBehavior.EmptyString => true
+      }
+
+      assert(equalityCheckResults == Seq(false, false, nullOutcome, true))
+    }
+
+    def assertMetrics(metricsDF: DataFrame, minLength: Double, maxLength: Double): Unit = {
+      val metricsMap = getMetricsAsMap(metricsDF)
+      assert(metricsMap(s"$col|MinLength") == minLength)
+      assert(metricsMap(s"$col|MaxLength") == maxLength)
+    }
+
+    "keep non-filtered null rows as null" in withSparkSession {
+      sparkSession =>
+        val df = getDfForWhereClause(sparkSession)
+        val analyzerOptions = AnalyzerOptions(nullBehavior = NullBehavior.Ignore)
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(mkLengthCheck(analyzerOptions))
+          .run()
+
+        assertCheckResults(verificationResult, CheckStatus.Error)
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
+        assertMetrics(metricsDF, 8.0, 11.0)
+    }
+
+    "mark non-filtered null rows as false" in withSparkSession {
+      sparkSession =>
+        val df = getDfForWhereClause(sparkSession)
+        val analyzerOptions = AnalyzerOptions(nullBehavior = NullBehavior.Fail)
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(mkLengthCheck(analyzerOptions))
+          .run()
+
+        assertCheckResults(verificationResult, CheckStatus.Error)
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
+        assertMetrics(metricsDF, Double.MinValue, Double.MaxValue)
+    }
+
+    "mark non-filtered null rows as empty string" in withSparkSession {
+      sparkSession =>
+        val df = getDfForWhereClause(sparkSession)
+        val analyzerOptions = AnalyzerOptions(nullBehavior = NullBehavior.EmptyString)
+        val verificationResult = VerificationSuite()
+          .onData(df)
+          .addCheck(mkLengthCheck(analyzerOptions))
+          .run()
+
+        assertCheckResults(verificationResult, CheckStatus.Error)
+
+        val rowLevelResultsDF = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+        assertRowLevelResults(rowLevelResultsDF, analyzerOptions)
+
+        val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
+        assertMetrics(metricsDF, 0.0, 11.0)
     }
   }
 
