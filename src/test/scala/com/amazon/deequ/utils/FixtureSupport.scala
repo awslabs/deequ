@@ -439,11 +439,11 @@ trait FixtureSupport {
     import sparkSession.implicits._
 
     Seq(
-      ("Acme", "90210", "CA", "Los Angeles"),
-      ("Acme", "90211", "CA", "Los Angeles"),
-      ("Robocorp", null, "NJ", null),
-      ("Robocorp", null, "NY", "New York")
-    ).toDF("Company", "ZipCode", "State", "City")
+      (1, "Acme", "90210", "CA", "Los Angeles"),
+      (2, "Acme", "90211", "CA", "Los Angeles"),
+      (3, "Robocorp", null, "NJ", null),
+      (4, "Robocorp", null, "NY", "New York")
+    ).toDF("ID", "Company", "ZipCode", "State", "City")
   }
 
   def getDfCompleteAndInCompleteColumnsWithPeriod(sparkSession: SparkSession): DataFrame = {

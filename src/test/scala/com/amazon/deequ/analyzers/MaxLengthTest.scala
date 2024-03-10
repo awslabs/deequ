@@ -13,145 +13,73 @@
  * permissions and limitations under the License.
  *
  */
+
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utils.FixtureSupport
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.element_at
+import org.apache.spark.sql.types.DoubleType
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class MaxLengthTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
+  private val tempColName = "new"
+
+  private def getValuesDF(df: DataFrame, outcomeColumn: Column): Seq[Row] = {
+    df.withColumn(tempColName, element_at(outcomeColumn, 2).cast(DoubleType)).collect()
+  }
 
   "MaxLength" should {
     "return row-level results for non-null columns" in withSparkSession { session =>
-
       val data = getDfWithStringColumns(session)
 
       val countryLength = MaxLength("Country") // It's "India" in every row
       val state: Option[MaxState] = countryLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = countryLength.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Double]("new")) shouldBe Seq(5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0)
+      val values = getValuesDF(data, metric.fullColumn.get).map(_.getAs[Double](tempColName))
+      values shouldBe Seq(5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0)
     }
 
     "return row-level results for null columns" in withSparkSession { session =>
-
       val data = getEmptyColumnDataDf(session)
 
       val addressLength = MaxLength("att3") // It's null in two rows
       val state: Option[MaxState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Double]("new")) shouldBe Seq(1.0, 1.0, 0.0, 1.0, 0.0, 1.0)
+      val values = getValuesDF(data, metric.fullColumn.get)
+        .map(r => if (r == null) null else r.getAs[Double](tempColName))
+      values shouldBe Seq(1.0, 1.0, null, 1.0, null, 1.0)
     }
 
     "return row-level results for null columns with NullBehavior fail option" in withSparkSession { session =>
-
       val data = getEmptyColumnDataDf(session)
 
       // It's null in two rows
-      val addressLength = MaxLength("att3")
+      val addressLength = MaxLength("att3", None, Option(AnalyzerOptions(NullBehavior.Fail)))
       val state: Option[MaxState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(r => if (r == null) null else r.getAs[Double]("new")) shouldBe
-        Seq(1.0, 1.0, null, 1.0, null, 1.0)
+      val values = getValuesDF(data, metric.fullColumn.get).map(_.getAs[Double](tempColName))
+      values shouldBe Seq(1.0, 1.0, Double.MaxValue, 1.0, Double.MaxValue, 1.0)
     }
 
     "return row-level results for blank strings" in withSparkSession { session =>
-
       val data = getEmptyColumnDataDf(session)
 
       val addressLength = MaxLength("att1") // It's empty strings
       val state: Option[MaxState] = addressLength.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Double]("new")) shouldBe Seq(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    }
-
-    "return row-level results with NullBehavior fail and filtered as true" in withSparkSession { session =>
-
-      val data = getEmptyColumnDataDf(session)
-
-      val addressLength = MaxLength("att3", Option("id < 4"), Option(AnalyzerOptions(NullBehavior.Fail)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
-      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
-
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Any]("new")) shouldBe
-        Seq(1.0, 1.0, Double.MaxValue, 1.0, Double.MinValue, Double.MinValue)
-    }
-
-    "return row-level results with NullBehavior fail and filtered as null" in withSparkSession { session =>
-
-      val data = getEmptyColumnDataDf(session)
-
-      val addressLength = MaxLength("att3", Option("id < 4"),
-        Option(AnalyzerOptions(NullBehavior.Fail, FilteredRowOutcome.NULL)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
-      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
-
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Any]("new")) shouldBe Seq(1.0, 1.0, Double.MaxValue, 1.0, null, null)
-    }
-
-    "return row-level results with NullBehavior empty and filtered as true" in withSparkSession { session =>
-
-      val data = getEmptyColumnDataDf(session)
-
-      val addressLength = MaxLength("att3", Option("id < 4"), Option(AnalyzerOptions(NullBehavior.EmptyString)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
-      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
-
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Any]("new")) shouldBe
-        Seq(1.0, 1.0, 0.0, 1.0, Double.MinValue, Double.MinValue)
-    }
-
-    "return row-level results with NullBehavior empty and filtered as null" in withSparkSession { session =>
-
-      val data = getEmptyColumnDataDf(session)
-
-      val addressLength = MaxLength("att3", Option("id < 4"),
-        Option(AnalyzerOptions(NullBehavior.EmptyString, FilteredRowOutcome.NULL)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
-      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
-
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Any]("new")) shouldBe Seq(1.0, 1.0, 0.0, 1.0, null, null)
-    }
-
-    "return row-level results with NullBehavior ignore and filtered as true" in withSparkSession { session =>
-
-      val data = getEmptyColumnDataDf(session)
-
-      val addressLength = MaxLength("att3", Option("id < 4"), Option(AnalyzerOptions(NullBehavior.Ignore)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
-      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
-
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Any]("new")) shouldBe
-        Seq(1.0, 1.0, null, 1.0, Double.MinValue, Double.MinValue)
-    }
-
-    "return row-level results with NullBehavior ignore and filtered as null" in withSparkSession { session =>
-
-      val data = getEmptyColumnDataDf(session)
-
-      val addressLength = MaxLength("att3", Option("id < 4"),
-        Option(AnalyzerOptions(NullBehavior.Ignore, FilteredRowOutcome.NULL)))
-      val state: Option[MaxState] = addressLength.computeStateFrom(data)
-      val metric: DoubleMetric with FullColumn = addressLength.computeMetricFrom(state)
-
-      data.withColumn("new", metric.fullColumn.get)
-        .collect().map(_.getAs[Any]("new")) shouldBe Seq(1.0, 1.0, null, 1.0, null, null)
+      val values = getValuesDF(data, metric.fullColumn.get).map(_.getAs[Double](tempColName))
+      values shouldBe Seq(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     }
   }
-
 }
