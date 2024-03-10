@@ -207,6 +207,73 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
       anomalies should have size 3
     }
   }
+
+  "work on hourly data with daily seasonality" in {
+    // https://www.kaggle.com/datasets/fedesoriano/traffic-prediction-dataset
+    val hourlyTrafficData = Vector[Double](
+      15, 13, 10, 7, 9, 6, 9, 8, 11, 12, 15, 17, 16, 15, 16, 12, 12, 16, 17, 20, 17, 19, 20, 15,
+      14, 12, 14, 12, 12, 11, 13, 14, 12, 22, 32, 31, 35, 26, 34, 30, 27, 27, 24, 26, 29, 32, 30, 27,
+      21, 18, 19, 13, 11, 11, 11, 14, 15, 29, 33, 32, 32, 29, 27, 26, 28, 26, 25, 29, 26, 24, 25, 20,
+      18, 18, 13, 13, 10, 12, 13, 11, 13, 22, 26, 27, 31, 24, 23, 26, 26, 24, 23, 25, 26, 24, 26, 24,
+      19, 20, 18, 13, 13, 9, 12, 12, 15, 16, 23, 24, 25, 24, 26, 22, 20, 20, 22, 26, 22, 21, 21, 21,
+      16, 18, 19, 14, 12, 13, 14, 14, 13, 20, 22, 26, 26, 21, 23, 23, 19, 19, 20, 24, 18, 19, 16, 17,
+      16, 16, 10, 9, 8, 7, 9, 8, 12, 13, 17, 14, 14, 14, 14, 11, 15, 13, 12, 17, 18, 17, 16, 15, 13,
+    )
+
+    val strategy = new HoltWinters(
+      HoltWinters.MetricInterval.Hourly,
+      HoltWinters.SeriesSeasonality.Daily)
+
+    val nDaysTrain = 6
+    val nDaysTest = 1
+    val trainSize = nDaysTrain * 24
+    val testSize = nDaysTest * 24
+    val nTotal = trainSize + testSize
+
+    val anomalies = strategy.detect(
+      hourlyTrafficData.take(nTotal),
+      trainSize -> nTotal
+    )
+
+    anomalies should have size 2
+  }
+
+  "work on monthly data with yearly seasonality using custom seriesPeriodicity" in {
+    // https://datamarket.com/data/set/22ox/monthly-milk-production-pounds-per-cow-jan-62-dec-75
+    val monthlyMilkProduction = Vector[Double](
+      589, 561, 640, 656, 727, 697, 640, 599, 568, 577, 553, 582,
+      600, 566, 653, 673, 742, 716, 660, 617, 583, 587, 565, 598,
+      628, 618, 688, 705, 770, 736, 678, 639, 604, 611, 594, 634,
+      658, 622, 709, 722, 782, 756, 702, 653, 615, 621, 602, 635,
+      677, 635, 736, 755, 811, 798, 735, 697, 661, 667, 645, 688,
+      713, 667, 762, 784, 837, 817, 767, 722, 681, 687, 660, 698,
+      717, 696, 775, 796, 858, 826, 783, 740, 701, 706, 677, 711,
+      734, 690, 785, 805, 871, 845, 801, 764, 725, 723, 690, 734,
+      750, 707, 807, 824, 886, 859, 819, 783, 740, 747, 711, 751,
+      804, 756, 860, 878, 942, 913, 869, 834, 790, 800, 763, 800,
+      826, 799, 890, 900, 961, 935, 894, 855, 809, 810, 766, 805,
+      821, 773, 883, 898, 957, 924, 881, 837, 784, 791, 760, 802,
+      828, 778, 889, 902, 969, 947, 908, 867, 815, 812, 773, 813,
+      834, 782, 892, 903, 966, 937, 896, 858, 817, 827, 797, 843
+    )
+
+    val strategy = new HoltWinters(
+      HoltWinters.MetricInterval.Monthly,
+      HoltWinters.SeriesSeasonality.Yearly)
+
+    val nYearsTrain = 3
+    val nYearsTest = 1
+    val trainSize = nYearsTrain * 12
+    val testSize = nYearsTest * 12
+    val nTotal = trainSize + testSize
+
+    val anomalies = strategy.detect(
+      monthlyMilkProduction.take(nTotal),
+      trainSize -> nTotal
+    )
+
+    anomalies should have size 7
+  }
 }
 
 object HoltWintersTest {
