@@ -217,7 +217,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
       18, 18, 13, 13, 10, 12, 13, 11, 13, 22, 26, 27, 31, 24, 23, 26, 26, 24, 23, 25, 26, 24, 26, 24,
       19, 20, 18, 13, 13, 9, 12, 12, 15, 16, 23, 24, 25, 24, 26, 22, 20, 20, 22, 26, 22, 21, 21, 21,
       16, 18, 19, 14, 12, 13, 14, 14, 13, 20, 22, 26, 26, 21, 23, 23, 19, 19, 20, 24, 18, 19, 16, 17,
-      16, 16, 10, 9, 8, 7, 9, 8, 12, 13, 17, 14, 14, 14, 14, 11, 15, 13, 12, 17, 18, 17, 16, 15, 13,
+      16, 16, 10, 9, 8, 7, 9, 8, 12, 13, 17, 14, 14, 14, 14, 11, 15, 13, 12, 17, 18, 17, 16, 15, 13
     )
 
     val strategy = new HoltWinters(
@@ -257,9 +257,7 @@ class HoltWintersTest extends AnyWordSpec with Matchers {
       834, 782, 892, 903, 966, 937, 896, 858, 817, 827, 797, 843
     )
 
-    val strategy = new HoltWinters(
-      HoltWinters.MetricInterval.Monthly,
-      HoltWinters.SeriesSeasonality.Yearly)
+    val strategy = new HoltWinters(12)
 
     val nYearsTrain = 3
     val nYearsTest = 1
