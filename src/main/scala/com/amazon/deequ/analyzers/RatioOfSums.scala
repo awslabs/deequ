@@ -26,13 +26,15 @@ case class RatioOfSumsState(
   }
 }
 
-/** Sums up 2 columns and then divides the final values
-  *
-  * @param numerator
-  *   First input column for computation
-  * @param denominator
-  *   Second input column for computation
-  */
+/** Sums up 2 columns and then divides the final values as a Double. The columns
+ * can contain a mix of positive and negative numbers. Dividing by zero is allowed
+ * and will result in a value of Double.PositiveInfinity.
+ *
+ * @param numerator
+ *   First input column for computation
+ * @param denominator
+ *   Second input column for computation
+ */
 case class RatioOfSums(
     numerator: String,
     denominator: String,
