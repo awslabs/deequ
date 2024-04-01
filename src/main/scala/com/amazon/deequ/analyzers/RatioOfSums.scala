@@ -28,7 +28,7 @@ case class RatioOfSumsState(
 
 /** Sums up 2 columns and then divides the final values as a Double. The columns
  * can contain a mix of positive and negative numbers. Dividing by zero is allowed
- * and will result in a value of Double.PositiveInfinity.
+ * and will result in a value of Double.PositiveInfinity or Double.NegativeInfinity.
  *
  * @param numerator
  *   First input column for computation
