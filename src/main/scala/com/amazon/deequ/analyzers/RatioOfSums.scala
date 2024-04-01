@@ -18,14 +18,7 @@ case class RatioOfSumsState(
 ) extends DoubleValuedState[RatioOfSumsState] {
 
   override def sum(other: RatioOfSumsState): RatioOfSumsState = {
-    val n1 = numerator
-    val n2 = other.numerator
-    val newN = n1 + n2
-    val t1 = denominator
-    val t2 = other.denominator
-    val newD = t1 + t2
-    
-    RatioOfSumsState(newN, newD)
+    RatioOfSumsState(numerator + other.numerator, denominator + other.denominator)
   }
 
   override def metricValue(): Double = {
