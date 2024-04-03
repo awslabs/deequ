@@ -22,7 +22,6 @@ import org.apache.spark.sql.functions._
 import Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.google.common.annotations.VisibleForTesting
-import org.apache.spark.sql.types.DoubleType
 
 /**
   * Compliance is a measure of the fraction of rows that complies with the given column constraint.
@@ -43,29 +42,23 @@ case class Compliance(instance: String,
                       where: Option[String] = None,
                       columns: List[String] = List.empty[String],
                       analyzerOptions: Option[AnalyzerOptions] = None)
-  extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance)
-  with FilterableAnalyzer {
+  extends StandardScanShareableAnalyzer[NumMatchesAndCount]("Compliance", instance) with FilterableAnalyzer {
 
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
-
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
       NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(rowLevelResults))
     }
   }
 
   override def aggregationFunctions(): Seq[Column] = {
-
-    val summation = sum(criterion)
-
+    val summation = sum(criterion.cast(IntegerType))
     summation :: conditionalCount(where) :: Nil
   }
 
   override def filterCondition: Option[String] = where
 
   @VisibleForTesting
-  private def criterion: Column = {
-    conditionalSelection(expr(predicate), where).cast(IntegerType)
-  }
+  private def criterion: Column = conditionalSelection(expr(predicate), where)
 
   private def rowLevelResults: Column = {
     val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
@@ -73,7 +66,7 @@ case class Compliance(instance: String,
 
     filteredRowOutcome match {
       case FilteredRowOutcome.TRUE =>
-        conditionSelectionGivenColumn(expr(predicate), whereNotCondition, replaceWith = true).cast(IntegerType)
+        conditionSelectionGivenColumn(expr(predicate), whereNotCondition, replaceWith = true)
       case _ =>
         // The default behavior when using filtering for rows is to treat them as nulls. No special treatment needed.
         criterion
