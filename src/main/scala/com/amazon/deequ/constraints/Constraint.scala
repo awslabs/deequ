@@ -359,12 +359,10 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
       compliance, assertion, hint = hint)
 
-    val sparkAssertion = org.apache.spark.sql.functions.udf(assertion)
-    new RowLevelAssertedConstraint(
+    new RowLevelConstraint(
       constraint,
       s"ComplianceConstraint($compliance)",
-      s"ColumnsCompliance-${compliance.predicate}",
-      sparkAssertion)
+      s"ColumnsCompliance-${compliance.predicate}")
   }
 
   /**
