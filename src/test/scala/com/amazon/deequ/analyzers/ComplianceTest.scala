@@ -14,7 +14,6 @@
  *
  */
 
-
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
@@ -25,22 +24,19 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
-
   "Compliance" should {
     "return row-level results for columns" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Compliance = Compliance("rule1", "att1 > 3", columns = List("att1"))
       val state = att1Compliance.computeStateFrom(data)
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
-      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Int]("new")
-      ) shouldBe Seq(0, 0, 0, 1, 1, 1)
+      data.withColumn("new", metric.fullColumn.get).collect().map(_.getAs[Boolean]("new")
+      ) shouldBe Seq(false, false, false, true, true, true)
     }
 
     "return row-level results for null columns" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Compliance = Compliance("rule1", "attNull > 3", columns = List("att1"))
@@ -48,11 +44,10 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(null, null, null, 1, 1, 1)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(null, null, null, true, true, true)
     }
 
     "return row-level results filtered with null" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Compliance = Compliance("rule1", "att1 > 4", where = Option("att2 != 0"),
@@ -61,11 +56,10 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(null, null, null, 0, 1, 1)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(null, null, null, false, true, true)
     }
 
     "return row-level results filtered with true" in withSparkSession { session =>
-
       val data = getDfWithNumericValues(session)
 
       val att1Compliance = Compliance("rule1", "att1 > 4", where = Option("att2 != 0"),
@@ -74,7 +68,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(1, 1, 1, 0, 1, 1)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(true, true, true, false, true, true)
     }
 
     "return row-level results for compliance in bounds" in withSparkSession { session =>
@@ -93,7 +87,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(0, 1, 1, 1, 1, 0)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, true, true, true, true, false)
     }
 
     "return row-level results for compliance in bounds filtered as null" in withSparkSession { session =>
@@ -114,7 +108,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(0, 1, 1, null, null, null)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, true, true, null, null, null)
     }
 
     "return row-level results for compliance in bounds filtered as true" in withSparkSession { session =>
@@ -135,7 +129,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(0, 1, 1, 1, 1, 1)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, true, true, true, true, true)
     }
 
     "return row-level results for compliance in array" in withSparkSession { session =>
@@ -157,7 +151,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(0, 0, 1, 1, 1, 0)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, false, true, true, true, false)
     }
 
     "return row-level results for compliance in array filtered as null" in withSparkSession { session =>
@@ -180,7 +174,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(0, 0, 1, 1, null, null)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, false, true, true, null, null)
     }
 
     "return row-level results for compliance in array filtered as true" in withSparkSession { session =>
@@ -196,7 +190,6 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
 
       val data = getDfWithNumericValues(session)
 
-
       val att1Compliance = Compliance(s"$column contained in ${allowedValues.mkString(",")}", predicate,
         where = Option("att1 < 5"), columns = List("att3"),
         analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE)))
@@ -204,8 +197,7 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       val metric: DoubleMetric with FullColumn = att1Compliance.computeMetricFrom(state)
 
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
-        if (r == null) null else r.getAs[Int]("new")) shouldBe Seq(0, 0, 1, 1, 1, 1)
+        if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, false, true, true, true, true)
     }
   }
-
 }
