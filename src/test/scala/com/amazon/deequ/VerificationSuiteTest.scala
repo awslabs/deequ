@@ -26,6 +26,7 @@ import com.amazon.deequ.constraints.Constraint
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.Entity
+import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -2122,6 +2123,75 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val metricsDF = VerificationResult.successMetricsAsDataFrame(sparkSession, verificationResult)
         assertMetrics(metricsDF, 0.0, 11.0)
+    }
+  }
+
+  "Verification Suite's Row Level Results" should {
+    "yield correct results for satisfies check" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "blue"),
+        (2, "green"),
+        (3, "blue"),
+        (4, "red"),
+        (5, "purple")
+      ).toDF("id", "color")
+
+      val columnCondition = "color in ('blue')"
+      val whereClause = "id <= 3"
+
+      case class CheckConfig(checkName: String,
+                             assertion: Double => Boolean,
+                             checkStatus: CheckStatus.Value,
+                             whereClause: Option[String] = None)
+
+      val success = CheckStatus.Success
+      val error = CheckStatus.Error
+
+      val checkConfigs = Seq(
+        // Without where clause: Expected compliance metric for full dataset for given condition is 0.4
+        CheckConfig("check with >", (d: Double) => d > 0.5, error),
+        CheckConfig("check with >=", (d: Double) => d >= 0.35, success),
+        CheckConfig("check with <", (d: Double) => d < 0.3, error),
+        CheckConfig("check with <=", (d: Double) => d <= 0.4, success),
+        CheckConfig("check with =", (d: Double) => d == 0.4, success),
+        CheckConfig("check with > / <", (d: Double) => d > 0.0 && d < 0.5, success),
+        CheckConfig("check with >= / <=", (d: Double) => d >= 0.41 && d <= 1.1, error),
+
+        // With where Clause: Expected compliance metric for full dataset for given condition with where clause is 0.67
+        CheckConfig("check w/ where and with >", (d: Double) => d > 0.7, error, Some(whereClause)),
+        CheckConfig("check w/ where and with >=", (d: Double) => d >= 0.66, success, Some(whereClause)),
+        CheckConfig("check w/ where and with <", (d: Double) => d < 0.6, error, Some(whereClause)),
+        CheckConfig("check w/ where and with <=", (d: Double) => d <= 0.67, success, Some(whereClause)),
+        CheckConfig("check w/ where and with =", (d: Double) => d == 0.66, error, Some(whereClause)),
+        CheckConfig("check w/ where and with > / <", (d: Double) => d > 0.0 && d < 0.5, error, Some(whereClause)),
+        CheckConfig("check w/ where and with >= / <=", (d: Double) => d >= 0.41 && d <= 1.1, success, Some(whereClause))
+      )
+
+      val checks = checkConfigs.map { checkConfig =>
+        val constraintName = s"Constraint for check: ${checkConfig.checkName}"
+        val check = Check(CheckLevel.Error, checkConfig.checkName)
+          .satisfies(columnCondition, constraintName, checkConfig.assertion)
+        checkConfig.whereClause.map(check.where).getOrElse(check)
+      }
+
+      val verificationResult = VerificationSuite().onData(df).addChecks(checks).run()
+      val actualResults = verificationResult.checkResults.map { case (c, r) => c.description -> r.status }
+      val expectedResults = checkConfigs.map { c => c.checkName -> c.checkStatus}.toMap
+      assert(actualResults == expectedResults)
+
+      verificationResult.metrics.values.foreach { metric =>
+        val metricValue = metric.asInstanceOf[Metric[Double]].value.toOption.getOrElse(0.0)
+        if (metric.instance.contains("where")) assert(math.abs(metricValue - 0.66) < 0.1)
+        else assert(metricValue == 0.4)
+      }
+
+      val rowLevelResults = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df)
+      checkConfigs.foreach { checkConfig =>
+        val results = rowLevelResults.select(checkConfig.checkName).collect().map { r => r.getAs[Boolean](0)}.toSeq
+        if (checkConfig.whereClause.isDefined) assert(results == Seq(true, false, true, true, true))
+        else assert(results == Seq(true, false, true, false, false))
+      }
     }
   }
 
