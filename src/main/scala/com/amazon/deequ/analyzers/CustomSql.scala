@@ -26,6 +26,17 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
+case class CustomSqlState(stateOrError: Either[Double, String]) extends DoubleValuedState[CustomSqlState] {
+  lazy val state = stateOrError.left.get
+  lazy val error = stateOrError.right.get
+
+  override def sum(other: CustomSqlState): CustomSqlState = {
+    CustomSqlState(Left(state + other.state))
+  }
+
+  override def metricValue(): Double = state
+}
+
 case class CustomSql(expression: String) extends Analyzer[CustomSqlState, DoubleMetric] {
   /**
    * Compute the state (sufficient statistics) from the data
