@@ -76,6 +76,8 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       Sum("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
+      RatioOfSums("ColumnA", "ColumnB") ->
+        DoubleMetric(Entity.Column, "RatioOfSums", "ColumnA", Success(5.0)),
       StandardDeviation("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       DataType("ColumnA") ->
