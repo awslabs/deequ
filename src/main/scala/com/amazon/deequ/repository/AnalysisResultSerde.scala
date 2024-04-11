@@ -256,6 +256,12 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(COLUMN_FIELD, sum.column)
         result.addProperty(WHERE_FIELD, sum.where.orNull)
 
+      case ratioOfSums: RatioOfSums =>
+        result.addProperty(ANALYZER_NAME_FIELD, "RatioOfSums")
+        result.addProperty("numerator", ratioOfSums.numerator)
+        result.addProperty("denominator", ratioOfSums.denominator)
+        result.addProperty(WHERE_FIELD, ratioOfSums.where.orNull)
+
       case mean: Mean =>
         result.addProperty(ANALYZER_NAME_FIELD, "Mean")
         result.addProperty(COLUMN_FIELD, mean.column)
@@ -410,6 +416,12 @@ private[deequ] object AnalyzerDeserializer
       case "Sum" =>
         Sum(
           json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "RatioOfSums" =>
+        RatioOfSums(
+          json.get("numerator").getAsString,
+          json.get("denominator").getAsString,
           getOptionalWhereParam(json))
 
       case "Mean" =>
