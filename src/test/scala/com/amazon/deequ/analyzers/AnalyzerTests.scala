@@ -840,6 +840,23 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       analyzer.calculate(df).value shouldBe Success(2.0 / 8.0)
       assert(analyzer.calculate(df).fullColumn.isDefined)
     }
+
+    "compute ratio of sums correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      RatioOfSums("att1", "att2").calculate(df).value shouldBe Success(21.0 / 18.0)
+    }
+
+    "fail to compute ratio of sums for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(RatioOfSums("att1", "att2").calculate(df).value.isFailure)
+    }
+
+    "divide by zero" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val testVal = RatioOfSums("att1", "att2", Some("item IN ('1', '2')")).calculate(df)
+      assert(testVal.value.isSuccess)
+      assert(testVal.value.toOption.get.isInfinite)
+    }
   }
 }
 
