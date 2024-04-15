@@ -21,18 +21,17 @@ import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.Entity
 import org.apache.spark.sql.DataFrame
 
-case class ColumnCount(where: Option[String] = None) extends Analyzer[NumMatches, DoubleMetric] {
+case class ColumnCount() extends Analyzer[NumMatches, DoubleMetric] {
 
   val name = "ColumnCount"
   val instance = "*"
   val entity = Entity.Dataset
 
-
   /**
    * Compute the state (sufficient statistics) from the data
    *
-   * @param data data frame
-   * @return
+   * @param data the input dataframe
+   * @return the number of columns in the input
    */
   override def computeStateFrom(data: DataFrame, filterCondition: Option[String]): Option[NumMatches] = {
     if (filterCondition.isDefined) {
@@ -46,15 +45,13 @@ case class ColumnCount(where: Option[String] = None) extends Analyzer[NumMatches
   /**
    * Compute the metric from the state (sufficient statistics)
    *
-   * @param state wrapper holding a state of type S (required due to typing issues...)
-   * @return
+   * @param state the computed state from [[computeStateFrom]]
+   * @return a double metric indicating the number of columns for this analyzer
    */
   override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {
-    if (state.isDefined) {
-      Analyzers.metricFromValue(state.get.metricValue(), name, instance, entity)
-    } else {
-      Analyzers.metricFromEmpty(this, name, instance, entity)
-    }
+    state
+      .map(v => Analyzers.metricFromValue(v.metricValue(), name, instance, entity))
+      .getOrElse(Analyzers.metricFromEmpty(this, name, instance, entity))
   }
 
   /**
