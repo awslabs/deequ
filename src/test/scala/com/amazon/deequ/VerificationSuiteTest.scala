@@ -61,6 +61,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
         val checkToSucceed = Check(CheckLevel.Error, "group-1")
           .isComplete("att1")
+          .hasColumnCount(_ == 3)
           .hasCompleteness("att1", _ == 1.0)
 
         val checkToErrorOut = Check(CheckLevel.Error, "group-2-E")
