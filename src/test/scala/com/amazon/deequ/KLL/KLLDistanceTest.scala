@@ -22,7 +22,8 @@ import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.metrics.BucketValue
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.WordSpec
-import com.amazon.deequ.metrics.{BucketValue}
+import com.amazon.deequ.metrics.BucketValue
+import org.scalactic.Tolerance.convertNumericToPlusOrMinusWrapper
 
 class KLLDistanceTest extends WordSpec with SparkContextSpec
   with FixtureSupport{
@@ -88,7 +89,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     val sample2 = scala.collection.mutable.Map(
       "a" -> 22L, "b" -> 20L, "c" -> 25L, "d" -> 12L, "e" -> 13L, "f" -> 15L)
     val distance = Distance.categoricalDistance(sample1, sample2, method = LInfinityMethod(alpha = Some(0.003)))
-    assert(distance == 0.2726338046550349)
+    assert(distance === 0.2726338046550349 +- 1E-14)
   }
 
   "Categorial distance should compute correct linf_robust with different alpha value .1" in {
