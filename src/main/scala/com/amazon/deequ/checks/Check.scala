@@ -124,6 +124,13 @@ case class Check(
     addFilterableConstraint { filter => Constraint.sizeConstraint(assertion, filter, hint) }
   }
 
+  def hasColumnCount(assertion: Long => Boolean, hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = {
+    addFilterableConstraint {
+      filter => Constraint.columnCountConstraint(assertion, hint)
+    }
+  }
+
   /**
     * Creates a constraint that asserts on a column completion.
     *

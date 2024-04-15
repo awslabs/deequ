@@ -141,6 +141,18 @@ object Constraint {
     new NamedConstraint(constraint, s"SizeConstraint($size)")
   }
 
+  def columnCountConstraint(assertion: Long => Boolean, hint: Option[String] = None): Constraint = {
+    val colCount = ColumnCount()
+    fromAnalyzer(colCount, assertion, hint)
+  }
+
+
+  def fromAnalyzer(colCount: ColumnCount, assertion: Long => Boolean, hint: Option[String]): Constraint = {
+    val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](colCount, assertion, Some(_.toLong), hint)
+
+    new NamedConstraint(constraint, name = s"ColumnCountConstraint($colCount)")
+  }
+
   /**
     * Runs Histogram analysis on the given column and executes the assertion
     *
