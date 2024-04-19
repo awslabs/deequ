@@ -27,10 +27,9 @@ import scala.math.BigDecimal.RoundingMode
   * If a column is incomplete in the sample, we model its completeness as a binomial variable,
   * estimate a confidence interval and use this to define a lower bound for the completeness
   */
-case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
-
+case class RetainCompletenessRule(minCompleteness: Double = 0.2, maxCompleteness: Double = 1.0, sensitivity: Double = 1.96) extends ConstraintRule[ColumnProfile] {
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
-    profile.completeness > 0.2 && profile.completeness < 1.0
+    profile.completeness > minCompleteness && profile.completeness < maxCompleteness
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
