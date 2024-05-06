@@ -130,9 +130,14 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
     "be applied correctly" in {
 
       val complete = StandardColumnProfile("col1", 1.0, 100, String, false, Map.empty, None)
+      val tenPercent = StandardColumnProfile("col1", 0.1, 100, String, false, Map.empty, None)
       val incomplete = StandardColumnProfile("col1", .25, 100, String, false, Map.empty, None)
 
       assert(!RetainCompletenessRule().shouldBeApplied(complete, 1000))
+      assert(!RetainCompletenessRule(0.05, 0.9).shouldBeApplied(complete, 1000))
+      assert(RetainCompletenessRule(0.05, 0.9).shouldBeApplied(tenPercent, 1000))
+      assert(RetainCompletenessRule(0.0).shouldBeApplied(tenPercent, 1000))
+      assert(RetainCompletenessRule(0.0).shouldBeApplied(incomplete, 1000))
       assert(RetainCompletenessRule().shouldBeApplied(incomplete, 1000))
     }
 
@@ -183,6 +188,26 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
 
       assert(metricResult.value.isSuccess)
     }
+
+    "return evaluable constraint candidates with custom min/max completeness" in
+      withSparkSession { session =>
+
+        val dfWithColumnCandidate = getDfFull(session)
+
+        val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+
+        val check = Check(CheckLevel.Warning, "some")
+          .addConstraint(RetainCompletenessRule(0.4, 0.6).candidate(fakeColumnProfile, 100).constraint)
+
+        val verificationResult = VerificationSuite()
+          .onData(dfWithColumnCandidate)
+          .addCheck(check)
+          .run()
+
+        val metricResult = verificationResult.metrics.head._2
+
+        assert(metricResult.value.isSuccess)
+      }
   }
 
   "UniqueIfApproximatelyUniqueRule" should {
