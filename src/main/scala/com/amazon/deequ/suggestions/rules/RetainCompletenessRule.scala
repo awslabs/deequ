@@ -20,17 +20,23 @@ import com.amazon.deequ.constraints.Constraint.completenessConstraint
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
+import com.amazon.deequ.suggestions.rules.RetainCompletenessRule._
 
 import scala.math.BigDecimal.RoundingMode
 
 /**
   * If a column is incomplete in the sample, we model its completeness as a binomial variable,
   * estimate a confidence interval and use this to define a lower bound for the completeness
+  *
+  * @param minCompleteness : minimum completeness threshold to determine if rule should be applied
+  * @param maxCompleteness : maximum completeness threshold to determine if rule should be applied
   */
-case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
-
+case class RetainCompletenessRule(
+  minCompleteness: Double = defaultMinCompleteness,
+  maxCompleteness: Double = defaultMaxCompleteness
+) extends ConstraintRule[ColumnProfile] {
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
-    profile.completeness > 0.2 && profile.completeness < 1.0
+    profile.completeness > minCompleteness && profile.completeness < maxCompleteness
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
@@ -64,4 +70,9 @@ case class RetainCompletenessRule() extends ConstraintRule[ColumnProfile] {
   override val ruleDescription: String = "If a column is incomplete in the sample, " +
     "we model its completeness as a binomial variable, estimate a confidence interval " +
     "and use this to define a lower bound for the completeness"
+}
+
+object RetainCompletenessRule {
+  private val defaultMinCompleteness: Double = 0.2
+  private val defaultMaxCompleteness: Double = 1.0
 }
