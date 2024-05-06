@@ -23,16 +23,17 @@ import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestionWithValue
+import com.amazon.deequ.suggestions.rules.FractionalCategoricalRangeRule.defaultIntervalStrategy
+import com.amazon.deequ.suggestions.rules.interval.{ConfidenceIntervalStrategy, WilsonScoreIntervalStrategy}
 import org.apache.commons.lang3.StringEscapeUtils
-
-import scala.math.BigDecimal.RoundingMode
 
 /** If we see a categorical range for most values in a column, we suggest an IS IN (...)
   * constraint that should hold for most values */
 case class FractionalCategoricalRangeRule(
   targetDataCoverageFraction: Double = 0.9,
   categorySorter: Array[(String, DistributionValue)] => Array[(String, DistributionValue)] =
-    categories => categories.sortBy({ case (_, value) => value.absolute }).reverse
+    categories => categories.sortBy({ case (_, value) => value.absolute }).reverse,
+  intervalStrategy: ConfidenceIntervalStrategy = defaultIntervalStrategy
 ) extends ConstraintRule[ColumnProfile] {
 
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
@@ -79,11 +80,8 @@ case class FractionalCategoricalRangeRule(
 
     val p = ratioSums
     val n = numRecords
-    val z = 1.96
 
-    // TODO this needs to be more robust for p's close to 0 or 1
-    val targetCompliance = BigDecimal(p - z * math.sqrt(p * (1 - p) / n))
-      .setScale(2, RoundingMode.DOWN).toDouble
+    val targetCompliance = intervalStrategy.calculateTargetConfidenceInterval(p, n).lowerBound
 
     val description = s"'${profile.column}' has value range $categoriesSql for at least " +
       s"${targetCompliance * 100}% of values"
@@ -127,4 +125,8 @@ case class FractionalCategoricalRangeRule(
 
   override val ruleDescription: String = "If we see a categorical range for most values " +
     "in a column, we suggest an IS IN (...) constraint that should hold for most values"
+}
+
+object FractionalCategoricalRangeRule {
+  private val defaultIntervalStrategy: ConfidenceIntervalStrategy = WilsonScoreIntervalStrategy()
 }

@@ -21,8 +21,7 @@ import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import com.amazon.deequ.suggestions.rules.RetainCompletenessRule._
-
-import scala.math.BigDecimal.RoundingMode
+import com.amazon.deequ.suggestions.rules.interval.{ConfidenceIntervalStrategy, WilsonScoreIntervalStrategy}
 
 /**
   * If a column is incomplete in the sample, we model its completeness as a binomial variable,
@@ -33,21 +32,15 @@ import scala.math.BigDecimal.RoundingMode
   */
 case class RetainCompletenessRule(
   minCompleteness: Double = defaultMinCompleteness,
-  maxCompleteness: Double = defaultMaxCompleteness
+  maxCompleteness: Double = defaultMaxCompleteness,
+  intervalStrategy: ConfidenceIntervalStrategy = defaultIntervalStrategy
 ) extends ConstraintRule[ColumnProfile] {
   override def shouldBeApplied(profile: ColumnProfile, numRecords: Long): Boolean = {
     profile.completeness > minCompleteness && profile.completeness < maxCompleteness
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-
-    val p = profile.completeness
-    val n = numRecords
-    val z = 1.96
-
-    // TODO this needs to be more robust for p's close to 0 or 1
-    val targetCompleteness = BigDecimal(p - z * math.sqrt(p * (1 - p) / n))
-      .setScale(2, RoundingMode.DOWN).toDouble
+    val targetCompleteness = intervalStrategy.calculateTargetConfidenceInterval(profile.completeness, numRecords).lowerBound
 
     val constraint = completenessConstraint(profile.column, _ >= targetCompleteness)
 
@@ -75,4 +68,5 @@ case class RetainCompletenessRule(
 object RetainCompletenessRule {
   private val defaultMinCompleteness: Double = 0.2
   private val defaultMaxCompleteness: Double = 1.0
+  private val defaultIntervalStrategy: ConfidenceIntervalStrategy = WilsonScoreIntervalStrategy()
 }
