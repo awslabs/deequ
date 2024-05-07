@@ -22,10 +22,13 @@ import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.constraints.ConstrainableDataTypes
 import com.amazon.deequ.metrics.{Distribution, DistributionValue}
 import com.amazon.deequ.profiles._
+import com.amazon.deequ.suggestions.rules.interval.{WaldIntervalStrategy, WilsonScoreIntervalStrategy}
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inspectors.forAll
 import org.scalatest.WordSpec
+import org.scalatest.prop.Tables.Table
 
 class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContextSpec
   with MockFactory{
@@ -132,6 +135,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       val complete = StandardColumnProfile("col1", 1.0, 100, String, false, Map.empty, None)
       val tenPercent = StandardColumnProfile("col1", 0.1, 100, String, false, Map.empty, None)
       val incomplete = StandardColumnProfile("col1", .25, 100, String, false, Map.empty, None)
+      val waldIntervalStrategy = WaldIntervalStrategy()
 
       assert(!RetainCompletenessRule().shouldBeApplied(complete, 1000))
       assert(!RetainCompletenessRule(0.05, 0.9).shouldBeApplied(complete, 1000))
@@ -139,74 +143,90 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
       assert(RetainCompletenessRule(0.0).shouldBeApplied(tenPercent, 1000))
       assert(RetainCompletenessRule(0.0).shouldBeApplied(incomplete, 1000))
       assert(RetainCompletenessRule().shouldBeApplied(incomplete, 1000))
+      assert(!RetainCompletenessRule(intervalStrategy = waldIntervalStrategy).shouldBeApplied(complete, 1000))
+      assert(!RetainCompletenessRule(0.05, 0.9, waldIntervalStrategy).shouldBeApplied(complete, 1000))
+      assert(RetainCompletenessRule(0.05, 0.9, waldIntervalStrategy).shouldBeApplied(tenPercent, 1000))
     }
 
     "return evaluable constraint candidates" in
       withSparkSession { session =>
+        val table = Table(("strategy", "result"), (WaldIntervalStrategy(), true), (WilsonScoreIntervalStrategy(), true))
+        forAll(table) { case (strategy, result) =>
+          val dfWithColumnCandidate = getDfFull(session)
 
-      val dfWithColumnCandidate = getDfFull(session)
+          val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
 
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+          val check = Check(CheckLevel.Warning, "some")
+            .addConstraint(RetainCompletenessRule(intervalStrategy = strategy).candidate(fakeColumnProfile, 100).constraint)
 
-      val check = Check(CheckLevel.Warning, "some")
-        .addConstraint(RetainCompletenessRule().candidate(fakeColumnProfile, 100).constraint)
+          val verificationResult = VerificationSuite()
+            .onData(dfWithColumnCandidate)
+            .addCheck(check)
+            .run()
 
-      val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate)
-        .addCheck(check)
-        .run()
+          val metricResult = verificationResult.metrics.head._2
 
-      val metricResult = verificationResult.metrics.head._2
+          assert(metricResult.value.isSuccess == result)
+        }
 
-      assert(metricResult.value.isSuccess)
     }
 
     "return working code to add constraint to check" in
       withSparkSession { session =>
+        val table = Table(
+          ("strategy", "colCompleteness", "targetCompleteness", "result"),
+          (WaldIntervalStrategy(), 0.5, 0.4, true),
+          (WilsonScoreIntervalStrategy(), 0.4, 0.3, true)
+        )
+        forAll(table) { case (strategy, colCompleteness, targetCompleteness, result) =>
 
-      val dfWithColumnCandidate = getDfFull(session)
+          val dfWithColumnCandidate = getDfFull(session)
 
-      val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+          val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", colCompleteness)
 
-      val codeForConstraint = RetainCompletenessRule().candidate(fakeColumnProfile, 100)
-        .codeForConstraint
+          val codeForConstraint = RetainCompletenessRule(intervalStrategy = strategy).candidate(fakeColumnProfile, 100)
+            .codeForConstraint
 
-      val expectedCodeForConstraint = """.hasCompleteness("att1", _ >= 0.4,
-          | Some("It should be above 0.4!"))""".stripMargin.replaceAll("\n", "")
+          val expectedCodeForConstraint = s""".hasCompleteness("att1", _ >= $targetCompleteness,
+            | Some("It should be above $targetCompleteness!"))""".stripMargin.replaceAll("\n", "")
 
-      assert(expectedCodeForConstraint == codeForConstraint)
+          assert(expectedCodeForConstraint == codeForConstraint)
 
-      val check = Check(CheckLevel.Warning, "some")
-        .hasCompleteness("att1", _ >= 0.4, Some("It should be above 0.4!"))
+          val check = Check(CheckLevel.Warning, "some")
+            .hasCompleteness("att1", _ >= targetCompleteness, Some(s"It should be above $targetCompleteness"))
 
-      val verificationResult = VerificationSuite()
-        .onData(dfWithColumnCandidate)
-        .addCheck(check)
-        .run()
+          val verificationResult = VerificationSuite()
+            .onData(dfWithColumnCandidate)
+            .addCheck(check)
+            .run()
 
-      val metricResult = verificationResult.metrics.head._2
+          val metricResult = verificationResult.metrics.head._2
 
-      assert(metricResult.value.isSuccess)
+          assert(metricResult.value.isSuccess == result)
+        }
+
     }
 
     "return evaluable constraint candidates with custom min/max completeness" in
       withSparkSession { session =>
+        val table = Table(("strategy", "result"), (WaldIntervalStrategy(), true), (WilsonScoreIntervalStrategy(), true))
+        forAll(table) { case (strategy, result) =>
+          val dfWithColumnCandidate = getDfFull(session)
 
-        val dfWithColumnCandidate = getDfFull(session)
+          val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
 
-        val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
+          val check = Check(CheckLevel.Warning, "some")
+            .addConstraint(RetainCompletenessRule(0.4, 0.6, strategy).candidate(fakeColumnProfile, 100).constraint)
 
-        val check = Check(CheckLevel.Warning, "some")
-          .addConstraint(RetainCompletenessRule(0.4, 0.6).candidate(fakeColumnProfile, 100).constraint)
+          val verificationResult = VerificationSuite()
+            .onData(dfWithColumnCandidate)
+            .addCheck(check)
+            .run()
 
-        val verificationResult = VerificationSuite()
-          .onData(dfWithColumnCandidate)
-          .addCheck(check)
-          .run()
+          val metricResult = verificationResult.metrics.head._2
 
-        val metricResult = verificationResult.metrics.head._2
-
-        assert(metricResult.value.isSuccess)
+          assert(metricResult.value.isSuccess == result)
+        }
       }
   }
 
