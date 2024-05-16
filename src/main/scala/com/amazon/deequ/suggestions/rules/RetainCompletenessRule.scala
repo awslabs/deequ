@@ -40,7 +40,10 @@ case class RetainCompletenessRule(
   }
 
   override def candidate(profile: ColumnProfile, numRecords: Long): ConstraintSuggestion = {
-    val targetCompleteness = intervalStrategy.calculateTargetConfidenceInterval(profile.completeness, numRecords).lowerBound
+    val targetCompleteness = intervalStrategy.calculateTargetConfidenceInterval(
+      profile.completeness,
+      numRecords
+    ).lowerBound
 
     val constraint = completenessConstraint(profile.column, _ >= targetCompleteness)
 

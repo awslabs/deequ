@@ -157,7 +157,9 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
           val fakeColumnProfile = getFakeColumnProfileWithNameAndCompleteness("att1", 0.5)
 
           val check = Check(CheckLevel.Warning, "some")
-            .addConstraint(RetainCompletenessRule(intervalStrategy = strategy).candidate(fakeColumnProfile, 100).constraint)
+            .addConstraint(
+              RetainCompletenessRule(intervalStrategy = strategy).candidate(fakeColumnProfile, 100).constraint
+            )
 
           val verificationResult = VerificationSuite()
             .onData(dfWithColumnCandidate)
