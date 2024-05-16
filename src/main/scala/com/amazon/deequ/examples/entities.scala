@@ -16,6 +16,8 @@
 
 package com.amazon.deequ.examples
 
+import java.time.Instant
+
 private[deequ] case class Item(
     id: Long,
     productName: String,
@@ -28,4 +30,10 @@ private[deequ] case class Manufacturer(
     id: Long,
     manufacturerName: String,
     countryCode: String
+)
+
+private[deequ] case class Customer(
+  id: Long,
+  name: String,
+  dateOfBirth: Instant
 )
