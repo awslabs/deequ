@@ -18,6 +18,7 @@ package com.amazon.deequ.metrics
 
 import org.apache.spark.sql.Column
 
+import java.time.Instant
 import scala.util.{Failure, Success, Try}
 
 object Entity extends Enumeration {
@@ -87,5 +88,17 @@ case class KeyedDoubleMetric(
     } else {
       Seq(DoubleMetric(entity, s"$name", instance, Failure(value.failed.get)))
     }
+  }
+}
+
+case class DateTimeMetric(
+  entity: Entity.Value,
+  name: String,
+  instance: String,
+  value: Try[Instant]
+) extends Metric[Instant] {
+  override def flatten(): Seq[DoubleMetric] = value match {
+    case Success(v) => Seq(DoubleMetric(entity, "Timestamp milliseconds", instance, Success(v.toEpochMilli.toDouble)))
+    case Failure(e) => Seq(DoubleMetric(entity, "Timestamp milliseconds", instance, Failure(e)))
   }
 }

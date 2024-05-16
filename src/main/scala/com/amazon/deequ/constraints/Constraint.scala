@@ -22,6 +22,7 @@ import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
+import java.time.Instant
 import scala.util.Failure
 import scala.util.Success
 import scala.util.matching.Regex
@@ -612,6 +613,42 @@ object Constraint {
       s"MinLengthConstraint($minLength)",
       s"ColumnLength-$column",
       sparkAssertion)
+  }
+
+  def minTimestampConstraint(
+    column: String,
+    assertion: Instant => Boolean,
+    where: Option[String] = None,
+    hint: Option[String] = None)
+  : Constraint = {
+
+    val minimum = MinimumDateTime(column, where)
+
+    val constraint = AnalysisBasedConstraint[MinDateTimeState, Instant, Instant](
+      minimum,
+      assertion,
+      hint = hint
+    )
+
+    new NamedConstraint(constraint, s"MinimumTimestampConstraint($minimum)")
+  }
+
+  def maxTimestampConstraint(
+    column: String,
+    assertion: Instant => Boolean,
+    where: Option[String] = None,
+    hint: Option[String] = None)
+  : Constraint = {
+
+    val maximum = MaximumDateTime(column, where)
+
+    val constraint = AnalysisBasedConstraint[MaxDateTimeState, Instant, Instant](
+      maximum,
+      assertion,
+      hint = hint
+    )
+
+    new NamedConstraint(constraint, s"MaximumTimestampConstraint($maximum)")
   }
 
   /**
