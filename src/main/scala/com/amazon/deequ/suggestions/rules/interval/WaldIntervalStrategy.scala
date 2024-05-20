@@ -21,12 +21,15 @@ import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.{C
 import scala.math.BigDecimal.RoundingMode
 
 /**
- * Implements the Wald Interval method for creating a binomial proportion confidence interval.
- *
+ * Implements the Wald Interval method for creating a binomial proportion confidence interval. Provided for backwards
+ * compatibility. using [[WaldIntervalStrategy]] for calculating confidence interval can be problematic when dealing
+ *  with small sample sizes or proportions close to 0 or 1. It also have poorer coverage and might produce confidence
+ *  limit outside the range of [0,1]
  * @see <a
  *      href="http://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Normal_approximation_interval">
  *      Normal approximation interval (Wikipedia)</a>
  */
+@deprecated("WilsonScoreIntervalStrategy is recommended for calculating confidence interval")
 case class WaldIntervalStrategy() extends ConfidenceIntervalStrategy {
   def calculateTargetConfidenceInterval(
     pHat: Double,
