@@ -21,7 +21,7 @@ import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.CommonConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import com.amazon.deequ.suggestions.rules.RetainCompletenessRule._
-import com.amazon.deequ.suggestions.rules.interval.{ConfidenceIntervalStrategy, WilsonScoreIntervalStrategy}
+import com.amazon.deequ.suggestions.rules.interval.{ConfidenceIntervalStrategy, WaldIntervalStrategy, WilsonScoreIntervalStrategy}
 
 /**
   * If a column is incomplete in the sample, we model its completeness as a binomial variable,
@@ -71,5 +71,5 @@ case class RetainCompletenessRule(
 object RetainCompletenessRule {
   private val defaultMinCompleteness: Double = 0.2
   private val defaultMaxCompleteness: Double = 1.0
-  private val defaultIntervalStrategy: ConfidenceIntervalStrategy = WilsonScoreIntervalStrategy()
+  private val defaultIntervalStrategy: ConfidenceIntervalStrategy = WaldIntervalStrategy()
 }
