@@ -23,8 +23,8 @@ import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.profiles.ColumnProfile
 import com.amazon.deequ.suggestions.ConstraintSuggestion
 import com.amazon.deequ.suggestions.ConstraintSuggestionWithValue
-import com.amazon.deequ.suggestions.rules.FractionalCategoricalRangeRule.defaultIntervalStrategy
-import com.amazon.deequ.suggestions.rules.interval.{ConfidenceIntervalStrategy, WilsonScoreIntervalStrategy}
+import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.defaultIntervalStrategy
+import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy
 import org.apache.commons.lang3.StringEscapeUtils
 
 /** If we see a categorical range for most values in a column, we suggest an IS IN (...)
@@ -125,8 +125,4 @@ case class FractionalCategoricalRangeRule(
 
   override val ruleDescription: String = "If we see a categorical range for most values " +
     "in a column, we suggest an IS IN (...) constraint that should hold for most values"
-}
-
-object FractionalCategoricalRangeRule {
-  private val defaultIntervalStrategy: ConfidenceIntervalStrategy = WilsonScoreIntervalStrategy()
 }

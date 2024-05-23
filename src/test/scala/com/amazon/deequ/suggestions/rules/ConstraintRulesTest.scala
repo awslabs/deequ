@@ -22,7 +22,10 @@ import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.constraints.ConstrainableDataTypes
 import com.amazon.deequ.metrics.{Distribution, DistributionValue}
 import com.amazon.deequ.profiles._
-import com.amazon.deequ.suggestions.rules.interval.{WaldIntervalStrategy, WilsonScoreIntervalStrategy}
+import com.amazon.deequ.suggestions.rules.interval.{
+  WaldIntervalStrategy,
+  WilsonScoreIntervalStrategy
+}
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import org.scalamock.scalatest.MockFactory

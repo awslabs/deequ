@@ -17,7 +17,7 @@
 package com.amazon.deequ.suggestions.rules.interval
 
 import breeze.stats.distributions.{Gaussian, Rand}
-import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.{ConfidenceInterval, defaultConfidence}
+import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy._
 
 /**
  * Strategy for calculate confidence interval
@@ -47,6 +47,7 @@ trait ConfidenceIntervalStrategy {
 
 object ConfidenceIntervalStrategy {
   val defaultConfidence = 0.95
+  val defaultIntervalStrategy: ConfidenceIntervalStrategy = WaldIntervalStrategy()
 
   case class ConfidenceInterval(lowerBound: Double, upperBound: Double)
 }
