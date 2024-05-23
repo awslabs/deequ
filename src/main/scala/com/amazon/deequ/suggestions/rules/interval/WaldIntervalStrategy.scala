@@ -16,10 +16,8 @@
 
 package com.amazon.deequ.suggestions.rules.interval
 
-import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.{
-  ConfidenceInterval,
-  defaultConfidence
-}
+import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.ConfidenceInterval
+import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.defaultConfidence
 
 import scala.math.BigDecimal.RoundingMode
 
