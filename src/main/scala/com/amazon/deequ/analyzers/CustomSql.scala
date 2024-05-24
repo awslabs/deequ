@@ -37,7 +37,7 @@ case class CustomSqlState(stateOrError: Either[Double, String]) extends DoubleVa
   override def metricValue(): Double = state
 }
 
-case class CustomSql(expression: String) extends Analyzer[CustomSqlState, DoubleMetric] {
+case class CustomSql(expression: String, disambiguator: String = "*") extends Analyzer[CustomSqlState, DoubleMetric] {
   /**
    * Compute the state (sufficient statistics) from the data
    *
@@ -76,15 +76,19 @@ case class CustomSql(expression: String) extends Analyzer[CustomSqlState, Double
     state match {
       // The returned state may
       case Some(theState) => theState.stateOrError match {
-        case Left(value) => DoubleMetric(Entity.Dataset, "CustomSQL", "*", Success(value))
-        case Right(error) => DoubleMetric(Entity.Dataset, "CustomSQL", "*", Failure(new RuntimeException(error)))
+        case Left(value) => DoubleMetric(Entity.Dataset, "CustomSQL", disambiguator,
+          Success(value))
+        case Right(error) => DoubleMetric(Entity.Dataset, "CustomSQL", disambiguator,
+          Failure(new RuntimeException(error)))
       }
       case None =>
-        DoubleMetric(Entity.Dataset, "CustomSQL", "*", Failure(new RuntimeException("CustomSql Failed To Run")))
+        DoubleMetric(Entity.Dataset, "CustomSQL", disambiguator,
+          Failure(new RuntimeException("CustomSql Failed To Run")))
     }
   }
 
   override private[deequ] def toFailureMetric(failure: Exception) = {
-    DoubleMetric(Entity.Dataset, "CustomSQL", "*", Failure(new RuntimeException("CustomSql Failed To Run")))
+    DoubleMetric(Entity.Dataset, "CustomSQL", disambiguator,
+      Failure(new RuntimeException("CustomSql Failed To Run")))
   }
 }
