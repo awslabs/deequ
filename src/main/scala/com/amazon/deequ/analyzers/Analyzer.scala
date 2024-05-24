@@ -20,7 +20,7 @@ import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import com.amazon.deequ.analyzers.runners._
-import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.{DateTimeMetric, DoubleMetric}
 import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.metrics.Metric
@@ -32,6 +32,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 
+import java.time.Instant
 import scala.language.existentials
 import scala.util.Failure
 import scala.util.Success
@@ -60,6 +61,10 @@ trait State[S <: State[S]] {
 /** A state which produces a double valued metric  */
 trait DoubleValuedState[S <: DoubleValuedState[S]] extends State[S] {
   def metricValue(): Double
+}
+
+trait DateTimeValuedState[S <: DateTimeValuedState[S]] extends State[S] {
+  def metricValue(): Instant
 }
 
 /** Common trait for all analyzers which generates metrics from states computed on data frames */
@@ -244,6 +249,29 @@ abstract class StandardScanShareableAnalyzer[S <: DoubleValuedState[_]](
   }
 }
 
+/** A scan-shareable analyzer that produces a DateTimeMetric */
+abstract class TimestampScanShareableAnalyzer[S <: DateTimeValuedState[_]](
+  name: String,
+  instance: String,
+  entity: Entity.Value = Entity.Column)
+  extends ScanShareableAnalyzer[S, DateTimeMetric] {
+
+  override def computeMetricFrom(state: Option[S]): DateTimeMetric = state match {
+    case Some(theState) =>
+      DateTimeMetric(entity, name, instance, Success(theState.metricValue()))
+    case _ =>
+      DateTimeMetric(entity, name, instance, Failure(
+        MetricCalculationException.wrapIfNecessary(emptyStateException(this))))
+  }
+
+  override private[deequ] def toFailureMetric(exception: Exception) = DateTimeMetric(entity, name, instance, Failure(
+    MetricCalculationException.wrapIfNecessary(exception)))
+
+  override def preconditions: Seq[StructType => Unit] = additionalPreconditions() ++ super.preconditions
+
+  protected def additionalPreconditions(): Seq[StructType => Unit] = Seq.empty
+}
+
 /** A state for computing ratio-based metrics,
   * contains #rows that match a predicate and overall #rows */
 case class NumMatchesAndCount(numMatches: Long, count: Long, override val fullColumn: Option[Column] = None)
@@ -329,6 +357,8 @@ object Preconditions {
 
   private[this] val nestedDataTypes = Set(StructType, MapType, ArrayType)
 
+  private[this] val dateTypes = Set(TimestampType, DateType)
+
   private[this] val caseSensitive = {
     SparkSession.builder().getOrCreate()
     .sqlContext.getConf("spark.sql.caseSensitive").equalsIgnoreCase("true")
@@ -402,6 +432,20 @@ object Preconditions {
   def hasColumn(column: String): StructType => Unit = { schema =>
     if (!hasColumn(column, schema)) {
       throw new NoSuchColumnException(s"Input data does not include column $column!")
+    }
+  }
+
+  /** Specified column has string type */
+  def isDateType(column: String): StructType => Unit = { schema =>
+    val columnDataType = structField(column, schema).dataType
+    val hasDateType = columnDataType match {
+      case DateType | TimestampType => true
+      case _ => false
+    }
+
+    if (hasDateType) {
+      throw new WrongColumnTypeException(s"Expected type of column $column to be one of" +
+        s"${dateTypes.mkString(",")}, but found $columnDataType instead!")
     }
   }
 
