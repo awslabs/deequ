@@ -5,7 +5,7 @@
  * use this file except in compliance with the License. A copy of the License
  * is located at
  *
- *     http://aws.amazon.com/apache2.0/
+ * http://aws.amazon.com/apache2.0/
  *
  * or in the "license" file accompanying this file. This file is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
@@ -17,6 +17,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -83,6 +84,22 @@ class CustomSqlTest extends AnyWordSpec with Matchers with SparkContextSpec with
         case Success(_) => fail("Should have failed")
         case Failure(exception) => exception.getMessage should include("foo")
       }
+    }
+
+    "apply metric disambiguation string to returned metric" in withSparkSession { session =>
+      val data = getDfWithStringColumns(session)
+      data.createOrReplaceTempView("primary")
+
+      val disambiguator = "statement1"
+      val sql = CustomSql("SELECT COUNT(*) FROM primary WHERE `Address Line 2` IS NOT NULL", disambiguator)
+      val state = sql.computeStateFrom(data)
+      val metric: DoubleMetric = sql.computeMetricFrom(state)
+
+      metric.value.isSuccess shouldBe true
+      metric.value.get shouldBe 6.0
+      metric.name shouldBe "CustomSQL"
+      metric.entity shouldBe Entity.Dataset
+      metric.instance shouldBe "statement1"
     }
   }
 }
