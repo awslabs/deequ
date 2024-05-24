@@ -17,6 +17,8 @@
 package com.amazon.deequ.examples
 
 import com.amazon.deequ.examples.ExampleUtils.withSpark
+import com.amazon.deequ.suggestions.rules.RetainCompletenessRule
+import com.amazon.deequ.suggestions.rules.interval.WilsonScoreIntervalStrategy
 import com.amazon.deequ.suggestions.{ConstraintSuggestionRunner, Rules}
 
 private[examples] object ConstraintSuggestionExample extends App {
@@ -51,6 +53,10 @@ private[examples] object ConstraintSuggestionExample extends App {
     val suggestionResult = ConstraintSuggestionRunner()
       .onData(data)
       .addConstraintRules(Rules.EXTENDED)
+      // We can also add our own constraint and customize constraint parameters
+      .addConstraintRule(
+        RetainCompletenessRule(intervalStrategy = WilsonScoreIntervalStrategy())
+      )
       .run()
 
     // We can now investigate the constraints that deequ suggested. We get a textual description
