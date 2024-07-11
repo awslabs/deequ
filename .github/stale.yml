@@ -1,0 +1,21 @@
+# Number of days of inactivity before an issue becomes stale
+daysUntilStale: 30
+# Number of days of inactivity before a stale issue is closed
+daysUntilClose: 5
+# Issues with these labels will never be considered stale
+exemptLabels:
+  - locked
+  - must
+  - roadmap
+  - should
+  - keep
+# Label to use when marking an issue as stale
+staleLabel: stale
+markComment: >
+  We're closing this issue because it hasn't been updated in a while.
+  This isn't a judgement on the merit of the issue in any way.
+  It's just a way of keeping the issues clean.
+  This issue is stale because it has been open 30 days with no activity.
+  Remove stale label or comment or this will be closed in 5 days
+# Comment to post when closing a stale issue. Set to `false` to disable
+closeComment: true
