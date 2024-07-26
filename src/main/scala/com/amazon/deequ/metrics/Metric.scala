@@ -89,3 +89,21 @@ case class KeyedDoubleMetric(
     }
   }
 }
+
+case class EntityKeyedDoubleMetric(
+                                    entity: Entity.Value,
+                                    name: String,
+                                    instance: String,
+                                    value: Try[Map[String, Double]])
+  extends Metric[Map[String, Double]] {
+
+  override def flatten(): Seq[DoubleMetric] = {
+    value match {
+      case Success(valuesMap) => valuesMap.map { case (key, metricValue) =>
+        val strippedKey = key.replaceAll("_", "")
+        DoubleMetric(entity, s"$name.$strippedKey", instance, Success(metricValue))
+      }.toSeq
+      case Failure(ex) => Seq(DoubleMetric(entity, name, instance, Failure(ex)))
+    }
+  }
+}
