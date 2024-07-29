@@ -1,6 +1,5 @@
 /**
  * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
  * is located at
@@ -38,10 +37,13 @@ case class AggregatedMetricState(counts: Map[String, Int], totalRows: Int)
 }
 
 // Define the analyzer
-case class ConditionalAggregationAnalyzer(aggregatorFunc: DataFrame => AggregatedMetricState, metricName: String, instance: String)
+case class ConditionalAggregationAnalyzer(aggregatorFunc: DataFrame => AggregatedMetricState,
+                                          metricName: String,
+                                          instance: String)
   extends Analyzer[AggregatedMetricState, AttributeDoubleMetric] {
 
-  def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None): Option[AggregatedMetricState] = {
+  def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None)
+  : Option[AggregatedMetricState] = {
     Try(aggregatorFunc(data)) match {
       case Success(state) => Some(state)
       case Failure(_) => None
