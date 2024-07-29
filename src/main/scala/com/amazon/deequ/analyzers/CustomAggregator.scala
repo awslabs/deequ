@@ -23,26 +23,26 @@ import scala.util.Success
 import scala.util.Try
 
 // Define a custom state to hold aggregation results
-case class AggregatedMetricState(counts: Map[String, Int], totalRows: Int)
+case class AggregatedMetricState(counts: Map[String, Int], total: Int)
   extends DoubleValuedState[AggregatedMetricState] {
 
-  def sum(other: AggregatedMetricState): AggregatedMetricState = {
+  override def sum(other: AggregatedMetricState): AggregatedMetricState = {
     val combinedCounts = counts ++ other
       .counts
       .map { case (k, v) => k -> (v + counts.getOrElse(k, 0)) }
-    AggregatedMetricState(combinedCounts, totalRows + other.totalRows)
+    AggregatedMetricState(combinedCounts, total + other.total)
   }
 
-  def metricValue(): Double = counts.values.sum.toDouble / totalRows
+  override def metricValue(): Double = counts.values.sum.toDouble / total
 }
 
 // Define the analyzer
-case class ConditionalAggregationAnalyzer(aggregatorFunc: DataFrame => AggregatedMetricState,
-                                          metricName: String,
-                                          instance: String)
+case class CustomAggregator(aggregatorFunc: DataFrame => AggregatedMetricState,
+                            metricName: String,
+                            instance: String = "Dataset")
   extends Analyzer[AggregatedMetricState, AttributeDoubleMetric] {
 
-  def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None)
+  override def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None)
   : Option[AggregatedMetricState] = {
     Try(aggregatorFunc(data)) match {
       case Success(state) => Some(state)
@@ -50,11 +50,11 @@ case class ConditionalAggregationAnalyzer(aggregatorFunc: DataFrame => Aggregate
     }
   }
 
-  def computeMetricFrom(state: Option[AggregatedMetricState]): AttributeDoubleMetric = {
+  override def computeMetricFrom(state: Option[AggregatedMetricState]): AttributeDoubleMetric = {
     state match {
       case Some(detState) =>
         val metrics = detState.counts.map { case (key, count) =>
-          key -> (count.toDouble / detState.totalRows)
+          key -> (count.toDouble / detState.total)
         }
         AttributeDoubleMetric(Entity.Column, metricName, instance, Success(metrics))
       case None =>
