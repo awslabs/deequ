@@ -97,7 +97,8 @@ object VerificationResult {
 
     val columnNamesToMetrics: Map[String, Column] = verificationResultToColumn(verificationResult)
 
-    data.withColumns(columnNamesToMetrics)
+    val dataWithID = data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
+    dataWithID.withColumns(columnNamesToMetrics).drop(UNIQUENESS_ID)
   }
 
   def checkResultsAsJson(verificationResult: VerificationResult,
