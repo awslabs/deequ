@@ -112,6 +112,12 @@ object Patterns {
 
   val SOCIAL_SECURITY_NUMBER_US: Regex = """((?!219-09-9999|078-05-1120)(?!666|000|9\d{2})\d{3}-(?!00)\d{2}-(?!0{4})\d{4})|((?!219 09 9999|078 05 1120)(?!666|000|9\d{2})\d{3} (?!00)\d{2} (?!0{4})\d{4})|((?!219099999|078051120)(?!666|000|9\d{2})\d{3}(?!00)\d{2}(?!0{4})\d{4})""".r
 
+  // Format: Five digit U.S. Zip code and an optional four digit code separated by a hyphen (-).
+  val POSTAL_CODE_US: Regex = """\b\d{5}(?:-\d{4})?\b""".r
+  
+  // Format: U.S. phone number with optional country code, area code, and extension.
+  val PHONE_NUMBER_US: Regex = """^(?:\+1\s?)?(?:\(?[2-9][0-9]{2}\)?[\s-]?)?[2-9][0-9]{2}[\s-]?[0-9]{4}(?:\s?(?:ext|x|extension)\s?[0-9]{4})?$""".r
+
   // Visa, MasterCard, AMEX, Diners Club
   // http://www.richardsramblings.com/regex/credit-card-numbers/
   val CREDITCARD: Regex = """\b(?:3[47]\d{2}([\ \-]?)\d{6}\1\d|(?:(?:4\d|5[1-5]|65)\d{2}|6011)([\ \-]?)\d{4}\2\d{4}\2)\d{4}\b""".r
