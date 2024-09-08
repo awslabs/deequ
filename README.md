@@ -28,6 +28,9 @@ __sbt__
 ```
 libraryDependencies += "com.amazon.deequ" % "deequ" % "2.0.0-spark-3.1"
 ```
+__synapse__
+
+For instructions to install and configure this on an synapse spark pool: [here](/docs/install/azure-synapse.md)
 
 ## Example
 
