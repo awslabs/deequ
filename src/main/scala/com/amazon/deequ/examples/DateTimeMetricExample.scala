@@ -31,13 +31,14 @@ private[examples] object DateTimeMetricExample extends App {
       Customer(3, "Thomas Yu", Instant.parse("2023-02-11T08:15:00Z")),
       Customer(4, "Steve Powell", Instant.parse("2019-04-11T12:15:00Z")),
       Customer(5, "Andrej Kar", Instant.parse("2020-08-11T12:30:00Z")),
+      Customer(6, "Ji Sung", Instant.parse("2020-08-11T12:30:00Z")),
     )
 
     val analysisResult: AnalyzerContext = { AnalysisRunner
       .onData(data)
       .addAnalyzer(DateTimeDistribution("dateOfBirth", DistributionInterval.HOURLY))
-//      .addAnalyzer(MinimumDateTime("dateOfBirth"))
-//      .addAnalyzer(MaximumDateTime("dateOfBirth"))
+      .addAnalyzer(MinimumDateTime("dateOfBirth"))
+      .addAnalyzer(MaximumDateTime("dateOfBirth"))
       .run()
     }
 
