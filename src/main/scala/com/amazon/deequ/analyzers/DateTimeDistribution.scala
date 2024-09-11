@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
@@ -49,7 +49,7 @@ object DateTimeDistributionState {
     frequency: Long
   ): Map[(Instant, Instant), Long] = {
     result.map({
-      case (x, y) => (new Instant(x), new Instant(x + frequency - 1L)) -> y
+      case (x, y) => (Instant.ofEpochMilli(x), Instant.ofEpochMilli(x + frequency - 1L)) -> y
     })
   }
 
@@ -127,8 +127,12 @@ case class DateTimeDistribution(
 object DateTimeDistribution {
   def apply(column: String,
             interval: DistributionInterval.Value,
-            where: Option[String] = None): DateTimeDistribution =
+            where: Option[String]): DateTimeDistribution =
     new DateTimeDistribution(column, interval = getDateTimeAggIntervalValue(interval), where)
+
+  def apply(column: String,
+            interval: DistributionInterval.Value): DateTimeDistribution =
+    new DateTimeDistribution(column, interval = getDateTimeAggIntervalValue(interval), None)
 
   def getDateTimeAggIntervalValue(interval: DistributionInterval.Value): Long = {
     interval match {

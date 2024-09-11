@@ -25,6 +25,7 @@ private[deequ] object ExampleUtils {
       .master("local")
       .appName("test")
       .config("spark.ui.enabled", "false")
+      .config("spark.sql.datetime.java8API.enabled", "true")
       .getOrCreate()
     session.sparkContext.setCheckpointDir(System.getProperty("java.io.tmpdir"))
 
