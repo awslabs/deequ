@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
@@ -36,8 +36,8 @@ private[examples] object DateTimeMetricExample extends App {
     val analysisResult: AnalyzerContext = { AnalysisRunner
       .onData(data)
       .addAnalyzer(DateTimeDistribution("dateOfBirth", DistributionInterval.HOURLY))
-      .addAnalyzer(MinimumDateTime("dateOfBirth"))
-      .addAnalyzer(MaximumDateTime("dateOfBirth"))
+//      .addAnalyzer(MinimumDateTime("dateOfBirth"))
+//      .addAnalyzer(MaximumDateTime("dateOfBirth"))
       .run()
     }
 

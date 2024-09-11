@@ -443,9 +443,9 @@ object Preconditions {
       case _ => false
     }
 
-    if (hasDateType) {
-      throw new WrongColumnTypeException(s"Expected type of column $column to be one of" +
-        s"${dateTypes.mkString(",")}, but found $columnDataType instead!")
+    if (!hasDateType) {
+      throw new WrongColumnTypeException(s"Expected type of column $column to be one of " +
+        s"${dateTypes.mkString(", ")}, but found $columnDataType instead!")
     }
   }
 
