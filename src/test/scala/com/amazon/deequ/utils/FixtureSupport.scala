@@ -23,6 +23,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 
+import java.time.{Instant, LocalDate}
 import scala.util.Random
 
 
@@ -144,6 +145,18 @@ trait FixtureSupport {
       ("3", "-3", "-3.0"),
       ("4", "-4", "-4.0")
     ).toDF("item", "att1", "att2")
+  }
+
+  def getDfWithLocalDateAndInstant(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      (1, "john doe", Instant.parse("2021-11-11T07:15:00Z"), LocalDate.of(2017, 10, 14)),
+      (2, "marry jane", Instant.parse("2021-11-11T08:15:00Z"), LocalDate.of(2017, 10, 14)),
+      (3, "Thomas Yu", Instant.parse("2021-11-11T09:15:00Z"), LocalDate.of(2017, 10, 14)),
+      (4, "Steve Powell", Instant.parse("2019-04-11T12:15:00Z"), LocalDate.of(2017, 11, 14)),
+      (5, "Andrej Kar", Instant.parse("2019-04-11T13:15:00Z"), LocalDate.of(2017, 11, 14)),
+    ).toDF("id", "name", "dateOfBirth", "signupDate")
   }
 
   def getDfCompleteAndInCompleteColumns(sparkSession: SparkSession): DataFrame = {

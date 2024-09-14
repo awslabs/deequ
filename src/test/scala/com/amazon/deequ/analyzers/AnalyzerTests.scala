@@ -33,6 +33,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import java.time.{Instant, LocalDate}
 import scala.util.Failure
 import scala.util.Success
 
@@ -492,6 +493,92 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
           DataTypeInstances.Boolean -> DistributionValue(2, 0.5)
         )
       )
+    }
+  }
+
+  "DateTimeDistribution analyzer" should {
+
+    def distributionFrom(
+      nonZeroValues: (Instant, Instant, DistributionValue)*)
+    : Distribution = {
+
+      val distributionValues = nonZeroValues
+        .map { case (from, to, distValue) => s"($from to $to)" -> distValue }.toMap
+
+      Distribution(distributionValues, numberOfBins = distributionValues.keys.size)
+    }
+
+    "fail for non DateType or TimestampType column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(DateTimeDistribution("item", DistributionInterval.HOURLY).calculate(df).value.isFailure)
+    }
+
+    "success for DateType column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      assert(DateTimeDistribution("signupDate", DistributionInterval.MONTHLY).calculate(df).value.isSuccess)
+    }
+
+    "success for Timestamp column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      assert(DateTimeDistribution("dateOfBirth", DistributionInterval.HOURLY).calculate(df).value.isSuccess)
+    }
+
+    "success get datetimeDistribution with Daily Interval" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      val actualDistribution = DateTimeDistribution("dateOfBirth", DistributionInterval.DAILY).calculate(df).value
+      actualDistribution shouldBe Success(
+        distributionFrom(
+          (Instant.parse("2021-11-11T00:00:00Z"), Instant.parse("2021-11-11T23:59:59.999Z"), DistributionValue(3, 0.6)),
+          (Instant.parse("2019-04-11T00:00:00Z"), Instant.parse("2019-04-11T23:59:59.999Z"), DistributionValue(2, 0.4))
+        )
+      )
+    }
+
+    "success get datetimeDistribution with Long Interval" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      val actualDistribution = DateTimeDistribution("dateOfBirth", 86400000L).calculate(df).value
+      actualDistribution shouldBe Success(
+        distributionFrom(
+          (Instant.parse("2021-11-11T00:00:00Z"), Instant.parse("2021-11-11T23:59:59.999Z"), DistributionValue(3, 0.6)),
+          (Instant.parse("2019-04-11T00:00:00Z"), Instant.parse("2019-04-11T23:59:59.999Z"), DistributionValue(2, 0.4))
+        )
+      )
+    }
+  }
+
+  "MinimumDateTime analyzer" should {
+
+    "fail for non DateType or TimestampType column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(MinimumDateTime("item").calculate(df).value.isFailure)
+    }
+
+    "success for DateType column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      assert(MinimumDateTime("signupDate").calculate(df).value.isSuccess)
+    }
+
+    "success for Timestamp column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      MinimumDateTime("dateOfBirth").calculate(df).value shouldBe Success(Instant.parse("2019-04-11T12:15:00Z"))
+    }
+  }
+
+  "MaximumDateTime analyzer" should {
+
+    "fail for non DateType or TimestampType column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(MaximumDateTime("item").calculate(df).value.isFailure)
+    }
+
+    "success for DateType column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      assert(MaximumDateTime("signupDate").calculate(df).value.isSuccess)
+    }
+
+    "success for Timestamp column" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      MaximumDateTime("dateOfBirth").calculate(df).value shouldBe Success(Instant.parse("2021-11-11T09:15:00Z"))
     }
   }
 
