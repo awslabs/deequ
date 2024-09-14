@@ -57,10 +57,9 @@ object DateTimeDistributionState {
     val totalCount = histogram.distribution.foldLeft(0L)(_ + _._2)
     Distribution(
       histogram.distribution.map {
-        case (x, y) =>
-          ("(" + x._1.toString + " to " + x._2.toString + ")") -> DistributionValue(y, y.toDouble / totalCount)
+        case (x, y) => (s"(${x._1} to ${x._2})") -> DistributionValue(y, y.toDouble / totalCount)
       },
-      totalCount
+      histogram.distribution.keys.size
     )
   }
 }
