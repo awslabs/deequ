@@ -102,7 +102,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
         val df = getDfMissing(sparkSession)
 
         // Analysis result should equal to 1.0 for an existing column
-        val resultA = calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
+        val resultA = calculate(AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("att1"), _ == 1.0), df)
 
         assert(resultA.status == ConstraintStatus.Success)
@@ -110,7 +110,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
         assert(resultA.metric.isDefined)
 
         // Analysis result should equal to 1.0 for an existing column
-        val resultB = calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
+        val resultB = calculate(AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("att1"), _ != 1.0), df)
 
         assert(resultB.status == ConstraintStatus.Failure)
@@ -118,7 +118,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
         assert(resultB.metric.isDefined)
 
         // Analysis should fail for a non existing column
-        val resultC = calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
+        val resultC = calculate(AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("someMissingColumn"), _ == 1.0), df)
 
         assert(resultC.status == ConstraintStatus.Failure)
@@ -133,16 +133,16 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       val df = getDfMissing(sparkSession)
 
       // Analysis result should equal to 100.0 for an existing column
-      assert(calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
+      assert(calculate(AnalysisBasedConstraint[Double, Double](
         SampleAnalyzer("att1"), _ == 2.0, Some(valueDoubler)), df).status ==
         ConstraintStatus.Success)
 
-      assert(calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
+      assert(calculate(AnalysisBasedConstraint[Double, Double](
         SampleAnalyzer("att1"), _ != 2.0, Some(valueDoubler)), df).status ==
         ConstraintStatus.Failure)
 
       // Analysis should fail for a non existing column
-      assert(calculate(AnalysisBasedConstraint[NumMatches, Double, Double](
+      assert(calculate(AnalysisBasedConstraint[Double, Double](
         SampleAnalyzer("someMissingColumn"), _ == 2.0, Some(valueDoubler)), df).status ==
         ConstraintStatus.Failure)
       }
@@ -157,17 +157,17 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       )
 
       // Analysis result should equal to 1.0 for an existing column
-      assert(AnalysisBasedConstraint[NumMatches, Double, Double](SampleAnalyzer("att1"), _ == 1.0)
+      assert(AnalysisBasedConstraint[Double, Double](SampleAnalyzer("att1"), _ == 1.0)
         .evaluate(validResults).status == ConstraintStatus.Success)
-      assert(AnalysisBasedConstraint[NumMatches, Double, Double](SampleAnalyzer("att1"), _ != 1.0)
+      assert(AnalysisBasedConstraint[Double, Double](SampleAnalyzer("att1"), _ != 1.0)
         .evaluate(validResults).status == ConstraintStatus.Failure)
-      assert(AnalysisBasedConstraint[NumMatches, Double, Double](
+      assert(AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("someMissingColumn"), _ != 1.0)
         .evaluate(validResults).status == ConstraintStatus.Failure)
 
       // Although assertion would pass, since analysis result is missing,
       // constraint fails with missing analysis message
-      AnalysisBasedConstraint[NumMatches, Double, Double](SampleAnalyzer("att1"), _ == 1.0)
+      AnalysisBasedConstraint[Double, Double](SampleAnalyzer("att1"), _ == 1.0)
         .evaluate(emptyResults) match {
         case result =>
           assert(result.status == ConstraintStatus.Failure)
@@ -182,7 +182,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
         val validResults = Map[Analyzer[_, Metric[_]], Metric[_]](
           SampleAnalyzer("att1") -> SampleAnalyzer("att1").calculate(df))
 
-        assert(AnalysisBasedConstraint[NumMatches, Double, Double](
+        assert(AnalysisBasedConstraint[Double, Double](
             SampleAnalyzer("att1"), _ == 2.0, Some(valueDoubler))
           .evaluate(validResults).status == ConstraintStatus.Success)
       }
@@ -199,7 +199,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       val validResults = Map[Analyzer[_, Metric[_]], Metric[_]](
         SampleAnalyzer("att1") -> SampleAnalyzer("att1").calculate(df))
 
-      val constraint = AnalysisBasedConstraint[NumMatches, Double, Double](
+      val constraint = AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("att1"), _ == 1.0, Some(problematicValuePicker))
 
       calculate(constraint, df) match {
@@ -231,7 +231,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
 
       val df = getDfMissing(sparkSession)
 
-      val failingConstraint = AnalysisBasedConstraint[NumMatches, Double, Double](
+      val failingConstraint = AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("att1"), _ == 0.9, hint = Some("Value should be like ...!"))
 
       calculate(failingConstraint, df) match {
@@ -252,7 +252,7 @@ class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkConte
       def failingAssertion(value: Double): Boolean = throw exception
 
       val constraintResult = calculate(
-        AnalysisBasedConstraint[NumMatches, Double, Double](
+        AnalysisBasedConstraint[Double, Double](
           SampleAnalyzer("att1"), failingAssertion), df
       )
 

@@ -187,7 +187,7 @@ private[deequ] class Applicability(session: SparkSession) {
         case (name, nc: ConstraintDecorator) => name -> nc.inner
         case (name, c: Constraint) => name -> c
       }
-      .collect { case (name, constraint: AnalysisBasedConstraint[_, _, _]) =>
+      .collect { case (name, constraint: AnalysisBasedConstraint[_, _]) =>
         val metric = constraint.analyzer.calculate(data).value
         name -> metric
       }
