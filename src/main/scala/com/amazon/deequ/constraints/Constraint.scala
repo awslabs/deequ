@@ -17,6 +17,7 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionAssertionResult, AnomalyDetectionExtendedResult}
 import com.amazon.deequ.metrics.BucketDistribution
 import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.Metric
@@ -30,11 +31,23 @@ object ConstraintStatus extends Enumeration {
   val Success, Failure = Value
 }
 
+/**
+ * ConstraintResult Class
+ *
+ * @param constraint Constraint associated with result.
+ * @param status Status of constraint (Success, Failure).
+ * @param message Optional message for errors.
+ * @param metric Optional Metric from calculation.
+ * @param anomalyDetectionExtendedResultOption optional anomaly detection extended results
+ *                                       if using anomaly detection with extended results.
+
+ */
 case class ConstraintResult(
     constraint: Constraint,
     status: ConstraintStatus.Value,
     message: Option[String] = None,
-    metric: Option[Metric[_]] = None)
+    metric: Option[Metric[_]] = None,
+    anomalyDetectionExtendedResultOption: Option[AnomalyDetectionExtendedResult] = None)
 
 /** Common trait for all data quality constraints */
 trait Constraint extends Serializable {
@@ -232,6 +245,28 @@ object Constraint {
       hint = hint)
 
     new NamedConstraint(constraint, s"AnomalyConstraint($analyzer)")
+  }
+
+  /**
+   * Runs Completeness analysis on the given column and executes the anomaly assertion
+   * and also returns extended results.
+   *
+   * @param analyzer         Analyzer for the metric to do Anomaly Detection on.
+   * @param anomalyAssertion Function that receives a double input parameter
+   *                         (since the metric is double metric) and returns an AnomalyDetectionAssertionResult
+   *                         which contains a boolean and anomaly extended results.
+   * @param hint             A hint to provide additional context why a constraint could have failed.
+   */
+  def anomalyConstraintWithExtendedResults[S <: State[S]](
+      analyzer: Analyzer[S, Metric[Double]],
+      anomalyAssertion: Double => AnomalyDetectionAssertionResult,
+      hint: Option[String] = None)
+  : Constraint = {
+
+    val constraint = AnomalyExtendedResultsConstraint[S, Double, Double](analyzer, anomalyAssertion,
+      hint = hint)
+
+    new NamedConstraint(constraint, s"AnomalyConstraintWithExtendedResults($analyzer)")
   }
 
   /**

@@ -40,7 +40,8 @@ case class OnlineNormalStrategy(
   lowerDeviationFactor: Option[Double] = Some(3.0),
   upperDeviationFactor: Option[Double] = Some(3.0),
   ignoreStartPercentage: Double = 0.1,
-  ignoreAnomalies: Boolean = true) extends AnomalyDetectionStrategy {
+  ignoreAnomalies: Boolean = true)
+  extends AnomalyDetectionStrategy with AnomalyDetectionStrategyWithExtendedResults {
 
   require(lowerDeviationFactor.isDefined || upperDeviationFactor.isDefined,
     "At least one factor has to be specified.")
@@ -121,9 +122,10 @@ case class OnlineNormalStrategy(
 
 
   /**
-    * Search for anomalies in a series of data points.
+    * Search for anomalies in a series of data points. This function uses the
+    * detectWithExtendedResults function and then filters and maps to return only anomaly objects.
     *
-    * @param dataSeries     The data contained in a Vector of Doubles
+    * @param dataSeries     The data contained in a Vector of Doubles.
     * @param searchInterval The indices between which anomalies should be detected. [a, b).
     * @return The indices of all anomalies in the interval and their corresponding wrapper object.
     */
@@ -132,6 +134,26 @@ case class OnlineNormalStrategy(
       searchInterval: (Int, Int))
     : Seq[(Int, Anomaly)] = {
 
+    detectWithExtendedResults(dataSeries, searchInterval)
+      .filter { case (_, anomDataPoint) => anomDataPoint.isAnomaly }
+      .map { case (i, anomDataPoint) =>
+        (i, Anomaly(Some(anomDataPoint.dataMetricValue), anomDataPoint.confidence, anomDataPoint.detail))
+      }
+  }
+
+  /**
+   * Search for anomalies in a series of data points, returns extended results.
+   *
+   * @param dataSeries     The data contained in a Vector of Doubles.
+   * @param searchInterval The indices between which anomalies should be detected. [a, b).
+   * @return The indices of all anomalies in the interval and their corresponding wrapper object
+   *          with extended results.
+   */
+  override def detectWithExtendedResults(
+      dataSeries: Vector[Double],
+      searchInterval: (Int, Int))
+    : Seq[(Int, AnomalyDetectionDataPoint)] = {
+
     val (searchStart, searchEnd) = searchInterval
 
     require(searchStart <= searchEnd, "The start of the interval can't be larger than the end.")
@@ -139,7 +161,6 @@ case class OnlineNormalStrategy(
     computeStatsAndAnomalies(dataSeries, searchInterval)
       .zipWithIndex
       .slice(searchStart, searchEnd)
-      .filter { case (result, _) => result.isAnomaly }
       .map { case (calcRes, index) =>
         val lowerBound =
           calcRes.mean - lowerDeviationFactor.getOrElse(Double.MaxValue) * calcRes.stdDev
@@ -149,7 +170,11 @@ case class OnlineNormalStrategy(
         val detail = Some(s"[OnlineNormalStrategy]: Value ${dataSeries(index)} is not in " +
           s"bounds [$lowerBound, $upperBound].")
 
-        (index, Anomaly(Option(dataSeries(index)), 1.0, detail))
+        val value = dataSeries(index)
+
+        (index, AnomalyDetectionDataPoint(value, value,
+          Threshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)),
+          calcRes.isAnomaly, 1.0, detail))
       }
   }
 }

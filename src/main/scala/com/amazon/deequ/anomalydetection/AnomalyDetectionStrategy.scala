@@ -30,3 +30,17 @@ trait AnomalyDetectionStrategy {
     dataSeries: Vector[Double],
     searchInterval: (Int, Int) = (0, Int.MaxValue)): Seq[(Int, Anomaly)]
 }
+trait AnomalyDetectionStrategyWithExtendedResults {
+
+  /**
+   * Search for anomalies in a series of data points, returns extended results.
+   *
+   * @param dataSeries     The data contained in a Vector of Doubles
+   * @param searchInterval The indices between which anomalies should be detected. [a, b).
+   * @return The indices of all data points with their corresponding anomaly extended results wrapper
+   *         object.
+   */
+  def detectWithExtendedResults(
+    dataSeries: Vector[Double],
+    searchInterval: (Int, Int) = (0, Int.MaxValue)): Seq[(Int, AnomalyDetectionDataPoint)]
+}

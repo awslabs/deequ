@@ -23,14 +23,7 @@ class RelativeRateOfChangeStrategyTest extends WordSpec with Matchers {
 
   "Relative Rate of Change Strategy" should {
 
-    val strategy = RelativeRateOfChangeStrategy(Some(0.5), Some(2.0))
-    val data = (for (i <- 0 to 50) yield {
-      if (i < 20 || i > 30) {
-        1.0
-      } else {
-        if (i % 2 == 0) i else 1
-      }
-    }).toVector
+    val (strategy, data) = setupDefaultStrategyAndData()
 
     "detect all anomalies if no interval specified" in {
       val anomalyResult = strategy.detect(data)
@@ -149,5 +142,160 @@ class RelativeRateOfChangeStrategyTest extends WordSpec with Matchers {
         assert(value -1 < lowerBound || value -1 > upperBound)
       }
     }
+  }
+
+  "Relative Rate of Change Strategy with Extended Results" should {
+
+    val (strategy, data) = setupDefaultStrategyAndData()
+
+    "detect all anomalies if no interval specified" in {
+      val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
+
+      val expectedAnomalyThreshold = Threshold(Bound(0.5), Bound(2.0))
+      val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
+        (20, AnomalyDetectionDataPoint(20, 20, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (21, AnomalyDetectionDataPoint(1, 0.05, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (22, AnomalyDetectionDataPoint(22, 22, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (23, AnomalyDetectionDataPoint(1, 0.045454545454545456, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (24, AnomalyDetectionDataPoint(24, 24, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (25, AnomalyDetectionDataPoint(1, 0.041666666666666664, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(26, 26, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(1, 0.038461538461538464, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(28, 28, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(1, 0.03571428571428571, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(30, 30, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (31, AnomalyDetectionDataPoint(1, 0.03333333333333333, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+      )
+      assert(anomalyResult == expectedResult)
+    }
+
+    "only detect anomalies in interval" in {
+      val anomalyResult = strategy.detectWithExtendedResults(data, (25, 50)).filter({case (_, anom) => anom.isAnomaly})
+
+      val expectedAnomalyThreshold = Threshold(Bound(0.5), Bound(2.0))
+      val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
+        (25, AnomalyDetectionDataPoint(1, 0.041666666666666664, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(26, 26, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(1, 0.038461538461538464, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(28, 28, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(1, 0.03571428571428571, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(30, 30, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (31, AnomalyDetectionDataPoint(1, 0.03333333333333333, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+      )
+      assert(anomalyResult == expectedResult)
+    }
+
+    "ignore min rate if none is given" in {
+      val strategy = RelativeRateOfChangeStrategy(None, Some(1.0))
+      val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
+
+      // Anomalies with positive values only
+      val expectedAnomalyThreshold = Threshold(Bound(-1.7976931348623157E308), Bound(1.0))
+      val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
+        (20, AnomalyDetectionDataPoint(20, 20, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (22, AnomalyDetectionDataPoint(22, 22, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (24, AnomalyDetectionDataPoint(24, 24, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(26, 26, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(28, 28, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(30, 30, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+      )
+      assert(anomalyResult == expectedResult)
+    }
+
+    "ignore max rate if none is given" in {
+      val strategy = RelativeRateOfChangeStrategy(Some(0.5), None)
+      val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
+
+      // Anomalies with negative values only
+      val expectedAnomalyThreshold = Threshold(Bound(0.5), Bound(1.7976931348623157E308))
+      val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
+        (21, AnomalyDetectionDataPoint(1, 0.05, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (23, AnomalyDetectionDataPoint(1, 0.045454545454545456, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (25, AnomalyDetectionDataPoint(1, 0.041666666666666664, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(1, 0.038461538461538464, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(1, 0.03571428571428571, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
+        (31, AnomalyDetectionDataPoint(1, 0.03333333333333333, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+      )
+      assert(anomalyResult == expectedResult)
+    }
+
+    "detect no anomalies if rates are set to min/ max value" in {
+      val strategy = RelativeRateOfChangeStrategy(Some(Double.MinValue), Some(Double.MaxValue))
+      val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
+
+      val expected: List[(Int, AnomalyDetectionDataPoint)] = List()
+      assert(anomalyResult == expected)
+    }
+
+    "attribute indices correctly for higher orders without search interval" in {
+      val data = Vector(0.0, 1.0, 3.0, 6.0, 18.0, 72.0)
+      val strategy = RelativeRateOfChangeStrategy(None, Some(8.0), order = 2)
+      val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
+
+      val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
+        (2, AnomalyDetectionDataPoint(3, Double.PositiveInfinity,
+          Threshold(Bound(-1.7976931348623157E308), Bound(8.0)), isAnomaly = true, 1.0)),
+        (5, AnomalyDetectionDataPoint(72, 12,
+          Threshold(Bound(-1.7976931348623157E308), Bound(8.0)), isAnomaly = true, 1.0))
+      )
+      assert(anomalyResult == expectedResult)
+    }
+
+    "attribute indices correctly for higher orders with search interval" in {
+      val data = Vector(0.0, 1.0, 3.0, 6.0, 18.0, 72.0)
+      val strategy = RelativeRateOfChangeStrategy(None, Some(8.0), order = 2)
+      val anomalyResult = strategy.detectWithExtendedResults(data, (5, 6)).filter({case (_, anom) => anom.isAnomaly})
+
+      val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
+        (5, AnomalyDetectionDataPoint(72, 12,
+          Threshold(Bound(-1.7976931348623157E308), Bound(8.0)), isAnomaly = true, 1.0))
+      )
+      assert(anomalyResult == expectedResult)
+    }
+
+    "work fine with empty input" in {
+      val emptySeries = Vector[Double]()
+      val anomalyResult = strategy.detectWithExtendedResults(emptySeries).filter({case (_, anom) => anom.isAnomaly})
+
+      assert(anomalyResult == Seq[(Int, AnomalyDetectionDataPoint)]())
+    }
+
+    "produce error message with correct value and bounds" in {
+      val result = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
+
+      result.foreach { case (_, anom) =>
+        val (value, lowerBound, upperBound) =
+          AnomalyDetectionTestUtils.firstThreeDoublesFromString(anom.detail.get)
+
+        assert(value === anom.anomalyMetricValue)
+        assert(value < lowerBound || value > upperBound)
+      }
+    }
+
+    "assert anomalies are outside of anomaly bounds" in {
+      val result = strategy.detectWithExtendedResults(data).filter({ case (_, anom) => anom.isAnomaly })
+
+      result.foreach { case (_, anom) =>
+        val value = anom.anomalyMetricValue
+        val upperBound = anom.anomalyThreshold.upperBound.value
+        val lowerBound = anom.anomalyThreshold.lowerBound.value
+
+        assert(value < lowerBound || value > upperBound)
+      }
+    }
+
+
+  }
+
+  private def setupDefaultStrategyAndData(): (RelativeRateOfChangeStrategy, Vector[Double]) = {
+    val strategy = RelativeRateOfChangeStrategy(Some(0.5), Some(2.0))
+    val data = (for (i <- 0 to 50) yield {
+      if (i < 20 || i > 30) {
+        1.0
+      } else {
+        if (i % 2 == 0) i else 1
+      }
+    }).toVector
+    (strategy, data)
   }
 }

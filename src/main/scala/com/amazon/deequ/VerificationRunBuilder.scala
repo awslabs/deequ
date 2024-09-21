@@ -16,7 +16,7 @@
 
 package com.amazon.deequ
 
-import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionStrategy, AnomalyDetectionStrategyWithExtendedResults}
 import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.analyzers.{State, _}
 import com.amazon.deequ.checks.{Check, CheckLevel}
@@ -241,6 +241,24 @@ class VerificationRunBuilderWithRepository(
       anomalyDetectionStrategy, analyzer, anomalyCheckConfigOrDefault)
     this
   }
+
+  def addAnomalyCheckWithExtendedResults[S <: State[S]](
+      anomalyDetectionStrategy: AnomalyDetectionStrategyWithExtendedResults,
+      analyzer: Analyzer[S, Metric[Double]],
+      anomalyCheckConfig: Option[AnomalyCheckConfig] = None)
+  : this.type = {
+
+    val anomalyCheckConfigOrDefault = anomalyCheckConfig.getOrElse {
+
+      val checkDescription = s"Anomaly check for ${analyzer.toString}"
+
+      AnomalyCheckConfig(CheckLevel.Warning, checkDescription)
+    }
+
+    checks :+= VerificationRunBuilderHelper.getAnomalyCheckWithExtendedResults(
+      metricsRepository.get, anomalyDetectionStrategy, analyzer, anomalyCheckConfigOrDefault)
+    this
+  }
 }
 
 class VerificationRunBuilderWithSparkSession(
@@ -310,6 +328,32 @@ private[this] object VerificationRunBuilderHelper {
       .isNewestPointNonAnomalous(
         metricsRepository,
         anomalyDetectionStrategy,
+        analyzer,
+        anomalyCheckConfig.withTagValues,
+        anomalyCheckConfig.afterDate,
+        anomalyCheckConfig.beforeDate
+      )
+  }
+
+  /**
+   * Build a check using Anomaly Detection with extended results methods
+   *
+   * @param metricsRepository        A metrics repository to get the previous results
+   * @param anomalyDetectionStrategyWithExtendedResults The anomaly detection strategy with extended results
+   * @param analyzer                 The analyzer for the metric to run anomaly detection on
+   * @param anomalyCheckConfig       Some configuration settings for the Check
+   */
+  def getAnomalyCheckWithExtendedResults[S <: State[S]](
+      metricsRepository: MetricsRepository,
+      anomalyDetectionStrategyWithExtendedResults: AnomalyDetectionStrategyWithExtendedResults,
+      analyzer: Analyzer[S, Metric[Double]],
+      anomalyCheckConfig: AnomalyCheckConfig)
+  : Check = {
+
+    Check(anomalyCheckConfig.level, anomalyCheckConfig.description)
+      .isNewestPointNonAnomalousWithExtendedResults(
+        metricsRepository,
+        anomalyDetectionStrategyWithExtendedResults,
         analyzer,
         anomalyCheckConfig.withTagValues,
         anomalyCheckConfig.afterDate,

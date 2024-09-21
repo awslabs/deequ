@@ -18,7 +18,7 @@ package com.amazon.deequ
 
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.anomalydetection.AbsoluteChangeStrategy
+import com.amazon.deequ.anomalydetection.{AbsoluteChangeStrategy, AnomalyDetectionDataPoint, AnomalyDetectionExtendedResult, Bound, Threshold}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
@@ -680,6 +680,138 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         assert(checkResultsTwo == CheckStatus.Success)
       }
     }
+
+    "addAnomalyCheckWithExtendedResults should work and output extended results" in withSparkSession { sparkSession =>
+      evaluateWithRepositoryWithHistory { repository =>
+
+        val df = getDfWithNRows(sparkSession, 11)
+        val saveResultsWithKey = ResultKey(5, Map.empty)
+
+        val analyzers = Completeness("item") :: Nil
+
+        val verificationResultOne = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
+          .addAnomalyCheckWithExtendedResults(
+            AbsoluteChangeStrategy(Some(-2.0), Some(2.0)),
+            Size(),
+            Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
+          )
+          .run()
+
+        val verificationResultTwo = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
+          .addAnomalyCheckWithExtendedResults(
+            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
+            Size(),
+            Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
+              Map.empty, Some(0), Some(11)))
+          )
+          .run()
+
+        val verificationResultThree = VerificationSuite()
+          .onData(df)
+          .useRepository(repository)
+          .addRequiredAnalyzers(analyzers)
+          .saveOrAppendResult(saveResultsWithKey)
+          .addAnomalyCheckWithExtendedResults(
+            AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
+            Size()
+          )
+          .run()
+
+        val checkResultsOne = verificationResultOne.checkResults.head._2.status
+        val actualResultsOneAnomalyDetectionDataPoint =
+          verificationResultOne.checkResults.head._2.constraintResults.head
+            .anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoints.head
+        val expectedResultsOneAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 7.0, Threshold(Bound(-2.0), Bound(2.0)), isAnomaly = true, 1.0)
+
+        val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+        val actualResultsTwoAnomalyDetectionDataPoint =
+          verificationResultTwo.checkResults.head._2.constraintResults.head
+            .anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoints.head
+        val expectedResultsTwoAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 0.0, Threshold(Bound(-7.0), Bound(7.0)), isAnomaly = false, 1.0)
+
+        val checkResultsThree = verificationResultThree.checkResults.head._2.status
+        val actualResultsThreeAnomalyDetectionDataPoint =
+          verificationResultThree.checkResults.head._2.constraintResults.head
+            .anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoints.head
+        val expectedResultsThreeAnomalyDetectionDataPoint =
+          AnomalyDetectionDataPoint(11.0, 0.0, Threshold(Bound(-7.0), Bound(7.0)), isAnomaly = false, 1.0)
+
+        assert(checkResultsOne == CheckStatus.Warning)
+        assert(checkResultsTwo == CheckStatus.Success)
+        assert(checkResultsThree == CheckStatus.Success)
+
+        assert(actualResultsOneAnomalyDetectionDataPoint == expectedResultsOneAnomalyDetectionDataPoint)
+        assert(actualResultsTwoAnomalyDetectionDataPoint == expectedResultsTwoAnomalyDetectionDataPoint)
+        assert(actualResultsThreeAnomalyDetectionDataPoint == expectedResultsThreeAnomalyDetectionDataPoint)
+      }
+    }
+
+    "addAnomalyCheckWithExtendedResults with duplicate check analyzer should work and output extended results" in
+      withSparkSession { sparkSession =>
+        evaluateWithRepositoryWithHistory { repository =>
+
+          val df = getDfWithNRows(sparkSession, 11)
+          val saveResultsWithKey = ResultKey(5, Map.empty)
+
+          val analyzers = Completeness("item") :: Nil
+
+          val verificationResultOne = VerificationSuite()
+            .onData(df)
+            .addCheck(Check(CheckLevel.Error, "group-1").hasSize(_ == 11))
+            .useRepository(repository)
+            .addRequiredAnalyzers(analyzers)
+            .saveOrAppendResult(saveResultsWithKey)
+            .addAnomalyCheckWithExtendedResults(
+              AbsoluteChangeStrategy(Some(-2.0), Some(2.0)),
+              Size(),
+              Some(AnomalyCheckConfig(CheckLevel.Warning, "Anomaly check to fail"))
+            )
+            .run()
+
+          val verificationResultTwo = VerificationSuite()
+            .onData(df)
+            .useRepository(repository)
+            .addRequiredAnalyzers(analyzers)
+            .saveOrAppendResult(saveResultsWithKey)
+            .addAnomalyCheckWithExtendedResults(
+              AbsoluteChangeStrategy(Some(-7.0), Some(7.0)),
+              Size(),
+              Some(AnomalyCheckConfig(CheckLevel.Error, "Anomaly check to succeed",
+                Map.empty, Some(0), Some(11)))
+            )
+            .run()
+
+          val checkResultsOne = verificationResultOne.checkResults.values.toSeq(1).status
+          val actualResultsOneAnomalyDetectionDataPoint =
+            verificationResultOne.checkResults.values.toSeq(1).constraintResults.head
+              .anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoints.head
+          val expectedResultsOneAnomalyDetectionDataPoint =
+            AnomalyDetectionDataPoint(11.0, 7.0, Threshold(Bound(-2.0), Bound(2.0)), isAnomaly = true, 1.0)
+
+          val checkResultsTwo = verificationResultTwo.checkResults.head._2.status
+          val actualResultsTwoAnomalyDetectionDataPoint =
+            verificationResultTwo.checkResults.head._2.constraintResults.head
+              .anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoints.head
+          val expectedResultsTwoAnomalyDetectionDataPoint =
+            AnomalyDetectionDataPoint(11.0, 0.0, Threshold(Bound(-7.0), Bound(7.0)), isAnomaly = false, 1.0)
+
+          assert(checkResultsOne == CheckStatus.Warning)
+          assert(checkResultsTwo == CheckStatus.Success)
+
+          assert(actualResultsOneAnomalyDetectionDataPoint == expectedResultsOneAnomalyDetectionDataPoint)
+          assert(actualResultsTwoAnomalyDetectionDataPoint == expectedResultsTwoAnomalyDetectionDataPoint)
+        }
+      }
 
     "write output files to specified locations" in withSparkSession { sparkSession =>
 

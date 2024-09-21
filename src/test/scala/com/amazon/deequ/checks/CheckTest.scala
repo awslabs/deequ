@@ -19,7 +19,8 @@ package checks
 
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
-import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
+import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionAssertionResult, AnomalyDetectionDataPoint, AnomalyDetectionStrategy, AnomalyDetectionStrategyWithExtendedResults, ExtendedDetectionResult}
+import com.amazon.deequ.checks.Check.getNewestPointAnomalyResults
 import com.amazon.deequ.constraints.{ConstrainableDataTypes, ConstraintStatus}
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
@@ -1106,6 +1107,234 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
           assert(sizeAnomalyCheck.evaluate(contextNoRows).status == CheckStatus.Error)
         }
       }
+  }
+
+  "Check isNewestPointNonAnomalousWithExtendedResults" should {
+
+    "return the correct check status for anomaly detection for different analyzers" in
+      withSparkSession { sparkSession =>
+        evaluateWithRepository { repository =>
+          // Fake Anomaly Detector
+          val fakeAnomalyDetector = mock[AnomalyDetectionStrategyWithExtendedResults]
+          inSequence {
+            // Size results
+            (fakeAnomalyDetector.detectWithExtendedResults _)
+              .expects(Vector(1.0, 2.0, 3.0, 4.0, 11.0), (4, 5))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
+                (4, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+              .once()
+            (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(1.0, 2.0, 3.0, 4.0, 4.0), (4, 5))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
+                (4, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+              .once()
+            // Distinctness results
+            (fakeAnomalyDetector.detectWithExtendedResults _)
+              .expects(Vector(1.0, 2.0, 3.0, 4.0, 1), (4, 5))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
+                (4, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0))))
+              .once()
+            (fakeAnomalyDetector.detectWithExtendedResults _)
+              .expects(Vector(1.0, 2.0, 3.0, 4.0, 1), (4, 5))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
+                (4, AnomalyDetectionDataPoint(1.0, 1.0, isAnomaly = true, confidence = 1.0))))
+              .once()
+          }
+
+          // Get test AnalyzerContexts
+          val analysis = Analysis().addAnalyzers(Seq(Size(), Distinctness(Seq("c0", "c1"))))
+
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
+
+          // Check isNewestPointNonAnomalousWithExtendedResults using Size
+          val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
+            .isNewestPointNonAnomalousWithExtendedResults(repository, fakeAnomalyDetector, Size(), Map.empty,
+              None, None)
+
+          assert(sizeAnomalyCheck.evaluate(context11Rows).status == CheckStatus.Success)
+          assert(sizeAnomalyCheck.evaluate(context4Rows).status == CheckStatus.Error)
+          assert(sizeAnomalyCheck.evaluate(contextNoRows).status == CheckStatus.Error)
+
+          // Now with Distinctness
+          val distinctnessAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
+            .isNewestPointNonAnomalousWithExtendedResults(repository, fakeAnomalyDetector,
+              Distinctness(Seq("c0", "c1")), Map.empty, None, None)
+
+          assert(distinctnessAnomalyCheck.evaluate(context11Rows).status == CheckStatus.Success)
+          assert(distinctnessAnomalyCheck.evaluate(context4Rows).status == CheckStatus.Error)
+          assert(distinctnessAnomalyCheck.evaluate(contextNoRows).status == CheckStatus.Error)
+        }
+      }
+
+    "only use historic results filtered by tagValues if specified" in
+      withSparkSession { sparkSession =>
+        evaluateWithRepository { repository =>
+          // Fake Anomaly Detector
+          val fakeAnomalyDetector = mock[AnomalyDetectionStrategyWithExtendedResults]
+          inSequence {
+            // Size results
+            (fakeAnomalyDetector.detectWithExtendedResults _)
+              .expects(Vector(1.0, 2.0, 11.0), (2, 3))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+              .once()
+            (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(1.0, 2.0, 4.0), (2, 3))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+              .once()
+          }
+
+          // Get test AnalyzerContexts
+          val analysis = Analysis().addAnalyzer(Size())
+
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
+
+          // Check isNewestPointNonAnomalousWithExtendedResults using Size
+          val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
+            .isNewestPointNonAnomalousWithExtendedResults(repository, fakeAnomalyDetector, Size(),
+              Map("Region" -> "EU"), None, None)
+
+          assert(sizeAnomalyCheck.evaluate(context11Rows).status == CheckStatus.Success)
+          assert(sizeAnomalyCheck.evaluate(context4Rows).status == CheckStatus.Error)
+          assert(sizeAnomalyCheck.evaluate(contextNoRows).status == CheckStatus.Error)
+        }
+      }
+
+    "only use historic results after some dateTime if specified" in
+      withSparkSession { sparkSession =>
+        evaluateWithRepository { repository =>
+          // Fake Anomaly Detector
+          val fakeAnomalyDetector = mock[AnomalyDetectionStrategyWithExtendedResults]
+          inSequence {
+            // Size results
+            (fakeAnomalyDetector.detectWithExtendedResults _)
+              .expects(Vector(3.0, 4.0, 11.0), (2, 3))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+              .once()
+            (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(3.0, 4.0, 4.0), (2, 3))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+              .once()
+          }
+
+          // Get test AnalyzerContexts
+          val analysis = Analysis().addAnalyzer(Size())
+
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
+
+          // Check isNewestPointNonAnomalousWithExtendedResults using Size
+          val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
+            .isNewestPointNonAnomalousWithExtendedResults(repository, fakeAnomalyDetector, Size(),
+              Map.empty, Some(3), None)
+
+          assert(sizeAnomalyCheck.evaluate(context11Rows).status == CheckStatus.Success)
+          assert(sizeAnomalyCheck.evaluate(context4Rows).status == CheckStatus.Error)
+          assert(sizeAnomalyCheck.evaluate(contextNoRows).status == CheckStatus.Error)
+        }
+      }
+
+    "only use historic results before some dateTime if specified" in
+      withSparkSession { sparkSession =>
+        evaluateWithRepository { repository =>
+          // Fake Anomaly Detector
+          val fakeAnomalyDetector = mock[AnomalyDetectionStrategyWithExtendedResults]
+          inSequence {
+            // Size results
+            (fakeAnomalyDetector.detectWithExtendedResults _)
+              .expects(Vector(1.0, 2.0, 11.0), (2, 3))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+              .once()
+            (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(1.0, 2.0, 4.0), (2, 3))
+              .returns(Seq(
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+                (2, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+              .once()
+          }
+
+          // Get test AnalyzerContexts
+          val analysis = Analysis().addAnalyzer(Size())
+
+          val context11Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 11), analysis)
+          val context4Rows = AnalysisRunner.run(getDfWithNRows(sparkSession, 4), analysis)
+          val contextNoRows = AnalysisRunner.run(getDfEmpty(sparkSession), analysis)
+
+          // Check isNewestPointNonAnomalousWithExtendedResults using Size
+          val sizeAnomalyCheck = Check(CheckLevel.Error, "anomaly test")
+            .isNewestPointNonAnomalousWithExtendedResults(repository, fakeAnomalyDetector, Size(),
+              Map.empty, None, Some(2))
+
+          assert(sizeAnomalyCheck.evaluate(context11Rows).status == CheckStatus.Success)
+          assert(sizeAnomalyCheck.evaluate(context4Rows).status == CheckStatus.Error)
+          assert(sizeAnomalyCheck.evaluate(contextNoRows).status == CheckStatus.Error)
+        }
+      }
+  }
+
+  "getNewestPointAnomalyResults returns correct assertion result from anomaly detection data point sequence " +
+    "with multiple data points" in {
+    val anomalySequence: Seq[(Long, AnomalyDetectionDataPoint)] =
+      Seq(
+        (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
+        (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
+        (2, AnomalyDetectionDataPoint(11.0, 11.0, isAnomaly = true, confidence = 1.0)))
+    val result: AnomalyDetectionAssertionResult =
+      getNewestPointAnomalyResults(ExtendedDetectionResult(anomalySequence))
+    assert(!result.hasNoAnomaly)
+    assert(result.anomalyDetectionExtendedResult.anomalyDetectionDataPoints.head ==
+      AnomalyDetectionDataPoint(11.0, 11.0, isAnomaly = true, confidence = 1.0))
+  }
+
+  "getNewestPointAnomalyResults returns correct assertion result from anomaly detection data point sequence " +
+    "with one data point" in {
+    val anomalySequence: Seq[(Long, AnomalyDetectionDataPoint)] =
+      Seq(
+        (0, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0)))
+    val result: AnomalyDetectionAssertionResult =
+      getNewestPointAnomalyResults(ExtendedDetectionResult(anomalySequence))
+    assert(result.hasNoAnomaly)
+    assert(result.anomalyDetectionExtendedResult.anomalyDetectionDataPoints.head ==
+      AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))
+  }
+
+  "assert getNewestPointAnomalyResults throws exception from empty anomaly detection sequence" in {
+    val anomalySequence: Seq[(Long, AnomalyDetectionDataPoint)] = Seq()
+    intercept[IllegalArgumentException] {
+      getNewestPointAnomalyResults(ExtendedDetectionResult(anomalySequence))
+    }
   }
 
   /**

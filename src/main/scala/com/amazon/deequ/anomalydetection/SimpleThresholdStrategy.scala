@@ -25,34 +25,61 @@ package com.amazon.deequ.anomalydetection
 case class SimpleThresholdStrategy(
     lowerBound: Double = Double.MinValue,
     upperBound: Double)
-  extends AnomalyDetectionStrategy {
+  extends AnomalyDetectionStrategy with AnomalyDetectionStrategyWithExtendedResults {
 
   require(lowerBound <= upperBound, "The lower bound must be smaller or equal to the upper bound.")
 
   /**
-    * Search for anomalies in a series of data points.
+    * Search for anomalies in a series of data points. This function uses the
+    * detectWithExtendedResults function and then filters and maps to return only anomaly objects.
     *
-    * @param dataSeries     The data contained in a Vector of Doubles
+    * @param dataSeries     The data contained in a Vector of Doubles.
     * @param searchInterval The indices between which anomalies should be detected. [a, b).
     * @return The indices of all anomalies in the interval and their corresponding wrapper object.
     */
   override def detect(
+      dataSeries: Vector[Double],
+      searchInterval: (Int, Int))
+    : Seq[(Int, Anomaly)] = {
+
+    detectWithExtendedResults(dataSeries, searchInterval)
+      .filter { case (_, anomDataPoint) => anomDataPoint.isAnomaly }
+      .map { case (i, anomDataPoint) =>
+        (i, Anomaly(Some(anomDataPoint.dataMetricValue), anomDataPoint.confidence, anomDataPoint.detail))
+      }
+  }
+
+  /**
+   * Search for anomalies in a series of data points, returns extended results.
+   *
+   * @param dataSeries     The data contained in a Vector of Doubles.
+   * @param searchInterval The indices between which anomalies should be detected. [a, b).
+   * @return The indices of all anomalies in the interval and their corresponding wrapper object
+   *         with extended results.
+   */
+  override def detectWithExtendedResults(
     dataSeries: Vector[Double],
-    searchInterval: (Int, Int)): Seq[(Int, Anomaly)] = {
+    searchInterval: (Int, Int)): Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     val (searchStart, searchEnd) = searchInterval
 
-    require (searchStart <= searchEnd, "The start of the interval can't be larger than the end.")
+    require(searchStart <= searchEnd, "The start of the interval can't be larger than the end.")
 
     dataSeries.zipWithIndex
       .slice(searchStart, searchEnd)
       .filter { case (value, _) => value < lowerBound || value > upperBound }
       .map { case (value, index) =>
 
-        val detail = Some(s"[SimpleThresholdStrategy]: Value $value is not in " +
-          s"bounds [$lowerBound, $upperBound]")
+        val (detail, isAnomaly) = if (value < lowerBound || value > upperBound) {
+          (Some(s"[SimpleThresholdStrategy]: Value $value is not in " +
+            s"bounds [$lowerBound, $upperBound]"), true)
+        } else {
+          (None, false)
+        }
 
-        (index, Anomaly(Option(value), 1.0, detail))
+        (index, AnomalyDetectionDataPoint(value, value,
+          Threshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)),
+          isAnomaly, 1.0, detail))
       }
   }
 }

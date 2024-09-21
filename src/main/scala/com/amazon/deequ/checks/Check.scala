@@ -25,10 +25,7 @@ import com.amazon.deequ.analyzers.Histogram
 import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.analyzers.Patterns
 import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.anomalydetection.HistoryUtils
-import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
-import com.amazon.deequ.anomalydetection.AnomalyDetector
-import com.amazon.deequ.anomalydetection.DataPoint
+import com.amazon.deequ.anomalydetection.{AnomalyDetectionAssertionResult, AnomalyDetectionExtendedResult, ExtendedDetectionResult, AnomalyDetectionStrategy, AnomalyDetectionStrategyWithExtendedResults, AnomalyDetector, AnomalyDetectorWithExtendedResults, DataPoint, HistoryUtils}
 import com.amazon.deequ.checks.ColumnCondition.isAnyNotNull
 import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
@@ -511,6 +508,44 @@ case class Check(
     )(_)
 
     addConstraint(anomalyConstraint(analyzer, anomalyAssertionFunction, hint))
+  }
+
+  /**
+   * Creates a constraint that runs AnomalyDetection with extended results on the new value.
+   *
+   * @param metricsRepository        A metrics repository to get the previous results.
+   * @param anomalyDetectionStrategyWithExtendedResults The anomaly detection strategy with extended results.
+   * @param analyzer                 The analyzer for the metric to run anomaly detection on.
+   * @param withTagValues            Can contain a Map with tag names and the corresponding values
+   *                                 to filter for.
+   * @param beforeDate               The maximum dateTime of previous AnalysisResults to use for
+   *                                 the Anomaly Detection.
+   * @param afterDate                The minimum dateTime of previous AnalysisResults to use for
+   *                                 the Anomaly Detection.
+   * @param hint                     A hint to provide additional context why a constraint
+   *                                 could have failed.
+   * @return
+   */
+  private[deequ] def isNewestPointNonAnomalousWithExtendedResults[S <: State[S]](
+      metricsRepository: MetricsRepository,
+      anomalyDetectionStrategyWithExtendedResults: AnomalyDetectionStrategyWithExtendedResults,
+      analyzer: Analyzer[S, Metric[Double]],
+      withTagValues: Map[String, String],
+      afterDate: Option[Long],
+      beforeDate: Option[Long],
+      hint: Option[String] = None)
+  : Check = {
+
+    val anomalyAssertionFunction = Check.isNewestPointNonAnomalousWithExtendedResults(
+      metricsRepository,
+      anomalyDetectionStrategyWithExtendedResults,
+      analyzer,
+      withTagValues,
+      afterDate,
+      beforeDate
+    )(_)
+
+    addConstraint(anomalyConstraintWithExtendedResults(analyzer, anomalyAssertionFunction, hint))
   }
 
 
@@ -1159,6 +1194,7 @@ case class Check(
       }
       .collect {
         case constraint: AnalysisBasedConstraint[_, _, _] => constraint.analyzer
+        case constraint: AnomalyExtendedResultsConstraint[_, _, _] => constraint.analyzer
       }
       .map { _.asInstanceOf[Analyzer[_, Metric[_]]] }
       .toSet
@@ -1250,5 +1286,118 @@ object Check {
       DataPoint(testDateTime, Some(currentMetricValue)))
 
     detectedAnomalies.anomalies.isEmpty
+  }
+
+
+  /**
+   * Common assertion function checking if the value can be considered as normal (that no
+   * anomalies were detected), given the anomaly detection strategy with extended results
+   * and details on how to retrieve the history.
+   * This assertion function returns an AnomalyDetectionAssertionResult which contains
+   * anomaly detection extended results.
+   *
+   * @param metricsRepository        A metrics repository to get the previous results.
+   * @param anomalyDetectionStrategyWithExtendedResults The anomaly detection strategy with extended results.
+   * @param analyzer                 The analyzer for the metric to run anomaly detection on.
+   * @param withTagValues            Can contain a Map with tag names and the corresponding values
+   *                                 to filter for.
+   * @param beforeDate               The maximum dateTime of previous AnalysisResults to use for
+   *                                 the Anomaly Detection.
+   * @param afterDate                The minimum dateTime of previous AnalysisResults to use for
+   *                                 the Anomaly Detection.
+   * @param currentMetricValue       current metric value.
+   * @return The AnomalyDetectionAssertionResult with the boolean if the newest data point is anomalous
+   *         along with the AnomalyDetectionExtendedResult object which contains the
+   *         anomaly detection extended result details.
+   */
+  private[deequ] def isNewestPointNonAnomalousWithExtendedResults[S <: State[S]](
+      metricsRepository: MetricsRepository,
+      anomalyDetectionStrategyWithExtendedResults: AnomalyDetectionStrategyWithExtendedResults,
+      analyzer: Analyzer[S, Metric[Double]],
+      withTagValues: Map[String, String],
+      afterDate: Option[Long],
+      beforeDate: Option[Long])(
+      currentMetricValue: Double)
+  : AnomalyDetectionAssertionResult = {
+
+    // Get history keys
+    var repositoryLoader = metricsRepository.load()
+
+    repositoryLoader = repositoryLoader.withTagValues(withTagValues)
+
+    beforeDate.foreach { beforeDate =>
+      repositoryLoader = repositoryLoader.before(beforeDate)
+    }
+
+    afterDate.foreach { afterDate =>
+      repositoryLoader = repositoryLoader.after(afterDate)
+    }
+
+    repositoryLoader = repositoryLoader.forAnalyzers(Seq(analyzer))
+
+    val analysisResults = repositoryLoader.get()
+
+    require(analysisResults.nonEmpty, "There have to be previous results in the MetricsRepository!")
+
+    val historicalMetrics = analysisResults
+      // If we have multiple DataPoints with the same dateTime, which should not happen in most
+      // cases, we still want consistent behaviour, so we sort them by Tags first
+      // (sorting is stable in Scala)
+      .sortBy(_.resultKey.tags.values)
+      .map { analysisResult =>
+        val analyzerContextMetricMap = analysisResult.analyzerContext.metricMap
+
+        val onlyAnalyzerMetricEntryInLoadedAnalyzerContext = analyzerContextMetricMap.headOption
+
+        val doubleMetricOption = onlyAnalyzerMetricEntryInLoadedAnalyzerContext
+          .collect { case (_, metric) => metric.asInstanceOf[Metric[Double]] }
+
+        val dataSetDate = analysisResult.resultKey.dataSetDate
+
+        (dataSetDate, doubleMetricOption)
+      }
+
+    // Ensure this is the last dataPoint
+    val testDateTime = analysisResults.map(_.resultKey.dataSetDate).max + 1
+    require(testDateTime != Long.MaxValue, "Test DateTime cannot be Long.MaxValue, otherwise the" +
+      "Anomaly Detection, which works with an open upper interval bound, won't test anything")
+
+    // Run given anomaly detection strategy and return false if the newest value is an Anomaly
+    val anomalyDetector = AnomalyDetectorWithExtendedResults(anomalyDetectionStrategyWithExtendedResults)
+    val anomalyDetectionResult: ExtendedDetectionResult = anomalyDetector.isNewPointAnomalousWithExtendedResults(
+      HistoryUtils.extractMetricValues[Double](historicalMetrics),
+      DataPoint(testDateTime, Some(currentMetricValue)))
+
+
+    // this function checks if the newest point is anomalous and returns a boolean for assertion,
+    // along with that newest point with anomaly check details
+    getNewestPointAnomalyResults(anomalyDetectionResult)
+  }
+
+  /**
+   * Takes in ExtendedDetectionResult and returns AnomalyDetectionAssertionResult
+   * @param extendedDetectionResult Contains sequence of AnomalyDetectionDataPoints
+   * @return The AnomalyDetectionAssertionResult with the boolean if the newest data point is anomalous
+   *         and the AnomalyDetectionExtendedResult containing the newest data point
+   *         wrapped in the AnomalyDetectionDataPoint class
+   */
+  private[deequ] def getNewestPointAnomalyResults(extendedDetectionResult: ExtendedDetectionResult):
+  AnomalyDetectionAssertionResult = {
+    val (hasNoAnomaly, anomalyDetectionExtendedResults): (Boolean, AnomalyDetectionExtendedResult) = {
+
+      // Based on upstream code, this anomaly detection data point sequence should never be empty
+      require(extendedDetectionResult.anomalyDetectionDataPointSequence != Nil,
+        "anomalyDetectionDataPoints from AnomalyDetectionExtendedResult cannot be empty")
+
+      // get the last anomaly detection data point of sequence (there should only be one element for now)
+      // and check the isAnomaly boolean, also return the last anomaly detection data point
+      // wrapped in the anomaly detection extended result class
+      extendedDetectionResult.anomalyDetectionDataPointSequence match {
+        case _ :+ lastAnomalyDataPointPair =>
+          (!lastAnomalyDataPointPair._2.isAnomaly, AnomalyDetectionExtendedResult(Seq(lastAnomalyDataPointPair._2)))
+      }
+    }
+    AnomalyDetectionAssertionResult(
+      hasNoAnomaly = hasNoAnomaly, anomalyDetectionExtendedResult = anomalyDetectionExtendedResults)
   }
 }

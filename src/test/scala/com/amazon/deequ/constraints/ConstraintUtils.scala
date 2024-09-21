@@ -21,12 +21,15 @@ import org.apache.spark.sql.DataFrame
 object ConstraintUtils {
 
   def calculate(constraint: Constraint, df: DataFrame): ConstraintResult = {
-
-    val analysisBasedConstraint = constraint match {
-        case nc: ConstraintDecorator => nc.inner
-        case c: Constraint => c
+    val finalConstraint = constraint match {
+      case nc: ConstraintDecorator => nc.inner
+      case c: Constraint => c
     }
-
-    analysisBasedConstraint.asInstanceOf[AnalysisBasedConstraint[_, _, _]].calculateAndEvaluate(df)
+    finalConstraint match {
+      case _: AnalysisBasedConstraint[_, _, _] =>
+        finalConstraint.asInstanceOf[AnalysisBasedConstraint[_, _, _]].calculateAndEvaluate(df)
+      case _: AnomalyExtendedResultsConstraint[_, _, _] =>
+        finalConstraint.asInstanceOf[AnomalyExtendedResultsConstraint[_, _, _]].calculateAndEvaluate(df)
+    }
   }
 }
