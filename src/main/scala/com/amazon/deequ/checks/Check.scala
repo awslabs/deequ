@@ -990,7 +990,7 @@ case class Check(
     satisfies(
       // coalescing column to not count NULL values as non-compliant
       // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
-      s"COALESCE(CAST($column AS DECIMAL(20,10)), 0.0) >= 0",
+      s"COALESCE(CAST('$column' AS DECIMAL(20,10)), 0.0) >= 0",
       s"$column is non-negative",
       assertion,
       hint = hint,
@@ -1014,7 +1014,7 @@ case class Check(
     // coalescing column to not count NULL values as non-compliant
     // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
     satisfies(
-      s"COALESCE(CAST($column AS DECIMAL(20,10)), 1.0) > 0",
+      s"COALESCE(CAST('$column' AS DECIMAL(20,10)), 1.0) > 0",
       s"$column is positive",
       assertion,
       hint,
