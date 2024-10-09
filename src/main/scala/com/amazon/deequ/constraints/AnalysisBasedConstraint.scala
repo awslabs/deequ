@@ -39,8 +39,8 @@ import scala.util.{Failure, Success, Try}
   * @tparam V : Type of the value being used in assertion function
   *
   */
-private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
-                          analyzer: Analyzer[S, Metric[M]],
+private[deequ] case class AnalysisBasedConstraint[M, V](
+                          analyzer: Analyzer[_ <: State[_], Metric[M]],
                           private[deequ] val assertion: V => Boolean,
                           private[deequ] val valuePicker: Option[M => V] = None,
                           private[deequ] val hint: Option[String] = None)

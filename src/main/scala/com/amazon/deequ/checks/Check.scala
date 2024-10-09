@@ -470,7 +470,7 @@ case class Check(
                        matchColumnMappings: Option[Map[String, String]] = None,
                        hint: Option[String] = None): Check = {
     val dataMatchAnalyzer = DatasetMatchAnalyzer(otherDataset, keyColumnMappings, assertion, matchColumnMappings)
-    val constraint = AnalysisBasedConstraint[DatasetMatchState, Double, Double](dataMatchAnalyzer, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](dataMatchAnalyzer, assertion,
       hint = hint)
     addConstraint(constraint)
   }
@@ -563,10 +563,10 @@ case class Check(
     *                                 could have failed
     * @return
     */
-  private[deequ] def isNewestPointNonAnomalous[S <: State[S]](
+  private[deequ] def isNewestPointNonAnomalous(
       metricsRepository: MetricsRepository,
       anomalyDetectionStrategy: AnomalyDetectionStrategy,
-      analyzer: Analyzer[S, Metric[Double]],
+      analyzer: Analyzer[_ <: State[_], Metric[Double]],
       withTagValues: Map[String, String],
       afterDate: Option[Long],
       beforeDate: Option[Long],
@@ -1262,7 +1262,7 @@ case class Check(
         case c: Constraint => c
       }
       .collect {
-        case constraint: AnalysisBasedConstraint[_, _, _] => constraint.analyzer
+        case constraint: AnalysisBasedConstraint[_, _] => constraint.analyzer
       }
       .map { _.asInstanceOf[Analyzer[_, Metric[_]]] }
       .toSet
@@ -1297,10 +1297,10 @@ object Check {
     * @param currentMetricValue       current metric value
     * @return
     */
-  private[deequ] def isNewestPointNonAnomalous[S <: State[S]](
+  private[deequ] def isNewestPointNonAnomalous(
       metricsRepository: MetricsRepository,
       anomalyDetectionStrategy: AnomalyDetectionStrategy,
-      analyzer: Analyzer[S, Metric[Double]],
+      analyzer: Analyzer[_ <: State[_], Metric[Double]],
       withTagValues: Map[String, String],
       afterDate: Option[Long],
       beforeDate: Option[Long])(
