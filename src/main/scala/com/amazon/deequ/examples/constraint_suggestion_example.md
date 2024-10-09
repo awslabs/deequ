@@ -43,6 +43,17 @@ val suggestionResult = ConstraintSuggestionRunner()
   .run()
 ```
 
+Alternatively, we also support customizing and adding individual constraint rule using `addConstraintRule()`
+```scala
+val suggestionResult = ConstraintSuggestionRunner()
+  .onData(data)
+  
+  .addConstraintRule(
+    RetainCompletenessRule(intervalStrategy = WilsonScoreIntervalStrategy())
+  )
+  .run()
+```
+
 We can now investigate the constraints that deequ suggested. We get a textual description and the corresponding scala code for each suggested constraint. Note that the constraint suggestion is based on heuristic rules and assumes that the data it is shown is 'static' and correct, which might often not be the case in the real world. Therefore the suggestions should always be manually reviewed before being applied in real deployments.
 ```scala
 suggestionResult.constraintSuggestions.foreach { case (column, suggestions) =>
@@ -92,3 +103,5 @@ The corresponding scala code is .isContainedIn("status", Array("DELAYED", "UNKNO
 Currently, we leave it up to the user to decide whether they want to apply the suggested constraints or not, and provide the corresponding Scala code for convenience. For larger datasets, it makes sense to evaluate the suggested constraints on some held-out portion of the data to see whether they hold or not. You can test this by adding an invocation of `.useTrainTestSplitWithTestsetRatio(0.1)` to the `ConstraintSuggestionRunner`. With this configuration, it would compute constraint suggestions on 90% of the data and evaluate the suggested constraints on the remaining 10%.
 
 Finally, we would also like to note that the constraint suggestion code provides access to the underlying [column profiles](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/data_profiling_example.md) that it computed via `suggestionResult.columnProfiles`.
+
+An [executable and extended version of this example](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/.scala) is part of our code base.
