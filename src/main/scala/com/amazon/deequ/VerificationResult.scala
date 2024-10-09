@@ -31,7 +31,7 @@ import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, monotonically_increasing_id}
+import org.apache.spark.sql.functions.monotonically_increasing_id
 
 import java.util.UUID
 
@@ -96,10 +96,9 @@ object VerificationResult {
       data: DataFrame): DataFrame = {
 
     val columnNamesToMetrics: Map[String, Column] = verificationResultToColumn(verificationResult)
-    val columnsAliased = columnNamesToMetrics.toSeq.map { case (name, col) => col.as(name) }
 
     val dataWithID = data.withColumn(UNIQUENESS_ID, monotonically_increasing_id())
-    dataWithID.select(col("*") +: columnsAliased: _*).drop(UNIQUENESS_ID)
+    dataWithID.withColumns(columnNamesToMetrics).drop(UNIQUENESS_ID)
   }
 
   def checkResultsAsJson(verificationResult: VerificationResult,
