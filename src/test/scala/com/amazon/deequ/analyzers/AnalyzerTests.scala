@@ -22,6 +22,8 @@ import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.Entity
+import com.amazon.deequ.repository.ResultKey
+import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.AssertionUtils.TryUtils
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
@@ -527,6 +529,22 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val df = getDfWithLocalDateAndInstant(sparkSession)
       val actualDistribution = DateTimeDistribution("dateOfBirth", DistributionInterval.DAILY).calculate(df).value
       actualDistribution shouldBe Success(
+        distributionFrom(
+          (Instant.parse("2021-11-11T00:00:00Z"), Instant.parse("2021-11-11T23:59:59.999Z"), DistributionValue(3, 0.6)),
+          (Instant.parse("2019-04-11T00:00:00Z"), Instant.parse("2019-04-11T23:59:59.999Z"), DistributionValue(2, 0.4))
+        )
+      )
+    }
+
+    "datetimeDistribution analyzer with VerificationSuite" in withSparkSessionJava8APIEnabled { sparkSession =>
+      val df = getDfWithLocalDateAndInstant(sparkSession)
+      val repository = new InMemoryMetricsRepository
+      val resultKey = ResultKey(0, Map.empty)
+      VerificationSuite().onData(df).useRepository(repository)
+        .addRequiredAnalyzer(DateTimeDistribution("dateOfBirth", DistributionInterval.DAILY))
+        .saveOrAppendResult(resultKey).run()
+      val metric = repository.loadByKey(resultKey).get.allMetrics.head
+      metric.value shouldBe Success(
         distributionFrom(
           (Instant.parse("2021-11-11T00:00:00Z"), Instant.parse("2021-11-11T23:59:59.999Z"), DistributionValue(3, 0.6)),
           (Instant.parse("2019-04-11T00:00:00Z"), Instant.parse("2019-04-11T23:59:59.999Z"), DistributionValue(2, 0.4))
