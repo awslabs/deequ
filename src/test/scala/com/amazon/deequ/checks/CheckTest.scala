@@ -1,5 +1,5 @@
 /**
-  * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the "License"). You may not
   * use this file except in compliance with the License. A copy of the License
@@ -18,22 +18,35 @@ package com.amazon.deequ
 package checks
 
 import com.amazon.deequ.analyzers._
-import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
-import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionAssertionResult, AnomalyDetectionDataPoint, AnomalyDetectionStrategy, AnomalyDetectionStrategyWithExtendedResults, ExtendedDetectionResult}
+import com.amazon.deequ.analyzers.runners.AnalysisRunner
+import com.amazon.deequ.analyzers.runners.AnalyzerContext
+import com.amazon.deequ.anomalydetection.Anomaly
+import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategyWithExtendedResults
+import com.amazon.deequ.anomalydetection.ExtendedDetectionResult
 import com.amazon.deequ.checks.Check.getNewestPointAnomalyResults
-import com.amazon.deequ.constraints.{ConstrainableDataTypes, ConstraintStatus}
-import com.amazon.deequ.metrics.{DoubleMetric, Entity}
+import com.amazon.deequ.constraints.ConstrainableDataTypes
+import com.amazon.deequ.constraints.ConstraintStatus
+import com.amazon.deequ.metrics.DoubleMetric
+import com.amazon.deequ.metrics.Entity
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
-import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.repository.MetricsRepository
+import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.utils.FixtureSupport
-import org.apache.spark.sql.functions.{col, when}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import scala.util.{Success, Try}
+import scala.util.Success
+import scala.util.Try
 
 class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport
   with MockFactory {
@@ -1349,10 +1362,16 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
 
       val check = Check(CheckLevel.Error, "must have data in sync")
-        .isDataSynchronized(dfInformative, colMapAtt1, _ > 0.9, Some("show be in sync"))
+        .doesDatasetMatch(dfInformative, colMapAtt1, _ > 0.9, hint = Some("show be in sync"))
       val context = runChecks(dfInformative, check)
 
       assertSuccess(check, context)
+
+      val check2 = Check(CheckLevel.Error, "must have data in sync")
+        .doesDatasetMatch(dfInformative, colMapAtt1, _ > 0.9, Some(colMapAtt1), Some("show be in sync with match col"))
+      val context2 = runChecks(dfInformative, check2)
+
+      assertSuccess(check2, context2)
     }
 
     "yield failure when column doesnt exist in data sync test for 1 col" in withSparkSession { sparkSession =>
@@ -1360,10 +1379,11 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformativeRenamed = dfInformative.withColumnRenamed("att1", "att1_renamed")
 
       val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-        .isDataSynchronized(dfInformativeRenamed, colMapAtt1, _ > 0.9, Some("must fail as columns does not exist"))
+        .doesDatasetMatch(dfInformativeRenamed, colMapAtt1, _ > 0.9,
+          hint = Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
-      println(context)
+
     }
 
     "yield failure when row count varies in data sync test for 1 col" in withSparkSession { sparkSession =>
@@ -1371,7 +1391,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformativeFiltered = dfInformative.filter("att1 > 2")
 
       val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-        .isDataSynchronized(dfInformativeFiltered, colMapAtt1, _ > 0.9, Some("must fail as columns does not exist"))
+        .doesDatasetMatch(dfInformativeFiltered, colMapAtt1, _ > 0.9,
+          hint = Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
     }
@@ -1382,7 +1403,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must fail as rows mismatches")
-        .isDataSynchronized(modifiedDf, colMapAtt1, _ > 0.9, Some("must fail as rows mismatches"))
+        .doesDatasetMatch(modifiedDf, colMapAtt1, _ > 0.9, hint = Some("must fail as rows mismatches"))
       val context = runChecks(df, check)
       assertEvaluatesTo(check, context, CheckStatus.Error)
 
@@ -1394,8 +1415,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must be success as rows count mismatches at assertion 0.6")
-        .isDataSynchronized(modifiedDf, colMapAtt1, _ > 0.6,
-          Some("must be success as rows count mismatches at assertion 0.6"))
+        .doesDatasetMatch(modifiedDf, colMapAtt1, _ > 0.6,
+          hint = Some("must be success as rows count mismatches at assertion 0.6"))
       val context = runChecks(df, check)
       assertSuccess(check, context)
     }
@@ -1405,11 +1426,22 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
 
       val check = Check(CheckLevel.Error, "must have data in sync")
-        .isDataSynchronized(dfInformative, colMapTwoCols, _ > 0.9, Some("show be in sync"))
+        .doesDatasetMatch(dfInformative, colMapTwoCols, _ > 0.9, hint = Some("show be in sync"))
       val context = runChecks(dfInformative, check)
 
       assertSuccess(check, context)
     }
+
+    "yield success for basic data sync test for multiple columns and one col match" in
+      withSparkSession { sparkSession =>
+        val dfInformative = getDfWithConditionallyInformativeColumns(sparkSession)
+
+        val check = Check(CheckLevel.Error, "must have data in sync")
+          .doesDatasetMatch(dfInformative, colMapTwoCols, _ > 0.9, Some(colMapAtt1), hint = Some("show be in sync"))
+        val context = runChecks(dfInformative, check)
+
+        assertSuccess(check, context)
+      }
 
     "yield failure when column doesnt exist in data sync test for multiple columns" in withSparkSession {
       sparkSession =>
@@ -1417,7 +1449,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val dfInformativeRenamed = dfInformative.withColumnRenamed("att1", "att1_renamed")
 
         val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-          .isDataSynchronized(dfInformativeRenamed, colMapTwoCols, _ > 0.9, Some("must fail as columns does not exist"))
+          .doesDatasetMatch(dfInformativeRenamed, colMapTwoCols, _ > 0.9,
+            hint = Some("must fail as columns does not exist"))
         val context = runChecks(dfInformative, check)
 
         assertEvaluatesTo(check, context, CheckStatus.Error)
@@ -1428,7 +1461,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfInformativeFiltered = dfInformative.filter("att1 > 2")
 
       val check = Check(CheckLevel.Error, "must fail as columns does not exist")
-        .isDataSynchronized(dfInformativeFiltered, colMapTwoCols, _ > 0.9, Some("must fail as columns does not exist"))
+        .doesDatasetMatch(dfInformativeFiltered, colMapTwoCols, _ > 0.9,
+          hint = Some("must fail as columns does not exist"))
       val context = runChecks(dfInformative, check)
 
       assertEvaluatesTo(check, context, CheckStatus.Error)
@@ -1440,7 +1474,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must fail as rows mismatches")
-        .isDataSynchronized(modifiedDf, colMapTwoCols, _ > 0.9, Some("must fail as rows mismatches"))
+        .doesDatasetMatch(modifiedDf, colMapTwoCols, _ > 0.9, hint = Some("must fail as rows mismatches"))
       val context = runChecks(df, check)
 
       assertEvaluatesTo(check, context, CheckStatus.Error)
@@ -1453,8 +1487,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .otherwise(col("att1")))
 
       val check = Check(CheckLevel.Error, "must be success as metric value is 0.66")
-        .isDataSynchronized(modifiedDf, colMapTwoCols, _ > 0.6,
-          Some("must be success as metric value is 0.66"))
+        .doesDatasetMatch(modifiedDf, colMapTwoCols, _ > 0.6,
+          hint = Some("must be success as metric value is 0.66"))
       val context = runChecks(df, check)
 
       assertSuccess(check, context)

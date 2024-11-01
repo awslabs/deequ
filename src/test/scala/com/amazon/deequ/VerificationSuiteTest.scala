@@ -1,5 +1,5 @@
 /**
-  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the "License"). You may not
   * use this file except in compliance with the License. A copy of the License
@@ -35,6 +35,7 @@ import com.amazon.deequ.utils.TempFileUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.when
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers
@@ -943,7 +944,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .hasCompleteness("fake", x => x > 0)
 
         val checkHasDataInSyncTest = Check(CheckLevel.Error, "shouldSucceedForAge")
-          .isDataSynchronized(df, Map("age" -> "age"), _ > 0.99, Some("shouldPass"))
+          .doesDatasetMatch(df, Map("age" -> "age"), _ > 0.99, hint = Some("shouldPass"))
 
         val verificationResult = VerificationSuite()
           .onData(df)
@@ -1125,30 +1126,30 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val dfColRenamed = df.withColumnRenamed("id", "id_renamed")
 
         val dataSyncCheckPass = Check(CheckLevel.Error, "data synchronization check pass")
-          .isDataSynchronized(dfModified, Map("id" -> "id"), _ > 0.7, Some("shouldPass"))
+          .doesDatasetMatch(dfModified, Map("id" -> "id"), _ > 0.7, hint = Some("shouldPass"))
 
         val dataSyncCheckFail = Check(CheckLevel.Error, "data synchronization check fail")
-          .isDataSynchronized(dfModified, Map("id" -> "id"), _ > 0.9, Some("shouldFail"))
+          .doesDatasetMatch(dfModified, Map("id" -> "id"), _ > 0.9, hint = Some("shouldFail"))
 
         val emptyDf = sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], df.schema)
         val dataSyncCheckEmpty = Check(CheckLevel.Error, "data synchronization check on empty DataFrame")
-          .isDataSynchronized(emptyDf, Map("id" -> "id"), _ < 0.5)
+          .doesDatasetMatch(emptyDf, Map("id" -> "id"), _ < 0.5)
 
         val dataSyncCheckColMismatchDestination =
           Check(CheckLevel.Error, "data synchronization check col mismatch in destination")
-            .isDataSynchronized(dfModified, Map("id" -> "id2"), _ < 0.5)
+            .doesDatasetMatch(dfModified, Map("id" -> "id2"), _ < 0.5)
 
         val dataSyncCheckColMismatchSource =
           Check(CheckLevel.Error, "data synchronization check col mismatch in source")
-            .isDataSynchronized(dfModified, Map("id2" -> "id"), _ < 0.5)
+            .doesDatasetMatch(dfModified, Map("id2" -> "id"), _ < 0.5)
 
         val dataSyncCheckColRenamed =
           Check(CheckLevel.Error, "data synchronization check col names renamed")
-            .isDataSynchronized(dfColRenamed, Map("id" -> "id_renamed"), _ == 1.0)
+            .doesDatasetMatch(dfColRenamed, Map("id" -> "id_renamed"), _ == 1.0)
 
         val dataSyncFullMatch =
           Check(CheckLevel.Error, "data synchronization check full match")
-            .isDataSynchronized(df, Map("id" -> "id"), _ == 1.0)
+            .doesDatasetMatch(df, Map("id" -> "id"), _ == 1.0)
 
 
         val verificationResult = VerificationSuite()
@@ -1205,32 +1206,46 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         val dfColRenamed = df.withColumnRenamed("id", "id_renamed")
         val colMap = Map("id" -> "id", "product" -> "product")
 
+        // Additional DataFrames for testing matchColumnMappings
+        val dfWithAdditionalColumns = df.withColumn("newColumn", lit(1))
+
+        val matchColMap = Map("product" -> "product")
+        val dataSyncCheckWithMatchColumns = Check(CheckLevel.Error,
+          "data synchronization check with matchColumnMappings")
+          .doesDatasetMatch(df, colMap, _ > 0.7, Some(matchColMap),
+            hint = Some("Check with matchColumnMappings"))
+
+        val dataSyncCheckWithAdditionalCols = Check(CheckLevel.Error,
+          "data synchronization check with additional columns")
+          .doesDatasetMatch(dfWithAdditionalColumns, colMap, _ > 0.7, Some(matchColMap),
+            hint = Some("Check with additional columns and matchColumnMappings"))
+
         val dataSyncCheckPass = Check(CheckLevel.Error, "data synchronization check")
-          .isDataSynchronized(dfModified, colMap, _ > 0.7, Some("shouldPass"))
+          .doesDatasetMatch(dfModified, colMap, _ > 0.7, hint = Some("shouldPass"))
 
         val dataSyncCheckFail = Check(CheckLevel.Error, "data synchronization check")
-          .isDataSynchronized(dfModified, colMap, _ > 0.9, Some("shouldFail"))
+          .doesDatasetMatch(dfModified, colMap, _ > 0.9, hint = Some("shouldFail"))
 
         val emptyDf = sparkSession.createDataFrame(sparkSession.sparkContext.emptyRDD[Row], df.schema)
         val dataSyncCheckEmpty = Check(CheckLevel.Error, "data synchronization check on empty DataFrame")
-          .isDataSynchronized(emptyDf, colMap, _ < 0.5)
+          .doesDatasetMatch(emptyDf, colMap, _ < 0.5)
 
         val dataSyncCheckColMismatchDestination =
           Check(CheckLevel.Error, "data synchronization check col mismatch in destination")
-            .isDataSynchronized(dfModified, colMap, _ > 0.9)
+            .doesDatasetMatch(dfModified, colMap, _ > 0.9)
 
         val dataSyncCheckColMismatchSource =
           Check(CheckLevel.Error, "data synchronization check col mismatch in source")
-            .isDataSynchronized(dfModified, Map("id2" -> "id", "product" -> "product"), _ < 0.5)
+            .doesDatasetMatch(dfModified, Map("id2" -> "id", "product" -> "product"), _ < 0.5)
 
         val dataSyncCheckColRenamed =
           Check(CheckLevel.Error, "data synchronization check col names renamed")
-            .isDataSynchronized(dfColRenamed, Map("id" -> "id_renamed", "product" -> "product"), _ == 1.0,
-              Some("shouldPass"))
+            .doesDatasetMatch(dfColRenamed, Map("id" -> "id_renamed", "product" -> "product"), _ == 1.0,
+              hint = Some("shouldPass"))
 
         val dataSyncFullMatch =
           Check(CheckLevel.Error, "data synchronization check col full match")
-            .isDataSynchronized(df, colMap, _ == 1, Some("shouldPass"))
+            .doesDatasetMatch(df, colMap, _ == 1, hint = Some("shouldPass"))
 
 
         val verificationResult = VerificationSuite()
@@ -1242,6 +1257,8 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           .addCheck(dataSyncCheckColMismatchSource)
           .addCheck(dataSyncCheckColRenamed)
           .addCheck(dataSyncFullMatch)
+          .addCheck(dataSyncCheckWithMatchColumns)
+          .addCheck(dataSyncCheckWithAdditionalCols)
           .run()
 
         val passResult = verificationResult.checkResults(dataSyncCheckPass)
@@ -1278,6 +1295,17 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
         fullMatchResult.constraintResults.map(_.message) shouldBe
           List(None)
         assert(fullMatchResult.status == CheckStatus.Success)
+
+        // Assertions for the new checks
+        val matchColumnsResult = verificationResult.checkResults(dataSyncCheckWithMatchColumns)
+        matchColumnsResult.constraintResults.map(_.message) shouldBe
+          List(None) // or any expected result
+        assert(matchColumnsResult.status == CheckStatus.Success) // or expected status
+
+        val additionalColsResult = verificationResult.checkResults(dataSyncCheckWithAdditionalCols)
+        additionalColsResult.constraintResults.map(_.message) shouldBe
+          List(None) // or any expected result
+        assert(additionalColsResult.status == CheckStatus.Success) // or expected status
 
     }
   }

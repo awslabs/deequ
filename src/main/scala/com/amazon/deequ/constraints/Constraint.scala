@@ -938,17 +938,17 @@ object Constraint {
 }
 
 /**
- * Data Synchronization Constraint
+ * DatasetMatch Constraint
  * @param analyzer Data Synchronization Analyzer
  * @param hint hint
  */
-case class DataSynchronizationConstraint(analyzer: DataSynchronizationAnalyzer, hint: Option[String])
+case class DatasetMatchConstraint(analyzer: DatasetMatchAnalyzer, hint: Option[String])
   extends Constraint {
 
   override def evaluate(metrics: Map[Analyzer[_, Metric[_]], Metric[_]]): ConstraintResult = {
 
     metrics.collectFirst {
-      case (_: DataSynchronizationAnalyzer, metric: Metric[Double]) => metric
+      case (_: DatasetMatchAnalyzer, metric: Metric[Double]) => metric
     } match {
       case Some(metric) =>
         val result = metric.value match {
