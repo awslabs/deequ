@@ -23,7 +23,7 @@ import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 
 import scala.util.Success
-import scala.util.Success
+import scala.util.Failure
 
 /**
  * Case class for anomaly with extended results constraints that provides unified way to access
