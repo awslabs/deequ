@@ -20,7 +20,8 @@ import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.analyzers.Size
 import com.amazon.deequ.anomalydetection.RelativeRateOfChangeStrategy
 import com.amazon.deequ.checks.CheckStatus._
-import com.amazon.deequ.examples.ExampleUtils.{itemsAsDataframe, withSpark}
+import com.amazon.deequ.examples.ExampleUtils.itemsAsDataframe
+import com.amazon.deequ.examples.ExampleUtils.withSpark
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 
@@ -82,9 +83,9 @@ private[examples] object AnomalyDetectionWithExtendedResultsExample extends App 
     if (verificationResult.status != Success) {
       println("Anomaly detected in the Size() metric!")
       val anomalyDetectionDataPoint = verificationResult.checkResults.head._2.constraintResults.
-        head.anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoints.head
+        head.anomalyDetectionExtendedResultOption.get.anomalyDetectionDataPoint
       println(s"Rate of change of ${anomalyDetectionDataPoint.anomalyMetricValue} was not in " +
-        s"${anomalyDetectionDataPoint.anomalyThreshold}")
+        s"${anomalyDetectionDataPoint.anomalyCheckRange}")
 
       /* Lets have a look at the actual metrics. */
       metricsRepository

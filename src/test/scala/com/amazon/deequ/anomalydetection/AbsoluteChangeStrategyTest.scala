@@ -17,7 +17,8 @@
 package com.amazon.deequ.anomalydetection
 
 import breeze.linalg.DenseVector
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 
 class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
 
@@ -158,35 +159,35 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
 
     "detect all anomalies if no interval specified" in {
       val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
-      val expectedAnomalyThreshold = Threshold(Bound(-2.0), Bound(2.0))
+      val expectedAnomalyCheckRange = BoundedRange(Bound(-2.0, inclusive = true), Bound(2.0, inclusive = true))
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (20, AnomalyDetectionDataPoint(20, 19, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (21, AnomalyDetectionDataPoint(-21, -41, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (22, AnomalyDetectionDataPoint(22, 43, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (23, AnomalyDetectionDataPoint(-23, -45, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (24, AnomalyDetectionDataPoint(24, 47, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (25, AnomalyDetectionDataPoint(-25, -49, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (26, AnomalyDetectionDataPoint(26, 51, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (27, AnomalyDetectionDataPoint(-27, -53, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (28, AnomalyDetectionDataPoint(28, 55, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (29, AnomalyDetectionDataPoint(-29, -57, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (30, AnomalyDetectionDataPoint(30, 59, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (31, AnomalyDetectionDataPoint(1, -29, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (20, AnomalyDetectionDataPoint(20, 19, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (21, AnomalyDetectionDataPoint(-21, -41, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (22, AnomalyDetectionDataPoint(22, 43, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (23, AnomalyDetectionDataPoint(-23, -45, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (24, AnomalyDetectionDataPoint(24, 47, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (25, AnomalyDetectionDataPoint(-25, -49, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(26, 51, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(-27, -53, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(28, 55, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(-29, -57, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(30, 59, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (31, AnomalyDetectionDataPoint(1, -29, expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
 
     "only detect anomalies in interval" in {
       val anomalyResult = strategy.detectWithExtendedResults(data, (25, 50)).filter({case (_, anom) => anom.isAnomaly})
-      val expectedAnomalyThreshold = Threshold(Bound(-2.0), Bound(2.0))
+      val expectedAnomalyCheckRange = BoundedRange(Bound(-2.0, inclusive = true), Bound(2.0, inclusive = true))
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (25, AnomalyDetectionDataPoint(-25, -49, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (26, AnomalyDetectionDataPoint(26, 51, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (27, AnomalyDetectionDataPoint(-27, -53, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (28, AnomalyDetectionDataPoint(28, 55, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (29, AnomalyDetectionDataPoint(-29, -57, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (30, AnomalyDetectionDataPoint(30, 59, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (31, AnomalyDetectionDataPoint(1, -29, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (25, AnomalyDetectionDataPoint(-25, -49, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(26, 51, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(-27, -53, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(28, 55, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(-29, -57, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(30, 59, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (31, AnomalyDetectionDataPoint(1, -29, expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
@@ -194,15 +195,16 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
     "ignore min rate if none is given" in {
       val strategy = AbsoluteChangeStrategy(None, Some(1.0))
       val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
-      val expectedAnomalyThreshold = Threshold(upperBound = Bound(1.0))
+      val expectedAnomalyCheckRange = BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+        upperBound = Bound(1.0, inclusive = true))
       // Anomalies with positive values only
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (20, AnomalyDetectionDataPoint(20, 19, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (22, AnomalyDetectionDataPoint(22, 43, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (24, AnomalyDetectionDataPoint(24, 47, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (26, AnomalyDetectionDataPoint(26, 51, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (28, AnomalyDetectionDataPoint(28, 55, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (30, AnomalyDetectionDataPoint(30, 59, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (20, AnomalyDetectionDataPoint(20, 19, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (22, AnomalyDetectionDataPoint(22, 43, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (24, AnomalyDetectionDataPoint(24, 47, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(26, 51, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(28, 55, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(30, 59, expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
 
       assert(anomalyResult == expectedResult)
@@ -211,16 +213,17 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
     "ignore max rate if none is given" in {
       val strategy = AbsoluteChangeStrategy(Some(-1.0), None)
       val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
-      val expectedAnomalyThreshold = Threshold(lowerBound = Bound(-1.0))
+      val expectedAnomalyCheckRange = BoundedRange(lowerBound = Bound(-1.0, inclusive = true),
+        upperBound = Bound(Double.MaxValue, inclusive = true))
 
       // Anomalies with negative values only
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (21, AnomalyDetectionDataPoint(-21, -41, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (23, AnomalyDetectionDataPoint(-23, -45, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (25, AnomalyDetectionDataPoint(-25, -49, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (27, AnomalyDetectionDataPoint(-27, -53, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (29, AnomalyDetectionDataPoint(-29, -57, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (31, AnomalyDetectionDataPoint(1, -29, expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (21, AnomalyDetectionDataPoint(-21, -41, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (23, AnomalyDetectionDataPoint(-23, -45, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (25, AnomalyDetectionDataPoint(-25, -49, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(-27, -53, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(-29, -57, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (31, AnomalyDetectionDataPoint(1, -29, expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
@@ -239,8 +242,10 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
       val result = strategy.detectWithExtendedResults(data).filter({ case (_, anom) => anom.isAnomaly })
 
       val expectedResult = Seq(
-        (4, AnomalyDetectionDataPoint(18.0, 9.0, Threshold(upperBound = Bound(8.0)), isAnomaly = true, 1.0)),
-        (5, AnomalyDetectionDataPoint(72.0, 42.0, Threshold(upperBound = Bound(8.0)), isAnomaly = true, 1.0))
+        (4, AnomalyDetectionDataPoint(18.0, 9.0, BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+          upperBound = Bound(8.0, inclusive = true)), isAnomaly = true, 1.0)),
+        (5, AnomalyDetectionDataPoint(72.0, 42.0, BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+          upperBound = Bound(8.0, inclusive = true)), isAnomaly = true, 1.0))
       )
       assert(result == expectedResult)
     }
@@ -251,7 +256,8 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
       val result = strategy.detectWithExtendedResults(data, (5, 6)).filter({case (_, anom) => anom.isAnomaly})
 
       val expectedResult = Seq(
-        (5, AnomalyDetectionDataPoint(72.0, 42.0, Threshold(upperBound = Bound(8.0)), isAnomaly = true, 1.0))
+        (5, AnomalyDetectionDataPoint(72.0, 42.0, BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+          upperBound = Bound(8.0, inclusive = true)), isAnomaly = true, 1.0))
       )
       assert(result == expectedResult)
     }
@@ -261,8 +267,10 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
       val result = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
 
       val expectedResult = Seq(
-        (2, AnomalyDetectionDataPoint(4.0, 5.0, Threshold(Bound(-2.0), Bound(2.0)), isAnomaly = true, 1.0)),
-        (3, AnomalyDetectionDataPoint(-7.0, -11.0, Threshold(Bound(-2.0), Bound(2.0)), isAnomaly = true, 1.0))
+        (2, AnomalyDetectionDataPoint(4.0, 5.0, BoundedRange(Bound(-2.0, inclusive = true),
+          Bound(2.0, inclusive = true)), isAnomaly = true, 1.0)),
+        (3, AnomalyDetectionDataPoint(-7.0, -11.0, BoundedRange(Bound(-2.0, inclusive = true),
+          Bound(2.0, inclusive = true)), isAnomaly = true, 1.0))
       )
       assert(result == expectedResult)
     }
@@ -292,8 +300,8 @@ class AbsoluteChangeStrategyTest extends WordSpec with Matchers {
 
       result.foreach { case (_, anom) =>
         val value = anom.anomalyMetricValue
-        val upperBound = anom.anomalyThreshold.upperBound.value
-        val lowerBound = anom.anomalyThreshold.lowerBound.value
+        val upperBound = anom.anomalyCheckRange.upperBound.value
+        val lowerBound = anom.anomalyCheckRange.lowerBound.value
 
         assert(value < lowerBound || value > upperBound)
       }

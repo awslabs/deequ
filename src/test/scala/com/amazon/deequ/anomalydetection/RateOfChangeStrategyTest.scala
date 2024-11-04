@@ -16,7 +16,8 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 
 /**
  * The tested class RateOfChangeStrategy is deprecated.
@@ -44,7 +45,7 @@ class RateOfChangeStrategyTest extends WordSpec with Matchers {
     "detect all anomalies if no interval specified" in {
       val anomalyResult = strategy.detectWithExtendedResults(data).filter({case (_, anom) => anom.isAnomaly})
 
-      val expectedAnomalyThreshold = Threshold(Bound(-2.0), Bound(2.0))
+      val expectedAnomalyThreshold = BoundedRange(Bound(-2.0, inclusive = true), Bound(2.0, inclusive = true))
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
         (20, AnomalyDetectionDataPoint(20, 19, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
         (21, AnomalyDetectionDataPoint(-21, -41, expectedAnomalyThreshold, isAnomaly = true, 1.0)),

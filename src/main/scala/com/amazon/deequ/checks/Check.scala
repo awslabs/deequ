@@ -25,7 +25,15 @@ import com.amazon.deequ.analyzers.Histogram
 import com.amazon.deequ.analyzers.KLLParameters
 import com.amazon.deequ.analyzers.Patterns
 import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.anomalydetection.{AnomalyDetectionAssertionResult, AnomalyDetectionExtendedResult, ExtendedDetectionResult, AnomalyDetectionStrategy, AnomalyDetectionStrategyWithExtendedResults, AnomalyDetector, AnomalyDetectorWithExtendedResults, DataPoint, HistoryUtils}
+import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionExtendedResult
+import com.amazon.deequ.anomalydetection.ExtendedDetectionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategyWithExtendedResults
+import com.amazon.deequ.anomalydetection.AnomalyDetector
+import com.amazon.deequ.anomalydetection.AnomalyDetectorWithExtendedResults
+import com.amazon.deequ.anomalydetection.DataPoint
+import com.amazon.deequ.anomalydetection.HistoryUtils
 import com.amazon.deequ.checks.ColumnCondition.isAnyNotNull
 import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
@@ -1487,21 +1495,21 @@ object Check {
    */
   private[deequ] def getNewestPointAnomalyResults(extendedDetectionResult: ExtendedDetectionResult):
   AnomalyDetectionAssertionResult = {
-    val (hasNoAnomaly, anomalyDetectionExtendedResults): (Boolean, AnomalyDetectionExtendedResult) = {
+    val (hasAnomaly, anomalyDetectionExtendedResults): (Boolean, AnomalyDetectionExtendedResult) = {
 
-      // Based on upstream code, this anomaly detection data point sequence should never be empty
+      // Based on upstream code, this anomaly detection data point sequence should never be empty.
       require(extendedDetectionResult.anomalyDetectionDataPointSequence != Nil,
         "anomalyDetectionDataPoints from AnomalyDetectionExtendedResult cannot be empty")
 
-      // get the last anomaly detection data point of sequence (there should only be one element for now)
-      // and check the isAnomaly boolean, also return the last anomaly detection data point
-      // wrapped in the anomaly detection extended result class
+      // Get the last anomaly detection data point of sequence (there should only be one element for now).
+      // Check the isAnomaly boolean, also return the last anomaly detection data point
+      // wrapped in the anomaly detection extended result class.
       extendedDetectionResult.anomalyDetectionDataPointSequence match {
         case _ :+ lastAnomalyDataPointPair =>
-          (!lastAnomalyDataPointPair._2.isAnomaly, AnomalyDetectionExtendedResult(Seq(lastAnomalyDataPointPair._2)))
+          (lastAnomalyDataPointPair._2.isAnomaly, AnomalyDetectionExtendedResult(lastAnomalyDataPointPair._2))
       }
     }
     AnomalyDetectionAssertionResult(
-      hasNoAnomaly = hasNoAnomaly, anomalyDetectionExtendedResult = anomalyDetectionExtendedResults)
+      hasAnomaly = hasAnomaly, anomalyDetectionExtendedResult = anomalyDetectionExtendedResults)
   }
 }

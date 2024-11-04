@@ -16,12 +16,14 @@
 
 package com.amazon.deequ.constraints
 
-import com.amazon.deequ.analyzers.{Analyzer, State}
+import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 
-import scala.util.{Failure, Success}
+import scala.util.Success
+import scala.util.Success
 
 /**
  * Case class for anomaly with extended results constraints that provides unified way to access
@@ -76,7 +78,7 @@ private[deequ] case class AnomalyExtendedResultsConstraint[S <: State[S], M, V](
           val assertOn = runPickerOnMetric(metricValue)
           val anomalyAssertionResult = runAssertion(assertOn)
 
-          if (anomalyAssertionResult.hasNoAnomaly) {
+          if (!anomalyAssertionResult.hasAnomaly) {
             ConstraintResult(this, ConstraintStatus.Success, metric = Some(metric),
               anomalyDetectionExtendedResultOption = Some(anomalyAssertionResult.anomalyDetectionExtendedResult))
           } else {

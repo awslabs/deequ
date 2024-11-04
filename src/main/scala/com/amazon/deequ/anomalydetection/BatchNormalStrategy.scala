@@ -113,7 +113,8 @@ case class BatchNormalStrategy(
           (None, false)
         }
         (index, AnomalyDetectionDataPoint(value, value,
-          Threshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)), isAnomaly, 1.0, detail))
+          BoundedRange(lowerBound = Bound(lowerBound, inclusive = true),
+            upperBound = Bound(upperBound, inclusive = true)), isAnomaly, 1.0, detail))
       }
   }
 

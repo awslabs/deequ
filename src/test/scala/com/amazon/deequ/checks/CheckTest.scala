@@ -25,6 +25,8 @@ import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
 import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategyWithExtendedResults
+import com.amazon.deequ.anomalydetection.Bound
+import com.amazon.deequ.anomalydetection.BoundedRange
 import com.amazon.deequ.anomalydetection.ExtendedDetectionResult
 import com.amazon.deequ.checks.Check.getNewestPointAnomalyResults
 import com.amazon.deequ.constraints.ConstrainableDataTypes
@@ -52,6 +54,10 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
   with MockFactory {
 
   import CheckTest._
+
+  // This is used as a default bounded range value for anomaly detection tests.
+  private[this] val defaultBoundedRange = BoundedRange(lowerBound = Bound(0.0, inclusive = true),
+    upperBound = Bound(1.0, inclusive = true))
 
   "Check" should {
 
@@ -1177,38 +1183,38 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
             (fakeAnomalyDetector.detectWithExtendedResults _)
               .expects(Vector(1.0, 2.0, 3.0, 4.0, 11.0), (4, 5))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
-                (4, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (4, AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false))))
               .once()
             (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(1.0, 2.0, 3.0, 4.0, 4.0), (4, 5))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
-                (4, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (4, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))))
               .once()
             // Distinctness results
             (fakeAnomalyDetector.detectWithExtendedResults _)
               .expects(Vector(1.0, 2.0, 3.0, 4.0, 1), (4, 5))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
-                (4, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (4, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false))))
               .once()
             (fakeAnomalyDetector.detectWithExtendedResults _)
               .expects(Vector(1.0, 2.0, 3.0, 4.0, 1), (4, 5))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-                (3, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
-                (4, AnomalyDetectionDataPoint(1.0, 1.0, isAnomaly = true, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (3, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (4, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))))
               .once()
           }
 
@@ -1249,15 +1255,15 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
             (fakeAnomalyDetector.detectWithExtendedResults _)
               .expects(Vector(1.0, 2.0, 11.0), (2, 3))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false))))
               .once()
             (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(1.0, 2.0, 4.0), (2, 3))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))))
               .once()
           }
 
@@ -1289,15 +1295,15 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
             (fakeAnomalyDetector.detectWithExtendedResults _)
               .expects(Vector(3.0, 4.0, 11.0), (2, 3))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false))))
               .once()
             (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(3.0, 4.0, 4.0), (2, 3))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(4.0, 4.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))))
               .once()
           }
 
@@ -1329,15 +1335,15 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
             (fakeAnomalyDetector.detectWithExtendedResults _)
               .expects(Vector(1.0, 2.0, 11.0), (2, 3))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false))))
               .once()
             (fakeAnomalyDetector.detectWithExtendedResults _).expects(Vector(1.0, 2.0, 4.0), (2, 3))
               .returns(Seq(
-                (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-                (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-                (2, AnomalyDetectionDataPoint(4.0, 4.0, isAnomaly = true, confidence = 1.0))))
+                (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+                (2, AnomalyDetectionDataPoint(4.0, 4.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))))
               .once()
           }
 
@@ -1364,26 +1370,26 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
     "with multiple data points" in {
     val anomalySequence: Seq[(Long, AnomalyDetectionDataPoint)] =
       Seq(
-        (0, AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0)),
-        (1, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)),
-        (2, AnomalyDetectionDataPoint(11.0, 11.0, isAnomaly = true, confidence = 1.0)))
+        (0, AnomalyDetectionDataPoint(1.0, 1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+        (1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)),
+        (2, AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)))
     val result: AnomalyDetectionAssertionResult =
       getNewestPointAnomalyResults(ExtendedDetectionResult(anomalySequence))
-    assert(!result.hasNoAnomaly)
-    assert(result.anomalyDetectionExtendedResult.anomalyDetectionDataPoints.head ==
-      AnomalyDetectionDataPoint(11.0, 11.0, isAnomaly = true, confidence = 1.0))
+    assert(result.hasAnomaly)
+    assert(result.anomalyDetectionExtendedResult.anomalyDetectionDataPoint ==
+      AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))
   }
 
   "getNewestPointAnomalyResults returns correct assertion result from anomaly detection data point sequence " +
     "with one data point" in {
     val anomalySequence: Seq[(Long, AnomalyDetectionDataPoint)] =
       Seq(
-        (0, AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0)))
+        (0, AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false)))
     val result: AnomalyDetectionAssertionResult =
       getNewestPointAnomalyResults(ExtendedDetectionResult(anomalySequence))
-    assert(result.hasNoAnomaly)
-    assert(result.anomalyDetectionExtendedResult.anomalyDetectionDataPoints.head ==
-      AnomalyDetectionDataPoint(11.0, 11.0, confidence = 1.0))
+    assert(!result.hasAnomaly)
+    assert(result.anomalyDetectionExtendedResult.anomalyDetectionDataPoint ==
+      AnomalyDetectionDataPoint(11.0, 11.0, defaultBoundedRange, confidence = 1.0, isAnomaly = false))
   }
 
   "assert getNewestPointAnomalyResults throws exception from empty anomaly detection sequence" in {

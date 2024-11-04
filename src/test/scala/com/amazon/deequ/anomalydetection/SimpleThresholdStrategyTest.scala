@@ -16,7 +16,8 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 
 class SimpleThresholdStrategyTest extends WordSpec with Matchers {
 
@@ -73,10 +74,11 @@ class SimpleThresholdStrategyTest extends WordSpec with Matchers {
     "Simple Threshold Strategy with Extended Results" should {
 
       val (strategy, data) = setupDefaultStrategyAndData()
-      val expectedAnomalyThreshold = Threshold(upperBound = Bound(1.0))
+      val expectedAnomalyCheckRange = BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+        upperBound = Bound(1.0, inclusive = true))
       val expectedResult = Seq(
-        (1, AnomalyDetectionDataPoint(2.0, 2.0, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (2, AnomalyDetectionDataPoint(3.0, 3.0, expectedAnomalyThreshold, isAnomaly = true, 1.0)))
+        (1, AnomalyDetectionDataPoint(2.0, 2.0, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (2, AnomalyDetectionDataPoint(3.0, 3.0, expectedAnomalyCheckRange, isAnomaly = true, 1.0)))
 
       "detect values above threshold" in {
         val anomalyResult =
@@ -102,11 +104,11 @@ class SimpleThresholdStrategyTest extends WordSpec with Matchers {
       "work with upper and lower threshold" in {
         val tS = SimpleThresholdStrategy(lowerBound = -0.5, upperBound = 1.0)
         val anomalyResult = tS.detectWithExtendedResults(data).filter({ case (_, anom) => anom.isAnomaly })
-        val expectedAnomalyThreshold = Threshold(Bound(-0.5), Bound(1.0))
+        val expectedAnomalyCheckRange = BoundedRange(Bound(-0.5, inclusive = true), Bound(1.0, inclusive = true))
         val expectedResult = Seq(
-          (0, AnomalyDetectionDataPoint(-1.0, -1.0, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-          (1, AnomalyDetectionDataPoint(2.0, 2.0, expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-          (2, AnomalyDetectionDataPoint(3.0, 3.0, expectedAnomalyThreshold, isAnomaly = true, 1.0)))
+          (0, AnomalyDetectionDataPoint(-1.0, -1.0, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+          (1, AnomalyDetectionDataPoint(2.0, 2.0, expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+          (2, AnomalyDetectionDataPoint(3.0, 3.0, expectedAnomalyCheckRange, isAnomaly = true, 1.0)))
 
         assert(anomalyResult == expectedResult)
       }
@@ -128,8 +130,8 @@ class SimpleThresholdStrategyTest extends WordSpec with Matchers {
 
         result.foreach { case (_, anom) =>
           val value = anom.anomalyMetricValue
-          val upperBound = anom.anomalyThreshold.upperBound.value
-          val lowerBound = anom.anomalyThreshold.lowerBound.value
+          val upperBound = anom.anomalyCheckRange.upperBound.value
+          val lowerBound = anom.anomalyCheckRange.lowerBound.value
 
           assert(value < lowerBound || value > upperBound)
         }

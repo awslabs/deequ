@@ -173,8 +173,8 @@ case class OnlineNormalStrategy(
         val value = dataSeries(index)
 
         (index, AnomalyDetectionDataPoint(value, value,
-          Threshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)),
-          calcRes.isAnomaly, 1.0, detail))
+          BoundedRange(lowerBound = Bound(lowerBound, inclusive = true),
+            upperBound = Bound(upperBound, inclusive = true)), calcRes.isAnomaly, 1.0, detail))
       }
   }
 }

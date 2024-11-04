@@ -26,26 +26,26 @@ package com.amazon.deequ.anomalydetection
  * Anomaly Detection Data Point class
  * This class is different from the Anomaly Class in that this class
  * wraps around all data points, not just anomalies, and provides extended results including
- * if the data point is an anomaly, and the thresholds used in the anomaly calculation.
+ * if the data point is an anomaly, and the range with bounds used in the anomaly calculation.
  *
  * @param dataMetricValue The metric value that is the data point.
  * @param anomalyMetricValue The metric value that is being used in the anomaly calculation.
  *                           This usually aligns with dataMetricValue but not always,
  *                           like in a rate of change strategy where the rate of change is the anomaly metric
  *                           which may not equal the actual data point value.
- * @param anomalyThreshold The thresholds used in the anomaly check, the anomalyMetricValue is
- *                         compared to this threshold.
+ * @param anomalyCheckRange The range of bounds used in the anomaly check, the anomalyMetricValue is
+ *                         compared to this range.
  * @param isAnomaly If the data point is an anomaly.
  * @param confidence Confidence of anomaly detection.
  * @param detail Detailed error message.
  */
 class AnomalyDetectionDataPoint(
-      val dataMetricValue: Double,
-      val anomalyMetricValue: Double,
-      val anomalyThreshold: Threshold,
-      val isAnomaly: Boolean,
-      val confidence: Double,
-      val detail: Option[String])
+                                 val dataMetricValue: Double,
+                                 val anomalyMetricValue: Double,
+                                 val anomalyCheckRange: BoundedRange,
+                                 val isAnomaly: Boolean,
+                                 val confidence: Double,
+                                 val detail: Option[String])
   {
 
   def canEqual(that: Any): Boolean = {
@@ -64,7 +64,7 @@ class AnomalyDetectionDataPoint(
       case anomaly: AnomalyDetectionDataPoint =>
         anomaly.dataMetricValue == dataMetricValue &&
         anomaly.anomalyMetricValue == anomalyMetricValue &&
-        anomaly.anomalyThreshold == anomalyThreshold &&
+        anomaly.anomalyCheckRange == anomalyCheckRange &&
         anomaly.isAnomaly == isAnomaly &&
         anomaly.confidence == confidence
       case _ => false
@@ -76,7 +76,7 @@ class AnomalyDetectionDataPoint(
     var result = 1
     result = prime * result + dataMetricValue.hashCode()
     result = prime * result + anomalyMetricValue.hashCode()
-    result = prime * result + anomalyThreshold.hashCode()
+    result = prime * result + anomalyCheckRange.hashCode()
     result = prime * result + isAnomaly.hashCode()
     result = prime * result + confidence.hashCode()
     result
@@ -86,21 +86,21 @@ class AnomalyDetectionDataPoint(
 
 object AnomalyDetectionDataPoint {
   def apply(dataMetricValue: Double, anomalyMetricValue: Double,
-            anomalyThreshold: Threshold = Threshold(), isAnomaly: Boolean = false,
+            anomalyCheckRange: BoundedRange, isAnomaly: Boolean,
             confidence: Double, detail: Option[String] = None
            ): AnomalyDetectionDataPoint = {
-    new AnomalyDetectionDataPoint(dataMetricValue, anomalyMetricValue, anomalyThreshold, isAnomaly, confidence, detail)
+    new AnomalyDetectionDataPoint(dataMetricValue, anomalyMetricValue, anomalyCheckRange, isAnomaly, confidence, detail)
   }
 }
 
 
 /**
- * Threshold class
- * Defines threshold for the anomaly detection, defaults to inclusive bounds of Double.Min and Double.Max.
+ * BoundedRange class
+ * Defines range for the anomaly detection.
  * @param upperBound The upper bound or threshold.
  * @param lowerBound The lower bound or threshold.
  */
-case class Threshold(lowerBound: Bound = Bound(Double.MinValue), upperBound: Bound = Bound(Double.MaxValue))
+case class BoundedRange(lowerBound: Bound, upperBound: Bound)
 
 /**
  * Bound Class
@@ -108,7 +108,7 @@ case class Threshold(lowerBound: Bound = Bound(Double.MinValue), upperBound: Bou
  * @param value The value of the bound as a Double.
  * @param inclusive Boolean indicating if the Bound is inclusive or not.
  */
-case class Bound(value: Double, inclusive: Boolean = true)
+case class Bound(value: Double, inclusive: Boolean)
 
 
 
@@ -123,23 +123,21 @@ case class ExtendedDetectionResult(anomalyDetectionDataPointSequence:
 
 /**
  * AnomalyDetectionExtendedResult Class
- * This class contains anomaly detection extended results through a Sequence of AnomalyDetectionDataPoints.
+ * This class contains anomaly detection extended results through an AnomalyDetectionDataPoint.
  * This is currently an optional field in the ConstraintResult class that is exposed to users.
  *
  * Currently, anomaly detection only runs on "newest" data point (referring to the dataframe being
- * run on by the verification suite) and not multiple data points, so the returned sequence will contain
+ * run on by the verification suite) and not multiple data points, so this will contain that
  * one AnomalyDetectionDataPoint.
- * In the future, if we allow the anomaly check to detect multiple points, the returned sequence
- * may be more than one AnomalyDetectionDataPoints.
- * @param anomalyDetectionDataPoints Sequence of AnomalyDetectionDataPoints.
+ * @param anomalyDetectionDataPoint AnomalyDetectionDataPoint of newest data point generated from check.
  */
-case class  AnomalyDetectionExtendedResult(anomalyDetectionDataPoints: Seq[AnomalyDetectionDataPoint])
+case class  AnomalyDetectionExtendedResult(anomalyDetectionDataPoint: AnomalyDetectionDataPoint)
 
 /**
  * AnomalyDetectionAssertionResult Class
  * This class is returned by the assertion function Check.isNewestPointNonAnomalousWithExtendedResults.
- * @param hasNoAnomaly Boolean indicating if there was no anomaly detected.
+ * @param hasAnomaly Boolean indicating if there was an anomaly detected.
  * @param anomalyDetectionExtendedResult AnomalyDetectionExtendedResults class.
  */
-case class AnomalyDetectionAssertionResult(hasNoAnomaly: Boolean,
+case class AnomalyDetectionAssertionResult(hasAnomaly: Boolean,
                                            anomalyDetectionExtendedResult: AnomalyDetectionExtendedResult)

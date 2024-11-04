@@ -131,7 +131,8 @@ trait BaseChangeStrategy
           (None, false)
         }
         (outputSequenceIndex, AnomalyDetectionDataPoint(value, change,
-          Threshold(lowerBound = Bound(lowerBound), upperBound = Bound(upperBound)), isAnomaly, 1.0, detail))
+          BoundedRange(lowerBound = Bound(lowerBound, inclusive = true),
+            upperBound = Bound(upperBound, inclusive = true)), isAnomaly, 1.0, detail))
     }
   }
 }

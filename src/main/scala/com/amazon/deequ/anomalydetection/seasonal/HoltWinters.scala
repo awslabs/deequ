@@ -17,8 +17,15 @@
 package com.amazon.deequ.anomalydetection.seasonal
 
 import breeze.linalg.DenseVector
-import breeze.optimize.{ApproximateGradientFunction, DiffFunction, LBFGSB}
-import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionDataPoint, AnomalyDetectionStrategy, AnomalyDetectionStrategyWithExtendedResults, Threshold, Bound}
+import breeze.optimize.ApproximateGradientFunction
+import breeze.optimize.DiffFunction
+import breeze.optimize.LBFGSB
+import com.amazon.deequ.anomalydetection.Anomaly
+import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategyWithExtendedResults
+import com.amazon.deequ.anomalydetection.BoundedRange
+import com.amazon.deequ.anomalydetection.Bound
 
 import collection.mutable.ListBuffer
 
@@ -202,7 +209,8 @@ class HoltWinters(seriesPeriodicity: Int)
         detectionIndex + startIndex -> AnomalyDetectionDataPoint(
           dataMetricValue = inputValue,
           anomalyMetricValue = anomalyMetricValue,
-          anomalyThreshold = Threshold(upperBound = Bound(upperBound)),
+          anomalyCheckRange = BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+            upperBound = Bound(upperBound, inclusive = true)),
           isAnomaly = isAnomaly,
           confidence = 1.0,
           detail = detail

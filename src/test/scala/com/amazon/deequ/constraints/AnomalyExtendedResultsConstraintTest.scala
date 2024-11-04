@@ -19,7 +19,11 @@ package com.amazon.deequ.constraints
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.analyzers._
 import com.amazon.deequ.analyzers.runners.MetricCalculationException
-import com.amazon.deequ.anomalydetection.{AnomalyDetectionAssertionResult, AnomalyDetectionDataPoint, AnomalyDetectionExtendedResult}
+import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
+import com.amazon.deequ.anomalydetection.AnomalyDetectionExtendedResult
+import com.amazon.deequ.anomalydetection.Bound
+import com.amazon.deequ.anomalydetection.BoundedRange
 import com.amazon.deequ.constraints.ConstraintUtils.calculate
 import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.utils.FixtureSupport
@@ -54,7 +58,8 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
     override def calculate(
                             data: DataFrame,
                             stateLoader: Option[StateLoader],
-                            statePersister: Option[StatePersister])
+                            statePersister: Option[StatePersister],
+                            filterCondition: Option[String])
     : DoubleMetric = {
       val value: Try[Double] = Try {
         require(data.columns.contains(column), s"Missing column $column")
@@ -63,10 +68,10 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
       DoubleMetric(Entity.Column, "sample", column, value)
     }
 
-    override def computeStateFrom(data: DataFrame): Option[NumMatches] = {
+    override def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None)
+    : Option[NumMatches] = {
       throw new NotImplementedError()
     }
-
 
     override def computeMetricFrom(state: Option[NumMatches]): DoubleMetric = {
       throw new NotImplementedError()
@@ -75,15 +80,20 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
 
   "Anomaly extended results constraint" should {
 
+    val defaultBoundedRange = BoundedRange(lowerBound = Bound(0.0, inclusive = true),
+      upperBound = Bound(1.0, inclusive = true))
+
     "assert correctly on values if analysis is successful" in
       withSparkSession { sparkSession =>
         val df = getDfMissing(sparkSession)
 
         // Analysis result should equal to 1.0 for an existing column
 
-        val anomalyAssertionFunctionA = (metric: Double) => {
-          AnomalyDetectionAssertionResult(metric == 1.0,
-            AnomalyDetectionExtendedResult(Seq(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0))))
+        val anomalyAssertionFunctionA = (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = false,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = false))
+            )
         }
 
         val resultA = calculate(
@@ -94,10 +104,10 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
         assert(resultA.message.isEmpty)
         assert(resultA.metric.isDefined)
 
-        val anomalyAssertionFunctionB = (metric: Double) => {
-          AnomalyDetectionAssertionResult(metric != 1.0,
-            AnomalyDetectionExtendedResult(
-              Seq(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0, isAnomaly = true))))
+        val anomalyAssertionFunctionB = (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = true,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = true)))
         }
 
         // Analysis result should equal to 1.0 for an existing column
@@ -126,9 +136,11 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
 
         val df = getDfMissing(sparkSession)
 
-        val anomalyAssertionFunctionA = (metric: Double) => {
-          AnomalyDetectionAssertionResult(metric == 2.0,
-            AnomalyDetectionExtendedResult(Seq(AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0))))
+        val anomalyAssertionFunctionA = (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = false,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = false))
+            )
         }
 
         // Analysis result should equal to 100.0 for an existing column
@@ -136,10 +148,10 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
           SampleAnalyzer("att1"), anomalyAssertionFunctionA, Some(valueDoubler)), df).status ==
           ConstraintStatus.Success)
 
-        val anomalyAssertionFunctionB = (metric: Double) => {
-          AnomalyDetectionAssertionResult(metric != 2.0,
-            AnomalyDetectionExtendedResult(
-              Seq(AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0, isAnomaly = true))))
+        val anomalyAssertionFunctionB = (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = true,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = true)))
         }
 
         assert(calculate(AnomalyExtendedResultsConstraint[NumMatches, Double, Double](
@@ -164,14 +176,15 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
         SampleAnalyzer("someMissingColumn") -> SampleAnalyzer("someMissingColumn").calculate(df)
       )
 
-      val anomalyAssertionFunctionA = (metric: Double) => {
-        AnomalyDetectionAssertionResult(metric == 1.0,
-          AnomalyDetectionExtendedResult(Seq(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0))))
+      val anomalyAssertionFunctionA = (_: Double) => {
+        AnomalyDetectionAssertionResult(hasAnomaly = false,
+          AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+            anomalyCheckRange = defaultBoundedRange, isAnomaly = false)))
       }
-      val anomalyAssertionFunctionB = (metric: Double) => {
-        AnomalyDetectionAssertionResult(metric != 1.0,
-          AnomalyDetectionExtendedResult(
-            Seq(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0, isAnomaly = true))))
+      val anomalyAssertionFunctionB = (_: Double) => {
+        AnomalyDetectionAssertionResult(hasAnomaly = true,
+          AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+            anomalyCheckRange = defaultBoundedRange, isAnomaly = true)))
       }
 
       // Analysis result should equal to 1.0 for an existing column
@@ -202,9 +215,10 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
         val validResults = Map[Analyzer[_, Metric[_]], Metric[_]](
           SampleAnalyzer("att1") -> SampleAnalyzer("att1").calculate(df))
 
-        val anomalyAssertionFunction = (metric: Double) => {
-          AnomalyDetectionAssertionResult(metric == 2.0,
-            AnomalyDetectionExtendedResult(Seq(AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0))))
+        val anomalyAssertionFunction = (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = false,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = false)))
         }
 
         assert(AnomalyExtendedResultsConstraint[NumMatches, Double, Double](
@@ -224,9 +238,10 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
       val validResults = Map[Analyzer[_, Metric[_]], Metric[_]](
         SampleAnalyzer("att1") -> SampleAnalyzer("att1").calculate(df))
 
-      val anomalyAssertionFunction = (metric: Double) => {
-        AnomalyDetectionAssertionResult(metric == 1.0,
-          AnomalyDetectionExtendedResult(Seq(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0))))
+      val anomalyAssertionFunction = (_: Double) => {
+        AnomalyDetectionAssertionResult(hasAnomaly = false,
+          AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+            anomalyCheckRange = defaultBoundedRange, isAnomaly = false)))
       }
       val constraint = AnomalyExtendedResultsConstraint[NumMatches, Double, Double](
         SampleAnalyzer("att1"), anomalyAssertionFunction, Some(problematicValuePicker))
@@ -260,10 +275,10 @@ class AnomalyExtendedResultsConstraintTest extends WordSpec with Matchers with S
 
         val df = getDfMissing(sparkSession)
 
-        val anomalyAssertionFunction = (metric: Double) => {
-          AnomalyDetectionAssertionResult(metric == 0.9,
-            AnomalyDetectionExtendedResult(
-              Seq(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0, isAnomaly = true))))
+        val anomalyAssertionFunction = (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = true,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = true)))
         }
 
         val failingConstraint = AnomalyExtendedResultsConstraint[NumMatches, Double, Double](

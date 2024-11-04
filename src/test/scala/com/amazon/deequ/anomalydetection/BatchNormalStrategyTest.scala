@@ -16,7 +16,8 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 
 import scala.util.Random
 
@@ -117,14 +118,15 @@ class BatchNormalStrategyTest extends WordSpec with Matchers {
       val anomalyResult =
         strategy.detectWithExtendedResults(data, (25, 50)).filter({ case (_, anom) => anom.isAnomaly })
 
-      val expectedAnomalyThreshold = Threshold(Bound(-9.280850004177061), Bound(10.639954755150061))
+      val expectedAnomalyCheckRange = BoundedRange(Bound(-9.280850004177061, inclusive = true),
+        Bound(10.639954755150061, inclusive = true))
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (25, AnomalyDetectionDataPoint(data(25), data(25), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (26, AnomalyDetectionDataPoint(data(26), data(26), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (27, AnomalyDetectionDataPoint(data(27), data(27), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (28, AnomalyDetectionDataPoint(data(28), data(28), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (29, AnomalyDetectionDataPoint(data(29), data(29), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (30, AnomalyDetectionDataPoint(data(30), data(30), expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (25, AnomalyDetectionDataPoint(data(25), data(25), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(data(26), data(26), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(data(27), data(27), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(data(28), data(28), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(data(29), data(29), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(data(30), data(30), expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
@@ -134,15 +136,16 @@ class BatchNormalStrategyTest extends WordSpec with Matchers {
       val anomalyResult =
         strategy.detectWithExtendedResults(data, (20, 31)).filter({ case (_, anom) => anom.isAnomaly })
 
-      val expectedAnomalyThreshold = Threshold(Bound(Double.NegativeInfinity), Bound(0.7781496015857838))
+      val expectedAnomalyCheckRange = BoundedRange(Bound(Double.NegativeInfinity, inclusive = true),
+        Bound(0.7781496015857838, inclusive = true))
       // Anomalies with positive values only
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (20, AnomalyDetectionDataPoint(data(20), data(20), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (22, AnomalyDetectionDataPoint(data(22), data(22), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (24, AnomalyDetectionDataPoint(data(24), data(24), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (26, AnomalyDetectionDataPoint(data(26), data(26), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (28, AnomalyDetectionDataPoint(data(28), data(28), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (30, AnomalyDetectionDataPoint(data(30), data(30), expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (20, AnomalyDetectionDataPoint(data(20), data(20), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (22, AnomalyDetectionDataPoint(data(22), data(22), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (24, AnomalyDetectionDataPoint(data(24), data(24), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (26, AnomalyDetectionDataPoint(data(26), data(26), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (28, AnomalyDetectionDataPoint(data(28), data(28), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (30, AnomalyDetectionDataPoint(data(30), data(30), expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
@@ -151,15 +154,16 @@ class BatchNormalStrategyTest extends WordSpec with Matchers {
       val strategy = BatchNormalStrategy(Some(1.0), None)
       val anomalyResult =
         strategy.detectWithExtendedResults(data, (10, 30)).filter({ case (_, anom) => anom.isAnomaly })
-      val expectedAnomalyThreshold = Threshold(Bound(-5.063730045618394), Bound(Double.PositiveInfinity))
+      val expectedAnomalyCheckRange = BoundedRange(Bound(-5.063730045618394, inclusive = true),
+        Bound(Double.PositiveInfinity, inclusive = true))
 
       // Anomalies with negative values only
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (21, AnomalyDetectionDataPoint(data(21), data(21), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (23, AnomalyDetectionDataPoint(data(23), data(23), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (25, AnomalyDetectionDataPoint(data(25), data(25), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (27, AnomalyDetectionDataPoint(data(27), data(27), expectedAnomalyThreshold, isAnomaly = true, 1.0)),
-        (29, AnomalyDetectionDataPoint(data(29), data(29), expectedAnomalyThreshold, isAnomaly = true, 1.0))
+        (21, AnomalyDetectionDataPoint(data(21), data(21), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (23, AnomalyDetectionDataPoint(data(23), data(23), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (25, AnomalyDetectionDataPoint(data(25), data(25), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (27, AnomalyDetectionDataPoint(data(27), data(27), expectedAnomalyCheckRange, isAnomaly = true, 1.0)),
+        (29, AnomalyDetectionDataPoint(data(29), data(29), expectedAnomalyCheckRange, isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
@@ -171,8 +175,10 @@ class BatchNormalStrategyTest extends WordSpec with Matchers {
         strategy.detectWithExtendedResults(data, (3, 5)).filter({ case (_, anom) => anom.isAnomaly })
 
       val expectedResult: Seq[(Int, AnomalyDetectionDataPoint)] = Seq(
-        (3, AnomalyDetectionDataPoint(1000, 1000, Threshold(Bound(1.0), Bound(1.0)), isAnomaly = true, 1.0)),
-        (4, AnomalyDetectionDataPoint(500, 500, Threshold(Bound(1.0), Bound(1.0)), isAnomaly = true, 1.0))
+        (3, AnomalyDetectionDataPoint(1000, 1000, BoundedRange(Bound(1.0, inclusive = true),
+          Bound(1.0, inclusive = true)), isAnomaly = true, 1.0)),
+        (4, AnomalyDetectionDataPoint(500, 500, BoundedRange(Bound(1.0, inclusive = true),
+          Bound(1.0, inclusive = true)), isAnomaly = true, 1.0))
       )
       assert(anomalyResult == expectedResult)
     }
@@ -209,8 +215,8 @@ class BatchNormalStrategyTest extends WordSpec with Matchers {
 
       result.foreach { case (_, anom) =>
         val value = anom.anomalyMetricValue
-        val upperBound = anom.anomalyThreshold.upperBound.value
-        val lowerBound = anom.anomalyThreshold.lowerBound.value
+        val upperBound = anom.anomalyCheckRange.upperBound.value
+        val lowerBound = anom.anomalyCheckRange.lowerBound.value
 
         assert(value < lowerBound || value > upperBound)
       }

@@ -17,7 +17,9 @@
 package com.amazon.deequ.anomalydetection
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.PrivateMethodTester
+import org.scalatest.WordSpec
 
 
 class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with PrivateMethodTester {
@@ -111,6 +113,10 @@ class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with P
 
     val fakeAnomalyDetector = stub[AnomalyDetectionStrategyWithExtendedResults]
 
+    // This is used as a default bounded range value for anomaly detection
+    val defaultBoundedRange = BoundedRange(lowerBound = Bound(0.0, inclusive = true),
+      upperBound = Bound(1.0, inclusive = true))
+
     val aD = AnomalyDetectorWithExtendedResults(fakeAnomalyDetector)
     val data = Seq((0L, -1.0), (1L, 2.0), (2L, 3.0), (3L, 0.5)).map { case (t, v) =>
       DataPoint[Double](t, Option(v))
@@ -121,20 +127,24 @@ class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with P
         DataPoint[Double](2L, None), DataPoint[Double](3L, Option(1.0)))
 
       (fakeAnomalyDetector.detectWithExtendedResults _ when(Vector(1.0, 2.0, 1.0), (0, 3)))
-        .returns(Seq((1, AnomalyDetectionDataPoint(2.0, 2.0, Threshold(), confidence = 1.0))))
+        .returns(Seq((1, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0,
+          isAnomaly = true))))
 
       val anomalyResult = aD.detectAnomaliesInHistoryWithExtendedResults(data, (0L, 4L))
 
-      assert(anomalyResult == ExtendedDetectionResult(Seq((1L, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)))))
+      assert(anomalyResult == ExtendedDetectionResult(Seq((1L, AnomalyDetectionDataPoint(2.0, 2.0,
+        defaultBoundedRange, confidence = 1.0, isAnomaly = true)))))
     }
 
     "only detect values in range" in {
       (fakeAnomalyDetector.detectWithExtendedResults _ when(Vector(-1.0, 2.0, 3.0, 0.5), (2, 4)))
-        .returns(Seq((2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0))))
+        .returns(Seq((2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0,
+          isAnomaly = true))))
 
       val anomalyResult = aD.detectAnomaliesInHistoryWithExtendedResults(data, (2L, 4L))
 
-      assert(anomalyResult == ExtendedDetectionResult(Seq((2L, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)))))
+      assert(anomalyResult == ExtendedDetectionResult(Seq((2L, AnomalyDetectionDataPoint(3.0, 3.0,
+        defaultBoundedRange, confidence = 1.0, isAnomaly = true)))))
     }
 
     "throw an error when intervals are not ordered" in {
@@ -153,16 +163,17 @@ class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with P
       (fakeAnomalyDetector.detectWithExtendedResults _ when(data.map(_.metricValue.get).toVector, (0, 2)))
         .returns (
           Seq(
-            (0, AnomalyDetectionDataPoint(5.0, 5.0, confidence = 1.0)),
-            (1, AnomalyDetectionDataPoint(5.0, 5.0, confidence = 1.0))
+            (0, AnomalyDetectionDataPoint(5.0, 5.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+            (1, AnomalyDetectionDataPoint(5.0, 5.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))
           )
         )
 
       val anomalyResult = aD.detectAnomaliesInHistoryWithExtendedResults(data, (200L, 401L))
 
       assert(anomalyResult == ExtendedDetectionResult(Seq(
-        (200L, AnomalyDetectionDataPoint(5.0, 5.0, confidence = 1.0)),
-        (400L, AnomalyDetectionDataPoint(5.0, 5.0, confidence = 1.0)))))
+        (200L, AnomalyDetectionDataPoint(5.0, 5.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+        (400L, AnomalyDetectionDataPoint(5.0, 5.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)))
+      ))
     }
 
     "treat unordered values with time gaps correctly" in {
@@ -174,18 +185,18 @@ class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with P
       (fakeAnomalyDetector.detectWithExtendedResults _ when(Vector(0.5, -1.0, 3.0, 2.0), (0, 4)))
         .returns(
           Seq(
-            (1, AnomalyDetectionDataPoint(-1.0, -1.0, confidence = 1.0)),
-            (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-            (3, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0))
+            (1, AnomalyDetectionDataPoint(-1.0, -1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+            (2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+            (3, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))
           )
         )
 
       val anomalyResult = aD.detectAnomaliesInHistoryWithExtendedResults(data)
 
       assert(anomalyResult == ExtendedDetectionResult(
-        Seq((10L, AnomalyDetectionDataPoint(-1.0, -1.0, confidence = 1.0)),
-          (11L, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-          (25L, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)))))
+        Seq((10L, AnomalyDetectionDataPoint(-1.0, -1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+          (11L, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+          (25L, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)))))
     }
 
     "treat unordered values without time gaps correctly" in {
@@ -194,16 +205,17 @@ class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with P
       }
 
       (fakeAnomalyDetector.detectWithExtendedResults _ when(Vector(0.5, -1.0, 3.0, 2.0), (0, 4)))
-        .returns(Seq((1, AnomalyDetectionDataPoint(-1.0, -1.0, confidence = 1.0)),
-          (2, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-          (3, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0))))
+        .returns(Seq((1, AnomalyDetectionDataPoint(-1.0, -1.0, defaultBoundedRange, confidence = 1.0,
+          isAnomaly = true)),
+          (2, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+          (3, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true))))
 
       val anomalyResult = aD.detectAnomaliesInHistoryWithExtendedResults(data)
 
       assert(anomalyResult == ExtendedDetectionResult(Seq(
-        (1L, AnomalyDetectionDataPoint(-1.0, -1.0, confidence = 1.0)),
-        (2L, AnomalyDetectionDataPoint(3.0, 3.0, confidence = 1.0)),
-        (3L, AnomalyDetectionDataPoint(2.0, 2.0, confidence = 1.0)))))
+        (1L, AnomalyDetectionDataPoint(-1.0, -1.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+        (2L, AnomalyDetectionDataPoint(3.0, 3.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)),
+        (3L, AnomalyDetectionDataPoint(2.0, 2.0, defaultBoundedRange, confidence = 1.0, isAnomaly = true)))))
     }
 
   }
