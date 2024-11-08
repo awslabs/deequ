@@ -4,7 +4,7 @@ Using the `addAnomalyCheckWithExtendedResults` method instead of the original `a
 detailed results about the anomaly detection result from the newly created metric. You can get details such as:
 
 - dataMetricValue: The metric value that is the data point.
-- anomalyMetricValue: The value of the metric that is being checked, which isn't always equal to the dataMetricValue. 
+- anomalyMetricValue: The metric value that is being checked for the anomaly detection strategy, which isn't always equal to the dataMetricValue. 
 - anomalyCheckRange: The range of bounds used in the anomaly check, the anomalyMetricValue is compared to this range. 
 - isAnomaly: If the anomalyMetricValue is outside the anomalyCheckRange, this is true.
 - confidence: The confidence of the anomaly detection.
