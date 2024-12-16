@@ -1996,6 +1996,35 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
   }
 
   "Verification Suite's Row Level Results" should {
+    "yield correct results for invalid column type" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", 1, "blue"),
+        ("2", 2, "green"),
+        ("3", 3, "blue"),
+        ("4", 4, "red"),
+        ("5", 5, "purple")
+      ).toDF("id", "id2", "color")
+      val invalidColumn = "id"
+      val validColumn = "id2"
+      val checkOnInvalidColumnDescription = s"check on $invalidColumn"
+      val checkOnValidColumnDescription = s"check on $validColumn"
+      val checkOnInvalidColumn = Check(CheckLevel.Error, checkOnInvalidColumnDescription)
+        .hasMin(invalidColumn, _ >= 3)
+        .isComplete(invalidColumn)
+      val checkOnValidColumn = Check(CheckLevel.Error, checkOnValidColumnDescription)
+        .hasMin(validColumn, _ >= 3)
+        .isComplete(validColumn)
+      val verificationResult =
+        VerificationSuite().onData(df).addChecks(Seq(checkOnInvalidColumn, checkOnValidColumn)).run()
+      val rowLevelResults =
+        VerificationResult.rowLevelResultsAsDataFrame(sparkSession, verificationResult, df).collect()
+      val invalidColumnCheckRowLevelResults = rowLevelResults.map(_.getAs[Boolean](checkOnInvalidColumnDescription))
+      val validColumnCheckRowLevelResults = rowLevelResults.map(_.getAs[Boolean](checkOnValidColumnDescription))
+      invalidColumnCheckRowLevelResults shouldBe Seq(false, false, false, false, false)
+      validColumnCheckRowLevelResults shouldBe Seq(false, false, true, true, true)
+    }
+
     "yield correct results for satisfies check" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
       val df = Seq(

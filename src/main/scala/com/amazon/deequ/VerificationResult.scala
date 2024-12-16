@@ -31,6 +31,7 @@ import com.amazon.deequ.repository.SimpleResultSerde
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.{col, monotonically_increasing_id}
 
 import java.util.UUID
@@ -144,7 +145,7 @@ object VerificationResult {
     val constraint = constraintResult.constraint
     constraint match {
       case asserted: RowLevelAssertedConstraint =>
-        constraintResult.metric.flatMap(metricToColumn).map(asserted.assertion(_))
+        constraintResult.metric.flatMap(metricToColumn).map(asserted.assertion(_)).orElse(Some(lit(false)))
       case _: RowLevelConstraint =>
         constraintResult.metric.flatMap(metricToColumn)
       case _: RowLevelGroupedConstraint =>
@@ -159,7 +160,6 @@ object VerificationResult {
       case _ => None
     }
   }
-
 
   private[this] def getSimplifiedCheckResultOutput(
       verificationResult: VerificationResult)
