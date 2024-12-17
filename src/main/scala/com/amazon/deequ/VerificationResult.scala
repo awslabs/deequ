@@ -147,7 +147,7 @@ object VerificationResult {
       case asserted: RowLevelAssertedConstraint =>
         constraintResult.metric.flatMap(metricToColumn).map(asserted.assertion(_)).orElse(Some(lit(false)))
       case _: RowLevelConstraint =>
-        constraintResult.metric.flatMap(metricToColumn)
+        constraintResult.metric.flatMap(metricToColumn).orElse(Some(lit(false)))
       case _: RowLevelGroupedConstraint =>
         constraintResult.metric.flatMap(metricToColumn)
       case _ => None
