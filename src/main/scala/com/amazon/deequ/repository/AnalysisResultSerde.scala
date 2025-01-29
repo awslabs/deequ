@@ -30,7 +30,9 @@ import scala.collection._
 import scala.collection.JavaConverters._
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
 import JsonSerializationConstants._
+import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.analyzers.Histogram.{AggregateFunction, Count => HistogramCount, Sum => HistogramSum}
+import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
 
@@ -52,6 +54,7 @@ private[repository] object JsonSerializationConstants {
   val TAGS_FIELD = "tags"
   val RESULT_KEY_FIELD = "resultKey"
   val ANALYZER_CONTEXT_FIELD = "analyzerContext"
+  val ANALYZER_OPTIONS_FIELD = "analyzerOptions"
 }
 
 private[deequ] object SimpleResultSerde {
@@ -82,6 +85,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalyzerContext], AnalyzerContextSerializer)
       .registerTypeAdapter(classOf[Analyzer[State[_], Metric[_]]],
         AnalyzerSerializer)
+      .registerTypeAdapter(classOf[AnalyzerOptions], AnalyzerOptionsSerializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricSerializer)
       .registerTypeAdapter(classOf[Distribution], DistributionSerializer)
       .setPrettyPrinting()
@@ -96,6 +100,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalysisResult], AnalysisResultDeserializer)
       .registerTypeAdapter(classOf[AnalyzerContext], AnalyzerContextDeserializer)
       .registerTypeAdapter(classOf[Analyzer[State[_], Metric[_]]], AnalyzerDeserializer)
+      .registerTypeAdapter(classOf[AnalyzerOptions], AnalyzerOptionsDeserializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricDeserializer)
       .registerTypeAdapter(classOf[Distribution], DistributionDeserializer)
       .create
@@ -191,6 +196,20 @@ private[deequ] object AnalyzerContextSerializer extends JsonSerializer[AnalyzerC
   }
 }
 
+private[deequ] object AnalyzerOptionsSerializer extends JsonSerializer[AnalyzerOptions] {
+
+  override def serialize(src: AnalyzerOptions, typeOfSrc: Type,
+    context: JsonSerializationContext): JsonElement = {
+
+    val result = new JsonObject
+
+    result.addProperty("nullBehavior", src.nullBehavior.toString)
+    result.addProperty("filteredRow", src.filteredRow.toString)
+
+    result
+  }
+}
+
 private[deequ] object AnalyzerContextDeserializer extends JsonDeserializer[AnalyzerContext] {
 
   override def deserialize(jsonElement: JsonElement, t: Type,
@@ -236,6 +255,7 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Completeness")
         result.addProperty(COLUMN_FIELD, completeness.column)
         result.addProperty(WHERE_FIELD, completeness.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(completeness.analyzerOptions.orNull))
 
 
       case compliance: Compliance =>
@@ -244,12 +264,14 @@ private[deequ] object AnalyzerSerializer
         result.addProperty("instance", compliance.instance)
         result.addProperty("predicate", compliance.predicate)
         result.add(COLUMNS_FIELD, context.serialize(compliance.columns.asJava))
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(compliance.analyzerOptions.orNull))
 
       case patternMatch: PatternMatch =>
         result.addProperty(ANALYZER_NAME_FIELD, "PatternMatch")
         result.addProperty(COLUMN_FIELD, patternMatch.column)
         result.addProperty(WHERE_FIELD, patternMatch.where.orNull)
         result.addProperty("pattern", patternMatch.pattern.toString())
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(patternMatch.analyzerOptions.orNull))
 
       case sum: Sum =>
         result.addProperty(ANALYZER_NAME_FIELD, "Sum")
@@ -271,11 +293,13 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Minimum")
         result.addProperty(COLUMN_FIELD, minimum.column)
         result.addProperty(WHERE_FIELD, minimum.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(minimum.analyzerOptions.orNull))
 
       case maximum: Maximum =>
         result.addProperty(ANALYZER_NAME_FIELD, "Maximum")
         result.addProperty(COLUMN_FIELD, maximum.column)
         result.addProperty(WHERE_FIELD, maximum.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(maximum.analyzerOptions.orNull))
 
       case countDistinct: CountDistinct =>
         result.addProperty(ANALYZER_NAME_FIELD, "CountDistinct")
@@ -299,11 +323,13 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "UniqueValueRatio")
         result.add(COLUMNS_FIELD, context.serialize(uniqueValueRatio.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(uniqueValueRatio.analyzerOptions.orNull))
 
       case uniqueness: Uniqueness =>
         result.addProperty(ANALYZER_NAME_FIELD, "Uniqueness")
         result.add(COLUMNS_FIELD, context.serialize(uniqueness.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(uniqueness.analyzerOptions.orNull))
 
       case histogram: Histogram if histogram.binningUdf.isEmpty =>
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
@@ -363,17 +389,34 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "MinLength")
         result.addProperty(COLUMN_FIELD, minLength.column)
         result.addProperty(WHERE_FIELD, minLength.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(minLength.analyzerOptions.orNull))
 
       case maxLength: MaxLength =>
         result.addProperty(ANALYZER_NAME_FIELD, "MaxLength")
         result.addProperty(COLUMN_FIELD, maxLength.column)
         result.addProperty(WHERE_FIELD, maxLength.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(maxLength.analyzerOptions.orNull))
 
       case _ =>
         throw new IllegalArgumentException(s"Unable to serialize analyzer $analyzer.")
     }
 
     result
+  }
+}
+
+private[deequ] object AnalyzerOptionsDeserializer
+  extends JsonDeserializer[AnalyzerOptions] {
+
+  override def deserialize(jsonElement: JsonElement, t: Type,
+    context: JsonDeserializationContext): AnalyzerOptions = {
+
+    val jsonObject = jsonElement.getAsJsonObject
+
+    val nullBehavior = NullBehavior.withName(jsonObject.get("nullBehavior").getAsString)
+    val filteredRowOutcome = FilteredRowOutcome.withName(jsonObject.get("filteredRow").getAsString)
+
+    AnalyzerOptions(nullBehavior, filteredRowOutcome)
   }
 }
 
@@ -405,7 +448,8 @@ private[deequ] object AnalyzerDeserializer
           json.get("instance").getAsString,
           json.get("predicate").getAsString,
           getOptionalWhereParam(json),
-          getColumnsAsSeq(context, json).toList)
+          getColumnsAsSeq(context, json).toList,
+          getOptionalAnalyzerOptions(json, context))
 
       case "PatternMatch" =>
         PatternMatch(
@@ -528,6 +572,35 @@ private[deequ] object AnalyzerDeserializer
   private[this] def getOptionalStringParam(jsonObject: JsonObject, field: String): Option[String] = {
     if (jsonObject.has(field)) {
       Option(jsonObject.get(field).getAsString)
+    } else {
+      None
+    }
+  }
+
+  private[this] def getOptionalAnalyzerOptions(jsonObject: JsonObject,
+    context: JsonDeserializationContext): Option[AnalyzerOptions] = {
+
+    if (jsonObject.has("analyzerOptions")) {
+      val options = jsonObject.get("analyzerOptions").getAsJsonObject
+
+      val nullBehavior = if (options.has("nullBehavior")) {
+        Some(NullBehavior.withName(options.get("nullBehavior").getAsString))
+      } else {
+        None
+      }
+
+      val filteredRowOutcome = if (options.has("filteredRow")) {
+        Some(FilteredRowOutcome.withName(options.get("filteredRow").getAsString))
+      } else {
+        None
+      }
+
+      (nullBehavior, filteredRowOutcome) match {
+        case (Some(nb), Some(fr)) => Some(AnalyzerOptions(nb, fr))
+        case (None, Some(fr)) => Some(AnalyzerOptions(filteredRow = fr))
+        case (Some(nb), None) => Some(AnalyzerOptions(nullBehavior = nb))
+        case _ => None
+      }
     } else {
       None
     }
