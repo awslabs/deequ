@@ -441,7 +441,10 @@ private[deequ] object AnalyzerDeserializer
         Size(getOptionalWhereParam(json))
 
       case "Completeness" =>
-        Completeness(json.get(COLUMN_FIELD).getAsString, getOptionalWhereParam(json))
+        Completeness(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json),
+          getOptionalAnalyzerOptions(json))
 
       case "Compliance" =>
         Compliance(
@@ -449,13 +452,14 @@ private[deequ] object AnalyzerDeserializer
           json.get("predicate").getAsString,
           getOptionalWhereParam(json),
           getColumnsAsSeq(context, json).toList,
-          getOptionalAnalyzerOptions(json, context))
+          getOptionalAnalyzerOptions(json))
 
       case "PatternMatch" =>
         PatternMatch(
           json.get(COLUMN_FIELD).getAsString,
           json.get("pattern").getAsString.r,
-          getOptionalWhereParam(json))
+          getOptionalWhereParam(json),
+          getOptionalAnalyzerOptions(json))
 
       case "Sum" =>
         Sum(
@@ -476,12 +480,14 @@ private[deequ] object AnalyzerDeserializer
       case "Minimum" =>
         Minimum(
           json.get(COLUMN_FIELD).getAsString,
-          getOptionalWhereParam(json))
+          getOptionalWhereParam(json),
+          getOptionalAnalyzerOptions(json))
 
       case "Maximum" =>
         Maximum(
           json.get(COLUMN_FIELD).getAsString,
-          getOptionalWhereParam(json))
+          getOptionalWhereParam(json),
+          getOptionalAnalyzerOptions(json))
 
       case "CountDistinct" =>
         CountDistinct(getColumnsAsSeq(context, json))
@@ -496,10 +502,14 @@ private[deequ] object AnalyzerDeserializer
         MutualInformation(getColumnsAsSeq(context, json))
 
       case "UniqueValueRatio" =>
-        UniqueValueRatio(getColumnsAsSeq(context, json))
+        UniqueValueRatio(
+          getColumnsAsSeq(context, json),
+          analyzerOptions = getOptionalAnalyzerOptions(json))
 
       case "Uniqueness" =>
-        Uniqueness(getColumnsAsSeq(context, json))
+        Uniqueness(
+          getColumnsAsSeq(context, json),
+          analyzerOptions = getOptionalAnalyzerOptions(json))
 
       case "Histogram" =>
         Histogram(
@@ -551,12 +561,14 @@ private[deequ] object AnalyzerDeserializer
       case "MinLength" =>
         MinLength(
           json.get(COLUMN_FIELD).getAsString,
-          getOptionalWhereParam(json))
+          getOptionalWhereParam(json),
+          getOptionalAnalyzerOptions(json))
 
       case "MaxLength" =>
         MaxLength(
           json.get(COLUMN_FIELD).getAsString,
-          getOptionalWhereParam(json))
+          getOptionalWhereParam(json),
+          getOptionalAnalyzerOptions(json))
 
       case analyzerName =>
         throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerName.")
@@ -577,8 +589,7 @@ private[deequ] object AnalyzerDeserializer
     }
   }
 
-  private[this] def getOptionalAnalyzerOptions(jsonObject: JsonObject,
-    context: JsonDeserializationContext): Option[AnalyzerOptions] = {
+  private[this] def getOptionalAnalyzerOptions(jsonObject: JsonObject): Option[AnalyzerOptions] = {
 
     if (jsonObject.has("analyzerOptions")) {
       val options = jsonObject.get("analyzerOptions").getAsJsonObject
