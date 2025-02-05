@@ -242,6 +242,20 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on a column uniqueness.
+    *
+    * @param columns Columns to run the assertion on
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @param analyzerOptions Options to configure analyzer behavior (NullTreatment, FilteredRow)
+    * @return
+    */
+  def areUnique(columns: Seq[String], hint: Option[String] = None,
+               analyzerOptions: Option[AnalyzerOptions] = None): CheckWithLastConstraintFilterable = {
+    addFilterableConstraint { filter =>
+      uniquenessConstraint(columns, Check.IsOne, filter, hint, analyzerOptions) }
+  }
+
+  /**
     * Creates a constraint that asserts on a column(s) primary key characteristics.
     * Currently only checks uniqueness, but reserved for primary key checks if there is another
     * assertion to run on primary key columns.
