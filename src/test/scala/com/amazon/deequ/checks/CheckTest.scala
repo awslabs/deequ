@@ -176,6 +176,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         .isUnique("halfUniqueCombinedWithNonUnique").where("nonUnique > 0")
         .isUnique("nonUnique")
         .isUnique("nonUniqueWithNulls")
+        .areUnique(Seq("nonUnique", "onlyUniqueWithOtherNonUnique"))
+        .areUnique(Seq("nonUnique", "halfUniqueCombinedWithNonUnique"))
 
       val context = runChecks(getDfWithUniqueColumns(sparkSession), check)
       val result = check.evaluate(context)
@@ -187,6 +189,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assert(constraintStatuses(2) == ConstraintStatus.Success)
       assert(constraintStatuses(3) == ConstraintStatus.Failure)
       assert(constraintStatuses(4) == ConstraintStatus.Failure)
+      assert(constraintStatuses(5) == ConstraintStatus.Success)
+      assert(constraintStatuses(6) == ConstraintStatus.Failure)
     }
 
     "return the correct check status for primary key" in withSparkSession { sparkSession =>
