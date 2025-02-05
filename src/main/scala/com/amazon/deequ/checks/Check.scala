@@ -242,7 +242,7 @@ case class Check(
   }
 
   /**
-    * Creates a constraint that asserts on a combined set of columns.
+    * Creates a constraint that asserts on Uniqueness in a combined set of columns.
     *
     * @param columns Columns to run the assertion on
     * @param hint A hint to provide additional context why a constraint could have failed
