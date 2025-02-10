@@ -1630,7 +1630,7 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
 
     }
 
-    "isContainedIn constraint should handle values with single quotes" in withSparkSession { session =>
+    "pass verification when ColumnValues rule contains a single quote in the string" in withSparkSession { session =>
       import session.implicits._
 
       val df = Seq(
