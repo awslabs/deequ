@@ -23,6 +23,7 @@ import com.amazon.deequ.checks.Check
 import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.checks.CheckStatus
 import com.amazon.deequ.constraints.Constraint
+import com.amazon.deequ.constraints.ConstraintStatus
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.Entity
@@ -1627,6 +1628,45 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
           List(None) // or any expected result
         assert(additionalColsResult.status == CheckStatus.Success) // or expected status
 
+    }
+
+    "pass verification when ColumnValues rule contains a single quote in the string" in withSparkSession { session =>
+      import session.implicits._
+
+      val df = Seq(
+        ("Versicolor"),
+        ("Virginica's"),
+        ("Setosa"),
+        ("Versicolor"),
+        ("Virginica's")
+      ).toDF("variety")
+
+      val check = Check(CheckLevel.Error, "single quote check")
+        .isContainedIn("variety", Array("Versicolor", "Virginica's", "Setosa"))
+
+      val verificationResult = VerificationSuite()
+        .onData(df)
+        .addCheck(check)
+        .run()
+
+      assert(verificationResult.status == CheckStatus.Success)
+
+      val checkResult = verificationResult.checkResults(check)
+
+      assert(checkResult.status == CheckStatus.Success)
+
+      assert(checkResult.constraintResults.size == 1)
+
+      val constraintResult = checkResult.constraintResults.head
+
+      assert(constraintResult.status == ConstraintStatus.Success)
+
+      val metric = constraintResult.metric.getOrElse(fail("Expected metric to be present"))
+      assert(metric.isInstanceOf[DoubleMetric])
+      assert(metric.asInstanceOf[DoubleMetric].value.isSuccess)
+
+      val metricValue = metric.asInstanceOf[DoubleMetric].value.get
+      assert(metricValue == 1.0)
     }
   }
 
