@@ -107,6 +107,12 @@
         </dependency>
 
         <dependency>
+            <groupId>software.amazon.glue</groupId>
+            <artifactId>dqdl</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.major.version}</artifactId>
             <version>3.1.2</version>
