@@ -56,12 +56,8 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
 
     val allDataPoints = sortedDataPoints :+ newPoint
 
-    // Run anomaly
-    val anomalies = detectAnomaliesInHistory(allDataPoints, (newPoint.time, Long.MaxValue))
-      .anomalies
-
-    // Create a Detection result with all anomalies
-    DetectionResult(anomalies)
+    // Run anomaly and create a Detection result with all anomalies
+    detectAnomaliesInHistory(allDataPoints, (newPoint.time, Long.MaxValue))
   }
 
   /**
@@ -99,4 +95,87 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
 
     DetectionResult(anomalies.map { case (index, anomaly) => (sortedTimestamps(index), anomaly) })
   }
+}
+
+case class AnomalyDetectorWithExtendedResults(strategy: AnomalyDetectionStrategyWithExtendedResults) {
+
+
+  /**
+   * Given a sequence of metrics and a current value, detects if there is an anomaly by using the
+   * given algorithm and returns extended results.
+   *
+   * @param historicalDataPoints Sequence of tuples (Points in time with corresponding Metric).
+   * @param newPoint             A new data point to check if there are anomalies
+   * @return
+   */
+  def isNewPointAnomalousWithExtendedResults(
+      historicalDataPoints: Seq[DataPoint[Double]],
+      newPoint: DataPoint[Double])
+    : ExtendedDetectionResult = {
+
+    require(historicalDataPoints.nonEmpty, "historicalDataPoints must not be empty!")
+
+    val sortedDataPoints = historicalDataPoints.sortBy(_.time)
+
+    val firstDataPointTime = sortedDataPoints.head.time
+    val lastDataPointTime = sortedDataPoints.last.time
+
+    val newPointTime = newPoint.time
+
+    require(lastDataPointTime < newPointTime,
+      s"Can't decide which range to use for anomaly detection. New data point with time " +
+        s"$newPointTime is in history range ($firstDataPointTime - $lastDataPointTime)!")
+
+    val allDataPoints = sortedDataPoints :+ newPoint
+
+    // Run anomaly and create an Extended Detection result with all data points and anomaly details
+    detectAnomaliesInHistoryWithExtendedResults(allDataPoints, (newPoint.time, Long.MaxValue))
+  }
+
+
+  /**
+   * Given a strategy, detects anomalies in a time series after some preprocessing
+   * and returns extended results.
+   *
+   * @param dataSeries     Sequence of tuples (Points in time with corresponding value).
+   * @param searchInterval The interval in which anomalies should be detected. [a, b).
+   * @return A wrapper object, containing all data points with anomaly extended results.
+   */
+  def detectAnomaliesInHistoryWithExtendedResults(
+      dataSeries: Seq[DataPoint[Double]],
+      searchInterval: (Long, Long) = (Long.MinValue, Long.MaxValue))
+    : ExtendedDetectionResult = {
+
+    def findIndexForBound(sortedTimestamps: Seq[Long], boundValue: Long): Int = {
+      sortedTimestamps.search(boundValue).insertionPoint
+    }
+
+    val (searchStart, searchEnd) = searchInterval
+
+    require(searchStart <= searchEnd,
+      "The first interval element has to be smaller or equal to the last.")
+
+    // Remove missing values and sort series by time
+    val removedMissingValues = dataSeries.filter {
+      _.metricValue.isDefined
+    }
+    val sortedSeries = removedMissingValues.sortBy {
+      _.time
+    }
+    val sortedTimestamps = sortedSeries.map {
+      _.time
+    }
+
+    // Find indices of lower and upper bound
+    val lowerBoundIndex = findIndexForBound(sortedTimestamps, searchStart)
+    val upperBoundIndex = findIndexForBound(sortedTimestamps, searchEnd)
+
+    val anomalies = strategy.detectWithExtendedResults(
+      sortedSeries.flatMap {
+        _.metricValue
+      }.toVector, (lowerBoundIndex, upperBoundIndex))
+
+    ExtendedDetectionResult(anomalies.map { case (index, anomaly) => (sortedTimestamps(index), anomaly) })
+  }
+
 }
