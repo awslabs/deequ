@@ -18,16 +18,58 @@ package com.amazon.deequ.dqdl
 
 import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.{DeequMetricMapping, DeequRule, RuleToExecute, UnsupportedRule}
+import com.amazon.deequ.dqdl.model._
 import com.amazon.deequ.metrics.Metric
 import org.apache.log4j.Logger
-import software.amazon.glue.dqdl.model.DQRule
+import org.apache.spark.sql.types.StructType
 import software.amazon.glue.dqdl.model.condition.number.{NumberBasedCondition, OperandEvaluator}
+import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
+
+import scala.annotation.tailrec
+import scala.jdk.CollectionConverters.asScalaBufferConverter
+
+case class FlattenedRuleset[S <: State[_], +M <: Metric[_]](deequRules: Seq[DeequRule],
+                                                            unsupportedRules: Seq[UnsupportedRule])
+
 
 trait DQDLRuleTranslator[S <: State[_], +M <: Metric[_]] {
-  val log: Logger = Logger.getLogger(getClass.getName)
 
   def operandEvaluator: OperandEvaluator
+
+  val log = Logger.getLogger(getClass.getName)
+
+  private def isWhereClausePresent(rule: DQRule): Boolean = {
+    rule.getWhereClause != null
+  }
+
+  def flattenRuleset(ruleset: DQRuleset, schema: StructType): FlattenedRuleset[S, M] = {
+    val flattenedDQRules: Seq[DQRule] = flattenDQRule(ruleset).distinct
+    val translatedRules: Seq[RuleToExecute] = flattenedDQRules.map(translateRule)
+    val (deequRules, unsupportedRules) = splitRules(translatedRules)
+
+    FlattenedRuleset[S, M](deequRules, unsupportedRules)
+  }
+
+  private[dqdl] def splitRules(rules: Seq[RuleToExecute]): (Seq[DeequRule], Seq[UnsupportedRule]) = {
+    @tailrec
+    def splitRules(rules: Seq[RuleToExecute],
+                   deequRulesAcc: Seq[DeequRule],
+
+                   unsupportedRulesAcc: Seq[UnsupportedRule]): (Seq[DeequRule], Seq[UnsupportedRule]) = {
+      rules match {
+        case head +: tail => head match {
+
+          case d: DeequRule =>
+            splitRules(tail, deequRulesAcc :+ d, unsupportedRulesAcc)
+          case u: UnsupportedRule =>
+            splitRules(tail, deequRulesAcc, unsupportedRulesAcc :+ u)
+        }
+        case Nil => (deequRulesAcc, unsupportedRulesAcc)
+      }
+    }
+
+    splitRules(rules, Seq.empty, Seq.empty)
+  }
 
   private[dqdl] def translateRule(rule: DQRule): RuleToExecute =
     translateToDeequRule(rule) match {
@@ -35,8 +77,18 @@ trait DQDLRuleTranslator[S <: State[_], +M <: Metric[_]] {
       case Left(m) => UnsupportedRule(rule, Some(m))
     }
 
-  private[dqdl] def isWhereClausePresent(rule: DQRule): Boolean = {
-    rule.getWhereClause != null
+  private[dqdl] def flattenDQRule(ruleset: DQRuleset): Seq[DQRule] = {
+    def flattenDQRuleRecursive(rule: DQRule, flattenedRules: Seq[DQRule]): Seq[DQRule] = rule.getRuleType match {
+      case "Composite" => rule.getNestedRules.asScala.flatMap(r => flattenDQRuleRecursive(r, Seq.empty))
+      case _ => flattenedRules :+ rule
+    }
+
+    ruleset.getRules.asScala.flatMap(r => flattenDQRuleRecursive(r, Seq.empty))
+  }
+
+  private[dqdl] def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
+    val evaluator = operandEvaluator
+    (d: Double) => e.evaluate(d, dqRule, evaluator)
   }
 
   private[dqdl] def translateToDeequRule(rule: DQRule): Either[String, DeequRule] = {
@@ -51,14 +103,9 @@ trait DQDLRuleTranslator[S <: State[_], +M <: Metric[_]] {
         Right(
           (mutableCheck,
             Seq(DeequMetricMapping("Dataset", "*", "RowCount", "Size", None, rule = rule))))
-      case _ => Left("Rule type not recognized")
+      case _ => Left("Unrecognized condition")
     }
     optionalCheck.map { case (check, deequMetrics) => DeequRule(rule, check, deequMetrics) }
-  }
-
-  private[dqdl] def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
-    val evaluator = operandEvaluator
-    (d: Double) => e.evaluate(d, dqRule, evaluator)
   }
 
 }

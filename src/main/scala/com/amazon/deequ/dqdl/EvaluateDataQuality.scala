@@ -16,14 +16,18 @@
 
 package com.amazon.deequ.dqdl
 
+import com.amazon.deequ.analyzers.State
+import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
-import software.amazon.glue.dqdl.exception.InvalidDataQualityRulesetException
+import org.apache.spark.sql.types.StructType
 import software.amazon.glue.dqdl.model.DQRuleset
-import software.amazon.glue.dqdl.parser.DQDLParser
+import software.amazon.glue.dqdl.model.condition.number.OperandEvaluator
 
-import scala.util.{Failure, Success, Try}
+object EvaluateDataQuality extends EvaluateDataQualityHelper {
 
-object EvaluateDataQuality {
+  override def getOperandEvaluator(): OperandEvaluator = {
+    new RuleOperandEvaluator()
+  }
 
   /**
    * Validates the given Spark DataFrame against a set of data quality rules defined in DQDL format.
@@ -36,20 +40,43 @@ object EvaluateDataQuality {
    * @return a Spark DataFrame containing the aggregated data quality results.
    */
   def process(df: DataFrame, ruleset: String): DataFrame = {
-    val dqRuleset = parse(ruleset)
+
+    // OperandEvaluator has to be instantiated exactly once since it is stateful
+    val singletonEvaluator = getOperandEvaluator()
+
+    val dqRuleTranslator = new DQDLRuleTranslator[State[_], Metric[_]] {
+      override def operandEvaluator: OperandEvaluator = singletonEvaluator
+    }
+
+    val dqRuleset = DefaultDQDLParser.parse(ruleset)
+
+    val schema = df.schema
+
+    // Flatten and split the rules
+    val flattened: FlattenedRuleset[State[_], Metric[_]] = flatten(dqRuleset, schema, dqRuleTranslator)
+
+    // todo add execution of rules
     df
   }
 
-  private def parse(ruleset: String): DQRuleset = {
-    val dqdlParser: DQDLParser = new DQDLParser()
-    val dqRuleset: DQRuleset = Try {
-      dqdlParser.parse(ruleset)
-    } match {
-      case Success(value) => value
-      case Failure(ex: InvalidDataQualityRulesetException) => throw new IllegalArgumentException(ex.getMessage)
-      case Failure(ex) => throw ex
-    }
-    dqRuleset
+}
+
+/**
+ * Encapsulating business logic into a trait for testing purposes
+ */
+private[dqdl] trait EvaluateDataQualityHelper {
+
+  def getOperandEvaluator(): OperandEvaluator
+
+  private[dqdl] def flatten(dqRuleset: DQRuleset,
+                            schema: StructType,
+                            dqRuleTranslator: DQDLRuleTranslator[State[_], Metric[_]]): FlattenedRuleset[State[_], Metric[_]] = {
+
+    val flattenedRuleset = dqRuleTranslator.flattenRuleset(dqRuleset, schema)
+    val deequRules = flattenedRuleset.deequRules
+
+    val unsupportedRules = flattenedRuleset.unsupportedRules
+    FlattenedRuleset(deequRules, unsupportedRules)
   }
 
 }
