@@ -26,8 +26,15 @@ class ParserTest extends WordSpec with Matchers {
 
   val parser = new DQDLParser()
 
+  "throw an IllegalArgumentException when an InvalidDataQualityRulesetException occurs" in {
+    val thrown = intercept[IllegalArgumentException] {
+      DefaultDQDLParser.parse("invalid")
+    }
+    thrown.getMessage should include("Parsing Error")
+  }
+
   "DQDL Parser" should {
-    "parse DQDL rules" in {
+    "parse valid DQDL rules" in {
 
       val ruleset = "Rules = [ RowCount > 1, ColumnCount = 3]"
       val dqRuleset = parser.parse(ruleset)
