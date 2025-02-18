@@ -16,18 +16,22 @@
 
 package com.amazon.deequ.dqdl
 
-import com.amazon.deequ.analyzers.State
-import com.amazon.deequ.metrics.Metric
+import com.amazon.deequ.checks.Check
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.types.StructType
 import software.amazon.glue.dqdl.model.DQRuleset
-import software.amazon.glue.dqdl.model.condition.number.OperandEvaluator
 
-object EvaluateDataQuality extends EvaluateDataQualityHelper {
+import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
 
-  override def getOperandEvaluator(): OperandEvaluator = {
-    new RuleOperandEvaluator()
-  }
+
+/**
+ * Entry point for evaluating data quality.
+ *
+ * Given a Spark DataFrame and a DQDL ruleset (as a String), this object:
+ *  - Parses and translates the rules to Deequ Checks.
+ *  - Executes the checks on the DataFrame.
+ *  - Translates the outcome back to a Spark DataFrame.
+ */
+object EvaluateDataQuality {
 
   /**
    * Validates the given Spark DataFrame against a set of data quality rules defined in DQDL format.
@@ -40,43 +44,19 @@ object EvaluateDataQuality extends EvaluateDataQualityHelper {
    * @return a Spark DataFrame containing the aggregated data quality results.
    */
   def process(df: DataFrame, ruleset: String): DataFrame = {
+    // 1. Parse the ruleset
+    val dqRuleset: DQRuleset = DefaultDQDLParser.parse(ruleset)
 
-    // OperandEvaluator has to be instantiated exactly once since it is stateful
-    val singletonEvaluator = getOperandEvaluator()
+    // 2. Translate each DQDL rule into a corresponding Deequ Check.
+    val checks: Seq[Check] = dqRuleset.getRules.flatMap(rule => DQDLRuleTranslator.translateRule(rule))
 
-    val dqRuleTranslator = new DQDLRuleTranslator[State[_], Metric[_]] {
-      override def operandEvaluator: OperandEvaluator = singletonEvaluator
-    }
+    // 3. Execute the checks against the DataFrame.
+    val executor = new DeequCheckExecutor
+    val verificationResult = executor.executeChecks(df, checks)
 
-    val dqRuleset = DefaultDQDLParser.parse(ruleset)
-
-    val schema = df.schema
-
-    // Flatten and split the rules
-    val flattened: FlattenedRuleset[State[_], Metric[_]] = flatten(dqRuleset, schema, dqRuleTranslator)
-
-    // todo add execution of rules
-    df
-  }
-
-}
-
-/**
- * Encapsulating business logic into a trait for testing purposes
- */
-private[dqdl] trait EvaluateDataQualityHelper {
-
-  def getOperandEvaluator(): OperandEvaluator
-
-  private[dqdl] def flatten(dqRuleset: DQRuleset,
-                            schema: StructType,
-                            dqRuleTranslator: DQDLRuleTranslator[State[_], Metric[_]]): FlattenedRuleset[State[_], Metric[_]] = {
-
-    val flattenedRuleset = dqRuleTranslator.flattenRuleset(dqRuleset, schema)
-    val deequRules = flattenedRuleset.deequRules
-
-    val unsupportedRules = flattenedRuleset.unsupportedRules
-    FlattenedRuleset(deequRules, unsupportedRules)
+    // 4. Translate the Deequ results into a Spark DataFrame.
+    val outcomeTranslator = new DeequOutcomeTranslator(df.sparkSession)
+    outcomeTranslator.translate(verificationResult)
   }
 
 }

@@ -16,11 +16,23 @@
 
 package com.amazon.deequ.dqdl
 
+import com.amazon.deequ.checks.{Check, CheckLevel}
 import software.amazon.glue.dqdl.model.DQRule
-import software.amazon.glue.dqdl.model.condition.number.{NumericOperand, OperandEvaluator}
 
-import java.lang
+trait DQDLRuleConverter {
+  def translate(rule: DQRule): Option[Check]
+}
 
-class RuleOperandEvaluator extends OperandEvaluator {
-  override def evaluate(dqRule: DQRule, numericOperand: NumericOperand): lang.Double = ???
+case class CompletenessRuleConverter() extends DQDLRuleConverter {
+  override def translate(rule: DQRule): Option[Check] = {
+    // todo implement
+    Some(Check(CheckLevel.Error, s"Completeness check: ${rule.getRuleType}"))
+  }
+}
+
+case class RowCountRuleConverter() extends DQDLRuleConverter {
+  override def translate(rule: DQRule): Option[Check] = {
+    // todo implement
+    Some(Check(CheckLevel.Error, s"RowCount check: ${rule.getRuleType}"))
+  }
 }

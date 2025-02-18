@@ -14,11 +14,18 @@
  *
  */
 
-package com.amazon.deequ.dqdl.utility
+package com.amazon.deequ.dqdl
 
-object DataQualityUtility {
+import com.amazon.deequ.VerificationResult
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-  def convertWhereClauseForMetric(whereClause: String): Option[String] =
-    Option(whereClause).map(where => s"(where: $whereClause)")
-
+/**
+ * Translates the outcome of Deequ checks (VerificationResult)
+ * into a Spark DataFrame containing the results.
+ */
+class DeequOutcomeTranslator(spark: SparkSession) {
+  def translate(result: VerificationResult): DataFrame = {
+    // todo implement
+    spark.emptyDataFrame
+  }
 }
