@@ -16,18 +16,19 @@
 
 package com.amazon.deequ.dqdl
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.glue.dqdl.parser.DQDLParser
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
 
-class ParserTest extends WordSpec with Matchers {
+class DefaultDQDLParserTest extends AnyWordSpec with Matchers {
 
   val parser = new DQDLParser()
 
   "DQDL Parser" should {
-    "parse DQDL rules" in {
+    "parse valid DQDL rules" in {
 
       val ruleset = "Rules = [ RowCount > 1, ColumnCount = 3]"
       val dqRuleset = parser.parse(ruleset)
@@ -45,5 +46,13 @@ class ParserTest extends WordSpec with Matchers {
       columnCountRule.isDefined shouldBe true
       columnCountRule.map(_.toString) shouldBe Some("ColumnCount = 3")
     }
+
+    "throw an IllegalArgumentException when DQDL can not be parsed" in {
+      val thrown = intercept[IllegalArgumentException] {
+        DefaultDQDLParser.parse("invalid")
+      }
+      thrown.getMessage should include("Parsing Error")
+    }
+
   }
 }
