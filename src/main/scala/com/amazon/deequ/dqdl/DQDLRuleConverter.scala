@@ -18,9 +18,21 @@ package com.amazon.deequ.dqdl
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import software.amazon.glue.dqdl.model.DQRule
+import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
+
 
 trait DQDLRuleConverter {
   def translate(rule: DQRule): Option[Check]
+
+  // todo move
+  def isWhereClausePresent(rule: DQRule): Boolean = {
+    rule.getWhereClause != null
+  }
+
+  def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
+    val evaluator = SimpleOperandEvaluator
+    (d: Double) => e.evaluate(d, dqRule, evaluator)
+  }
 }
 
 case class CompletenessRuleConverter() extends DQDLRuleConverter {
@@ -32,7 +44,11 @@ case class CompletenessRuleConverter() extends DQDLRuleConverter {
 
 case class RowCountRuleConverter() extends DQDLRuleConverter {
   override def translate(rule: DQRule): Option[Check] = {
-    // todo implement
-    Some(Check(CheckLevel.Error, s"RowCount check: ${rule.getRuleType}"))
+    var mutableCheck: Check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
+    val fn = assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition])
+    mutableCheck = if (isWhereClausePresent(rule)) {
+      mutableCheck.hasSize(rc => fn(rc.toDouble)).where(rule.getWhereClause)
+    } else mutableCheck.hasSize(rc => fn(rc.toDouble))
+    Some(mutableCheck)
   }
 }
