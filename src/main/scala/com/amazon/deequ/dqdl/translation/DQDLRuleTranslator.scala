@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequRule, RuleToExecute, UnsupportedRule}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}

@@ -14,11 +14,12 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.{DeequMetricMapping, DeequRule}
-import com.amazon.deequ.dqdl.util.DataQualityUtility.{addWhereClause, isWhereClausePresent}
+import com.amazon.deequ.dqdl.execution.SimpleOperandEvaluator
+import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.util.DataQualityUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 

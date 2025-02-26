@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.VerificationResult
 import org.apache.spark.sql.{DataFrame, SparkSession}

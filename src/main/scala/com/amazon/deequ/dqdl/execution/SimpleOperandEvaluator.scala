@@ -14,9 +14,9 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.ResultType.ResultType
+import com.amazon.deequ.dqdl.execution.ResultType.ResultType
 import org.apache.log4j.Logger
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.{AtomicNumberOperand, BinaryExpressionOperand, NumericOperand, OperandEvaluator}

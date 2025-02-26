@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.execution
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
