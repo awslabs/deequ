@@ -14,20 +14,22 @@
  *
  */
 
-package com.amazon.deequ.dqdl.execution
+package com.amazon.deequ.dqdl.util
 
-import com.amazon.deequ.checks.Check
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
-import org.apache.spark.sql.DataFrame
+import com.amazon.deequ.checks.{Check, CheckWithLastConstraintFilterable}
+import software.amazon.glue.dqdl.model.DQRule
 
-/**
- * Executes a sequence of Deequ Checks on a Spark DataFrame.
- */
-object DeequCheckExecutor {
-  def executeChecks(df: DataFrame, checks: Seq[Check]): VerificationResult = {
-    VerificationSuite()
-      .onData(df)
-      .addChecks(checks)
-      .run()
+object DQDLUtility {
+
+  def convertWhereClauseForMetric(whereClause: String): Option[String] =
+    Option(whereClause).map(_ => s"(where: $whereClause)")
+
+  def isWhereClausePresent(rule: DQRule): Boolean = {
+    rule.getWhereClause != null
   }
+
+  def addWhereClause(rule: DQRule, check: CheckWithLastConstraintFilterable): Check =
+    if (isWhereClausePresent(rule)) check.where(rule.getWhereClause)
+    else check
+
 }

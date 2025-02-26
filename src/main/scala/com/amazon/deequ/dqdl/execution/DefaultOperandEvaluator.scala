@@ -99,7 +99,7 @@ object IntermediateResult {
   }
 }
 
-object SimpleOperandEvaluator extends OperandEvaluator {
+object DefaultOperandEvaluator extends OperandEvaluator {
   override def evaluate(dqRule: DQRule, numericOperand: NumericOperand): lang.Double =
     evaluateInner(dqRule, numericOperand).result() match {
       case Left(l) => throw new IllegalArgumentException(l)

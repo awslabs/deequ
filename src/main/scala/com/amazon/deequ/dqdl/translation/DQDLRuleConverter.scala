@@ -17,9 +17,9 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.execution.SimpleOperandEvaluator
+import com.amazon.deequ.dqdl.execution.DefaultOperandEvaluator
 import com.amazon.deequ.dqdl.model.DeequMetricMapping
-import com.amazon.deequ.dqdl.util.DataQualityUtility.addWhereClause
+import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
@@ -28,7 +28,7 @@ trait DQDLRuleConverter {
   def translate(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])]
 
   def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
-    val evaluator = SimpleOperandEvaluator
+    val evaluator = DefaultOperandEvaluator
     (d: Double) => e.evaluate(d, dqRule, evaluator)
   }
 }

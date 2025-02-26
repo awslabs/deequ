@@ -16,14 +16,14 @@
 
 package com.amazon.deequ.dqdl.translation
 
-import com.amazon.deequ.dqdl.model.{DeequRule, RuleToExecute, UnsupportedRule}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
 
 /**
- * Translates DQDL rules into DeequRules.
+ * Translates DQDL rules into ExecutableRules.
  * Allows registration of specific converters for different rule types.
  */
 object DQDLRuleTranslator {
@@ -38,29 +38,29 @@ object DQDLRuleTranslator {
   }
 
   /**
-   * Translates a single DQDL rule into an Either[String, DeequRule].
+   * Translates a single DQDL rule
    */
-  def translateRule(rule: DQRule): Either[String, DeequRule] = {
+  private[dqdl] def translateRule(rule: DQRule): Either[String, DeequExecutableRule] = {
     converters.get(rule.getRuleType) match {
       case None =>
         Left(s"No converter found for rule type: ${rule.getRuleType}")
       case Some(converter) =>
-        converter.translate(rule) map { case (check, deequMetrics) => DeequRule(rule, check, deequMetrics) }
+        converter.translate(rule) map { case (check, deequMetrics) => DeequExecutableRule(rule, check, deequMetrics) }
     }
   }
 
-  def toRuleToExecute(rule: DQRule): RuleToExecute = {
+  private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     translateRule(rule) match {
       case Right(deequRule) => deequRule
-      case Left(message) => UnsupportedRule(rule, Some(message))
+      case Left(message) => UnsupportedExecutableRule(rule, Some(message))
     }
   }
 
   /**
-   * Translate a Ruleset to DeequRules
+   * Translate a ruleset to executable rules
    */
-  def toDeequRules(ruleset: DQRuleset): Seq[RuleToExecute] = {
-    ruleset.getRules.asScala.map(toRuleToExecute).toSeq.distinct
+  def toExecutableRules(ruleset: DQRuleset): Seq[ExecutableRule] = {
+    ruleset.getRules.asScala.map(toExecutableRule).toSeq.distinct
   }
 
 }

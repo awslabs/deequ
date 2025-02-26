@@ -17,21 +17,21 @@
 package com.amazon.deequ.dqdl.model
 
 import com.amazon.deequ.checks.Check
-import com.amazon.deequ.dqdl.util.DataQualityUtility.convertWhereClauseForMetric
+import com.amazon.deequ.dqdl.util.DQDLUtility.convertWhereClauseForMetric
 import software.amazon.glue.dqdl.model.DQRule
 
-trait RuleToExecute {
+trait ExecutableRule {
   val dqRule: DQRule
   val evaluatedMetricName: Option[String]
 }
 
-case class UnsupportedRule(dqRule: DQRule, reason: Option[String] = None) extends RuleToExecute {
+case class UnsupportedExecutableRule(dqRule: DQRule, reason: Option[String] = None) extends ExecutableRule {
   override val evaluatedMetricName: Option[String] = None
 }
 
-case class DeequRule(dqRule: DQRule,
-                     check: Check,
-                     deequMetricMappings: Seq[DeequMetricMapping] = Seq.empty) extends RuleToExecute {
+case class DeequExecutableRule(dqRule: DQRule,
+                               check: Check,
+                               deequMetricMappings: Seq[DeequMetricMapping] = Seq.empty) extends ExecutableRule {
 
   private val Delim = "."
   val evaluatedMetricName: Option[String] = deequMetricMappings match {
