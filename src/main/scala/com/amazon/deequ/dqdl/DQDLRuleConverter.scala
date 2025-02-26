@@ -17,17 +17,14 @@
 package com.amazon.deequ.dqdl
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.dqdl.model.{DeequMetricMapping, DeequRule}
+import com.amazon.deequ.dqdl.util.DataQualityUtility.{addWhereClause, isWhereClausePresent}
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 
 trait DQDLRuleConverter {
-  def translate(rule: DQRule): Option[Check]
-
-  // todo move
-  def isWhereClausePresent(rule: DQRule): Boolean = {
-    rule.getWhereClause != null
-  }
+  def translate(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])]
 
   def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
     val evaluator = SimpleOperandEvaluator
@@ -35,20 +32,10 @@ trait DQDLRuleConverter {
   }
 }
 
-case class CompletenessRuleConverter() extends DQDLRuleConverter {
-  override def translate(rule: DQRule): Option[Check] = {
-    // todo implement
-    Some(Check(CheckLevel.Error, s"Completeness check: ${rule.getRuleType}"))
-  }
-}
-
 case class RowCountRuleConverter() extends DQDLRuleConverter {
-  override def translate(rule: DQRule): Option[Check] = {
-    var mutableCheck: Check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
+  override def translate(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val fn = assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition])
-    mutableCheck = if (isWhereClausePresent(rule)) {
-      mutableCheck.hasSize(rc => fn(rc.toDouble)).where(rule.getWhereClause)
-    } else mutableCheck.hasSize(rc => fn(rc.toDouble))
-    Some(mutableCheck)
+    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString).hasSize(rc => fn(rc.toDouble))
+    Right(addWhereClause(rule, check), Seq(DeequMetricMapping("Dataset", "*", "RowCount", "Size", None, rule = rule)))
   }
 }

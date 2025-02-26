@@ -16,12 +16,8 @@
 
 package com.amazon.deequ.dqdl
 
-import com.amazon.deequ.checks.Check
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRuleset
-
-import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
-
 
 /**
  * Entry point for evaluating data quality.
@@ -47,12 +43,11 @@ object EvaluateDataQuality {
     // 1. Parse the ruleset
     val dqRuleset: DQRuleset = DefaultDQDLParser.parse(ruleset)
 
-    // 2. Translate each DQDL rule into a corresponding Deequ Check.
-    val checks: Seq[Check] = dqRuleset.getRules.flatMap(rule => DQDLRuleTranslator.translateRule(rule))
+    // 2. Translate the dqRuleset into a corresponding deequRules.
+    val deequRules = DQDLRuleTranslator.toDeequRules(dqRuleset)
 
     // 3. Execute the checks against the DataFrame.
-    val executor = new DeequCheckExecutor
-    val verificationResult = executor.executeChecks(df, checks)
+    val verificationResult = DeequCheckExecutor.executeChecks(df, Seq.empty)
 
     // 4. Translate the Deequ results into a Spark DataFrame.
     val outcomeTranslator = new DeequOutcomeTranslator(df.sparkSession)
