@@ -51,7 +51,7 @@ object DQDLRuleTranslator {
 
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     translateRule(rule) match {
-      case Right(deequRule) => deequRule
+      case Right(deequExecutableRule) => deequExecutableRule
       case Left(message) => UnsupportedExecutableRule(rule, Some(message))
     }
   }
