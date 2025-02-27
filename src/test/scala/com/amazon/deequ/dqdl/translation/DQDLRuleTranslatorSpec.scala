@@ -21,6 +21,10 @@ import com.amazon.deequ.utils.ConditionUtils.ConditionAsString
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.glue.dqdl.model.DQRule
+import com.amazon.deequ.dqdl.model.UnsupportedExecutableRule
+import com.amazon.deequ.dqdl.util.DefaultDQDLParser
+import software.amazon.glue.dqdl.model.DQRuleset
+
 
 import scala.jdk.CollectionConverters.mapAsJavaMapConverter
 
@@ -40,5 +44,33 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
       deequRuleOpt shouldBe defined
       deequRuleOpt.get.check.toString should include("SizeConstraint")
     }
+  }
+
+  "get executable rules for RowCount" in {
+    // given
+    val ruleset: DQRuleset = DefaultDQDLParser.parse("Rules=[RowCount > 10]")
+
+    // when
+    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
+
+    // then
+    rules.size should equal(1)
+    val rule = rules.head
+    rule.evaluatedMetricName.get should equal("Dataset.*.RowCount")
+    rule.dqRule.getRuleType should equal("RowCount")
+  }
+
+  "get unknown executable rule" in {
+    // given
+    val ruleset: DQRuleset = DefaultDQDLParser.parse("Rules=[Completeness \"Name\" > 0.8]")
+
+    // when
+    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
+
+    // then
+    rules.size should equal(1)
+    val rule = rules.head
+    rule shouldBe an[UnsupportedExecutableRule]
+    rule.evaluatedMetricName should equal(None)
   }
 }
