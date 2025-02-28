@@ -48,7 +48,7 @@ final case class IntermediateResult(value: Object, valueType: ResultType) {
         Left("Rule threshold results in empty list, and a single value is expected.")
       case list =>
         Left(s"Rule threshold results in list, and a single value is expected. Use aggregation functions to produce a" +
-          s" single value. Valid example: sum(last(10)), avg(last(10))." +
+          s" single value." +
           s"${list.size}")
     }
     case _ =>
