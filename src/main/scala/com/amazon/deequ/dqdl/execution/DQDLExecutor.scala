@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.DeequRulesExecutor
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, RuleOutcome}
+import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, RuleOutcome, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -33,19 +33,18 @@ object DQDLExecutor {
 
   // Map from rule class to its executor
   private val executors = Map[Class[_ <: ExecutableRule], RuleExecutor[_ <: ExecutableRule]](
-    classOf[DeequExecutableRule] -> DeequRulesExecutor
+    classOf[DeequExecutableRule] -> DeequRulesExecutor,
+    classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor
   )
 
   def executeRules(rules: Seq[ExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] = {
-    // Group rules to execute them
+    // Group rules to execute each group with the corresponding executor
     val rulesByType = rules.groupBy(_.getClass)
 
     rulesByType.flatMap {
       case (ruleClass, rules) =>
         executors.get(ruleClass) match {
-          case Some(executor) =>
-            // Need to use asInstanceOf due to type erasure
-            executor.asInstanceOf[RuleExecutor[ExecutableRule]].executeRules(rules, df)
+          case Some(executor) => executor.asInstanceOf[RuleExecutor[ExecutableRule]].executeRules(rules, df)
           case None => handleError(rules)
         }
     }
