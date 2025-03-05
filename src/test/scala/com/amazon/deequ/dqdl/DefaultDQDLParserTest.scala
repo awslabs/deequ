@@ -16,6 +16,7 @@
 
 package com.amazon.deequ.dqdl
 
+import com.amazon.deequ.dqdl.util.DefaultDQDLParser
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.glue.dqdl.parser.DQDLParser
