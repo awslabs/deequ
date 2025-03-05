@@ -14,25 +14,22 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.util
 
-import com.amazon.deequ.checks.{Check, CheckLevel}
+import com.amazon.deequ.checks.{Check, CheckWithLastConstraintFilterable}
 import software.amazon.glue.dqdl.model.DQRule
 
-trait DQDLRuleConverter {
-  def translate(rule: DQRule): Option[Check]
-}
+object DQDLUtility {
 
-case class CompletenessRuleConverter() extends DQDLRuleConverter {
-  override def translate(rule: DQRule): Option[Check] = {
-    // todo implement
-    Some(Check(CheckLevel.Error, s"Completeness check: ${rule.getRuleType}"))
-  }
-}
+  def convertWhereClauseForMetric(whereClause: String): Option[String] =
+    Option(whereClause).map(_ => s"(where: $whereClause)")
 
-case class RowCountRuleConverter() extends DQDLRuleConverter {
-  override def translate(rule: DQRule): Option[Check] = {
-    // todo implement
-    Some(Check(CheckLevel.Error, s"RowCount check: ${rule.getRuleType}"))
+  def isWhereClausePresent(rule: DQRule): Boolean = {
+    rule.getWhereClause != null
   }
+
+  def addWhereClause(rule: DQRule, check: CheckWithLastConstraintFilterable): Check =
+    if (isWhereClausePresent(rule)) check.where(rule.getWhereClause)
+    else check
+
 }

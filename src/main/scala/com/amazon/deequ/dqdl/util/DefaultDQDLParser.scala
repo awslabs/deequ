@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.util
 
 import software.amazon.glue.dqdl.exception.InvalidDataQualityRulesetException
 import software.amazon.glue.dqdl.model.DQRuleset
