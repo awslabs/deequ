@@ -16,19 +16,19 @@
 
 package com.amazon.deequ.dqdl
 
-import com.amazon.deequ.checks.Check
+import com.amazon.deequ.dqdl.execution.DQDLExecutor
+import com.amazon.deequ.dqdl.model.ExecutableRule
+import com.amazon.deequ.dqdl.translation.{DQDLRuleTranslator, DeequOutcomeTranslator}
+import com.amazon.deequ.dqdl.util.DefaultDQDLParser
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRuleset
-
-import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
-
 
 /**
  * Entry point for evaluating data quality.
  *
  * Given a Spark DataFrame and a DQDL ruleset (as a String), this object:
- *  - Parses and translates the rules to Deequ Checks.
- *  - Executes the checks on the DataFrame.
+ *  - Parses and translates each rule from the ruleset to an ExecutableRule
+ *  - Executes the rules on the DataFrame.
  *  - Translates the outcome back to a Spark DataFrame.
  */
 object EvaluateDataQuality {
@@ -39,24 +39,23 @@ object EvaluateDataQuality {
    * <p>This method applies the specified data quality ruleset to the input DataFrame and returns a new
    * DataFrame summarizing the overall quality results, including any issues detected during the analysis.</p>
    *
-   * @param df      the Spark DataFrame to analyze.
-   * @param ruleset the data quality ruleset in DQDL format to apply to the DataFrame.
+   * @param df                the Spark DataFrame to analyze.
+   * @param rulesetDefinition the data quality ruleset (defined in DQDL string format) to apply to the DataFrame.
    * @return a Spark DataFrame containing the aggregated data quality results.
    */
-  def process(df: DataFrame, ruleset: String): DataFrame = {
+  def process(df: DataFrame, rulesetDefinition: String): DataFrame = {
     // 1. Parse the ruleset
-    val dqRuleset: DQRuleset = DefaultDQDLParser.parse(ruleset)
+    val ruleset: DQRuleset = DefaultDQDLParser.parse(rulesetDefinition)
 
-    // 2. Translate each DQDL rule into a corresponding Deequ Check.
-    val checks: Seq[Check] = dqRuleset.getRules.flatMap(rule => DQDLRuleTranslator.translateRule(rule))
+    // 2. Translate the dqRuleset into a corresponding ExecutableRules.
+    val executableRules: Seq[ExecutableRule] = DQDLRuleTranslator.toExecutableRules(ruleset)
 
-    // 3. Execute the checks against the DataFrame.
-    val executor = new DeequCheckExecutor
-    val verificationResult = executor.executeChecks(df, checks)
+    // 3. Execute the rules against the DataFrame.
+    val result = DQDLExecutor.executeRules(df, Seq.empty)
 
-    // 4. Translate the Deequ results into a Spark DataFrame.
+    // 4. Translate the results into a Spark DataFrame.
     val outcomeTranslator = new DeequOutcomeTranslator(df.sparkSession)
-    outcomeTranslator.translate(verificationResult)
+    outcomeTranslator.translate(result)
   }
 
 }

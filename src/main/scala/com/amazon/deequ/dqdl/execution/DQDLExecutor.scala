@@ -14,7 +14,7 @@
  *
  */
 
-package com.amazon.deequ.dqdl
+package com.amazon.deequ.dqdl.execution
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
@@ -23,8 +23,8 @@ import org.apache.spark.sql.DataFrame
 /**
  * Executes a sequence of Deequ Checks on a Spark DataFrame.
  */
-class DeequCheckExecutor {
-  def executeChecks(df: DataFrame, checks: Seq[Check]): VerificationResult = {
+object DQDLExecutor {
+  def executeRules(df: DataFrame, checks: Seq[Check]): VerificationResult = {
     VerificationSuite()
       .onData(df)
       .addChecks(checks)
