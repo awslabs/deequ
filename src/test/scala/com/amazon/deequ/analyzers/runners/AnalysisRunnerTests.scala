@@ -337,7 +337,7 @@ class AnalysisRunnerTests extends AnyWordSpec
       val analyzers = Size() :: Completeness("item") :: Nil
 
       val expectedAnalyzerContextOnLoadByKey = AnalysisRunner.onData(df).useRepository(repository)
-          .addAnalyzers(analyzers).run()
+        .addAnalyzers(analyzers).run()
 
       val resultWhichShouldBeOverwritten = AnalyzerContext(Map(Size() -> DoubleMetric(
         Entity.Dataset, "", "", Try(100.0))))
@@ -395,6 +395,17 @@ class AnalysisRunnerTests extends AnyWordSpec
           .useSparkSession(sparkSession)
           .run()
       }
+    }
+
+    "not add Size(None) if grouping analyzers are frequency-based only" in withSparkSession { sparkSession =>
+      val data = getDfWithNumericValues(sparkSession)
+
+      val freqGroupingAnalyzer = Distinctness(Seq("att1"))
+      val analysis = Analysis().addAnalyzer(freqGroupingAnalyzer)
+
+      val computed = AnalysisRunner.run(data, analysis)
+
+      assert(!computed.metricMap.keys.exists(_.isInstanceOf[Size]))
     }
   }
 }
