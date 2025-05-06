@@ -60,7 +60,7 @@ object ReferentialIntegrity extends ComparisonBase {
       val referenceSparkCols = reference.select(referenceColumns.map(col): _*)
       val mismatchCount = primarySparkCols.except(referenceSparkCols).count()
 
-      val ratio = if (mismatchCount == 0) 1.0 else (primaryCount - mismatchCount).toDouble / primaryCount
+      val ratio = mismatchCount.toDouble / primaryCount
 
       if (assertion(ratio)) {
         ComparisonSucceeded()
