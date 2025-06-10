@@ -30,13 +30,9 @@ import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 object DQDLRuleTranslator {
 
   // Map from rule type to its converter implementation.
-  private var converters: Map[String, DQDLRuleConverter] = Map.empty
-
-  register("RowCount", new RowCountRule)
-
-  private def register(ruleType: String, converter: DQDLRuleConverter): Unit = {
-    converters += (ruleType -> converter)
-  }
+  private val converters = Map[String, DQDLRuleConverter](
+    "RowCount" -> new RowCountRule
+  )
 
   /**
    * Translates a single DQDL rule
