@@ -51,11 +51,10 @@ object EvaluateDataQuality {
     val executableRules: Seq[ExecutableRule] = DQDLRuleTranslator.toExecutableRules(ruleset)
 
     // 3. Execute the rules against the DataFrame.
-    val result = DQDLExecutor.executeRules(executableRules, df)
+    val executedRulesResult = DQDLExecutor.executeRules(executableRules, df)
 
     // 4. Translate the results into a Spark DataFrame.
-    val outcomeTranslator = new DeequOutcomeTranslator(df.sparkSession)
-    outcomeTranslator.translate(result)
+    DeequOutcomeTranslator.translate(executedRulesResult, df)
   }
 
 }
