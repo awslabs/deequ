@@ -16,17 +16,31 @@
 
 package com.amazon.deequ.dqdl.translation
 
-import com.amazon.deequ.dqdl.model.RuleOutcome
+import com.amazon.deequ.dqdl.model.{Failed, RuleOutcome}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import software.amazon.glue.dqdl.model.DQRule
+import software.amazon.glue.dqdl.model.{DQRule, DQRuleLogicalOperator}
 
 /**
- * Translates the outcome of Deequ checks (VerificationResult)
+ * Translates the outcome of Deequ checks (RuleOutcome)
  * into a Spark DataFrame containing the results.
  */
-class DeequOutcomeTranslator(spark: SparkSession) {
-  def translate(m: Map[DQRule, RuleOutcome]): DataFrame = {
-    // todo implement
-    spark.emptyDataFrame
+object DeequOutcomeTranslator {
+
+  def translate(executedRulesResult: Map[DQRule, RuleOutcome], df: DataFrame): DataFrame = {
+
+    // Reuse SparkSession from the existing DataFrame
+    val spark = df.sparkSession
+    import spark.implicits._
+
+    executedRulesResult.values.toSeq.map { r =>
+      (
+        r.rule.toString,
+        r.outcome.asString,
+        r.failureReason.orNull,
+        r.evaluatedMetrics,
+        r.evaluatedRule.map(_.toString).orNull
+      )
+    }.toDF("Rule", "Outcome", "FailureReason", "EvaluatedMetrics", "EvaluatedRule")
   }
+
 }
