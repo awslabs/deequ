@@ -16,15 +16,16 @@
 
 package com.amazon.deequ.dqdl.translation
 
-import com.amazon.deequ.VerificationResult
+import com.amazon.deequ.dqdl.model.RuleOutcome
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import software.amazon.glue.dqdl.model.DQRule
 
 /**
  * Translates the outcome of Deequ checks (VerificationResult)
  * into a Spark DataFrame containing the results.
  */
 class DeequOutcomeTranslator(spark: SparkSession) {
-  def translate(result: VerificationResult): DataFrame = {
+  def translate(m: Map[DQRule, RuleOutcome]): DataFrame = {
     // todo implement
     spark.emptyDataFrame
   }

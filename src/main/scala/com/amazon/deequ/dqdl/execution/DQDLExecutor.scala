@@ -16,18 +16,48 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.checks.Check
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
+import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, RuleOutcome, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
+import software.amazon.glue.dqdl.model.DQRule
+
 
 /**
- * Executes a sequence of Deequ Checks on a Spark DataFrame.
+ * Executes DQDL rules on a Spark DataFrame.
  */
 object DQDLExecutor {
-  def executeRules(df: DataFrame, checks: Seq[Check]): VerificationResult = {
-    VerificationSuite()
-      .onData(df)
-      .addChecks(checks)
-      .run()
+
+  trait RuleExecutor[T <: ExecutableRule] {
+    def executeRules(rules: Seq[T], df: DataFrame): Map[DQRule, RuleOutcome]
+  }
+
+  // Map from rule class to its executor
+  private val executors = Map[Class[_ <: ExecutableRule], RuleExecutor[_ <: ExecutableRule]](
+    classOf[DeequExecutableRule] -> DeequRulesExecutor,
+    classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor
+  )
+
+  def executeRules(rules: Seq[ExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] = {
+    // Group rules to execute each group with the corresponding executor
+    val rulesByType = rules.groupBy(_.getClass)
+
+    rulesByType.flatMap {
+      case (ruleClass, rules) =>
+        executors.get(ruleClass) match {
+          case Some(executor) => executor.asInstanceOf[RuleExecutor[ExecutableRule]].executeRules(rules, df)
+          case None => handleError(rules)
+        }
+    }
+  }
+
+  private def handleError(rules: Seq[ExecutableRule]) = {
+    rules.map { rule =>
+      rule.dqRule -> RuleOutcome(
+        rule.dqRule,
+        Failed,
+        Some(s"No executor found for rule type: ${rule.dqRule.getRuleType}")
+      )
+    }
+
   }
 }
