@@ -17,6 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.translation.rules.RowCountRule
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
@@ -29,13 +30,9 @@ import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 object DQDLRuleTranslator {
 
   // Map from rule type to its converter implementation.
-  private var converters: Map[String, DQDLRuleConverter] = Map.empty
-
-  register("RowCount", new RowCountRuleConverter)
-
-  private def register(ruleType: String, converter: DQDLRuleConverter): Unit = {
-    converters += (ruleType -> converter)
-  }
+  private val converters = Map[String, DQDLRuleConverter](
+    "RowCount" -> new RowCountRule
+  )
 
   /**
    * Translates a single DQDL rule
@@ -45,7 +42,7 @@ object DQDLRuleTranslator {
       case None =>
         Left(s"No converter found for rule type: ${rule.getRuleType}")
       case Some(converter) =>
-        converter.translate(rule) map { case (check, deequMetrics) => DeequExecutableRule(rule, check, deequMetrics) }
+        converter.convert(rule) map { case (check, deequMetrics) => DeequExecutableRule(rule, check, deequMetrics) }
     }
   }
 
