@@ -23,9 +23,9 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
-"EvaluateDataQuality process" should {
+  "DQDQ ruleset" should {
 
-    "run successfully on a ruleset" in withSparkSession { sparkSession =>
+    "run successfully on a given spark DataFrame" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
       val ruleset = "Rules=[RowCount < 10]"
@@ -50,5 +50,34 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.RowCount" -> 4.0)
 
     }
+
+    "support RowCount rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[RowCount < 10]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "work with not yet supported rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      // CustomSql is not yet supported
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" between 10 and 20]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
+      resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
+        "No converter found for rule type: CustomSql")
+    }
+
   }
+
 }
