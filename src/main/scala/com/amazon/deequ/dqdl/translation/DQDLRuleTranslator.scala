@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
-import com.amazon.deequ.dqdl.translation.rules.RowCountRule
+import com.amazon.deequ.dqdl.translation.rules.{CompletenessRule, RowCountRule}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
@@ -31,7 +31,8 @@ object DQDLRuleTranslator {
 
   // Map from rule type to its converter implementation.
   private val converters = Map[String, DQDLRuleConverter](
-    "RowCount" -> new RowCountRule
+    "RowCount" -> new RowCountRule,
+    "Completeness" -> new CompletenessRule
   )
 
   /**
