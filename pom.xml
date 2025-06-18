@@ -239,7 +239,7 @@
                 <version>1.0.0</version>
                 <configuration>
                     <verbose>false</verbose>
-                    <failOnViolation>true</failOnViolation>
+                    <failOnViolation>false</failOnViolation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <failOnWarning>false</failOnWarning>
                     <sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>

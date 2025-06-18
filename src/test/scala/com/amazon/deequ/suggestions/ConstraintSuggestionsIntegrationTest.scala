@@ -239,7 +239,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
   }
 
   private[this] def assertConstraintExistsIn(constraintSuggestionResult: ConstraintSuggestionResult)
-      (func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
+      (func: (Analyzer[_ <: State[_], Metric[_]], Double => Boolean) => Boolean)
     : Unit = {
 
     assert(evaluate(constraintSuggestionResult, func))
@@ -247,7 +247,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
   private[this] def assertNoConstraintExistsIn(
       constraintSuggestionResult: ConstraintSuggestionResult)(
-      func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
+      func: (Analyzer[_ <: State[_], Metric[_]], Double => Boolean) => Boolean)
     : Unit = {
 
     assert(!evaluate(constraintSuggestionResult, func))
@@ -255,7 +255,7 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
 
   private[this] def evaluate(
       constraintSuggestionResult: ConstraintSuggestionResult,
-      func: (Analyzer[State[_], Metric[_]], Double => Boolean) => Boolean)
+      func: (Analyzer[_ <: State[_], Metric[_]], Double => Boolean) => Boolean)
     : Boolean = {
 
     constraintSuggestionResult
@@ -266,9 +266,9 @@ class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpe
         case constraint: Constraint => constraint
       }
       .exists { constraint =>
-        val analysisBasedConstraint = constraint.asInstanceOf[AnalysisBasedConstraint[_, _, _]]
+        val analysisBasedConstraint = constraint.asInstanceOf[AnalysisBasedConstraint[_, _]]
         val assertionFunction = analysisBasedConstraint.assertion.asInstanceOf[Double => Boolean]
-        val analyzer = analysisBasedConstraint.analyzer.asInstanceOf[Analyzer[State[_], Metric[_]]]
+        val analyzer = analysisBasedConstraint.analyzer
 
         func(analyzer, assertionFunction)
       }
