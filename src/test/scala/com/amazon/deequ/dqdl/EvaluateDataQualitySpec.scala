@@ -23,9 +23,9 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
-"EvaluateDataQuality process" should {
+  "DQDL ruleset" should {
 
-    "run successfully on a ruleset" in withSparkSession { sparkSession =>
+    "run successfully on a given spark DataFrame" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
       val ruleset = "Rules=[RowCount < 10]"
@@ -41,14 +41,111 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         "EvaluatedMetrics",
         "EvaluatedRule"
       )
-
-      val row = results.collect()(0)
-
-      row.getAs[String]("Rule") should be("RowCount < 10")
-      row.getAs[String]("Outcome") should be("Passed")
-      row.getAs[String]("FailureReason") should be(null)
-      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.RowCount" -> 4.0)
+      results.collect().length should be(1)
 
     }
+
+    "support RowCount rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[RowCount < 10]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.RowCount" -> 4.0)
+    }
+
+    "support Completeness rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[Completeness \"item\" > 0.8]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Completeness" -> 1.0)
+    }
+
+    "support IsComplete rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[IsComplete \"item\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Completeness" -> 1.0)
+    }
+
+    "support Uniqueness rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[Uniqueness \"item\" = 1.0]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Uniqueness" -> 1.0)
+    }
+
+    "support IsUnique rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[IsUnique \"item\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Uniqueness" -> 1.0)
+    }
+
+    "support ColumnCorrelation rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnCorrelation \"att2\" \"att3\" > 0.8]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Multicolumn.att2,att3.ColumnCorrelation")
+      // check the correlation value
+      (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(99)
+    }
+
+    "work with not yet supported rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      // CustomSql is not yet supported
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" between 10 and 20]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
+      resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
+        "No converter found for rule type: CustomSql")
+    }
+
   }
+
 }
