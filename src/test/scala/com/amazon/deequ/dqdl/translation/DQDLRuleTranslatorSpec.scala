@@ -62,7 +62,8 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
 
   "get unknown executable rule" in {
     // given
-    val ruleset: DQRuleset = DefaultDQDLParser.parse("Rules=[Completeness \"Name\" > 0.8]")
+    val ruleset: DQRuleset = DefaultDQDLParser
+      .parse("Rules=[CustomSql \"select count(*) from primary\" between 10 and 20]")
 
     // when
     val rules = DQDLRuleTranslator.toExecutableRules(ruleset)

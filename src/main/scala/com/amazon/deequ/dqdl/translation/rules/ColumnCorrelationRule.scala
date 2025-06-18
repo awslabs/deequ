@@ -29,8 +29,8 @@ case class ColumnCorrelationRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val col1 = rule.getParameters.asScala("TargetColumn1")
     val col2 = rule.getParameters.asScala("TargetColumn2")
-    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString).hasCorrelation(
-      col1, col2, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
+    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
+      .hasCorrelation(col1, col2, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
     Right((addWhereClause(rule, check),
       Seq(DeequMetricMapping("Multicolumn", s"$col1,$col2", "ColumnCorrelation", "Correlation", None, rule = rule))))
   }
