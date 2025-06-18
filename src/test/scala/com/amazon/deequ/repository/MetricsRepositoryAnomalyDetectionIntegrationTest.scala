@@ -57,9 +57,29 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with 
     }
   }
 
+  "Anomaly Detection with Extended Results" should {
+
+    "work using the InMemoryMetricsRepository" in withSparkSession { session =>
+
+      val repository = new InMemoryMetricsRepository()
+
+      testAnomalyDetection(session, repository, useExtendedResults = true)
+
+    }
+
+    "work using the FileSystemMetricsRepository" in withSparkSession { session =>
+
+      val tempDir = TempFileUtils.tempDir("fileSystemRepositoryTest")
+      val repository = new FileSystemMetricsRepository(session, tempDir + "repository-test.json")
+
+      testAnomalyDetection(session, repository, useExtendedResults = true)
+    }
+  }
+
   private[this] def testAnomalyDetection(
     session: SparkSession,
-    repository: MetricsRepository)
+    repository: MetricsRepository,
+    useExtendedResults: Boolean = false)
   : Unit = {
 
     val data = getTestData(session)
@@ -71,8 +91,15 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with 
     val (otherCheck, additionalRequiredAnalyzers) = getNormalCheckAndRequiredAnalyzers()
 
     // This method is where the interesting stuff happens
-    val verificationResult = createAnomalyChecksAndRunEverything(data, repository, otherCheck,
-      additionalRequiredAnalyzers)
+    val verificationResult =
+      if (useExtendedResults) {
+        createAnomalyChecksWithExtendedResultsAndRunEverything(
+          data, repository, otherCheck, additionalRequiredAnalyzers)
+      }
+      else
+      {
+        createAnomalyChecksAndRunEverything(data, repository, otherCheck, additionalRequiredAnalyzers)
+      }
 
     printConstraintResults(verificationResult)
 
@@ -183,6 +210,56 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with 
       .addAnomalyCheck(sizeAnomalyDetectionStrategy, Size(), Some(sizeAnomalyCheckConfig))
       // Add the Mean sales anomaly check
       .addAnomalyCheck(meanSalesAnomalyDetectionStrategy, Mean("sales"),
+        Some(meanSalesAnomalyCheckConfig))
+      // Save new data point in the repository after we calculated everything
+      .saveOrAppendResult(currentRunResultKey)
+      .run()
+  }
+
+  private[this] def createAnomalyChecksWithExtendedResultsAndRunEverything(
+                                                         data: DataFrame,
+                                                         repository: MetricsRepository,
+                                                         otherCheck: Check,
+                                                         additionalRequiredAnalyzers: Seq[Analyzer[_, Metric[_]]])
+  : VerificationResult = {
+
+    // We only want to use historic data with the EU tag for the anomaly checks since the new
+    // data point is from the EU marketplace
+    val filterEU = Map("marketplace" -> "EU")
+
+    // We only want to use data points before the date time associated with the current
+    // data point and only ones that are from 2018
+    val afterDateTime = createDate(2018, 1, 1)
+    val beforeDateTime = createDate(2018, 8, 1)
+
+    // Config for the size anomaly check
+    val sizeAnomalyCheckConfig = AnomalyCheckConfig(CheckLevel.Error, "Size only increases",
+      filterEU, Some(afterDateTime), Some(beforeDateTime))
+    val sizeAnomalyDetectionStrategy = AbsoluteChangeStrategy(Some(0))
+
+    // Config for the mean sales anomaly check
+    val meanSalesAnomalyCheckConfig = AnomalyCheckConfig(
+      CheckLevel.Warning,
+      "Sales mean within 2 standard deviations",
+      filterEU,
+      Some(afterDateTime),
+      Some(beforeDateTime)
+    )
+    val meanSalesAnomalyDetectionStrategy = OnlineNormalStrategy(upperDeviationFactor = Some(2),
+      ignoreAnomalies = false)
+
+    // ResultKey to be used when saving the results of this run
+    val currentRunResultKey = ResultKey(createDate(2018, 8, 1), Map("marketplace" -> "EU"))
+
+    VerificationSuite()
+      .onData(data)
+      .addCheck(otherCheck)
+      .addRequiredAnalyzers(additionalRequiredAnalyzers)
+      .useRepository(repository)
+      // Add the Size anomaly check
+      .addAnomalyCheckWithExtendedResults(sizeAnomalyDetectionStrategy, Size(), Some(sizeAnomalyCheckConfig))
+      // Add the Mean sales anomaly check
+      .addAnomalyCheckWithExtendedResults(meanSalesAnomalyDetectionStrategy, Mean("sales"),
         Some(meanSalesAnomalyCheckConfig))
       // Save new data point in the repository after we calculated everything
       .saveOrAppendResult(currentRunResultKey)

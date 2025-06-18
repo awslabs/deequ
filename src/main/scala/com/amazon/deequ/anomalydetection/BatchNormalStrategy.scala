@@ -33,7 +33,9 @@ import breeze.stats.meanAndVariance
 case class BatchNormalStrategy(
   lowerDeviationFactor: Option[Double] = Some(3.0),
   upperDeviationFactor: Option[Double] = Some(3.0),
-  includeInterval: Boolean = false) extends AnomalyDetectionStrategy {
+  includeInterval: Boolean = false)
+  extends AnomalyDetectionStrategy with AnomalyDetectionStrategyWithExtendedResults
+   {
 
   require(lowerDeviationFactor.isDefined || upperDeviationFactor.isDefined,
     "At least one factor has to be specified.")
@@ -43,7 +45,8 @@ case class BatchNormalStrategy(
 
 
   /**
-    * Search for anomalies in a series of data points.
+    * Search for anomalies in a series of data points. This function uses the
+    * detectWithExtendedResults function and then filters and maps to return only anomaly objects.
     *
     * @param dataSeries     The data contained in a Vector of Doubles
     * @param searchInterval The indices between which anomalies should be detected. [a, b).
@@ -52,6 +55,25 @@ case class BatchNormalStrategy(
   override def detect(
     dataSeries: Vector[Double],
     searchInterval: (Int, Int)): Seq[(Int, Anomaly)] = {
+
+    detectWithExtendedResults(dataSeries, searchInterval)
+      .filter { case (_, anomDataPoint) => anomDataPoint.isAnomaly }
+      .map { case (i, anomDataPoint) =>
+        (i, Anomaly(Some(anomDataPoint.dataMetricValue), anomDataPoint.confidence, anomDataPoint.detail))
+      }
+  }
+
+ /**
+   * Search for anomalies in a series of data points, returns extended results.
+   *
+   * @param dataSeries     The data contained in a Vector of Doubles
+   * @param searchInterval The indices between which anomalies should be detected. [a, b).
+   * @return The indices of all anomalies in the interval and their corresponding wrapper object
+   *          with extended results.
+   */
+  override def detectWithExtendedResults(
+    dataSeries: Vector[Double],
+    searchInterval: (Int, Int)): Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     val (searchStart, searchEnd) = searchInterval
 
@@ -83,13 +105,18 @@ case class BatchNormalStrategy(
 
     dataSeries.zipWithIndex
       .slice(searchStart, searchEnd)
-      .filter { case (value, _) => value > upperBound || value < lowerBound }
       .map { case (value, index) =>
-
-        val detail = Some(s"[BatchNormalStrategy]: Value $value is not in " +
-          s"bounds [$lowerBound, $upperBound].")
-
-        (index, Anomaly(Option(value), 1.0, detail))
+        val (detail, isAnomaly) = if (value > upperBound || value < lowerBound) {
+          (Some(s"[BatchNormalStrategy]: Value $value is not in " +
+            s"bounds [$lowerBound, $upperBound]."), true)
+        } else {
+          (None, false)
+        }
+        (index, AnomalyDetectionDataPoint(value, value,
+          BoundedRange(lowerBound = Bound(lowerBound, inclusive = true),
+            upperBound = Bound(upperBound, inclusive = true)), isAnomaly, 1.0, detail))
       }
   }
+
+
 }
