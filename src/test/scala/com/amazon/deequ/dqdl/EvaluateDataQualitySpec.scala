@@ -115,6 +115,22 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Uniqueness" -> 1.0)
     }
 
+    "support ColumnCorrelation rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnCorrelation \"att2\" \"att3\" > 0.8]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Multicolumn.att2,att3.ColumnCorrelation")
+      // check the correlation value
+      (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(99)
+    }
+
     "work with not yet supported rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
