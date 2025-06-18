@@ -101,6 +101,20 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Uniqueness" -> 1.0)
     }
 
+    "support IsUnique rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[IsUnique \"item\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Column.item.Uniqueness" -> 1.0)
+    }
+
     "work with not yet supported rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
