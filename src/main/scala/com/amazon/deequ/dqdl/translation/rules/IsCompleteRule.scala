@@ -25,11 +25,10 @@ import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 import scala.collection.JavaConverters._
 
-case class CompletenessRule() extends DQDLRuleConverter {
+case class IsCompleteRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val col = rule.getParameters.asScala("TargetColumn")
-    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
-      .hasCompleteness(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]), None, None)
+    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString).isComplete(col)
     Right((
       addWhereClause(rule, check),
       Seq(DeequMetricMapping("Column", col, "Completeness", "Completeness", None, rule = rule))))
