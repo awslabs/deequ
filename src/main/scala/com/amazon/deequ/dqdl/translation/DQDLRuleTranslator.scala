@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
-import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, IsCompleteRule, IsUniqueRule, RowCountRule, UniquenessRule}
+import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsUniqueRule, MeanRule, RowCountRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
@@ -36,7 +36,13 @@ object DQDLRuleTranslator {
     "IsComplete" -> new IsCompleteRule,
     "Uniqueness" -> new UniquenessRule,
     "IsUnique" -> new IsUniqueRule,
-    "ColumnCorrelation" -> new ColumnCorrelationRule
+    "ColumnCorrelation" -> new ColumnCorrelationRule,
+    "DistinctValuesCount" -> new DistinctValuesCountRule,
+    "Entropy" -> new EntropyRule,
+    "Mean" -> new MeanRule,
+    "StandardDeviation" -> new StandardDeviationRule,
+    "Sum" -> new SumRule,
+    "UniqueValueRatio" -> new UniqueValueRatioRule
   )
 
   /**
