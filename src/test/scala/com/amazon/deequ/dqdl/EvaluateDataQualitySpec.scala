@@ -126,6 +126,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Multicolumn.att2,att3.ColumnCorrelation")
       // check the correlation value
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(99)
@@ -142,6 +143,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.DistinctValuesCount")
       // check the metric value
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head).toInt should be(4)
@@ -158,6 +160,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Entropy")
       // check the metric value
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(124)
@@ -174,6 +177,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Mean")
       // check the metric value
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head).toInt should be(3)
@@ -190,6 +194,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.StandardDeviation")
       // check the metric value
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(305)
@@ -206,6 +211,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Sum")
       // check the metric value
       row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head.toInt should be(18)
@@ -221,8 +227,8 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
 
       // then
       val row = results.collect()(0)
-      print(row)
       row.getAs[String]("Outcome") should be("Passed")
+      // check the metric name
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.UniqueValueRatio")
       // check the metric value
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(75)

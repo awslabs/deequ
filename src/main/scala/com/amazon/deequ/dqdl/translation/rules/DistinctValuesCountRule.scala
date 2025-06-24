@@ -31,8 +31,8 @@ case class DistinctValuesCountRule() extends DQDLRuleConverter {
     val fn = assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition])
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
       .hasNumberOfDistinctValues(col, rc => fn(rc.toDouble))
-    Right((
+    Right(
       addWhereClause(rule, check),
-      Seq(DeequMetricMapping("Column", col, "DistinctValuesCount", "Histogram.bins", None, rule = rule))))
+      Seq(DeequMetricMapping("Column", col, "DistinctValuesCount", "Histogram.bins", None, rule = rule)))
   }
 }

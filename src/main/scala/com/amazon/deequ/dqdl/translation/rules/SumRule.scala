@@ -30,6 +30,6 @@ case class SumRule() extends DQDLRuleConverter {
     val col = rule.getParameters.asScala("TargetColumn")
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
       .hasSum(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
-    Right((addWhereClause(rule, check), Seq(DeequMetricMapping("Column", col, "Sum", "Sum", None, rule = rule))))
+    Right(addWhereClause(rule, check), Seq(DeequMetricMapping("Column", col, "Sum", "Sum", None, rule = rule)))
   }
 }

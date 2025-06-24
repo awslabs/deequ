@@ -29,10 +29,9 @@ case class EntropyRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val col = rule.getParameters.asScala("TargetColumn")
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
-      .hasEntropy(col, assertionAsScala(rule, rule.getCondition
-        .asInstanceOf[NumberBasedCondition]))
-    Right((
+      .hasEntropy(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
+    Right(
       addWhereClause(rule, check),
-      Seq(DeequMetricMapping("Column", col, "Entropy", "Entropy", None, rule = rule))))
+      Seq(DeequMetricMapping("Column", col, "Entropy", "Entropy", None, rule = rule)))
   }
 }
