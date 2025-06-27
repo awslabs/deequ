@@ -17,8 +17,15 @@
 package com.amazon.deequ.anomalydetection.seasonal
 
 import breeze.linalg.DenseVector
-import breeze.optimize.{ApproximateGradientFunction, DiffFunction, LBFGSB}
-import com.amazon.deequ.anomalydetection.{Anomaly, AnomalyDetectionStrategy}
+import breeze.optimize.ApproximateGradientFunction
+import breeze.optimize.DiffFunction
+import breeze.optimize.LBFGSB
+import com.amazon.deequ.anomalydetection.Anomaly
+import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
+import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategyWithExtendedResults
+import com.amazon.deequ.anomalydetection.BoundedRange
+import com.amazon.deequ.anomalydetection.Bound
 
 import collection.mutable.ListBuffer
 
@@ -49,7 +56,7 @@ object HoltWinters {
 }
 
 class HoltWinters(seriesPeriodicity: Int)
-  extends AnomalyDetectionStrategy {
+  extends AnomalyDetectionStrategy with AnomalyDetectionStrategyWithExtendedResults {
 
   import HoltWinters._
 
@@ -174,36 +181,76 @@ class HoltWinters(seriesPeriodicity: Int)
     )
   }
 
-  private def findAnomalies(
-      testSeries: Vector[Double],
-      forecasts: Seq[Double],
-      startIndex: Int,
-      residualSD: Double)
-    : Seq[(Int, Anomaly)] = {
+
+  /**
+   * This function is renamed to add 'withExtendedResults' to the name.
+   * The functionality no longer filters out non anomalies, but instead leaves a flag
+   * of whether it's anomaly or not. The previous anomaly detection strategy uses this refactored function
+   * and then does the filtering to remove non anomalies and maps to previous anomaly objects.
+   * The new anomaly detection strategy with extended results uses this function and does not filter on it.
+   */
+  private def findAnomaliesWithExtendedResults(
+                             testSeries: Vector[Double],
+                             forecasts: Seq[Double],
+                             startIndex: Int,
+                             residualSD: Double)
+  : Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     testSeries.zip(forecasts).zipWithIndex
-      .collect { case ((inputValue, forecastedValue), detectionIndex)
-        if math.abs(inputValue - forecastedValue) > 1.96 * residualSD =>
+      .collect { case ((inputValue, forecastedValue), detectionIndex) =>
+        val anomalyMetricValue = math.abs(inputValue - forecastedValue)
+        val upperBound = 1.96 * residualSD
 
-        detectionIndex + startIndex -> Anomaly(
-          value = Some(inputValue),
+        val (detail, isAnomaly) = if (anomalyMetricValue > upperBound) {
+          (Some(s"Forecasted $forecastedValue for observed value $inputValue"), true)
+        } else {
+          (None, false)
+        }
+        detectionIndex + startIndex -> AnomalyDetectionDataPoint(
+          dataMetricValue = inputValue,
+          anomalyMetricValue = anomalyMetricValue,
+          anomalyCheckRange = BoundedRange(lowerBound = Bound(Double.MinValue, inclusive = true),
+            upperBound = Bound(upperBound, inclusive = true)),
+          isAnomaly = isAnomaly,
           confidence = 1.0,
-          detail = Some(s"Forecasted $forecastedValue for observed value $inputValue")
+          detail = detail
         )
     }
   }
 
   /**
-    * Search for anomalies in a series of data points.
+    * Search for anomalies in a series of data points. This function uses the
+    * detectWithExtendedResults function and then filters and maps to return only anomaly objects.
     *
-    * @param dataSeries     The data contained in a Vector of Doubles
+    * @param dataSeries     The data contained in a Vector of Doubles.
     * @param searchInterval The indices between which anomalies should be detected. [a, b).
     * @return The indices of all anomalies in the interval and their corresponding wrapper object.
+    *
     */
   override def detect(
       dataSeries: Vector[Double],
       searchInterval: (Int, Int) = (0, Int.MaxValue))
     : Seq[(Int, Anomaly)] = {
+
+    detectWithExtendedResults(dataSeries, searchInterval)
+      .filter { case (_, anomDataPoint) => anomDataPoint.isAnomaly }
+      .map { case (i, anomDataPoint) =>
+        (i, Anomaly(Some(anomDataPoint.dataMetricValue), anomDataPoint.confidence, anomDataPoint.detail))
+      }
+  }
+
+  /**
+   * Search for anomalies in a series of data points, returns extended results.
+   *
+   * @param dataSeries     The data contained in a Vector of Doubles.
+   * @param searchInterval The indices between which anomalies should be detected. [a, b).
+   * @return The indices of all anomalies in the interval and their corresponding wrapper object
+   *         with extended results.
+   */
+  override def detectWithExtendedResults(
+      dataSeries: Vector[Double],
+      searchInterval: (Int, Int) = (0, Int.MaxValue))
+    : Seq[(Int, AnomalyDetectionDataPoint)] = {
 
     require(dataSeries.nonEmpty, "Provided data series is empty")
 
@@ -245,6 +292,6 @@ class HoltWinters(seriesPeriodicity: Int)
     require(modelResults.forecasts.size == numberOfObservationsToForecast)
 
     val testSeries = dataSeries.drop(start)
-    findAnomalies(testSeries, modelResults.forecasts, start, residualsStandardDeviation)
+    findAnomaliesWithExtendedResults(testSeries, modelResults.forecasts, start, residualsStandardDeviation)
   }
 }

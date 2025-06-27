@@ -18,13 +18,21 @@ package com.amazon.deequ
 package constraints
 
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.WordSpec
 import ConstraintUtils.calculate
-import com.amazon.deequ.analyzers.{Completeness, NumMatchesAndCount}
+import com.amazon.deequ.analyzers.Completeness
+import com.amazon.deequ.analyzers.NumMatchesAndCount
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{DoubleType, StringType}
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.StringType
 import Constraint._
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.anomalydetection.AnomalyDetectionAssertionResult
+import com.amazon.deequ.anomalydetection.AnomalyDetectionDataPoint
+import com.amazon.deequ.anomalydetection.AnomalyDetectionExtendedResult
+import com.amazon.deequ.anomalydetection.Bound
+import com.amazon.deequ.anomalydetection.BoundedRange
 
 class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
@@ -172,6 +180,32 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
         Completeness("att2"), _ > 0.7), df).status == ConstraintStatus.Success)
       assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
         Completeness("att2"), _ < 0.7), df).status == ConstraintStatus.Failure)
+    }
+  }
+
+  "Anomaly constraint with Extended Results" should {
+    "assert on anomaly analyzer values" in withSparkSession { sparkSession =>
+      val df = getDfMissing(sparkSession)
+      val defaultBoundedRange = BoundedRange(lowerBound = Bound(0.0, inclusive = true),
+        upperBound = Bound(1.0, inclusive = true))
+
+      assert(calculate(Constraint.anomalyConstraintWithExtendedResults[NumMatchesAndCount](
+        Completeness("att1"), (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = false,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = false)))
+        } ), df)
+        .status == ConstraintStatus.Success)
+
+      assert(calculate(Constraint.anomalyConstraintWithExtendedResults[NumMatchesAndCount](
+        Completeness("att1"), (_: Double) => {
+          AnomalyDetectionAssertionResult(hasAnomaly = true,
+            AnomalyDetectionExtendedResult(AnomalyDetectionDataPoint(1.0, 1.0, confidence = 1.0,
+              anomalyCheckRange = defaultBoundedRange, isAnomaly = true)
+            ))
+        }), df)
+        .status == ConstraintStatus.Failure)
+
     }
   }
 }
