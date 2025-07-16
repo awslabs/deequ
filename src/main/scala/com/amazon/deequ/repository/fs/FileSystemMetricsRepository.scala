@@ -38,6 +38,15 @@ import java.util.UUID.randomUUID
 /** A Repository implementation using a file system */
 class FileSystemMetricsRepository(session: SparkSession, path: String) extends MetricsRepository {
 
+  private[this] var allResults: Seq[AnalysisResult] = loadAllResults()
+
+  private[this] def loadAllResults(): Seq[AnalysisResult] = {
+    FileSystemMetricsRepository
+      .readFromFileOnDfs(session, path, IOUtils.toString(_, FileSystemMetricsRepository.CHARSET_NAME))
+      .map(AnalysisResultSerde.deserialize)
+      .getOrElse(Seq.empty)
+  }
+
   /**
     * Saves Analysis results (metrics)
     *
@@ -53,14 +62,16 @@ class FileSystemMetricsRepository(session: SparkSession, path: String) extends M
 
     val previousAnalysisResults = load().get().filter(_.resultKey != resultKey)
 
-    val serializedResult = AnalysisResultSerde.serialize(
-      previousAnalysisResults ++ Seq(AnalysisResult(resultKey, analyzerContextWithSuccessfulValues))
-    )
+    val allAnalysisResults = previousAnalysisResults ++
+      Seq(AnalysisResult(resultKey, analyzerContextWithSuccessfulValues))
+    val serializedResult = AnalysisResultSerde.serialize(allAnalysisResults)
 
     FileSystemMetricsRepository.writeToFileOnDfs(session, path, {
       val bytes = serializedResult.getBytes(FileSystemMetricsRepository.CHARSET_NAME)
       _.write(bytes)
     })
+
+    allResults = allAnalysisResults
   }
 
   /**
@@ -75,12 +86,12 @@ class FileSystemMetricsRepository(session: SparkSession, path: String) extends M
 
   /** Get a builder class to construct a loading query to get AnalysisResults */
   override def load(): MetricsRepositoryMultipleResultsLoader = {
-    new FileSystemMetricsRepositoryMultipleResultsLoader(session, path)
+    new FileSystemMetricsRepositoryMultipleResultsLoader(allResults)
   }
 }
 
-class FileSystemMetricsRepositoryMultipleResultsLoader(
-  session: SparkSession, path: String) extends MetricsRepositoryMultipleResultsLoader {
+class FileSystemMetricsRepositoryMultipleResultsLoader(allResults: Seq[AnalysisResult])
+  extends MetricsRepositoryMultipleResultsLoader {
 
   private[this] var tagValues: Option[Map[String, String]] = None
   private[this] var forAnalyzers: Option[Seq[Analyzer[_, Metric[_]]]] = None
@@ -131,13 +142,6 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(
 
   /** Get the AnalysisResult */
   def get(): Seq[AnalysisResult] = {
-
-    val allResults = FileSystemMetricsRepository
-      .readFromFileOnDfs(session, path, {
-        IOUtils.toString(_, FileSystemMetricsRepository.CHARSET_NAME)
-      })
-      .map { fileContent => AnalysisResultSerde.deserialize(fileContent) }
-      .getOrElse(Seq.empty)
 
     val selection = allResults
       .filter { result => after.isEmpty || after.get <= result.resultKey.dataSetDate }
