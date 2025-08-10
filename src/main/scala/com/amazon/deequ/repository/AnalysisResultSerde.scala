@@ -88,6 +88,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalyzerOptions], AnalyzerOptionsSerializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricSerializer)
       .registerTypeAdapter(classOf[Distribution], DistributionSerializer)
+      .registerTypeAdapter(classOf[BucketDistribution], BucketDistributionSerializer)
       .setPrettyPrinting()
       .create
 
@@ -103,6 +104,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalyzerOptions], AnalyzerOptionsDeserializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricDeserializer)
       .registerTypeAdapter(classOf[Distribution], DistributionDeserializer)
+      .registerTypeAdapter(classOf[BucketDistribution], BucketDistributionDeserializer)
       .create
 
     gson.fromJson(analysisResults,
@@ -397,6 +399,16 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(WHERE_FIELD, maxLength.where.orNull)
         result.add(ANALYZER_OPTIONS_FIELD, context.serialize(maxLength.analyzerOptions.orNull))
 
+      case kllSketch: KLLSketch =>
+        result.addProperty(ANALYZER_NAME_FIELD, "KLLSketch")
+        result.addProperty(COLUMN_FIELD, kllSketch.column)
+        if (kllSketch.kllParameters.isDefined) {
+          val params = kllSketch.kllParameters.get
+          result.addProperty("sketchSize", params.sketchSize)
+          result.addProperty("shrinkingFactor", params.shrinkingFactor)
+          result.addProperty("numberOfBuckets", params.numberOfBuckets)
+        }
+
       case _ =>
         throw new IllegalArgumentException(s"Unable to serialize analyzer $analyzer.")
     }
@@ -570,6 +582,19 @@ private[deequ] object AnalyzerDeserializer
           getOptionalWhereParam(json),
           getOptionalAnalyzerOptions(json))
 
+      case "KLLSketch" =>
+        val column = json.get(COLUMN_FIELD).getAsString
+        val kllParameters = if (json.has("sketchSize") && json.has("shrinkingFactor") && json.has("numberOfBuckets")) {
+          Some(KLLParameters(
+            json.get("sketchSize").getAsInt,
+            json.get("shrinkingFactor").getAsDouble,
+            json.get("numberOfBuckets").getAsInt
+          ))
+        } else {
+          None
+        }
+        KLLSketch(column, kllParameters)
+
       case analyzerName =>
         throw new IllegalArgumentException(s"Unable to deserialize analyzer $analyzerName.")
     }
@@ -668,6 +693,13 @@ private[deequ] object MetricSerializer extends JsonSerializer[Metric[_]] {
           result.add("value", values)
         }
 
+      case kllMetric: KLLMetric =>
+        result.addProperty("metricName", "KLLMetric")
+        result.addProperty(COLUMN_FIELD, kllMetric.column)
+        if (kllMetric.value.isSuccess) {
+          result.add("value", context.serialize(kllMetric.value.get, classOf[BucketDistribution]))
+        }
+
       case _ =>
         throw new IllegalArgumentException(s"Unable to serialize metrics $metric.")
     }
@@ -716,6 +748,15 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
           KeyedDoubleMetric(entity, name, instance, Failure(null))
         }
 
+      case "KLLMetric" =>
+        val column = jsonObject.get(COLUMN_FIELD).getAsString
+        if (jsonObject.has("value")) {
+          val bucketDistribution = context.deserialize(jsonObject.get("value"), classOf[BucketDistribution])
+            .asInstanceOf[BucketDistribution]
+          KLLMetric(column, Success(bucketDistribution))
+        } else {
+          KLLMetric(column, Failure(new Exception("No value found for KLLMetric")))
+        }
 
       case metricName =>
         throw new IllegalArgumentException(s"Unable to deserialize analyzer $metricName.")
@@ -774,5 +815,76 @@ private[deequ] object DistributionDeserializer extends JsonDeserializer[Distribu
       .toMap
 
     Distribution(values, jsonObject.get("numberOfBins").getAsLong)
+  }
+}
+
+private[deequ] object BucketDistributionSerializer extends JsonSerializer[BucketDistribution] {
+
+  override def serialize(bucketDistribution: BucketDistribution, t: Type,
+    context: JsonSerializationContext): JsonElement = {
+
+    val result = new JsonObject()
+
+    val bucketsArray = new JsonArray()
+    bucketDistribution.buckets.foreach { bucket =>
+      val bucketObj = new JsonObject()
+      bucketObj.addProperty("lowValue", bucket.lowValue)
+      bucketObj.addProperty("highValue", bucket.highValue)
+      bucketObj.addProperty("count", bucket.count)
+      bucketsArray.add(bucketObj)
+    }
+    result.add("buckets", bucketsArray)
+
+    val parametersArray = new JsonArray()
+    bucketDistribution.parameters.foreach { param =>
+      parametersArray.add(new JsonPrimitive(param))
+    }
+    result.add("parameters", parametersArray)
+
+    val dataArray = new JsonArray()
+    bucketDistribution.data.foreach { row =>
+      val rowArray = new JsonArray()
+      row.foreach { value =>
+        rowArray.add(new JsonPrimitive(value))
+      }
+      dataArray.add(rowArray)
+    }
+    result.add("data", dataArray)
+
+    result
+  }
+}
+
+private[deequ] object BucketDistributionDeserializer extends JsonDeserializer[BucketDistribution] {
+
+  override def deserialize(jsonElement: JsonElement, t: Type,
+    context: JsonDeserializationContext): BucketDistribution = {
+
+    val jsonObject = jsonElement.getAsJsonObject
+
+    val buckets = jsonObject.get("buckets").getAsJsonArray.asScala
+      .map { bucketElement =>
+        val bucketObj = bucketElement.getAsJsonObject
+        BucketValue(
+          bucketObj.get("lowValue").getAsDouble,
+          bucketObj.get("highValue").getAsDouble,
+          bucketObj.get("count").getAsLong
+        )
+      }
+      .toList
+
+    val parameters = jsonObject.get("parameters").getAsJsonArray.asScala
+      .map(_.getAsDouble)
+      .toList
+
+    val data = jsonObject.get("data").getAsJsonArray.asScala
+      .map { rowElement =>
+        rowElement.getAsJsonArray.asScala
+          .map(_.getAsDouble)
+          .toArray
+      }
+      .toArray
+
+    BucketDistribution(buckets, parameters, data)
   }
 }

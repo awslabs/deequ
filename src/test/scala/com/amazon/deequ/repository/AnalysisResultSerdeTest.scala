@@ -93,7 +93,10 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       MaxLength("ColumnA") ->
         DoubleMetric(Entity.Column, "MaxLength", "ColumnA", Success(5.0)),
       ExactQuantile("ColumnA", 0.5) ->
-        DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0))
+        DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
+      KLLSketch("ColumnA") ->
+        KLLMetric("ColumnA", Success(BucketDistribution(
+          List(BucketValue(0.0, 5.0, 2L)), List(200.0, 0.5), Array(Array(1.0, 2.0)))))
     ))
 
     val dateTime = LocalDate.of(2017, 10, 14).atTime(10, 10, 10)
@@ -187,6 +190,39 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     val analyzer = ExactQuantile("col", 0.5)
     val metric = DoubleMetric(Entity.Column, "ExactQuantile", "col", Success(0.5))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    assertCorrectlyConvertsAnalysisResults(Seq(result))
+  }
+
+  "serialization of KLLSketch" should "correctly restore it" in {
+
+    val bucketValue1 = BucketValue(0.0, 10.0, 5L)
+    val bucketValue2 = BucketValue(10.0, 20.0, 3L)
+    val buckets = List(bucketValue1, bucketValue2)
+    val parameters = List(200.0, 2.0/3.0)
+    val data = Array(Array(1.0, 2.0), Array(3.0, 4.0))
+    val bucketDistribution = BucketDistribution(buckets, parameters, data)
+
+    val analyzer = KLLSketch("col", Some(KLLParameters(200, 2.0/3.0, 10)))
+    val metric = KLLMetric("col", Success(bucketDistribution))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    assertCorrectlyConvertsAnalysisResults(Seq(result))
+  }
+
+  "serialization of KLLSketch without parameters" should "correctly restore it" in {
+
+    val bucketValue = BucketValue(0.0, 100.0, 10L)
+    val buckets = List(bucketValue)
+    val parameters = List(1000.0, 0.5)
+    val data = Array(Array(5.0, 15.0))
+    val bucketDistribution = BucketDistribution(buckets, parameters, data)
+
+    val analyzer = KLLSketch("col")
+    val metric = KLLMetric("col", Success(bucketDistribution))
     val context = AnalyzerContext(Map(analyzer -> metric))
     val result = new AnalysisResult(ResultKey(0), context)
 
