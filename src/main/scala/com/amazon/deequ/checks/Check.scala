@@ -17,14 +17,7 @@
 package com.amazon.deequ.checks
 
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.Analyzer
-import com.amazon.deequ.analyzers.AnalyzerOptions
-import com.amazon.deequ.analyzers.DatasetMatchAnalyzer
-import com.amazon.deequ.analyzers.DatasetMatchState
-import com.amazon.deequ.analyzers.Histogram
-import com.amazon.deequ.analyzers.KLLParameters
-import com.amazon.deequ.analyzers.Patterns
-import com.amazon.deequ.analyzers.State
+import com.amazon.deequ.analyzers.{Analyzer, AnalyzerOptions, CustomSql, CustomSqlState, DatasetMatchAnalyzer, DatasetMatchState, Histogram, KLLParameters, Patterns, State}
 import com.amazon.deequ.anomalydetection.HistoryUtils
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
 import com.amazon.deequ.anomalydetection.AnomalyDetector
@@ -254,6 +247,16 @@ case class Check(
     addFilterableConstraint { filter =>
       uniquenessConstraint(columns, Check.IsOne, filter, hint, analyzerOptions) }
   }
+
+  def customSql(expression: String, assertion: Double => Boolean,
+                hint: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
+  : Check = {
+    val customSqlAnalyzer = CustomSql(expression)
+    val constraint = AnalysisBasedConstraint[CustomSqlState, Double, Double](customSqlAnalyzer, assertion,
+      hint = hint)
+    addConstraint(constraint)
+  }
+
 
   /**
     * Creates a constraint that asserts on a column(s) primary key characteristics.

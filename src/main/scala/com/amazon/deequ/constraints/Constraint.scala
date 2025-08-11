@@ -248,6 +248,7 @@ object Constraint {
     new NamedConstraint(constraint, s"AnomalyConstraint($analyzer)")
   }
 
+
   /**
     * Runs Uniqueness analysis on the given columns and executes the assertion
     *
