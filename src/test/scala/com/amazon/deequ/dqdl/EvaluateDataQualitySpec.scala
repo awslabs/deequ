@@ -234,11 +234,12 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(75)
     }
 
-    "work with not yet supported rule" in withSparkSession { sparkSession =>
+    "support CustomSql rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
+      df.createOrReplaceTempView("primary")
       // CustomSql is not yet supported
-      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" between 10 and 20]"
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 0]"
 
       // when
       val resultDf = EvaluateDataQuality.process(df, ruleset)

@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation.rules
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, ExecutableRule}
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
 import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
@@ -26,7 +26,7 @@ import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import scala.collection.JavaConverters._
 
 case class IsUniqueRule() extends DQDLRuleConverter {
-  override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+  override def convert(rule: DQRule): Either[String, ExecutableRule] = {
     val columns = rule.getParameters.asScala.collect { case (k, v) if k.startsWith("TargetColumn") => v }.toSeq
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
     columns match {
@@ -34,14 +34,20 @@ case class IsUniqueRule() extends DQDLRuleConverter {
 
       case Seq(singleCol) =>
         val singleColCheck = check.isUnique(singleCol)
-        Right((addWhereClause(rule, singleColCheck),
-          Seq(DeequMetricMapping("Column", singleCol, "Uniqueness", "Uniqueness", None, rule = rule))))
+        Right(
+          DeequExecutableRule(
+            rule,
+            addWhereClause(rule, singleColCheck),
+            Seq(DeequMetricMapping("Column", singleCol, "Uniqueness", "Uniqueness", None, rule = rule))))
 
       case cols@(head +: tail) =>
         val multiColCheck = check.areUnique(columns)
         Right(
-          addWhereClause(rule, multiColCheck),
-          Seq(DeequMetricMapping("Multicolumn", columns.mkString(","), "Uniqueness", "Uniqueness", None, rule = rule)))
+          DeequExecutableRule(
+            rule,
+            addWhereClause(rule, multiColCheck),
+            Seq(DeequMetricMapping("Multicolumn", columns.mkString(","), "Uniqueness", "Uniqueness", None,
+              rule = rule))))
     }
   }
 }

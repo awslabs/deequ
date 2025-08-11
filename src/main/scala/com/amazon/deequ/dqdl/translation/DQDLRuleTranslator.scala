@@ -16,7 +16,7 @@
 
 package com.amazon.deequ.dqdl.translation
 
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.model.{ExecutableRule, UnsupportedExecutableRule}
 import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, CustomSqlRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsUniqueRule, MeanRule, RowCountRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
@@ -46,24 +46,13 @@ object DQDLRuleTranslator {
     "CustomSql" -> new CustomSqlRule
   )
 
-  /**
-   * Translates a single DQDL rule
-   */
-  private[dqdl] def translateRule(rule: DQRule): Either[String, DeequExecutableRule] = {
-    converters.get(rule.getRuleType) match {
-      case None =>
-        Left(s"No converter found for rule type: ${rule.getRuleType}")
-      case Some(converter) =>
-        converter.convert(rule) map {
-          case (check, deequMetrics) => DeequExecutableRule(rule, check, deequMetrics)
-        }
-    }
-  }
-
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
-    translateRule(rule) match {
-      case Right(deequExecutableRule) => deequExecutableRule
-      case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+    converters.get(rule.getRuleType) match {
+      case None => UnsupportedExecutableRule(rule, Some(s"No converter found for rule type: ${rule.getRuleType}"))
+      case Some(converter) => converter.convert(rule) match {
+        case Right(executableRule) => executableRule
+        case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+      }
     }
   }
 

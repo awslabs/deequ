@@ -16,22 +16,23 @@
 
 package com.amazon.deequ.dqdl.translation.rules
 
-import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.model.{AssertFailed, AssertPassed, CustomExecutableRule, ExecutableRule}
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
 import com.amazon.deequ.dqdl.util.DQDLUtility
 import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
+import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 import scala.collection.JavaConverters._
 
 case class CustomSqlRule() extends DQDLRuleConverter {
-  override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+  override def convert(rule: DQRule): Either[String, ExecutableRule] = {
     val statement = rule.getParameters.asScala("CustomSqlStatement")
-    val statementDigest = DQDLUtility.sha256Hash(statement)
-
+    val condition = rule.getCondition.asInstanceOf[NumberBasedCondition]
     Right(
-      null, // as where clause is not supported in custom sql
-      Seq(DeequMetricMapping("Dataset", statementDigest, "CustomSQL", "CustomSQL")))
+      CustomExecutableRule(
+        rule,
+        statement,
+        (d: Double) => if (assertionAsScala(rule, condition)(d)) AssertPassed else AssertFailed))
   }
 }

@@ -18,13 +18,13 @@ package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.dqdl.execution.DefaultOperandEvaluator
-import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.model.{DeequMetricMapping, ExecutableRule}
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 
 trait DQDLRuleConverter {
-  def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])]
+  def convert(rule: DQRule): Either[String, ExecutableRule]
 
   def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
     val evaluator = DefaultOperandEvaluator

@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation.rules
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, ExecutableRule}
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
 import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
@@ -26,12 +26,14 @@ import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import scala.collection.JavaConverters._
 
 case class CompletenessRule() extends DQDLRuleConverter {
-  override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+  override def convert(rule: DQRule): Either[String, ExecutableRule] = {
     val col = rule.getParameters.asScala("TargetColumn")
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
       .hasCompleteness(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]), None, None)
     Right(
-      addWhereClause(rule, check),
-      Seq(DeequMetricMapping("Column", col, "Completeness", "Completeness", None, rule = rule)))
+      DeequExecutableRule(
+        rule,
+        addWhereClause(rule, check),
+        Seq(DeequMetricMapping("Column", col, "Completeness", "Completeness", None, rule = rule))))
   }
 }

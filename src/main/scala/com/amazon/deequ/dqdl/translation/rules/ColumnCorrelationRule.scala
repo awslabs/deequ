@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation.rules
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, ExecutableRule}
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
 import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
@@ -26,13 +26,15 @@ import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import scala.collection.JavaConverters._
 
 case class ColumnCorrelationRule() extends DQDLRuleConverter {
-  override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+  override def convert(rule: DQRule): Either[String, ExecutableRule] = {
     val col1 = rule.getParameters.asScala("TargetColumn1")
     val col2 = rule.getParameters.asScala("TargetColumn2")
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
       .hasCorrelation(col1, col2, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
     Right(
-      addWhereClause(rule, check),
-      Seq(DeequMetricMapping("Multicolumn", s"$col1,$col2", "ColumnCorrelation", "Correlation", None, rule = rule)))
+      DeequExecutableRule(
+        rule,
+        addWhereClause(rule, check),
+        Seq(DeequMetricMapping("Multicolumn", s"$col1,$col2", "ColumnCorrelation", "Correlation", None, rule = rule))))
   }
 }

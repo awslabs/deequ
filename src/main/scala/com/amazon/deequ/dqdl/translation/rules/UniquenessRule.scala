@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation.rules
 
 import com.amazon.deequ.checks.{Check, CheckLevel}
-import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, ExecutableRule}
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
 import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
@@ -26,7 +26,7 @@ import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import scala.collection.JavaConverters._
 
 case class UniquenessRule() extends DQDLRuleConverter {
-  override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+  override def convert(rule: DQRule): Either[String, ExecutableRule] = {
     val columns: Seq[String] = rule.getParameters.asScala.collect {
       case (k, v) if k.startsWith("TargetColumn") => v
     }.toSeq
@@ -37,15 +37,21 @@ case class UniquenessRule() extends DQDLRuleConverter {
       case Seq(singleCol) =>
         val singleColCheck = check
           .hasUniqueness(singleCol, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
-        Right((addWhereClause(rule, singleColCheck),
-          Seq(DeequMetricMapping("Column", singleCol, "Uniqueness", "Uniqueness", None, rule = rule))))
+        Right(
+          DeequExecutableRule(
+            rule,
+            addWhereClause(rule, singleColCheck),
+            Seq(DeequMetricMapping("Column", singleCol, "Uniqueness", "Uniqueness", None, rule = rule))))
 
       case cols@(head +: tail) =>
         val multiColCheck = check
           .hasUniqueness(columns, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
         Right(
-          addWhereClause(rule, multiColCheck),
-          Seq(DeequMetricMapping("Multicolumn", columns.mkString(","), "Uniqueness", "Uniqueness", None, rule = rule)))
+          DeequExecutableRule(
+            rule,
+            addWhereClause(rule, multiColCheck),
+            Seq(DeequMetricMapping("Multicolumn", columns.mkString(","), "Uniqueness", "Uniqueness",
+              None, rule = rule))))
     }
   }
 }
