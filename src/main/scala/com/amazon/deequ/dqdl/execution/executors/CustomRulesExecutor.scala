@@ -28,42 +28,47 @@ import software.amazon.glue.dqdl.model.DQRule
 object CustomRulesExecutor extends DQDLExecutor.RuleExecutor[CustomExecutableRule] {
 
   override def executeRules(rules: Seq[CustomExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] = {
-
+    df.createOrReplaceTempView("primary")
     rules.map { r =>
+      val outcome = try {
+        val sparkSession = df.sparkSession
+        val dfSql = sparkSession.sql(r.customSqlStatement)
+        val cols = dfSql.columns.toSeq
+        cols match {
+          case Seq(resultCol) =>
+            val dfSqlCast = dfSql.withColumn(resultCol, col(s"`$resultCol`").cast(DoubleType))
+            val results: Seq[Row] = dfSqlCast.collect()
+            if (results.size != 1) {
+              RuleOutcome(r.dqRule, Failed, Some("Custom SQL did not return exactly 1 row"))
+            } else {
+              val row = results.head
+              val result: Double = row.get(0).asInstanceOf[Double]
+              val sha256 = DQDLUtility.sha256Hash(r.customSqlStatement)
+              val evaluatedMetrics = Map(
+                s"Dataset.*.CustomSQL" -> result,
+                s"Dataset.$sha256.CustomSQL" -> result)
 
-      val sparkSession = df.sparkSession
-      val dfSql = sparkSession.sql(r.customSqlStatement)
-      val cols = dfSql.columns.toSeq
-      cols match {
-        case Seq(resultCol) =>
-          val dfSqlCast = dfSql.withColumn(resultCol, col(s"`$resultCol`").cast(DoubleType))
-          val results: Seq[Row] = dfSqlCast.collect()
-          if (results.size != 1) {
-            RuleOutcome(r.dqRule, Failed, Some("Custom SQL did not return exactly 1 row"))
-          } else {
-            val row = results.head
-            val result: Double = row.get(0).asInstanceOf[Double]
-            val sha256 = DQDLUtility.sha256Hash(r.customSqlStatement)
-            val evaluatedMetrics = Map(
-              s"Dataset.*.CustomSQL" -> result,
-              s"Dataset.$sha256.CustomSQL" -> result)
-
-            r.assertion(result) match {
-              case AssertPassed =>
-                RuleOutcome(r.dqRule, Passed, None, evaluatedMetrics)
-              case AssertFailed =>
-                RuleOutcome(r.dqRule, Failed, Some("Custom SQL response failed to satisfy the threshold"),
-                  evaluatedMetrics)
-              case AssertIndeterminable(exceptMsg) =>
-                val msg = f"Custom SQL rule could not be evaluated; $exceptMsg"
-                RuleOutcome(r.dqRule, Failed, Some(msg), evaluatedMetrics)
+              r.assertion(result) match {
+                case AssertPassed =>
+                  RuleOutcome(r.dqRule, Passed, None, evaluatedMetrics)
+                case AssertFailed =>
+                  RuleOutcome(r.dqRule, Failed, Some("Custom SQL response failed to satisfy the threshold"),
+                    evaluatedMetrics)
+                case AssertIndeterminable(exceptMsg) =>
+                  val msg = f"Custom SQL rule could not be evaluated; $exceptMsg"
+                  RuleOutcome(r.dqRule, Failed, Some(msg), evaluatedMetrics)
+              }
             }
-          }
-        case _ => RuleOutcome(r.dqRule, Failed, Some("Custom SQL did not return exactly 1 column"))
+          case _ => RuleOutcome(r.dqRule, Failed, Some("Custom SQL did not return exactly 1 column"))
+        }
+      } catch {
+        case ex: Exception =>
+          val failureReason = "Custom rule execution failed" +
+            r.reason.map(re => s" due to: $re").getOrElse("") + s": ${ex.getMessage}"
+          RuleOutcome(r.dqRule, Failed, Some(failureReason))
       }
 
-      val failureReason = "Custom rule" + r.reason.map(re => s" due to: $re").getOrElse("")
-      r.dqRule -> RuleOutcome(r.dqRule, Failed, Some(failureReason))
+      r.dqRule -> outcome
     }.toMap
   }
 

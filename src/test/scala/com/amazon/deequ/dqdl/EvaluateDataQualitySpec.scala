@@ -234,20 +234,43 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(75)
     }
 
-    "support CustomSql rule" in withSparkSession { sparkSession =>
+    "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
-      df.createOrReplaceTempView("primary")
-      // CustomSql is not yet supported
       val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 0]"
 
       // when
       val resultDf = EvaluateDataQuality.process(df, ruleset)
 
       // then
-//      resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
-//      resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
-//        "No converter found for rule type: CustomSql")
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support CustomSql rule when Failed" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 4]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
+      resultDf.collect()(0).getAs[String]("FailureReason") should
+        be("Custom SQL response failed to satisfy the threshold")
+    }
+
+    "support both types: deequ and custom rules" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[RowCount < 10, CustomSql \"select count(*) from primary\" > 0]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Passed")
+      resultDf.collect()(1).getAs[String]("Outcome") should be("Passed")
     }
 
   }
