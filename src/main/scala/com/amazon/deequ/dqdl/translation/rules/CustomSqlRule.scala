@@ -33,6 +33,8 @@ case class CustomSqlRule() extends DQDLRuleConverter {
       CustomExecutableRule(
         rule,
         statement,
-        (d: Double) => if (assertionAsScala(rule, condition)(d)) AssertPassed else AssertFailed))
+        (d: Double) => if (assertionAsScala(rule, condition)(d)) AssertPassed else AssertFailed,
+        Some("Dataset.*.CustomSQL")
+      ))
   }
 }

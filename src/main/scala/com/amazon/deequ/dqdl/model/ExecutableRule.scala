@@ -36,8 +36,9 @@ case class AssertIndeterminable(message: String) extends AssertionResult
 case class CustomExecutableRule(dqRule: DQRule,
                                 customSqlStatement: String,
                                 assertion: Double => AssertionResult,
+                                evaluatedMetric: Option[String] = None,
                                 reason: Option[String] = None) extends ExecutableRule {
-  override val evaluatedMetricName: Option[String] = Some(s"Dataset.*.CustomSQL")
+  override val evaluatedMetricName: Option[String] = evaluatedMetric
 }
 
 case class UnsupportedExecutableRule(dqRule: DQRule, reason: Option[String] = None) extends ExecutableRule {

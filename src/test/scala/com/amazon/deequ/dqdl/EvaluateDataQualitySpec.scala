@@ -236,14 +236,22 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
 
     "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
       // given
-      val df = getDfFull(sparkSession)
-      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 0]"
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 0, " +
+        "CustomSql \"select count(*) from primary where att1 > 1 \" = 5, " +
+        "CustomSql \"select count(*) from primary where att1 > 1 \" between 0 and 6]"
 
       // when
       val resultDf = EvaluateDataQuality.process(df, ruleset)
 
       // then
-      resultDf.collect()(0).getAs[String]("Outcome") should be("Passed")
+      val rows = resultDf.collect()
+      rows.foreach { row =>
+        row.getAs[String]("Outcome") should be("Passed")
+        row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Dataset.*.CustomSQL")
+        row.getAs[Map[String, Double]]("EvaluatedMetrics").seq.size should be(2)
+      }
+
     }
 
     "support CustomSql rule when Failed" in withSparkSession { sparkSession =>
