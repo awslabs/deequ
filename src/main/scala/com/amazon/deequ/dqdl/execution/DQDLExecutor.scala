@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, UnsupportedRulesExecutor}
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, RuleOutcome, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.execution.executors.{CustomRulesExecutor, DeequRulesExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{CustomExecutableRule, DeequExecutableRule, ExecutableRule, Failed, RuleOutcome, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -34,7 +34,8 @@ object DQDLExecutor {
   // Map from rule class to its executor
   private val executors = Map[Class[_ <: ExecutableRule], RuleExecutor[_ <: ExecutableRule]](
     classOf[DeequExecutableRule] -> DeequRulesExecutor,
-    classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor
+    classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor,
+    classOf[CustomExecutableRule] -> CustomRulesExecutor
   )
 
   def executeRules(rules: Seq[ExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] = {

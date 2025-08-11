@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
-import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsUniqueRule, MeanRule, RowCountRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
+import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, CustomSqlRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsUniqueRule, MeanRule, RowCountRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
@@ -42,7 +42,8 @@ object DQDLRuleTranslator {
     "Mean" -> new MeanRule,
     "StandardDeviation" -> new StandardDeviationRule,
     "Sum" -> new SumRule,
-    "UniqueValueRatio" -> new UniqueValueRatioRule
+    "UniqueValueRatio" -> new UniqueValueRatioRule,
+    "CustomSql" -> new CustomSqlRule
   )
 
   /**
@@ -53,7 +54,9 @@ object DQDLRuleTranslator {
       case None =>
         Left(s"No converter found for rule type: ${rule.getRuleType}")
       case Some(converter) =>
-        converter.convert(rule) map { case (check, deequMetrics) => DeequExecutableRule(rule, check, deequMetrics) }
+        converter.convert(rule) map {
+          case (check, deequMetrics) => DeequExecutableRule(rule, check, deequMetrics)
+        }
     }
   }
 

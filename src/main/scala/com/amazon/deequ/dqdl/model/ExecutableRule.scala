@@ -25,6 +25,21 @@ trait ExecutableRule {
   val evaluatedMetricName: Option[String]
 }
 
+sealed trait AssertionResult
+
+case object AssertPassed extends AssertionResult
+
+case object AssertFailed extends AssertionResult
+
+case class AssertIndeterminable(message: String) extends AssertionResult
+
+case class CustomExecutableRule(dqRule: DQRule,
+                                customSqlStatement: String,
+                                assertion: Double => AssertionResult,
+                                reason: Option[String] = None) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] = Some(s"Dataset.*.CustomSQL")
+}
+
 case class UnsupportedExecutableRule(dqRule: DQRule, reason: Option[String] = None) extends ExecutableRule {
   override val evaluatedMetricName: Option[String] = None
 }
