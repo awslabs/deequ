@@ -24,6 +24,7 @@ import org.apache.spark.sql.functions.{col, sum}
 import org.apache.spark.sql.types.{DoubleType, LongType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
 
+import scala.collection.immutable.ListMap
 import scala.util.{Failure, Try}
 
 /**
@@ -89,6 +90,7 @@ case class Histogram(
             .map(_.name)
             .getOrElse(throw new IllegalStateException(s"Count column not found in the frequencies DataFrame"))
 
+          // sort in descending frequency
           val topNRowsDF = theState.frequencies
             .orderBy(col(countColumnName).desc)
             .limit(maxDetailBins)
@@ -106,8 +108,7 @@ case class Histogram(
               val absolute = row.getAs[Long](countColumnName)
               val ratio = absolute.toDouble / theState.numRows
               discreteValue -> DistributionValue(absolute, ratio)
-            }
-            .toMap
+            }(collection.breakOut): ListMap[String, DistributionValue]
 
           Distribution(histogramDetails, binCount)
         }
