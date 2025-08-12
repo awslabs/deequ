@@ -134,6 +134,90 @@ Our library contains much more functionality than what we showed in the basic ex
  * [Automatic suggestion of constraints](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/constraint_suggestion_example.md) for large datasets
  * [Incremental metrics computation on growing data and metric updates on partitioned data](https://github.com/awslabs/deequ/blob/master/src/main/scala/com/amazon/deequ/examples/algebraic_states_example.md) (advanced)
 
+## DQDL (Data Quality Definition Language)
+
+Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html), a declarative language for defining data quality rules. DQDL allows you to express data quality constraints in a simple, readable format.
+
+### Scala Example
+
+ScalaDQDLExample.scala
+
+```scala
+import com.amazon.deequ.dqdl.EvaluateDataQuality
+import org.apache.spark.sql.SparkSession
+
+val spark = SparkSession.builder()
+  .appName("DQDL Example")
+  .master("local[*]")
+  .getOrCreate()
+
+import spark.implicits._
+
+// Sample data
+val df = Seq(
+  ("1", "a", "c"),
+  ("2", "a", "c"),
+  ("3", "a", "c"),
+  ("4", "b", "d")
+).toDF("item", "att1", "att2")
+
+// Define rules using DQDL syntax
+val ruleset = """Rules=[IsUnique "item", RowCount < 10, Completeness "item" > 0.8, Uniqueness "item" = 1.0]"""
+
+// Evaluate data quality
+val results = EvaluateDataQuality.process(df, ruleset)
+results.show()
+```
+
+### Java Example
+
+JavaDQDLExample.java
+
+```java
+import com.amazon.deequ.dqdl.EvaluateDataQuality;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+
+SparkSession spark = SparkSession.builder()
+    .appName("DQDL Java Example")
+    .master("local[*]")
+    .getOrCreate();
+
+// Create sample data
+Dataset<Row> df = spark.sql(
+    "SELECT * FROM VALUES " +
+    "('1', 'a', 'c'), " +
+    "('2', 'a', 'c'), " +
+    "('3', 'a', 'c'), " +
+    "('4', 'b', 'd') " +
+    "AS t(item, att1, att2)"
+);
+
+// Define rules using DQDL syntax
+String ruleset = "Rules=[IsUnique \"item\", RowCount < 10, Completeness \"item\" > 0.8, Uniqueness \"item\" = 1.0]";
+
+// Evaluate data quality
+Dataset<Row> results = EvaluateDataQuality.process(df, ruleset);
+results.show();
+```
+
+### Supported DQDL Rules
+
+- **RowCount**: `RowCount < 100`
+- **Completeness**: `Completeness "column" > 0.9`
+- **IsComplete**: `IsComplete "column"`
+- **Uniqueness**: `Uniqueness "column" = 1.0`
+- **IsUnique**: `IsUnique "column"`
+- **ColumnCorrelation**: `ColumnCorrelation "col1" "col2" > 0.8`
+- **DistinctValuesCount**: `DistinctValuesCount "column" = 5`
+- **Entropy**: `Entropy "column" > 2.0`
+- **Mean**: `Mean "column" between 10 and 50`
+- **StandardDeviation**: `StandardDeviation "column" < 5.0`
+- **Sum**: `Sum "column" = 100`
+- **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`
+- **CustomSql**: `CustomSql "SELECT COUNT(*) FROM primary" > 0`
+
 
 ## Citation
 
