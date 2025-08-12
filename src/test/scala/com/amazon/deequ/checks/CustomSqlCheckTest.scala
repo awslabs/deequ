@@ -38,7 +38,7 @@ class CustomSqlCheckTest extends AnyWordSpec with Matchers with SparkContextSpec
         .run()
 
       result.status shouldBe CheckStatus.Success
-      
+
       val metricsDF = AnalyzerContext.successMetricsAsDataFrame(session, AnalyzerContext(result.metrics))
       val customSqlMetrics = metricsDF.filter(metricsDF("name") === "CustomSQL").collect()
       customSqlMetrics should have length 1

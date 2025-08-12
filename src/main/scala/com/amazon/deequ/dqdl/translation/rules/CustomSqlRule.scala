@@ -19,7 +19,6 @@ package com.amazon.deequ.dqdl.translation.rules
 import com.amazon.deequ.checks.{Check, CheckLevel}
 import com.amazon.deequ.dqdl.model.DeequMetricMapping
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
-import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 

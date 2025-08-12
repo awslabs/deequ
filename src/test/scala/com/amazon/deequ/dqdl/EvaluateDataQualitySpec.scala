@@ -249,6 +249,58 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         "No converter found for rule type: CustomSql")
     }
 
+    "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfWithNumericValues(sparkSession)
+      df.createOrReplaceTempView("primary")
+
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 0, " +
+        "CustomSql \"select count(*) from primary where att1 > 1 \" = 5, " +
+        "CustomSql \"select count(*) from primary where att1 > 1 \" between 0 and 6]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val rows = resultDf.collect()
+      rows.foreach { row =>
+        row.getAs[String]("Outcome") should be("Passed")
+        row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Dataset.*.CustomSQL")
+        row.getAs[Map[String, Double]]("EvaluatedMetrics").seq.size should be(1)
+      }
+
+    }
+
+    "support CustomSql rule when Failed" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      df.createOrReplaceTempView("primary")
+
+      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" > 4]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
+      resultDf.collect()(0).getAs[String]("FailureReason") should
+        be("Value: 4.0 does not meet the constraint requirement!")
+    }
+
+    "support both types: deequ and custom rules" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      df.createOrReplaceTempView("primary")
+      val ruleset = "Rules=[RowCount < 10, CustomSql \"select count(*) from primary\" > 0]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      resultDf.collect()(0).getAs[String]("Outcome") should be("Passed")
+      resultDf.collect()(1).getAs[String]("Outcome") should be("Passed")
+    }
+
   }
 
 }
