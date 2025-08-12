@@ -237,8 +237,8 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
     "work with not yet supported rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
-      // CustomSql is not yet supported
-      val ruleset = "Rules=[CustomSql \"select count(*) from primary\" between 10 and 20]"
+      // Rule is not yet supported
+      val ruleset = "Rules=[ColumnLength \"Foo\" = 5]"
 
       // when
       val resultDf = EvaluateDataQuality.process(df, ruleset)
@@ -246,7 +246,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
       resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
-        "No converter found for rule type: CustomSql")
+        "No converter found for rule type: ColumnLength")
     }
 
     "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
