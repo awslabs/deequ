@@ -32,4 +32,11 @@ object DQDLUtility {
     if (isWhereClausePresent(rule)) check.where(rule.getWhereClause)
     else check
 
+  def requiresToBeQuoted(s: String): Boolean = {
+    if (s.startsWith("`") && s.endsWith("`")) false else {
+      val specialCharsRegex = """[^a-zA-Z0-9]""".r
+      specialCharsRegex.findFirstMatchIn(s).isDefined
+    }
+  }
+
 }
