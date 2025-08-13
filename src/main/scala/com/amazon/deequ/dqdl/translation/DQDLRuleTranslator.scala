@@ -31,7 +31,9 @@ import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
 import com.amazon.deequ.dqdl.translation.rules.SumRule
 import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
-import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
+import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
+import software.amazon.glue.dqdl.model.DQRule
+import software.amazon.glue.dqdl.model.DQRuleset
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
@@ -57,7 +59,8 @@ object DQDLRuleTranslator {
     "Sum" -> new SumRule,
     "UniqueValueRatio" -> new UniqueValueRatioRule,
     "CustomSql" -> new CustomSqlRule,
-    "IsPrimaryKey" -> new IsPrimaryKeyRule
+    "IsPrimaryKey" -> new IsPrimaryKeyRule,
+    "ColumnLength" -> new ColumnLengthRule
   )
 
   /**
