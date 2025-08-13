@@ -301,6 +301,57 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       resultDf.collect()(1).getAs[String]("Outcome") should be("Passed")
     }
 
+    "support IsPrimaryKey rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+
+      val ruleset = "Rules=[IsPrimaryKey \"item\"]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = resultDf.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").seq.size should be(2)
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.item.Uniqueness")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.item.Completeness")
+    }
+
+    "support IsPrimaryKey rule when failed" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfWithNumericValues(sparkSession)
+
+      val ruleset = "Rules=[IsPrimaryKey \"att2\"]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = resultDf.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").seq.size should be(2)
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Uniqueness")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Completeness")
+    }
+
+    "support IsPrimaryKey rule with where clause" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfWithNumericValues(sparkSession)
+
+      val ruleset = "Rules=[IsPrimaryKey \"att2\" where \"att1 > 2\"]"
+
+      // when
+      val resultDf = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = resultDf.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").seq.size should be(2)
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Uniqueness")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Completeness")
+    }
+
   }
 
 }
