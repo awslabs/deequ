@@ -238,7 +238,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // given
       val df = getDfFull(sparkSession)
       // Rule is not yet supported
-      val ruleset = "Rules=[ColumnLength \"Foo\" = 5]"
+      val ruleset = "Rules=[ColumnValues \"Foo\" = 5]"
 
       // when
       val resultDf = EvaluateDataQuality.process(df, ruleset)
@@ -246,7 +246,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
       resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
-        "No converter found for rule type: ColumnLength")
+        "No converter found for rule type: ColumnValues")
     }
 
     "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
@@ -352,6 +352,137 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[Map[String, Double]]("EvaluatedMetrics").keys should contain("Column.att2.Completeness")
     }
 
+    "support ColumnLength rule with GREATER_THAN" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" > 0]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.item.MinimumLength"
+    }
+
+    "support ColumnLength rule with GREATER_THAN when failed" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" > 5]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.item.MinimumLength"
+    }
+
+    "support ColumnLength rule with LESS_THAN" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" < 10]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.item.MaximumLength"
+    }
+
+    "support ColumnLength rule with BETWEEN" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" between 0 and 10]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.item.MinimumLength"
+      metrics should contain key "Column.item.MaximumLength"
+    }
+
+    "support ColumnLength rule with EQUALS" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" = 1]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.item.MinimumLength"
+      metrics should contain key "Column.item.MaximumLength"
+    }
+
+    "support ColumnLength rule with IN" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" in [1]]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.item.LengthCompliance"
+    }
+
+    "support ColumnLength rule with NOT IN" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" not in [7]]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.item.LengthCompliance"
+    }
+
+    "support ColumnLength rule with where clause" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" < 4 where \"val1 < 4\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.item.MaximumLength"
+    }
+
+    "support ColumnLength rule between with where clause" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+      val ruleset = "Rules=[ColumnLength \"item\" between 1 and 4 where \"val1 > 1 and val1 < 4\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.item.MaximumLength"
+    }
   }
 
 }

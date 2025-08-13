@@ -154,6 +154,7 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`
 - **CustomSql**: `CustomSql "SELECT COUNT(*) FROM primary" > 0`
 - **IsPrimaryKey**: `IsPrimaryKey "att1"`
+- **ColumnLength**: `ColumnLength "att1" between 1 and 5`
 
 ### Scala Example
 
