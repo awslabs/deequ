@@ -17,7 +17,6 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
-<<<<<<< HEAD
 import com.amazon.deequ.dqdl.translation.rules.ColumnCorrelationRule
 import com.amazon.deequ.dqdl.translation.rules.CompletenessRule
 import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
@@ -32,11 +31,9 @@ import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
 import com.amazon.deequ.dqdl.translation.rules.SumRule
 import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
-=======
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
-import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, CustomSqlRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsUniqueRule, MeanRule, RowCountRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
->>>>>>> cc4857b (Add ColumnLengthRule)
-import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
+import software.amazon.glue.dqdl.model.DQRule
+import software.amazon.glue.dqdl.model.DQRuleset
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
