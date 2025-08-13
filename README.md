@@ -138,6 +138,23 @@ Our library contains much more functionality than what we showed in the basic ex
 
 Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html), a declarative language for defining data quality rules. DQDL allows you to express data quality constraints in a simple, readable format.
 
+### Supported DQDL Rules
+
+- **RowCount**: `RowCount < 100`
+- **Completeness**: `Completeness "column" > 0.9`
+- **IsComplete**: `IsComplete "column"`
+- **Uniqueness**: `Uniqueness "column" = 1.0`
+- **IsUnique**: `IsUnique "column"`
+- **ColumnCorrelation**: `ColumnCorrelation "col1" "col2" > 0.8`
+- **DistinctValuesCount**: `DistinctValuesCount "column" = 5`
+- **Entropy**: `Entropy "column" > 2.0`
+- **Mean**: `Mean "column" between 10 and 50`
+- **StandardDeviation**: `StandardDeviation "column" < 5.0`
+- **Sum**: `Sum "column" = 100`
+- **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`
+- **CustomSql**: `CustomSql "SELECT COUNT(*) FROM primary" > 0`
+- **IsPrimaryKey**: `IsPrimaryKey "att1"`
+
 ### Scala Example
 
 ScalaDQDLExample.scala
@@ -201,23 +218,6 @@ String ruleset = "Rules=[IsUnique \"item\", RowCount < 10, Completeness \"item\"
 Dataset<Row> results = EvaluateDataQuality.process(df, ruleset);
 results.show();
 ```
-
-### Supported DQDL Rules
-
-- **RowCount**: `RowCount < 100`
-- **Completeness**: `Completeness "column" > 0.9`
-- **IsComplete**: `IsComplete "column"`
-- **Uniqueness**: `Uniqueness "column" = 1.0`
-- **IsUnique**: `IsUnique "column"`
-- **ColumnCorrelation**: `ColumnCorrelation "col1" "col2" > 0.8`
-- **DistinctValuesCount**: `DistinctValuesCount "column" = 5`
-- **Entropy**: `Entropy "column" > 2.0`
-- **Mean**: `Mean "column" between 10 and 50`
-- **StandardDeviation**: `StandardDeviation "column" < 5.0`
-- **Sum**: `Sum "column" = 100`
-- **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`
-- **CustomSql**: `CustomSql "SELECT COUNT(*) FROM primary" > 0`
-
 
 ## Citation
 

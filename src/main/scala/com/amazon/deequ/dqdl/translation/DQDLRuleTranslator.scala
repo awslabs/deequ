@@ -17,7 +17,20 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
-import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, CompletenessRule, CustomSqlRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsUniqueRule, MeanRule, RowCountRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
+import com.amazon.deequ.dqdl.translation.rules.ColumnCorrelationRule
+import com.amazon.deequ.dqdl.translation.rules.CompletenessRule
+import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
+import com.amazon.deequ.dqdl.translation.rules.DistinctValuesCountRule
+import com.amazon.deequ.dqdl.translation.rules.EntropyRule
+import com.amazon.deequ.dqdl.translation.rules.IsCompleteRule
+import com.amazon.deequ.dqdl.translation.rules.IsPrimaryKeyRule
+import com.amazon.deequ.dqdl.translation.rules.IsUniqueRule
+import com.amazon.deequ.dqdl.translation.rules.MeanRule
+import com.amazon.deequ.dqdl.translation.rules.RowCountRule
+import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
+import com.amazon.deequ.dqdl.translation.rules.SumRule
+import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
+import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
@@ -43,7 +56,8 @@ object DQDLRuleTranslator {
     "StandardDeviation" -> new StandardDeviationRule,
     "Sum" -> new SumRule,
     "UniqueValueRatio" -> new UniqueValueRatioRule,
-    "CustomSql" -> new CustomSqlRule
+    "CustomSql" -> new CustomSqlRule,
+    "IsPrimaryKey" -> new IsPrimaryKeyRule
   )
 
   /**
