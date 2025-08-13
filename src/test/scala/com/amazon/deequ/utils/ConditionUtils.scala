@@ -58,6 +58,16 @@ object ConditionUtils {
           val operand = e.replace("=", "")
           new NumberBasedCondition(expression,
             NumberBasedConditionOperator.EQUALS, List(convertOperand(operand)).asJava)
+        case e if e.startsWith("not in") =>
+          val operandsStr = e.replace("not in", "").trim.stripPrefix("[").stripSuffix("]")
+          val operands = operandsStr.split(",").map(_.trim).map(convertOperand).toList
+          new NumberBasedCondition(expression,
+            NumberBasedConditionOperator.NOT_IN, operands.asJava)
+        case e if e.startsWith("in") =>
+          val operandsStr = e.replace("in", "").trim.stripPrefix("[").stripSuffix("]")
+          val operands = operandsStr.split(",").map(_.trim).map(convertOperand).toList
+          new NumberBasedCondition(expression,
+            NumberBasedConditionOperator.IN, operands.asJava)
         case e => new Condition(e)
       }
     }
