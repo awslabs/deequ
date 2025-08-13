@@ -21,6 +21,7 @@ import com.amazon.deequ.checks.CheckLevel
 import com.amazon.deequ.dqdl.model.DeequMetricMapping
 import com.amazon.deequ.dqdl.translation.DQDLRuleConverter
 import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
+import com.amazon.deequ.dqdl.util.DQDLUtility.isWhereClausePresent
 import com.amazon.deequ.dqdl.util.DQDLUtility.requiresToBeQuoted
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
@@ -59,7 +60,7 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
     val transformedColForSparkSql = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
 
     def withMultipleConstraints(minAssertion: Double => Boolean, maxAssertion: Double => Boolean): Check = {
-      if (rule.getWhereClause != null) {
+      if (isWhereClausePresent(rule)) {
         check
           .hasMinLength(targetColumn, minAssertion).where(rule.getWhereClause)
           .hasMaxLength(targetColumn, maxAssertion).where(rule.getWhereClause)
