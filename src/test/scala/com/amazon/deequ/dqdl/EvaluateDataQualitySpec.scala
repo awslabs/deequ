@@ -483,6 +483,55 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("Outcome") should be("Passed")
       row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.item.MaximumLength"
     }
+
+    "support ColumnExists rule" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+      val ruleset = "Rules=[ColumnExists \"item\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Dataset.*.ColumnExists"
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain value 1.0
+    }
+
+    "support ColumnExists rule fail" in withSparkSession { sparkSession =>
+      // given
+      val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+      val ruleset = "Rules=[ColumnExists \"sampom\"]"
+
+      // when
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      // then
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Dataset.*.ColumnExists"
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain value 0.0
+    }
+
+    "support multiple ColumnExists rule" in withSparkSession { sparkSession =>
+      val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
+
+      val testOutcomes = Map(
+        "sampom" -> 0.0,
+        "item" -> 1.0,
+        "val1" -> 1.0,
+        "pomerantz" -> 0.0
+      )
+
+      testOutcomes.foreach { case (columnName, expectedMetric) =>
+        val ruleset = s"""Rules=[ColumnExists "$columnName"]"""
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val metrics = results.collect()(0).getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics should contain key s"Dataset.$columnName.ColumnExists"
+        metrics should contain value expectedMetric
+      }
+    }
   }
 
 }

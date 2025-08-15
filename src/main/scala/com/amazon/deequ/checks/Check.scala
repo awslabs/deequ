@@ -160,6 +160,15 @@ case class Check(
     addFilterableConstraint { filter => completenessConstraint(column, assertion, filter, hint, analyzerOptions) }
   }
 
+  def hasColumn(
+   column: String,
+   hint: Option[String] = None)
+  : Check = {
+    val constraint = columnExistsConstraint(column, hint)
+    addConstraint(constraint)
+  }
+
+
   /**
     * Creates a constraint that asserts on completion in combined set of columns.
     *

@@ -17,6 +17,7 @@
 package com.amazon.deequ.constraints
 
 import com.amazon.deequ.analyzers._
+import com.amazon.deequ.checks.Check
 import com.amazon.deequ.metrics.BucketDistribution
 import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.Metric
@@ -738,6 +739,25 @@ object Constraint {
       hint = hint)
 
     new NamedConstraint(constraint, s"SumConstraint($sum)")
+  }
+
+  /**
+   * Creates a constraint that checks if a column exists in the DataFrame
+   *
+   * @param column Column to check for existence
+   * @param hint A hint to provide additional context why a constraint could have failed
+   */
+  def columnExistsConstraint(
+      column: String,
+      hint: Option[String] = None)
+  : Constraint = {
+
+    val columnExists = ColumnExists(column)
+
+    val constraint = AnalysisBasedConstraint[ColumnExistsState, Double, Double](
+      columnExists, Check.IsOne, hint = hint)
+
+    new NamedConstraint(constraint, s"ColumnExistsConstraint($column)")
   }
 
   /**
