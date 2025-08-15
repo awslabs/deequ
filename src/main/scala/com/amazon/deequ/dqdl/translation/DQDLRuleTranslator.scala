@@ -32,6 +32,7 @@ import com.amazon.deequ.dqdl.translation.rules.SumRule
 import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
@@ -60,7 +61,8 @@ object DQDLRuleTranslator {
     "UniqueValueRatio" -> new UniqueValueRatioRule,
     "CustomSql" -> new CustomSqlRule,
     "IsPrimaryKey" -> new IsPrimaryKeyRule,
-    "ColumnLength" -> new ColumnLengthRule
+    "ColumnLength" -> new ColumnLengthRule,
+    "ColumnExists" -> new ColumnExistsRule
   )
 
   /**
