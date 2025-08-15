@@ -39,7 +39,8 @@ object ScalaDQDLExample {
     ).toDF("item", "att1", "att2")
 
     // Define rules using DQDL syntax
-    val ruleset = """Rules=[IsUnique "item", RowCount < 10, Completeness "item" > 0.8, Uniqueness "item" = 1.0]"""
+    val ruleset = """Rules=[IsUnique "item", RowCount < 10, Completeness "item" > 0.8,""" +
+      """Uniqueness "item" = 1.0, ColumnExists "item"]"""
 
     // Evaluate data quality
     val results = EvaluateDataQuality.process(df, ruleset)
