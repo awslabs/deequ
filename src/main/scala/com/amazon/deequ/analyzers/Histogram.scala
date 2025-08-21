@@ -16,11 +16,24 @@
 
 package com.amazon.deequ.analyzers
 
-import com.amazon.deequ.analyzers.Histogram.{AggregateFunction, Count}
+import com.amazon.deequ.analyzers.Histogram.AggregateFunction
+import com.amazon.deequ.analyzers.Histogram.Count
+import com.amazon.deequ.analyzers.runners.IllegalAnalyzerParameterException
+import com.amazon.deequ.analyzers.runners.MetricCalculationException
+import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.DistributionValue
+import com.amazon.deequ.metrics.HistogramMetric
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{LongType, StringType}
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+
+import scala.collection.immutable.ListMap
+import scala.util.Failure
+import scala.util.Try
 
 /**
  * Histogram is the summary of values in a column of a DataFrame. Groups the given column's values,
@@ -35,17 +48,100 @@ import org.apache.spark.sql.{DataFrame, Row}
  * @param maxDetailBins Histogram details is only provided for N column values with top counts.
  *                      maxBins sets the N.
  *                      This limit does not affect what is being returned as number of bins. It
- *                      always returns the dictinct value count.
+ *                      always returns the distinct value count.
  * @param aggregateFunction function that implements aggregation logic.
  */
 case class Histogram(
                       override val column: String,
-                      override val binningUdf: Option[UserDefinedFunction] = None,
-                      override val maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
+                      binningUdf: Option[UserDefinedFunction] = None,
+                      maxDetailBins: Integer = Histogram.MaximumAllowedDetailBins,
                       override val where: Option[String] = None,
                       override val computeFrequenciesAsRatio: Boolean = true,
                       override val aggregateFunction: AggregateFunction = Count)
-  extends HistogramBase(column, binningUdf, maxDetailBins, where, computeFrequenciesAsRatio, aggregateFunction)
+  extends HistogramBase(column, where, computeFrequenciesAsRatio, aggregateFunction)
+    with Analyzer[FrequenciesAndNumRows, HistogramMetric] {
+
+  protected[this] val PARAM_CHECK: StructType => Unit = { _ =>
+    if (maxDetailBins > Histogram.MaximumAllowedDetailBins) {
+      throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
+        s"than ${Histogram.MaximumAllowedDetailBins} values")
+    }
+  }
+
+  override def computeStateFrom(data: DataFrame,
+                                filterCondition: Option[String] = None): Option[FrequenciesAndNumRows] = {
+
+    val totalCount = if (computeFrequenciesAsRatio) {
+      aggregateFunction.total(data)
+    } else {
+      1
+    }
+
+    val df = data
+      .transform(filterOptional(where))
+      .transform(binOptional(binningUdf))
+    val frequencies = query(df)
+
+    Some(FrequenciesAndNumRows(frequencies, totalCount))
+  }
+
+  private def binOptional(binningUdf: Option[UserDefinedFunction])(data: DataFrame): DataFrame = {
+    binningUdf match {
+      case Some(bin) => data.withColumn(column, bin(col(column)))
+      case _ => data
+    }
+  }
+
+  override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramMetric = {
+
+    state match {
+
+      case Some(theState) =>
+        val value: Try[Distribution] = Try {
+
+          val countColumnName = theState.frequencies.schema.fields
+            .find(field => field.dataType == LongType && field.name != column)
+            .map(_.name)
+            .getOrElse(throw new IllegalStateException(s"Count column not found in the frequencies DataFrame"))
+
+          // sort in descending frequency
+          val topNRowsDF = theState.frequencies
+            .orderBy(col(countColumnName).desc)
+            .limit(maxDetailBins)
+            .collect()
+
+          val binCount = theState.frequencies.count()
+
+          val columnName = theState.frequencies.columns
+            .find(_ == column)
+            .getOrElse(throw new IllegalStateException(s"Column $column not found"))
+
+          val histogramDetails = topNRowsDF
+            .map { row =>
+              val discreteValue = row.getAs[String](columnName)
+              val absolute = row.getAs[Long](countColumnName)
+              val ratio = absolute.toDouble / theState.numRows
+              discreteValue -> DistributionValue(absolute, ratio)
+            }(collection.breakOut): ListMap[String, DistributionValue]
+
+          Distribution(histogramDetails, binCount)
+        }
+
+        HistogramMetric(column, value)
+
+      case None =>
+        HistogramMetric(column, Failure(Analyzers.emptyStateException(this)))
+    }
+  }
+
+  override def toFailureMetric(exception: Exception): HistogramMetric = {
+    HistogramMetric(column, Failure(MetricCalculationException.wrapIfNecessary(exception)))
+  }
+
+  override def preconditions: Seq[StructType => Unit] = {
+    PARAM_CHECK :: Preconditions.hasColumn(column) :: Nil
+  }
+}
 
 object Histogram {
   val NullFieldReplacement = "NullValue"
