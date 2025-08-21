@@ -18,6 +18,7 @@ package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.utils.FixtureSupport
+import org.apache.spark.sql.functions.udf
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -176,6 +177,67 @@ class HistogramTest extends AnyWordSpec with Matchers with SparkContextSpec with
       distribution.values("C").absolute shouldBe 8
       distribution.values("D").absolute shouldBe 7
       distribution.values("E").absolute shouldBe 6
+    }
+
+    "group values using binningUdf for categorical data" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq("excellent", "very good", "good", "okay", "poor", "terrible", "excellent", "good")
+        .toDF("satisfaction")
+
+      val groupingUdf = udf((rating: String) => rating match {
+        case "excellent" | "very good" => "positive"
+        case "good" | "okay" => "neutral"
+        case "poor" | "terrible" => "negative"
+      })
+
+      val histogram = Histogram("satisfaction", Some(groupingUdf))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 3
+      distribution.values.size shouldBe 3
+
+      // Verify grouped categories
+      distribution.values should contain key ("positive")
+      distribution.values should contain key ("neutral")
+      distribution.values should contain key ("negative")
+
+      distribution.values("positive").absolute shouldBe 3 // excellent, very good, excellent
+      distribution.values("neutral").absolute shouldBe 3 // good, okay, good
+      distribution.values("negative").absolute shouldBe 2 // poor, terrible
+    }
+
+    "group numerical values using binningUdf for age ranges" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(15, 25, 35, 45, 70, 80, 16, 30).toDF("age")
+
+      val ageGroupUdf = udf((age: Int) => age match {
+        case x if x < 18 => "minor"
+        case x if x < 65 => "adult"
+        case _ => "senior"
+      })
+
+      val histogram = Histogram("age", Some(ageGroupUdf))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 3
+      distribution.values.size shouldBe 3
+
+      // Verify age groups
+      distribution.values should contain key ("minor")
+      distribution.values should contain key ("adult")
+      distribution.values should contain key ("senior")
+
+      distribution.values("minor").absolute shouldBe 2 // 15, 16
+      distribution.values("adult").absolute shouldBe 4 // 25, 35, 45, 30
+      distribution.values("senior").absolute shouldBe 2 // 70, 80
     }
 
     "aggregate sum works as expected" in withSparkSession { spark =>

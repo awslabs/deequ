@@ -25,13 +25,17 @@ import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.metrics.HistogramBinnedMetric
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.functions.floor
+import org.apache.spark.sql.functions.least
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.max
+import org.apache.spark.sql.functions.min
+import org.apache.spark.sql.functions.when
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.sql.types.FloatType
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.StructType
 
 import scala.util.Failure
@@ -92,18 +96,24 @@ case class HistogramBinned(
       computeEqualWidthEdges(filteredData, numericCol)
     }
 
-    if (storedEdges.isEmpty) {
-      return Some(FrequenciesAndNumRows(
-        data.sparkSession.emptyDataFrame,
-        totalCount
-      ))
+    // Create binned data using DataFrame operations
+    val binnedData = if (storedEdges.isEmpty) {
+      filteredData.withColumn(column, lit(Histogram.NullFieldReplacement))
+    } else {
+      val minVal = storedEdges.head
+      val binWidth = (storedEdges.last - storedEdges.head) / (storedEdges.length - 1)
+
+      filteredData.withColumn(column,
+        when(numericCol.isNull, Histogram.NullFieldReplacement)
+          .otherwise(
+            least(
+              floor((numericCol - minVal) / binWidth).cast(IntegerType),
+              lit(storedEdges.length - 2)
+            ).cast(StringType)
+          )
+      )
     }
 
-    // Create binning UDF and apply
-    val binningUdf = createBinningUdf(storedEdges)
-    val binnedData = filteredData
-      .filter(col(column).isNotNull) // Filter out nulls completely
-      .withColumn(column, binningUdf(numericCol))
     val frequencies = aggregateFunction.query(column, binnedData)
 
     Some(FrequenciesAndNumRows(frequencies, totalCount))
@@ -132,16 +142,6 @@ case class HistogramBinned(
     val binWidth = (maxDouble - minDouble) / binCount.get
 
     Array.tabulate(binCount.get + 1)(i => minDouble + i * binWidth)
-  }
-
-  private def createBinningUdf(edges: Array[Double]) = {
-    val minVal = edges.head
-    val binWidth = (edges.last - edges.head) / (edges.length - 1)
-
-    udf((value: Number) => {
-      val binIndex = math.min(((value.doubleValue() - minVal) / binWidth).toInt, edges.length - 2)
-      binIndex
-    })
   }
 
   override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramBinnedMetric = {
