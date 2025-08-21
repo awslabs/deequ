@@ -309,5 +309,23 @@ class HistogramTest extends AnyWordSpec with Matchers with SparkContextSpec with
       keys.head shouldBe "NullValue"  // highest sum: 1887
       keys(1) shouldBe "Electronics"  // second highest: 600
     }
+
+    "handle all null data gracefully" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(None: Option[Double], None, None, None).toDF("values")
+
+      val histogram = Histogram("values", maxDetailBins = 5, computeFrequenciesAsRatio = false)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Should only have 1 bin of NullValue
+      distribution.numberOfBins shouldBe 1
+      distribution.values.size shouldBe 1
+
+      distribution.values("NullValue").absolute shouldBe 4
+    }
   }
 }

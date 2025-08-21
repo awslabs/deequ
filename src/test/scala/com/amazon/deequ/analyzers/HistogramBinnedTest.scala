@@ -154,6 +154,43 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       distribution.getInterval(2) shouldBe "[7.43, 10.60]"
     }
 
+    "handle null values by creating NullValue bin" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Some(1.0), None, Some(3.0), None, Some(5.0), Some(7.0), None, Some(9.0)).toDF("values")
+
+      val histogram = HistogramBinned("values", binCount = Some(3))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 4 // 3 numeric bins + 1 NullValue bin
+      distribution.bins.size shouldBe 4
+
+      // Check numeric bins (non-null values: 1, 3, 5, 7, 9)
+      distribution(0).binStart shouldBe 1.0
+      distribution(0).binEnd shouldBe 3.67 +- 0.01
+      distribution(0).frequency shouldBe 2 // values 1.0, 3.0
+      distribution(0).ratio shouldBe 2.0 / 8.0 +- 0.001
+
+      distribution(1).binStart shouldBe 3.67 +- 0.01
+      distribution(1).binEnd shouldBe 6.33 +- 0.01
+      distribution(1).frequency shouldBe 1 // value 5.0
+      distribution(1).ratio shouldBe 1.0 / 8.0 +- 0.001
+
+      distribution(2).binStart shouldBe 6.33 +- 0.01
+      distribution(2).binEnd shouldBe 9.0
+      distribution(2).frequency shouldBe 2 // values 7.0, 9.0
+      distribution(2).ratio shouldBe 2.0 / 8.0 +- 0.001
+
+      // Check NullValue bin
+      distribution(3).binStart shouldBe Double.NegativeInfinity
+      distribution(3).binEnd shouldBe Double.PositiveInfinity
+      distribution(3).frequency shouldBe 3 // 3 null values
+      distribution(3).ratio shouldBe 3.0 / 8.0 +- 0.001
+    }
+
     "aggregate sum works as expected" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -189,6 +226,73 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
 
       distribution(2).binStart shouldBe 366.67 +- 0.01
       distribution(2).binEnd shouldBe 500.0
+    }
+
+    "aggregate sum works as expected with nulls" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        (Some(100.0), Some(50)), // bin 0
+        (None, Some(999)), // NullValue bin
+        (Some(150.0), Some(75)), // bin 0
+        (Some(250.0), None), // bin 1, but null revenue = 0 in sum
+        (Some(300.0), Some(125)), // bin 1
+        (Some(450.0), Some(200)), // bin 2
+        (None, Some(888)) // NullValue bin
+      ).toDF("price", "revenue")
+
+      val histogram = HistogramBinned("price", binCount = Some(3), aggregateFunction = Histogram.Sum("revenue"))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 4 // 3 numeric bins + 1 NullValue bin
+      distribution.bins.size shouldBe 4
+
+      // Verify sum aggregation with nulls handled
+      // Null prices go to NullValue bin
+      // Null revenues are treated as 0 in the sum
+      distribution(0).frequency shouldBe 125 // 50 + 75 (prices 100, 150)
+      distribution(1).frequency shouldBe 125 // 0 + 125 (price 250 has null revenue, price 300 has 125)
+      distribution(2).frequency shouldBe 200 // 200 (price 450)
+
+      // NullValue bin gets sum of revenues for null prices
+      distribution(3).frequency shouldBe 1887 // 999 + 888 (null prices)
+      distribution(3).binStart shouldBe Double.NegativeInfinity
+      distribution(3).binEnd shouldBe Double.PositiveInfinity
+
+      // Verify bin ranges (based only on non-null prices: 100, 150, 250, 300, 450)
+      distribution(0).binStart shouldBe 100.0
+      distribution(0).binEnd shouldBe 216.67 +- 0.01
+
+      distribution(1).binStart shouldBe 216.67 +- 0.01
+      distribution(1).binEnd shouldBe 333.33 +- 0.01
+
+      distribution(2).binStart shouldBe 333.33 +- 0.01
+      distribution(2).binEnd shouldBe 450.0
+    }
+
+    "handle all null data gracefully" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(None: Option[Double], None, None, None).toDF("values")
+
+      val histogram = HistogramBinned("values", binCount = Some(3))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Should have 1 bin for the "NullValue" category (like Histogram does)
+      distribution.numberOfBins shouldBe 1
+      distribution.bins.size shouldBe 1
+
+      // All nulls become "NullValue" bin - verify it's the special infinity-range bin
+      val nullBin = distribution.bins.head
+      nullBin.binStart shouldBe Double.NegativeInfinity
+      nullBin.binEnd shouldBe Double.PositiveInfinity
+      nullBin.frequency shouldBe 4
     }
   }
 

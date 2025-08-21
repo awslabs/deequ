@@ -104,7 +104,7 @@ case class HistogramBinned(
       val binWidth = (storedEdges.last - storedEdges.head) / (storedEdges.length - 1)
 
       filteredData.withColumn(column,
-        when(numericCol.isNull, Histogram.NullFieldReplacement)
+        when(numericCol.isNull, lit(Histogram.NullFieldReplacement))
           .otherwise(
             least(
               floor((numericCol - minVal) / binWidth).cast(IntegerType),
@@ -171,7 +171,17 @@ case class HistogramBinned(
             BinData(binStart, binEnd, distValue.absolute, distValue.ratio)
           }.toVector
 
-          DistributionBinned(binDataSeq, binCount)
+          // Add NullValue bin if it exists
+          val finalBins = if (histogramDetails.contains(Histogram.NullFieldReplacement)) {
+            val nullDistValue = histogramDetails(Histogram.NullFieldReplacement)
+            val nullBin = BinData(Double.NegativeInfinity, Double.PositiveInfinity,
+                                 nullDistValue.absolute, nullDistValue.ratio)
+            binDataSeq :+ nullBin
+          } else {
+            binDataSeq
+          }
+
+          DistributionBinned(finalBins, binCount)
         }
 
         HistogramBinnedMetric(column, value)
