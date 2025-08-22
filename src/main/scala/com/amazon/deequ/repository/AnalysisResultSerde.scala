@@ -80,6 +80,7 @@ object AnalysisResultSerde {
 
   def serialize(analysisResults: Seq[AnalysisResult]): String = {
     val gson = new GsonBuilder()
+      .serializeSpecialFloatingPointValues()
       .registerTypeAdapter(classOf[ResultKey], ResultKeySerializer)
       .registerTypeAdapter(classOf[AnalysisResult], AnalysisResultSerializer)
       .registerTypeAdapter(classOf[AnalyzerContext], AnalyzerContextSerializer)
@@ -88,6 +89,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalyzerOptions], AnalyzerOptionsSerializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricSerializer)
       .registerTypeAdapter(classOf[Distribution], DistributionSerializer)
+      .registerTypeAdapter(classOf[DistributionBinned], DistributionBinnedSerializer)
       .registerTypeAdapter(classOf[BucketDistribution], BucketDistributionSerializer)
       .setPrettyPrinting()
       .create
@@ -97,6 +99,7 @@ object AnalysisResultSerde {
 
   def deserialize(analysisResults: String): Seq[AnalysisResult] = {
     val gson = new GsonBuilder()
+      .serializeSpecialFloatingPointValues()
       .registerTypeAdapter(classOf[ResultKey], ResultKeyDeserializer)
       .registerTypeAdapter(classOf[AnalysisResult], AnalysisResultDeserializer)
       .registerTypeAdapter(classOf[AnalyzerContext], AnalyzerContextDeserializer)
@@ -104,6 +107,7 @@ object AnalysisResultSerde {
       .registerTypeAdapter(classOf[AnalyzerOptions], AnalyzerOptionsDeserializer)
       .registerTypeAdapter(classOf[Metric[_]], MetricDeserializer)
       .registerTypeAdapter(classOf[Distribution], DistributionDeserializer)
+      .registerTypeAdapter(classOf[DistributionBinned], DistributionBinnedDeserializer)
       .registerTypeAdapter(classOf[BucketDistribution], BucketDistributionDeserializer)
       .create
 
@@ -344,8 +348,21 @@ private[deequ] object AnalyzerSerializer
           result.addProperty("aggregateColumn", histogram.aggregateFunction.aggregateColumn().get)
         }
 
+      case histogramBinned: HistogramBinned =>
+        result.addProperty(ANALYZER_NAME_FIELD, "HistogramBinned")
+        result.addProperty(COLUMN_FIELD, histogramBinned.column)
+        if (histogramBinned.binCount.isDefined) {
+          result.addProperty("binCount", histogramBinned.binCount.get)
+        }
+        if (histogramBinned.customEdges.isDefined) {
+          result.add("customEdges", context.serialize(histogramBinned.customEdges.get))
+        }
+
       case _ : Histogram =>
         throw new IllegalArgumentException("Unable to serialize Histogram with binningUdf!")
+
+      case _ : HistogramBinned =>
+        throw new IllegalArgumentException("Unable to serialize HistogramBinned with unsupported configuration!")
 
       case dataType: DataType =>
         result.addProperty(ANALYZER_NAME_FIELD, "DataType")
@@ -532,6 +549,16 @@ private[deequ] object AnalyzerDeserializer
             getOptionalStringParam(json, "aggregateFunction").getOrElse(Histogram.count_function),
             getOptionalStringParam(json, "aggregateColumn").getOrElse("")))
 
+      case "HistogramBinned" =>
+        val binCount = if (json.has("binCount")) Some(json.get("binCount").getAsInt) else None
+        val customEdges = if (json.has("customEdges")) {
+          Some(context.deserialize(json.get("customEdges"), classOf[Array[Double]]))
+        } else None
+        HistogramBinned(
+          json.get(COLUMN_FIELD).getAsString,
+          binCount,
+          customEdges)
+
       case "DataType" =>
         DataType(
           json.get(COLUMN_FIELD).getAsString,
@@ -679,6 +706,13 @@ private[deequ] object MetricSerializer extends JsonSerializer[Metric[_]] {
         result.add("value", context.serialize(histogramMetric.value.get,
           classOf[Distribution]))
 
+      case histogramBinnedMetric: HistogramBinnedMetric =>
+        result.addProperty("metricName", "HistogramBinnedMetric")
+        result.addProperty(COLUMN_FIELD, histogramBinnedMetric.column)
+        result.addProperty("numberOfBins", histogramBinnedMetric.value.get.numberOfBins)
+        result.add("value", context.serialize(histogramBinnedMetric.value.get,
+          classOf[DistributionBinned]))
+
       case keyedDoubleMetric: KeyedDoubleMetric =>
         result.addProperty("metricName", "KeyedDoubleMetric")
         result.addProperty("entity", keyedDoubleMetric.entity.toString)
@@ -730,6 +764,12 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
           jsonObject.get(COLUMN_FIELD).getAsString,
           Try(context.deserialize(jsonObject.get("value"),
             classOf[Distribution]).asInstanceOf[Distribution]))
+
+      case "HistogramBinnedMetric" =>
+        HistogramBinnedMetric(
+          jsonObject.get(COLUMN_FIELD).getAsString,
+          Try(context.deserialize(jsonObject.get("value"),
+            classOf[DistributionBinned]).asInstanceOf[DistributionBinned]))
 
       case "KeyedDoubleMetric" =>
         val entity = Entity.withName(jsonObject.get("entity").getAsString)
@@ -815,6 +855,52 @@ private[deequ] object DistributionDeserializer extends JsonDeserializer[Distribu
       .toMap
 
     Distribution(values, jsonObject.get("numberOfBins").getAsLong)
+  }
+}
+
+private[deequ] object DistributionBinnedSerializer extends JsonSerializer[DistributionBinned]{
+
+  override def serialize(distributionBinned: DistributionBinned, t: Type,
+    context: JsonSerializationContext): JsonElement = {
+
+    val result = new JsonObject()
+    result.addProperty("numberOfBins", distributionBinned.numberOfBins)
+
+    val bins = new JsonArray()
+    distributionBinned.bins.foreach { binData =>
+      val bin = new JsonObject()
+      bin.addProperty("binStart", binData.binStart)
+      bin.addProperty("binEnd", binData.binEnd)
+      bin.addProperty("frequency", binData.frequency)
+      bin.addProperty("ratio", binData.ratio)
+      bins.add(bin)
+    }
+
+    result.add("bins", bins)
+    result
+  }
+}
+
+private[deequ] object DistributionBinnedDeserializer extends JsonDeserializer[DistributionBinned] {
+
+  override def deserialize(jsonElement: JsonElement, t: Type,
+    context: JsonDeserializationContext): DistributionBinned = {
+
+    val jsonObject = jsonElement.getAsJsonObject
+
+    val bins = jsonObject.get("bins").getAsJsonArray.asScala
+      .map { binElement =>
+        val binObject = binElement.getAsJsonObject
+        BinData(
+          binObject.get("binStart").getAsDouble,
+          binObject.get("binEnd").getAsDouble,
+          binObject.get("frequency").getAsLong,
+          binObject.get("ratio").getAsDouble
+        )
+      }
+      .toVector
+
+    DistributionBinned(bins, jsonObject.get("numberOfBins").getAsLong)
   }
 }
 

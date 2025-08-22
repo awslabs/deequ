@@ -168,6 +168,23 @@ class StateProviderTest extends AnyWordSpec
 
       assert(provider.load(histogramCountAnalyzer).isDefined)
     }
+
+    "should store HistogramBinned result to InMemoryStateProvider" in withSparkSession { session =>
+
+      val provider = InMemoryStateProvider()
+
+      val data = someData(session)
+      val histogramBinnedAnalyzer = HistogramBinned("count", Some(5))
+
+      val analysis = Analysis().addAnalyzer(histogramBinnedAnalyzer)
+
+      AnalysisRunner.run(
+        data = data,
+        analysis = analysis,
+        saveStatesWith = Some(provider))
+
+      assert(provider.load(histogramBinnedAnalyzer).isDefined)
+    }
   }
 
   def assertCorrectlyRestoresNumMatchesAndCount(persister: StatePersister,

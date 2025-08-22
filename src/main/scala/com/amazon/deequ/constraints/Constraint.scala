@@ -20,6 +20,7 @@ import com.amazon.deequ.analyzers._
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.metrics.BucketDistribution
 import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
@@ -196,6 +197,44 @@ object Constraint {
       histogram, assertion, Some(_.numberOfBins), hint)
 
     new NamedConstraint(constraint, s"HistogramBinConstraint($histogram)")
+  }
+
+  /**
+    * Runs HistogramBinned analysis on the given column and executes the assertion
+    */
+  def histogramBinnedConstraint(
+      column: String,
+      assertion: DistributionBinned => Boolean,
+      binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val histogramBinned = HistogramBinned(column, binCount, where = where)
+
+    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, DistributionBinned](
+      histogramBinned, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"HistogramBinnedConstraint($histogramBinned)")
+  }
+
+  /**
+    * Runs HistogramBinned analysis on the given column and executes the assertion on bin count
+    */
+  def histogramBinnedBinConstraint(
+      column: String,
+      assertion: Long => Boolean,
+      binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val histogramBinned = HistogramBinned(column, binCount, where = where)
+
+    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, Long](
+      histogramBinned, assertion, Some(_.numberOfBins), hint)
+
+    new NamedConstraint(constraint, s"HistogramBinnedBinConstraint($histogramBinned)")
   }
 
   /**
