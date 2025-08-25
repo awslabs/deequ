@@ -74,6 +74,12 @@ private[deequ] case class NumericColumnStatistics(
 
 private[deequ] case class CategoricalColumnStatistics(histograms: Map[String, Distribution])
 
+// TODO: Add HistogramBinned support for numerical column profiling
+// This would require:
+// - New NumericColumnStatistics case class with Map[String, DistributionBinned]
+// - Separate profiling logic for numeric vs categorical columns
+// - Integration in createProfiles() method
+
 /** Computes single-column profiles in three scans over the data, intented for large (TB) datasets
   *
   * In the first phase, we compute the number of records, as well as the datatype, approx. num

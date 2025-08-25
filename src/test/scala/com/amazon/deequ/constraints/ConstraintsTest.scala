@@ -65,6 +65,29 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
     }
   }
 
+  "Histogram binned constraint" should {
+    "succeed for valid binned distribution assertions" in withSparkSession { sparkSession =>
+      val df = sparkSession.createDataFrame(Seq(
+        (1, 10.0), (2, 20.0), (3, 30.0), (4, 40.0), (5, 50.0)
+      )).toDF("id", "value")
+
+      calculate(Constraint.histogramBinnedConstraint("value",
+        _.numberOfBins == 5), df).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedBinConstraint("value",
+        _ == 5), df).status shouldBe ConstraintStatus.Success
+    }
+
+    "fail for invalid binned distribution assertions" in withSparkSession { sparkSession =>
+      val df = sparkSession.createDataFrame(Seq(
+        (1, 10.0), (2, 20.0)
+      )).toDF("id", "value")
+
+      calculate(Constraint.histogramBinnedConstraint("value",
+        _.numberOfBins == 10), df).status shouldBe ConstraintStatus.Failure
+    }
+  }
+
   "Mutual information constraint" should {
     "yield a mutual information of 0 for conditionally uninformative columns" in
       withSparkSession { sparkSession =>

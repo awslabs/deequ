@@ -17,17 +17,28 @@
 package com.amazon.deequ.checks
 
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
-import com.amazon.deequ.analyzers.{Analyzer, AnalyzerOptions, CustomSql, CustomSqlState, DatasetMatchAnalyzer, DatasetMatchState, Histogram, KLLParameters, Patterns, State}
-import com.amazon.deequ.anomalydetection.HistoryUtils
+import com.amazon.deequ.analyzers.Analyzer
+import com.amazon.deequ.analyzers.AnalyzerOptions
+import com.amazon.deequ.analyzers.CustomSql
+import com.amazon.deequ.analyzers.CustomSqlState
+import com.amazon.deequ.analyzers.DatasetMatchAnalyzer
+import com.amazon.deequ.analyzers.DatasetMatchState
+import com.amazon.deequ.analyzers.Histogram
+import com.amazon.deequ.analyzers.HistogramBinned
+import com.amazon.deequ.analyzers.KLLParameters
+import com.amazon.deequ.analyzers.Patterns
+import com.amazon.deequ.analyzers.State
 import com.amazon.deequ.anomalydetection.AnomalyDetectionStrategy
 import com.amazon.deequ.anomalydetection.AnomalyDetector
 import com.amazon.deequ.anomalydetection.DataPoint
+import com.amazon.deequ.anomalydetection.HistoryUtils
 import com.amazon.deequ.checks.ColumnCondition.isAnyNotNull
 import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.BucketDistribution
 import com.amazon.deequ.metrics.Distribution
+import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.DataFrame
@@ -549,6 +560,52 @@ case class Check(
 
     addFilterableConstraint { filter =>
       histogramConstraint(column, assertion, binningUdf, maxBins, filter, hint) }
+  }
+
+  /**
+   * Creates a constraint that asserts on binned histogram values.
+   *
+   * @param column     Column to run the assertion on
+   * @param assertion  Function that receives a DistributionBinned input parameter and returns a boolean.
+   *                   E.g
+   *                   .hasHistogramBinnedValues("att2", _.bins(0).frequency >= 5)
+   *                   .hasHistogramBinnedValues("att2", _.bins.exists(_.ratio > 0.1))
+   * @param binCount   Number of bins for the histogram. Defaults to HistogramBinned.DefaultBinCount
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasHistogramBinnedValues(
+      column: String,
+      assertion: DistributionBinned => Boolean,
+      binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      histogramBinnedConstraint(column, assertion, binCount, filter, hint) }
+  }
+
+  /**
+   * Creates a constraint that asserts on binned histogram bin count.
+   *
+   * @param column     Column to run the assertion on
+   * @param assertion  Function that receives a Long input parameter (bin count) and returns a boolean.
+   *                   E.g
+   *                   .hasHistogramBinnedBins("att2", _ >= 5)
+   *                   .hasHistogramBinnedBins("att2", _ == 10)
+   * @param binCount   Number of bins for the histogram. Defaults to HistogramBinned.DefaultBinCount
+   * @param hint A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasHistogramBinnedBins(
+      column: String,
+      assertion: Long => Boolean,
+      binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      histogramBinnedBinConstraint(column, assertion, binCount, filter, hint) }
   }
 
   /**

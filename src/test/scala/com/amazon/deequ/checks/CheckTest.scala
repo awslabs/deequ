@@ -550,36 +550,170 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
     "return the correct check status for histogram constraints" in
       withSparkSession { sparkSession =>
 
-        val check1 = Check(CheckLevel.Error, "group-1")
+        // Basic categorical value assertions
+        val check1 = Check(CheckLevel.Error, "basic-categorical-tests")
           .hasNumberOfDistinctValues("att1", _ < 10)
-          .hasHistogramValues("att1", _ ("a").absolute == 4)
-          .hasHistogramValues("att1", _ ("b").absolute == 2)
-          .hasHistogramValues("att1", _ ("a").ratio > 0.6)
-          .hasHistogramValues("att1", _ ("b").ratio < 0.4)
-          .hasHistogramValues("att1", _ ("a").absolute == 3)
-          .where("att2 is not null")
-          .hasHistogramValues("att1", _ ("b").absolute == 1)
-          .where("att2 is not null")
+          .hasHistogramValues("att1", _ ("a").absolute == 4)  // Value "a" appears exactly 4 times
+          .hasHistogramValues("att1", _ ("b").absolute == 2)  // Value "b" appears exactly 2 times
+          .hasHistogramValues("att1", _ ("a").ratio > 0.6)    // Value "a" is >60% of data
+          .hasHistogramValues("att1", _ ("b").ratio < 0.4)    // Value "b" is <40% of data
 
-        val check2 = Check(CheckLevel.Error, "group-1")
+        // Filtered constraint tests (with WHERE clauses)
+        val check2 = Check(CheckLevel.Error, "filtered-constraint-tests")
+          .hasHistogramValues("att1", _ ("a").absolute == 3)
+          .where("att2 is not null") // Filtered: "a" appears 3 times when att2 not null
+          .hasHistogramValues("att1", _ ("b").absolute == 1)
+          .where("att2 is not null") // Filtered: "b" appears 1 time when att2 not null
+
+        // Null value handling tests
+        val check3 = Check(CheckLevel.Error, "null-handling-tests")
           .hasNumberOfDistinctValues("att2", _ == 3)
           .hasNumberOfDistinctValues("att2", _ == 2).where("att1 = 'a'")
-          .hasHistogramValues("att2", _ ("f").absolute == 3)
-          .hasHistogramValues("att2", _ ("d").absolute == 1)
-          .hasHistogramValues("att2", _ (Histogram.NullFieldReplacement).absolute == 2)
-          .hasHistogramValues("att2", _ ("f").ratio == 3 / 6.0)
-          .hasHistogramValues("att2", _ ("d").ratio == 1 / 6.0)
+          .hasHistogramValues("att2", _ ("f").absolute == 3) // Value "f" appears 3 times
+          .hasHistogramValues("att2", _ ("d").absolute == 1) // Value "d" appears 1 time
+          .hasHistogramValues("att2", _ (Histogram.NullFieldReplacement).absolute == 2) // Nulls appear 2 times
+          .hasHistogramValues("att2", _ ("f").ratio == 3 / 6.0) // Value "f" is exactly 50%
+          .hasHistogramValues("att2", _ ("d").ratio == 1 / 6.0) // Value "d" is exactly 16.67%
           .hasHistogramValues("att2", _ (Histogram.NullFieldReplacement).ratio == 2 / 6.0)
 
-        val check3 = Check(CheckLevel.Error, "group-1")
-          .hasNumberOfDistinctValues("unKnownColumn", _ == 3)
+        // Edge case tests (boundary conditions, empty categories)
+        val check4 = Check(CheckLevel.Error, "edge-case-tests")
+          .hasHistogramValues("att1", !_.values.contains("nonexistent"))  // Fake category not present
+          .hasHistogramValues("att2", _ ("f").ratio <= 1.0)               // Ratio boundary: <= 1.0
+          .hasHistogramValues("att2", _ ("d").ratio >= 0.0)               // Ratio boundary: >= 0.0
 
-        val context = runChecks(getDfCompleteAndInCompleteColumns(sparkSession), check1,
-          check2, check3)
+        // Complex filter conditions (multiple WHERE clauses)
+        val check5 = Check(CheckLevel.Error, "complex-filter-tests")
+          .hasHistogramValues("att1", _ ("a").absolute >= 1)
+          .where("att2 = 'f'")          // Complex filter: att1="a" when att2="f"
+          .hasHistogramValues("att2", _ ("f").absolute >= 2)
+          .where("att1 in ('a', 'b')")  // Complex filter: att2="f" when att1 in set
 
-        assertEvaluatesTo(check1, context, CheckStatus.Success)
-        assertEvaluatesTo(check2, context, CheckStatus.Success)
-        assertEvaluatesTo(check3, context, CheckStatus.Error)
+        // maxBins parameter tests (different bin limits show different distinct values)
+        val check6 = Check(CheckLevel.Error, "maxBins-parameter-tests")
+          .hasHistogramValues("att1", _ ("a").absolute == 4, maxBins = 10)  // Custom maxBins = 10
+          .hasHistogramValues("att2", _ ("f").absolute == 3, maxBins = 5)   // Custom maxBins = 5
+          .hasHistogramValues("att2",  // With maxBins=1, only top value "f" tracked, "d" not present
+            !_.values.contains("d"), maxBins = 1)
+
+        // aggregate function tests
+        val numericDf = sparkSession.createDataFrame(Seq(
+          ("a", 10), ("a", 20), ("b", 30), ("b", 40)
+        )).toDF("category", "value")
+
+        val check7 = Check(CheckLevel.Error, "aggregate-function-tests")
+          .hasHistogramValues("category", _ ("a").absolute == 2) // Count aggregation (default)
+
+        // failure cases (error conditions)
+        val check8 = Check(CheckLevel.Error, "failure-tests")
+          .hasNumberOfDistinctValues("unKnownColumn", _ == 3) // Fake column should fail
+
+        val context1 = runChecks(getDfCompleteAndInCompleteColumns(sparkSession),
+          check1, check2, check3, check4, check5, check6, check8)
+        val context2 = runChecks(numericDf, check7)
+
+        assertEvaluatesTo(check1, context1, CheckStatus.Success)
+        assertEvaluatesTo(check2, context1, CheckStatus.Success)
+        assertEvaluatesTo(check3, context1, CheckStatus.Success)
+        assertEvaluatesTo(check4, context1, CheckStatus.Success)
+        assertEvaluatesTo(check5, context1, CheckStatus.Success)
+        assertEvaluatesTo(check6, context1, CheckStatus.Success)
+        assertEvaluatesTo(check7, context2, CheckStatus.Success)
+        assertEvaluatesTo(check8, context1, CheckStatus.Error)
+      }
+
+    "return the correct check status for histogram binned constraints" in
+      withSparkSession { sparkSession =>
+
+        // Create test data with known distribution (20 values, 5 bins)
+        val df = sparkSession.createDataFrame(Seq(
+          (1, Some(10.0)), (2, Some(12.0)), (3, Some(15.0)), (4, Some(18.0)), (5, Some(20.0)),
+          (6, Some(25.0)), (7, Some(28.0)), (8, Some(30.0)), (9, Some(32.0)), (10, Some(35.0)),
+          (11, Some(40.0)), (12, Some(42.0)), (13, Some(45.0)), (14, Some(48.0)), (15, Some(50.0)),
+          (16, Some(55.0)), (17, Some(58.0)), (18, Some(60.0)), (19, Some(65.0)), (20, None)
+        )).toDF("id", "value")
+
+        // Bin-specific assertions
+        val check1 = Check(CheckLevel.Error, "bin-specific-tests")
+          .hasHistogramBinnedValues("value", _.bins(0).frequency >= 1, Some(5))   // First bin has >=1 value
+          .hasHistogramBinnedValues("value", _.bins(2).ratio >= 0.0, Some(5))     // Third bin has some ratio
+          .hasHistogramBinnedValues("value", _.bins.last.frequency >= 0, Some(5)) // Last bin exists
+
+        // Null handling
+        val check2 = Check(CheckLevel.Error, "null-handling-tests")
+          // Null bin exists and has one value
+          .hasHistogramBinnedValues("value", _.bins.exists(_.binStart == Double.NegativeInfinity), Some(5))
+          .hasHistogramBinnedValues("value",
+            _.bins.filter(_.binStart == Double.NegativeInfinity).head.frequency == 1, Some(5))
+
+        // Distribution shape tests
+        val check3 = Check(CheckLevel.Error, "distribution-shape-tests")
+          .hasHistogramBinnedValues("value",
+            _.bins.count(_.frequency > 0) >= 3, Some(5))  // At least 3 non-empty bins
+          .hasHistogramBinnedValues("value",
+            _.bins.exists(_.frequency > 2), Some(5))      // Some bin has >2 values (peak detection)
+          .hasHistogramBinnedValues("value",
+            _.bins.forall(_.frequency <= 20), Some(5))    // No bin is too large (outlier detection)
+
+        // Range / interval tests
+        val check4 = Check(CheckLevel.Error, "range-interval-tests")
+          .hasHistogramBinnedValues("value", _.bins.filter(b => b.binStart >= 20 && b.binEnd <= 40)
+            .map(_.frequency).sum >= 2, Some(5))      // Values in 20-40 range
+          .hasHistogramBinnedValues("value",  // First bin starts at reasonable value
+            _.bins(0).binStart <= 15, Some(5))
+          .hasHistogramBinnedValues("value",  // Last bin ends at reasonable value
+            _.bins.last.binEnd >= 60, Some(5))
+
+        // Statistical distribution tests
+        val check5 = Check(CheckLevel.Error, "statistical-tests")
+          .hasHistogramBinnedValues("value",
+            _.bins.maxBy(_.frequency).binStart >= 0, Some(5))  // Peak is in reasonable range
+          .hasHistogramBinnedValues("value",
+            _.bins.take(2).map(_.frequency).sum >= 1, Some(5)) // Left bins have some data
+          .hasHistogramBinnedValues("value",
+            _.bins.forall(b => b.frequency >= 0), Some(5))     // All frequencies non-negative
+
+        // Bin structure tests
+        val check6 = Check(CheckLevel.Error, "bin-structure-tests")
+          .hasHistogramBinnedBins("value", _ >= 5, Some(5))                 // Expected number of bins
+          .hasHistogramBinnedValues("value", _.numberOfBins >= 5, Some(5))  // numberOfBins matches
+          .hasHistogramBinnedValues("value", _.bins.filter(_.binStart != Double.NegativeInfinity)
+            .forall(b => b.binEnd > b.binStart), Some(5)) // Valid bin ranges
+
+        // Filtered constraint tests (WHERE clauses)
+        val check7 = Check(CheckLevel.Error, "filtered-binned-tests")
+          .hasHistogramBinnedValues("value", _.bins.exists(_.frequency > 0), Some(5))
+          .where("id <= 10")    // Filter to first 10 rows
+          .hasHistogramBinnedBins("value", _ >= 3, Some(5))
+          .where("value > 20")  // Filter to values > 20
+
+        // Aggregate function tests
+        val numericDf = sparkSession.createDataFrame(Seq(
+          (1, 10.0, 5), (2, 15.0, 3), (3, 25.0, 7), (4, 35.0, 2), (5, 45.0, 8)
+        )).toDF("id", "value", "weight")
+
+        val check8 = Check(CheckLevel.Error, "aggregate-binned-tests")
+          .hasHistogramBinnedValues("value", _.bins.exists(_.frequency > 0), Some(3))
+          .hasHistogramBinnedValues("value", _.bins.forall(_.frequency >= 0), Some(3))
+
+        // Failure cases
+        val check9 = Check(CheckLevel.Error, "failure-tests")
+          .hasHistogramBinnedValues("value", _.bins.isEmpty, Some(5)) // Should fail - no bins
+          .hasHistogramBinnedBins("value", _ == 0, Some(5))           // Should fail - zero bins
+
+        val context1 = runChecks(df, check1, check2, check3, check4, check5, check6, check9)
+        val context2 = runChecks(df, check7)  // Filtered tests on original data
+        val context3 = runChecks(numericDf, check8)  // Aggregate tests on numeric data
+
+        assertEvaluatesTo(check1, context1, CheckStatus.Success)
+        assertEvaluatesTo(check2, context1, CheckStatus.Success)
+        assertEvaluatesTo(check3, context1, CheckStatus.Success)
+        assertEvaluatesTo(check4, context1, CheckStatus.Success)
+        assertEvaluatesTo(check5, context1, CheckStatus.Success)
+        assertEvaluatesTo(check6, context1, CheckStatus.Success)
+        assertEvaluatesTo(check7, context2, CheckStatus.Success)
+        assertEvaluatesTo(check8, context3, CheckStatus.Success)
+        assertEvaluatesTo(check9, context1, CheckStatus.Error)
       }
 
     "return the correct check status for entropy constraints" in withSparkSession { sparkSession =>
