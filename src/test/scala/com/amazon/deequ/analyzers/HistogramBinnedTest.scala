@@ -294,6 +294,37 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       nullBin.binEnd shouldBe Double.PositiveInfinity
       nullBin.frequency shouldBe 4
     }
+
+    "numberOfBins should reflect total bins including empty ones for equal width" in withSparkSession { spark =>
+      import spark.implicits._
+
+      // Data with gaps and nulls
+      val data = Seq(Some(1.0), None, Some(9.0), None).toDF("values")
+
+      val histogram = HistogramBinned("values", binCount = Some(5)) // Creates 5 equal-width bins
+      val result = histogram.calculate(data).value.get
+
+      // numberOfBins should include all bins (regular + null)
+      result.numberOfBins shouldBe 6
+
+      // bins collection should include all bins (empty, non-empty, and null)
+      result.bins.length shouldBe 6
+
+      // Bin 0: [1.0, 2.6) contains 1.0
+      // Bins 1-3: empty.
+      // Bin 4: [7.4, 9.0] contains 9.0
+      // Bin 5: null bin contains 2 null values
+      result.bins(0).frequency shouldBe 1 // Contains 1.0
+      result.bins(1).frequency shouldBe 0 // Empty
+      result.bins(2).frequency shouldBe 0 // Empty
+      result.bins(3).frequency shouldBe 0 // Empty
+      result.bins(4).frequency shouldBe 1 // Contains 9.0
+      result.bins(5).frequency shouldBe 2 // Contains 2 null values
+
+      // Total values should include nulls for consistency with Histogram
+      val totalValues = result.bins.map(_.frequency).sum
+      totalValues shouldBe 4 // 2 non-null + 2 null values
+    }
   }
 
   "HistogramBinned (custom edges)" should {

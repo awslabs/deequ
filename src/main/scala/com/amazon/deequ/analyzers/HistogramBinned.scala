@@ -181,7 +181,8 @@ case class HistogramBinned(
             binDataSeq
           }
 
-          DistributionBinned(finalBins, binCount)
+          val totalBins = finalBins.size // Count null and empty bins
+          DistributionBinned(finalBins, totalBins)
         }
 
         HistogramBinnedMetric(column, value)
