@@ -23,6 +23,7 @@ import com.amazon.deequ.metrics.BinData
 import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.metrics.HistogramBinnedMetric
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.floor
@@ -48,7 +49,7 @@ import scala.util.Try
 case class HistogramBinned(
                             override val column: String,
                             binCount: Option[Int] = None,
-                            customEdges: Option[Array[Double]] = None, // TODO: implement
+                            customEdges: Option[Array[Double]] = None,
                             override val where: Option[String] = None,
                             override val computeFrequenciesAsRatio: Boolean = true,
                             // Reuse Histogram's AggregateFunction implementations since just grouping
@@ -60,11 +61,21 @@ case class HistogramBinned(
   require(binCount.isDefined ^ customEdges.isDefined,
     "Must specify either binCount (equal-width) or customEdges (custom)")
 
+  require(customEdges.forall(_.length >= 2),
+    "Custom edges must have at least 2 values")
+
   private var storedEdges: Array[Double] = _
 
   protected[this] val PARAM_CHECK: StructType => Unit = { _ =>
     binCount.foreach { count =>
       if (count > HistogramBinned.MaximumAllowedDetailBins) {
+        throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
+          s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
+      }
+    }
+    customEdges.foreach { edges =>
+      val numBins = edges.length - 1
+      if (numBins > HistogramBinned.MaximumAllowedDetailBins) {
         throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
           s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
       }
@@ -91,14 +102,45 @@ case class HistogramBinned(
 
     // Compute bin edges based on strategy
     storedEdges = if (customEdges.isDefined) {
-      computeCustomEdges()
+      computeCustomEdges(filteredData, numericCol)
     } else {
       computeEqualWidthEdges(filteredData, numericCol)
     }
 
     // Create binned data using DataFrame operations
-    val binnedData = if (storedEdges.isEmpty) {
-      filteredData.withColumn(column, lit(Histogram.NullFieldReplacement))
+    val binnedData = if (customEdges.isDefined) {
+      // Custom edges: use sorted edges for binning
+      val binCondition = {
+        var condition = lit(Histogram.NullFieldReplacement).cast(StringType)
+
+        val numBins = storedEdges.length - 1  // edges [0,10,20,30] creates 3 bins
+        val lastBinIndex = numBins - 1  // Last bin index is 2 (for bins 0,1,2)
+
+        // Loop backwards through bin indices: if lastBinIndex=2, loops 2,1,0
+        // This builds nested when().otherwise() conditions from inside-out so that during evaluation, lower-indexed
+        // bins (bin 0) are checked before higher-indexed bins (bin 2)
+        for (binIndex <- lastBinIndex to 0 by -1) {
+          val binLabel = lit(binIndex.toString)
+          val binStart = storedEdges(binIndex)
+          val binEnd = storedEdges(binIndex + 1)
+
+          val binCheck = if (binIndex == lastBinIndex) {
+            // Last bin includes upper bound: [start, end]
+            numericCol >= binStart && numericCol <= binEnd
+          } else {
+            // All other bins exclude upper bound: [start, end)
+            numericCol >= binStart && numericCol < binEnd
+          }
+
+          condition = when(binCheck, binLabel).otherwise(condition)
+        }
+        condition
+      }
+
+      val finalCondition = when(numericCol.isNull, lit(Histogram.NullFieldReplacement))
+        .otherwise(binCondition)
+
+      filteredData.withColumn(column, finalCondition)
     } else {
       val minVal = storedEdges.head
       val binWidth = (storedEdges.last - storedEdges.head) / (storedEdges.length - 1)
@@ -119,8 +161,29 @@ case class HistogramBinned(
     Some(FrequenciesAndNumRows(frequencies, totalCount))
   }
 
-  private def computeCustomEdges(): Array[Double] = {
-    throw new UnsupportedOperationException("Custom edges not yet implemented")
+  private def computeCustomEdges(filteredData: DataFrame,
+                                 numericCol: org.apache.spark.sql.Column): Array[Double] = {
+    val edges = customEdges.get.sorted
+    if (edges.length < 2) {
+      throw new IllegalAnalyzerParameterException(
+        s"Custom edges must contain at least 2 values, got ${edges.length}")
+    }
+
+    // Check if there are any valid numeric values to bin
+    val stats = filteredData.select(numericCol).agg(
+      min(column).alias("min_val"),
+      max(column).alias("max_val")
+    ).collect()(0)
+
+    val minVal = stats.getAs[Number]("min_val")
+    val maxVal = stats.getAs[Number]("max_val")
+
+    if (minVal == null || maxVal == null) {
+      throw new IllegalAnalyzerParameterException(
+        "Cannot create histogram bins: column contains no valid numeric values")
+    }
+
+    edges
   }
 
   private def computeEqualWidthEdges(filteredData: DataFrame,
@@ -134,7 +197,8 @@ case class HistogramBinned(
     val maxVal = stats.getAs[Number]("max_val")
 
     if (minVal == null || maxVal == null) {
-      return Array.empty[Double]
+      throw new IllegalAnalyzerParameterException(
+        "Cannot create equal-width bins: column contains no valid numeric values")
     }
 
     val minDouble = minVal.doubleValue()
