@@ -21,10 +21,10 @@ import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.FixtureSupport
 import com.google.gson.JsonParser
 import org.apache.spark.sql.SparkSession
-import org.scalatest.Matchers
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkContextSpec
+class ConstraintSuggestionResultTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "ConstraintSuggestionResult" should {

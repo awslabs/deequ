@@ -16,9 +16,9 @@
 
 package com.amazon.deequ.examples
 
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 
-class ExamplesTest extends WordSpec {
+class ExamplesTest extends AnyWordSpec {
 
   "all examples" should {
     "run without errors" in {

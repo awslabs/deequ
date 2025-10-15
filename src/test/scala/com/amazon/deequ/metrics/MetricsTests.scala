@@ -17,12 +17,13 @@
 package com.amazon.deequ.metrics
 
 import com.amazon.deequ.analyzers.DataTypeInstances
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.{Failure, Success}
 
 
-class MetricsTests extends WordSpec with Matchers {
+class MetricsTests extends AnyWordSpec with Matchers {
   val sampleException = new IllegalArgumentException()
   "Double metric" should {
     "flatten and return itself" in {

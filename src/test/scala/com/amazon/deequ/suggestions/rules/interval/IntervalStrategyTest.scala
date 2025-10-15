@@ -32,8 +32,7 @@ class IntervalStrategyTest extends AnyWordSpec with FixtureSupport with SparkCon
       val waldStrategy = WaldIntervalStrategy()
       val wilsonStrategy = WilsonScoreIntervalStrategy()
 
-      val table = Table(
-        ("strategy", "pHat", "numRecord", "lowerBound", "upperBound"),
+      val testCases = Seq(
         (waldStrategy, 1.0, 20L, 1.0, 1.0),
         (waldStrategy, 0.5, 100L, 0.4, 0.6),
         (waldStrategy, 0.4, 100L, 0.3, 0.5),
@@ -50,7 +49,7 @@ class IntervalStrategyTest extends AnyWordSpec with FixtureSupport with SparkCon
         (wilsonStrategy, 1.0, 100L, 0.96, 1.0)
       )
 
-      forAll(table) { case (strategy, pHat, numRecords, lowerBound, upperBound) =>
+      testCases.foreach { case (strategy, pHat, numRecords, lowerBound, upperBound) =>
         val actualInterval = strategy.calculateTargetConfidenceInterval(pHat, numRecords)
         assert(actualInterval == ConfidenceInterval(lowerBound, upperBound))
       }

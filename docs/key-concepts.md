@@ -1,5 +1,6 @@
 # Key Concepts in the Codebase
-There are a few key concepts that will help you to understand the codebase.
+
+This document outlines the key concepts in Deequ that will help you understand the codebase. Deequ is built on Apache Spark 3.5.6 and Scala 2.13, providing a framework for defining "unit tests for data" to measure data quality in large datasets.
 
 ## Metrics, Analyzers, and State
 Metrics represent some metric associated with the data that changes over time. For example counting the rows in a
@@ -47,3 +48,25 @@ like the data source (e.g. table name) with the tags. The resultKey can be used 
 
 ### State
 Please consult the examples or the codebase for more details on State. 
+
+## Version-Specific Features
+
+### Scala 2.13 Improvements
+Deequ leverages Scala 2.13 features for improved performance and developer experience:
+- **Enhanced Collections**: Uses the new Scala 2.13 collections library for better performance and memory efficiency
+- **Improved Type Inference**: Benefits from better type inference in pattern matching and generic types
+- **Better Java Interoperability**: Uses `scala.jdk.CollectionConverters` for seamless Java collection integration
+
+### Spark 3.5.6 Integration
+The library takes advantage of Spark 3.5.6 capabilities:
+- **Catalyst Optimizer**: Leverages the latest query optimization improvements
+- **DataFrame API**: Uses the most recent DataFrame operations and SQL functions
+- **Performance Enhancements**: Benefits from Spark's performance improvements and bug fixes
+- **Security Updates**: Includes the latest security patches and vulnerability fixes
+
+### Migration Considerations
+When upgrading from previous versions:
+- Collection operations have been updated to use Scala 2.13 patterns
+- Import statements for Java collections have been updated to use `scala.jdk.CollectionConverters`
+- All Spark DataFrame operations maintain backward compatibility
+- Serialization formats remain compatible with previous versions

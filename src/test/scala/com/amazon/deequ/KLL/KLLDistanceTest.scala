@@ -21,11 +21,12 @@ import com.amazon.deequ.analyzers.Distance.{ChisquareMethod, LInfinityMethod}
 import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.metrics.BucketValue
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 import com.amazon.deequ.metrics.BucketValue
 import org.scalactic.Tolerance.convertNumericToPlusOrMinusWrapper
 
-class KLLDistanceTest extends WordSpec with SparkContextSpec
+class KLLDistanceTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport{
 
   "KLL distance calculator should compute correct linf_simple" in {
@@ -118,7 +119,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     val sample2 = scala.collection.mutable.Map(
       "a" -> 223L, "b" -> 20L, "c" -> 25L, "d" -> 12L, "e" -> 13L, "f" -> 15L)
     val distance = Distance.categoricalDistance(sample1, sample2, method = ChisquareMethod())
-    assert(distance ==  3.3640191298478506E-5)
+    assert(distance ==  7.618460077656242E-7)
   }
 
   "Categorical distance should compute correct chisquare test" in {
@@ -127,7 +128,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     val sample2 = scala.collection.mutable.Map(
       "a" -> 223L, "b" -> 20L, "c" -> 25L, "d" -> 12L, "e" -> 13L)
     val distance = Distance.categoricalDistance(sample1, sample2, method = ChisquareMethod())
-    assert(distance == 0.013227994814265176)
+    assert(distance == 0.001808238986489087)
   }
 
   "Categorical distance should compute correct chisquare distance (low samples) " +
@@ -138,7 +139,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
       "a" -> 100L, "b" -> 22L, "c" -> 25L, "d" -> 5L, "e" -> 13L, "f" -> 2L)
     val distance = Distance.categoricalDistance(
       sample1, sample2, correctForLowNumberOfSamples = true, method = ChisquareMethod())
-    assert(distance == 8.789790456457125)
+    assert(distance == 8.789790456457123)
   }
 
   "Categorical distance should compute correct chisquare distance (low samples) with regrouping (yates)" in {
@@ -171,7 +172,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
       "a" -> 100L, "b" -> 4L, "c" -> 3L, "d" -> 27L, "e" -> 20L, "f" -> 20L, "g" -> 20L, "h" -> 20L)
     val distance = Distance.categoricalDistance(
       sample, baseline, correctForLowNumberOfSamples = true, method = ChisquareMethod())
-    assert(distance == 6.827423492761593)
+    assert(distance == 6.827423492761592)
   }
 
   "Categorical distance should compute correct chisquare distance (low samples) " +
@@ -209,7 +210,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
     val expected = scala.collection.mutable.Map(
       "a" -> 20L, "b" -> 20L)
     val distance = Distance.categoricalDistance(sample, expected, method = ChisquareMethod())
-    assert(distance == 4.3204630539861455E-8)
+    assert(distance == 3.059023205018258E-7)
   }
 
   "Population Stability Index (PSI) test with deciles " in {

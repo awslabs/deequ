@@ -35,18 +35,20 @@ import scala.util.Try
  * For example, consider the two dataframes below:
  *
  * DataFrame A:
- *
+ * {{{
  * |--ID--|---City---|--State--|
  * |  1   | New York |    NY   |
  * |  2   | Chicago  |    IL   |
  * |  3   | Boston   |    MA   |
+ * }}}
  *
  * DataFrame B:
- *
+ * {{{
  * |--CityID--|---City---|-----State-----|
  * |     1    | New York |    New York   |
  * |     2    | Chicago  |    Illinois   |
  * |     3    | Boston   | Massachusetts |
+ * }}}
  *
  * Note that dataframe B is almost equal to dataframe B, but for two things:
  *  1) The ID column in B is called CityID

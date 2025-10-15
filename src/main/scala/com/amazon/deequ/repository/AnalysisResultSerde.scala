@@ -27,7 +27,6 @@ import com.google.gson._
 import com.google.gson.reflect.TypeToken
 
 import scala.collection._
-import scala.collection.JavaConverters._
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
 import JsonSerializationConstants._
 import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
@@ -36,7 +35,7 @@ import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 
 private[repository] object JsonSerializationConstants {
 
@@ -361,9 +360,6 @@ private[deequ] object AnalyzerSerializer
       case _ : Histogram =>
         throw new IllegalArgumentException("Unable to serialize Histogram with binningUdf!")
 
-      case _ : HistogramBinned =>
-        throw new IllegalArgumentException("Unable to serialize HistogramBinned with unsupported configuration!")
-
       case dataType: DataType =>
         result.addProperty(ANALYZER_NAME_FIELD, "DataType")
         result.addProperty(COLUMN_FIELD, dataType.column)
@@ -453,10 +449,10 @@ private[deequ] object AnalyzerDeserializer
   extends JsonDeserializer[Analyzer[State[_], Metric[_]]] {
 
   private[this] def getColumnsAsSeq(context: JsonDeserializationContext,
-    json: JsonObject): Seq[String] = {
+    json: JsonObject): scala.collection.immutable.Seq[String] = {
 
     context.deserialize(json.get(COLUMNS_FIELD), new TypeToken[JList[String]]() {}.getType)
-      .asInstanceOf[JArrayList[String]].asScala
+      .asInstanceOf[JArrayList[String]].asScala.toList
   }
 
   override def deserialize(jsonElement: JsonElement, t: Type,
@@ -777,7 +773,7 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
         val instance = jsonObject.get("instance").getAsString
         if (jsonObject.has("value")) {
           val entries = jsonObject.get("value").getAsJsonObject
-          val values = entries.entrySet().map { entry =>
+          val values = entries.entrySet().asScala.map { entry =>
             entry.getKey -> entry.getValue.getAsDouble
           }
           .toMap

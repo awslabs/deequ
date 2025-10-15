@@ -32,18 +32,17 @@ import com.amazon.deequ.repository.MetricsRepository
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.CollectionUtils.SeqExtensions
-import com.amazon.deequ.utils.FixtureSupport
-import com.amazon.deequ.utils.TempFileUtils
+import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.when
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
+class VerificationSuiteTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport with MockFactory {
 
   "Verification Suite" should {

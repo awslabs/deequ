@@ -36,7 +36,7 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
-import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
+import scala.jdk.CollectionConverters._
 
 
 /**
@@ -88,7 +88,7 @@ object DQDLRuleTranslator {
    * Translate a ruleset to executable rules
    */
   def toExecutableRules(ruleset: DQRuleset): Seq[ExecutableRule] = {
-    ruleset.getRules.asScala.map(toExecutableRule).toSeq.distinct
+    ruleset.getRules.asScala.map(toExecutableRule(_)).toSeq.distinct
   }
 
 }

@@ -29,11 +29,13 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity, Metric}
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.DataFrame
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.PrivateMethodTester
 
 import scala.util.{Failure, Try}
 
-class AnalysisBasedConstraintTest extends WordSpec with Matchers with SparkContextSpec
+class AnalysisBasedConstraintTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport with MockFactory with PrivateMethodTester {
 
   /**
