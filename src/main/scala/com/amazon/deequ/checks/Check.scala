@@ -458,7 +458,7 @@ case class Check(
   /**
    * Performs a dataset check between the base DataFrame supplied to
    * [[com.amazon.deequ.VerificationSuite.onData]] and other DataFrame supplied to this check using Deequ's
-   * [[com.amazon.deequ.comparison.DataSynchronization.columnMatch]] framework.
+   * [[com.amazon.deequ.comparison.DataSynchronization]] framework.
    * This method compares specified columns of both DataFrames and assesses match based on a custom assertion.
    *
    * Utilizes [[com.amazon.deequ.analyzers.DatasetMatchAnalyzer]] for comparing the data

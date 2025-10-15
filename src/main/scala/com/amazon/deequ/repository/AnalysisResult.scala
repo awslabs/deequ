@@ -75,7 +75,7 @@ private[repository] object AnalysisResult {
 
     var serializableResult = SimpleResultSerde.deserialize(
         AnalyzerContext.successMetricsAsJson(analysisResult.analyzerContext, forAnalyzers))
-      .asInstanceOf[Seq[Map[String, Any]]]
+      .toSeq.asInstanceOf[Seq[Map[String, Any]]]
 
     serializableResult = addColumnToSerializableResult(
       serializableResult, DATASET_DATE_FIELD, analysisResult.resultKey.dataSetDate)

@@ -44,7 +44,7 @@ class FileSystemMetricsRepository(session: SparkSession, path: String) extends M
     FileSystemMetricsRepository
       .readFromFileOnDfs(session, path, IOUtils.toString(_, FileSystemMetricsRepository.CHARSET_NAME))
       .map(AnalysisResultSerde.deserialize)
-      .getOrElse(Seq.empty)
+      .getOrElse(Seq.empty).toSeq
   }
 
   /**
@@ -155,7 +155,7 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(allResults: Seq[AnalysisR
         val requestedMetrics = analysisResult
           .analyzerContext
           .metricMap
-          .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer))
+          .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer)).toMap
 
         val requestedAnalyzerContext = AnalyzerContext(requestedMetrics)
 

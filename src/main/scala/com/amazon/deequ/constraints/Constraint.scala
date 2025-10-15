@@ -1089,7 +1089,8 @@ case class DatasetMatchConstraint(analyzer: DatasetMatchAnalyzer, hint: Option[S
   override def evaluate(metrics: Map[Analyzer[_, Metric[_]], Metric[_]]): ConstraintResult = {
 
     metrics.collectFirst {
-      case (_: DatasetMatchAnalyzer, metric: Metric[Double]) => metric
+      case (_: DatasetMatchAnalyzer, metric: Metric[_]) if metric.isInstanceOf[Metric[Double]] =>
+        metric.asInstanceOf[Metric[Double]]
     } match {
       case Some(metric) =>
         val result = metric.value match {

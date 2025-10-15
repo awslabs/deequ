@@ -122,7 +122,7 @@ case class Histogram(
               val absolute = row.getAs[Long](countColumnName)
               val ratio = absolute.toDouble / theState.numRows
               discreteValue -> DistributionValue(absolute, ratio)
-            }(collection.breakOut): ListMap[String, DistributionValue]
+            }.to(ListMap)
 
           Distribution(histogramDetails, binCount)
         }

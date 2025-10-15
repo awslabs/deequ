@@ -21,7 +21,7 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import java.util.concurrent.ConcurrentHashMap
 
 /** A simple Repository implementation backed by a concurrent hash map */
@@ -117,17 +117,17 @@ class LimitedInMemoryMetricsRepositoryMultipleResultsLoader(
 
   /** Get the AnalysisResult */
   def get(): Seq[AnalysisResult] = {
-    resultsRepository
-      .filterKeys(key => after.isEmpty || after.get <= key.dataSetDate)
-      .filterKeys(key => before.isEmpty || key.dataSetDate <= before.get)
-      .filterKeys(key => tagValues.isEmpty || tagValues.get.toSet.subsetOf(key.tags.toSet))
+    resultsRepository.asScala
+      .filter { case (key, _) => after.isEmpty || after.get <= key.dataSetDate }
+      .filter { case (key, _) => before.isEmpty || key.dataSetDate <= before.get }
+      .filter { case (key, _) => tagValues.isEmpty || tagValues.get.toSet.subsetOf(key.tags.toSet) }
       .values
       .map { analysisResult =>
 
         val requestedMetrics = analysisResult
           .analyzerContext
           .metricMap
-          .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer))
+          .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer)).toMap
 
         AnalysisResult(analysisResult.resultKey, AnalyzerContext(requestedMetrics))
       }

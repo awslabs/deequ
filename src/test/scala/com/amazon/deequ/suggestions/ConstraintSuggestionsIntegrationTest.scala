@@ -23,7 +23,8 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.suggestions.rules.{NonNegativeNumbersRule, UniqueIfApproximatelyUniqueRule}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.IntegerType
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.Random
 
@@ -39,7 +40,7 @@ case class Record(
     allNullColumn2: java.lang.Double
 )
 
-class ConstraintSuggestionsIntegrationTest extends WordSpec with SparkContextSpec {
+class ConstraintSuggestionsIntegrationTest extends AnyWordSpec with Matchers with SparkContextSpec {
 
   "Suggestions" should {
 

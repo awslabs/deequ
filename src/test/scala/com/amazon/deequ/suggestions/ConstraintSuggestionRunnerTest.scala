@@ -27,13 +27,14 @@ import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
 import org.apache.spark.sql.DataFrame
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.Try
 import tools.reflect.ToolBox
 import scala.reflect.runtime.currentMirror
 
-class ConstraintSuggestionRunnerTest extends WordSpec with Matchers with SparkContextSpec
+class ConstraintSuggestionRunnerTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "Constraint Suggestion Suite" should {

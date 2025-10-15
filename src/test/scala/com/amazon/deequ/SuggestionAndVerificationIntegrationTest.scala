@@ -26,10 +26,10 @@ import com.amazon.deequ.suggestions.rules.UniqueIfApproximatelyUniqueRule
 import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
 import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.DataFrame
-import org.scalatest.Matchers
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SuggestionAndVerificationIntegrationTest extends WordSpec with Matchers with SparkContextSpec
+class SuggestionAndVerificationIntegrationTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "SuggestionAndVerificationIntegration" should {

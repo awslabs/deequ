@@ -352,7 +352,7 @@ object ColumnProfiler {
                 targetColumnsForHistograms.contains(histogram.column) &&
                   Histogram(histogram.column).equals(histogram)
               case _ => false
-            }
+            }.toMap
           analyzerContextExistingValues = AnalyzerContext(relevantEntries)
         }
       }

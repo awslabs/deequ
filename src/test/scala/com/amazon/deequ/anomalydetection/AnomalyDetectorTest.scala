@@ -17,10 +17,12 @@
 package com.amazon.deequ.anomalydetection
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.PrivateMethodTester
 
 
-class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with PrivateMethodTester {
+class AnomalyDetectorTest extends AnyWordSpec with Matchers with MockFactory with PrivateMethodTester {
   private val fakeAnomalyDetector = stub[AnomalyDetectionStrategy]
 
   val aD = AnomalyDetector(fakeAnomalyDetector)

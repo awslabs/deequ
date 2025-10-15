@@ -6,20 +6,105 @@
 
     <groupId>com.amazon.deequ</groupId>
     <artifactId>deequ</artifactId>
-    <version>2.0.12-spark-3.5</version>
+    <version>2.1.0-scala-2.13-spark-3.5.6</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
 
-        <scala.major.version>2.12</scala.major.version>
-        <scala.version>${scala.major.version}.10</scala.version>
+        <scala.major.version>2.13</scala.major.version>
+        <scala.version>2.13.15</scala.version>
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
-        <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
+        <scala-maven-plugin.version>4.9.2</scala-maven-plugin.version>
 
-        <spark.version>3.5.0</spark.version>
+        <spark.version>3.5.6</spark.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Force consistent SLF4J version -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>1.7.36</version>
+            </dependency>
+            
+            <!-- Force consistent Jackson version -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>2.15.2</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>2.15.2</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>2.15.2</version>
+            </dependency>
+            
+            <!-- Force consistent Scala library version -->
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-library</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-reflect</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
+            
+            <!-- Force consistent Apache Commons Math version -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-math3</artifactId>
+                <version>3.6.1</version>
+            </dependency>
+            
+            <!-- Force consistent snappy-java version -->
+            <dependency>
+                <groupId>org.xerial.snappy</groupId>
+                <artifactId>snappy-java</artifactId>
+                <version>1.1.10.5</version>
+            </dependency>
+            
+            <!-- Force consistent netlib versions -->
+            <dependency>
+                <groupId>dev.ludovic.netlib</groupId>
+                <artifactId>blas</artifactId>
+                <version>3.0.3</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.ludovic.netlib</groupId>
+                <artifactId>lapack</artifactId>
+                <version>3.0.3</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.ludovic.netlib</groupId>
+                <artifactId>arpack</artifactId>
+                <version>3.0.3</version>
+            </dependency>
+            
+            <!-- Force consistent JSR305 version -->
+            <dependency>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <version>3.0.0</version>
+            </dependency>
+            
+            <!-- Force consistent objenesis version -->
+            <dependency>
+                <groupId>org.objenesis</groupId>
+                <artifactId>objenesis</artifactId>
+                <version>2.6</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <name>deequ</name>
     <description>Deequ is a library built on top of Apache Spark for defining "unit tests for data",
@@ -104,25 +189,57 @@
             <groupId>org.scalanlp</groupId>
             <artifactId>breeze_${scala.major.version}</artifactId>
             <version>2.1.0</version>
+            <exclusions>
+                <!-- Exclude conflicting SLF4J version -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <!-- Exclude conflicting commons-math3 version -->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-math3</artifactId>
+                </exclusion>
+                <!-- Exclude conflicting netlib versions -->
+                <exclusion>
+                    <groupId>dev.ludovic.netlib</groupId>
+                    <artifactId>blas</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>dev.ludovic.netlib</groupId>
+                    <artifactId>lapack</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>dev.ludovic.netlib</groupId>
+                    <artifactId>arpack</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>software.amazon.glue</groupId>
             <artifactId>dqdl</artifactId>
             <version>1.0.0</version>
+            <exclusions>
+                <!-- Exclude conflicting Jackson version -->
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.major.version}</artifactId>
-            <version>3.1.2</version>
+            <version>3.2.19</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.scalamock</groupId>
             <artifactId>scalamock_${scala.major.version}</artifactId>
-            <version>4.4.0</version>
+            <version>5.2.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -163,9 +280,41 @@
 
         <dependency>
             <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-spark-runtime-3.3_2.12</artifactId>
-            <version>0.14.0</version>
+            <artifactId>iceberg-spark-runtime-3.5_2.13</artifactId>
+            <version>1.4.0</version>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Explicit dependencies to resolve conflicts -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>dev.ludovic.netlib</groupId>
+            <artifactId>blas</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>dev.ludovic.netlib</groupId>
+            <artifactId>lapack</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>dev.ludovic.netlib</groupId>
+            <artifactId>arpack</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>net.sourceforge.f2j</groupId>
+            <artifactId>arpack_combined_all</artifactId>
+            <version>0.1</version>
         </dependency>
 
     </dependencies>
@@ -206,7 +355,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.7</version>
+                <version>3.0.0-M9</version>
                 <configuration>
                     <skipTests>true</skipTests>
                 </configuration>
@@ -216,12 +365,13 @@
             <plugin>
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest-maven-plugin</artifactId>
-                <version>1.0</version>
+                <version>2.2.0</version>
                 <configuration>
                     <stdout>F</stdout>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>WDF TestSuite.txt</filereports>
+                    <argLine>--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED</argLine>
                 </configuration>
                 <executions>
                     <execution>
@@ -277,7 +427,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>2.7</version>
+                <version>3.3.0</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
                 </configuration>
@@ -323,7 +473,7 @@
             <plugin>
                 <groupId>org.scoverage</groupId>
                 <artifactId>scoverage-maven-plugin</artifactId>
-                <version>1.3.0</version>
+                <version>1.4.11</version>
                 <configuration>
                     <!--scalaCompatVersion>${scala.major.version}</scalaCompatVersion-->
                     <scalaVersion>${scala.version}</scalaVersion>
@@ -374,7 +524,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
-                        <version>2.2.1</version>
+                        <version>3.2.1</version>
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
@@ -387,7 +537,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>2.9.1</version>
+                        <version>3.4.1</version>
                         <configuration>
                             <source>8</source>
                         </configuration>
@@ -403,7 +553,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.5</version>
+                        <version>3.0.1</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>

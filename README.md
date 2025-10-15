@@ -10,24 +10,136 @@ Python users may also be interested in PyDeequ, a Python interface for Deequ. Yo
 
 ## Requirements and Installation
 
-__Deequ__ depends on Java 8. Deequ version 2.x only runs with Spark 3.1, and vice versa. If you rely on a previous Spark version, please use a Deequ 1.x version (legacy version is maintained in legacy-spark-3.0 branch). We provide legacy releases compatible with Apache Spark versions 2.2.x to 3.0.x. The Spark 2.2.x and 2.3.x releases depend on Scala 2.11 and the Spark 2.4.x, 3.0.x, and 3.1.x releases depend on Scala 2.12. 
+__Deequ__ depends on Java 8 or higher. The current version runs with Apache Spark 3.5.6 and Scala 2.13. For compatibility with previous versions, please refer to the compatibility matrix below.
+
+### Compatibility Matrix
+
+| Deequ Version | Scala Version | Spark Version | Java Version |
+|---------------|---------------|---------------|--------------|
+| 3.0.x         | 2.13.15       | 3.5.6         | 8+           |
+| 2.0.x         | 2.12.x        | 3.1.x         | 8+           |
+| 1.x           | 2.11/2.12     | 2.2.x-3.0.x   | 8+           |
 
 Available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). 
 
-Choose the latest release that matches your Spark version from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example, for Spark 3.1.x:
+Choose the latest release that matches your Spark and Scala versions from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project.
 
-__Maven__
-```
+### Maven Dependencies
+
+For Scala 2.13 and Spark 3.5.6:
+
+```xml
 <dependency>
   <groupId>com.amazon.deequ</groupId>
-  <artifactId>deequ</artifactId>
-  <version>2.0.0-spark-3.1</version>
+  <artifactId>deequ_2.13</artifactId>
+  <version>3.0.0-spark-3.5</version>
 </dependency>
 ```
-__sbt__
+
+### SBT Dependencies
+
+For Scala 2.13 and Spark 3.5.6:
+
+```scala
+libraryDependencies += "com.amazon.deequ" %% "deequ" % "3.0.0-spark-3.5"
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "2.0.0-spark-3.1"
+
+### Legacy Versions
+
+If you need to use previous Spark versions, please use the appropriate legacy version:
+
+- **Spark 3.1.x with Scala 2.12**: `"com.amazon.deequ" % "deequ" % "2.0.0-spark-3.1"`
+- **Spark 2.4.x-3.0.x with Scala 2.12**: Use Deequ 1.x versions
+- **Spark 2.2.x-2.3.x with Scala 2.11**: Use Deequ 1.x versions
+
+### Installation Instructions
+
+#### Prerequisites
+
+- **Java**: Version 8 or higher
+- **Scala**: Version 2.13.15 (for current version)
+- **Apache Spark**: Version 3.5.6 (for current version)
+
+#### Maven Setup
+
+Add the following to your `pom.xml`:
+
+```xml
+<properties>
+    <scala.major.version>2.13</scala.major.version>
+    <scala.version>2.13.15</scala.version>
+    <spark.version>3.5.6</spark.version>
+</properties>
+
+<dependencies>
+    <!-- Deequ dependency -->
+    <dependency>
+        <groupId>com.amazon.deequ</groupId>
+        <artifactId>deequ_2.13</artifactId>
+        <version>3.0.0-spark-3.5</version>
+    </dependency>
+    
+    <!-- Spark dependencies (if not already included) -->
+    <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-core_2.13</artifactId>
+        <version>3.5.6</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-sql_2.13</artifactId>
+        <version>3.5.6</version>
+    </dependency>
+</dependencies>
 ```
+
+#### SBT Setup
+
+Add the following to your `build.sbt`:
+
+```scala
+scalaVersion := "2.13.15"
+
+val sparkVersion = "3.5.6"
+
+libraryDependencies ++= Seq(
+  "com.amazon.deequ" %% "deequ" % "3.0.0-spark-3.5",
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-sql" % sparkVersion
+)
+```
+
+#### Gradle Setup
+
+Add the following to your `build.gradle`:
+
+```gradle
+dependencies {
+    implementation 'com.amazon.deequ:deequ_2.13:3.0.0-spark-3.5'
+    implementation 'org.apache.spark:spark-core_2.13:3.5.6'
+    implementation 'org.apache.spark:spark-sql_2.13:3.5.6'
+}
+```
+
+### Breaking Changes and Migration Notes
+
+#### Migrating from Deequ 2.x (Scala 2.12)
+
+When upgrading from Deequ 2.x to 3.x, please note the following changes:
+
+1. **Scala Version**: Update your project to use Scala 2.13.15
+2. **Spark Version**: Update to Spark 3.5.6
+3. **Artifact Name**: Change from `deequ` to `deequ_2.13` in Maven coordinates
+4. **Collection Imports**: If you extend Deequ classes, update collection imports:
+   - Replace `scala.collection.JavaConverters._` with `scala.jdk.CollectionConverters._`
+   - Update collection operations using `breakOut` pattern to use `.to(Map)` or similar
+
+#### Known Issues
+
+- Custom analyzers extending Deequ classes may need minor updates for Scala 2.13 compatibility
+- Serialized state from previous versions may not be compatible (regenerate metrics repositories)
+
+For detailed migration guidance, see the [Migration Guide](MIGRATION_GUIDE.md).
 
 ## Example
 
@@ -75,7 +187,6 @@ In code this looks as follows:
 ```scala
 import com.amazon.deequ.VerificationSuite
 import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
-
 
 val verificationResult = VerificationSuite()
   .onData(data)

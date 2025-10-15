@@ -22,14 +22,15 @@ import com.amazon.deequ.analyzers.{Compliance, DataType, Entropy, Histogram, His
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.metrics._
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 import AnalysisResultSerde._
 import com.amazon.deequ.SparkContextSpec
 
 import scala.util.{Failure, Success}
 
-class AnalysisResultSerdeTest extends FlatSpec with Matchers {
+class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
 
   "analysis results serialization with successful Values" should "work" in {
 
@@ -497,7 +498,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
   }
 }
 
-class SimpleResultSerdeTest extends WordSpec with Matchers with SparkContextSpec
+class SimpleResultSerdeTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport{
 
   "serialize and deserialize success metric results with tags" in

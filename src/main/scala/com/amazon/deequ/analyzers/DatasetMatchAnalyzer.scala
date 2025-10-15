@@ -33,7 +33,7 @@ import scala.util.Try
  * It evaluates the degree of match based on specified column mappings and an assertion function.
  *
  * The analyzer computes a ratio of matched data points to the total data points, represented as a DoubleMetric.
- * Refer to [[com.amazon.deequ.comparison.DataSynchronization.columnMatch]] for dataset match implementation
+ * Refer to [[com.amazon.deequ.comparison.DataSynchronization]] for dataset match implementation
  *
  * @param dfToCompare The DataFrame to compare with the primary DataFrame that is setup
  *                    during [[com.amazon.deequ.VerificationSuite.onData]] setup.
