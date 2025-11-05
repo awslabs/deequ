@@ -186,14 +186,14 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
   "Anomaly constraint" should {
     "assert on anomaly analyzer values" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
-      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
+      assert(calculate(Constraint.anomalyConstraint(
         Completeness("att1"), _ > 0.4), df).status == ConstraintStatus.Success)
-      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
+      assert(calculate(Constraint.anomalyConstraint(
         Completeness("att1"), _ < 0.4), df).status == ConstraintStatus.Failure)
 
-      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
+      assert(calculate(Constraint.anomalyConstraint(
         Completeness("att2"), _ > 0.7), df).status == ConstraintStatus.Success)
-      assert(calculate(Constraint.anomalyConstraint[NumMatchesAndCount](
+      assert(calculate(Constraint.anomalyConstraint(
         Completeness("att2"), _ < 0.7), df).status == ConstraintStatus.Failure)
     }
   }
