@@ -96,13 +96,14 @@ message ConstraintMessage {
 // Predicate for numeric assertions
 message PredicateMessage {
   enum Operator {
-    EQ = 0;       // ==
-    NE = 1;       // !=
-    GT = 2;       // >
-    GE = 3;       // >=
-    LT = 4;       // <
-    LE = 5;       // <=
-    BETWEEN = 6;  // lower <= x <= upper
+    UNSPECIFIED = 0;  // Default/unset - used to detect "no predicate" vs "EQ 0.0"
+    EQ = 1;           // ==
+    NE = 2;           // !=
+    GT = 3;           // >
+    GE = 4;           // >=
+    LT = 5;           // <
+    LE = 6;           // <=
+    BETWEEN = 7;      // lower <= x <= upper
   }
 
   Operator operator = 1;
@@ -171,4 +172,65 @@ enum MetricEntity {
   DATASET = 0;
   COLUMN = 1;
   MULTICOLUMN = 2;
+}
+
+// ============================================================================
+// Column Profiler Messages
+// ============================================================================
+
+// Column profiler request - analyzes column distributions and statistics
+message DeequColumnProfilerRelation {
+  // Reference to the input DataFrame (serialized Spark Connect Relation)
+  bytes input_relation = 1;
+
+  // Restrict profiling to specific columns (empty = all columns)
+  repeated string restrict_to_columns = 2;
+
+  // Threshold for computing histograms (columns with distinct values <= threshold get histograms)
+  int32 low_cardinality_histogram_threshold = 3;
+
+  // Enable KLL sketch profiling for approximate quantiles
+  bool enable_kll_profiling = 4;
+
+  // KLL sketch parameters (only used if enable_kll_profiling is true)
+  KLLParameters kll_parameters = 5;
+
+  // Predefined data types for columns (column_name -> type_name)
+  // Supported types: "String", "Integer", "Long", "Double", "Boolean"
+  map<string, string> predefined_types = 6;
+}
+
+// ============================================================================
+// Constraint Suggestion Messages
+// ============================================================================
+
+// Constraint suggestion request - auto-generates data quality rules
+message DeequConstraintSuggestionRelation {
+  // Reference to the input DataFrame (serialized Spark Connect Relation)
+  bytes input_relation = 1;
+
+  // Constraint rule sets to apply
+  // Values: "DEFAULT", "STRING", "NUMERICAL", "COMMON", "EXTENDED"
+  repeated string constraint_rules = 2;
+
+  // Restrict suggestions to specific columns (empty = all columns)
+  repeated string restrict_to_columns = 3;
+
+  // Threshold for computing histograms
+  int32 low_cardinality_histogram_threshold = 4;
+
+  // Enable KLL sketch profiling
+  bool enable_kll_profiling = 5;
+
+  // KLL sketch parameters
+  KLLParameters kll_parameters = 6;
+
+  // Predefined data types for columns
+  map<string, string> predefined_types = 7;
+
+  // Train/test split ratio (0.0 = disabled, 0.0-1.0 = ratio for test set)
+  double testset_ratio = 8;
+
+  // Random seed for train/test split (0 = no seed)
+  int64 testset_split_random_seed = 9;
 }

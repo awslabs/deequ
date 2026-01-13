@@ -263,8 +263,8 @@ object CheckBuilder {
    * Build a Double => Boolean assertion function from PredicateMessage.
    */
   private def buildDoubleAssertion(pred: PredicateMessage): Double => Boolean = {
-    if (pred == null || pred == PredicateMessage.getDefaultInstance) {
-      // Default assertion: value == 1.0 (100% compliance)
+    if (pred == null) {
+      // No predicate specified - default to 100% compliance
       (x: Double) => x == 1.0
     } else {
       pred.getOperator match {
@@ -276,7 +276,9 @@ object CheckBuilder {
         case PredicateMessage.Operator.LE => (x: Double) => x <= pred.getValue
         case PredicateMessage.Operator.BETWEEN =>
           (x: Double) => x >= pred.getLowerBound && x <= pred.getUpperBound
-        case _ => (x: Double) => x == 1.0
+        case PredicateMessage.Operator.UNSPECIFIED | _ =>
+          // UNSPECIFIED or unknown operator - default to 100% compliance
+          (x: Double) => x == 1.0
       }
     }
   }
@@ -285,7 +287,7 @@ object CheckBuilder {
    * Build a Long => Boolean assertion function from PredicateMessage.
    */
   private def buildLongAssertion(pred: PredicateMessage): Long => Boolean = {
-    if (pred == null || pred == PredicateMessage.getDefaultInstance) {
+    if (pred == null) {
       (_: Long) => true
     } else {
       pred.getOperator match {
@@ -297,7 +299,7 @@ object CheckBuilder {
         case PredicateMessage.Operator.LE => (x: Long) => x <= pred.getValue.toLong
         case PredicateMessage.Operator.BETWEEN =>
           (x: Long) => x >= pred.getLowerBound.toLong && x <= pred.getUpperBound.toLong
-        case _ => (_: Long) => true
+        case PredicateMessage.Operator.UNSPECIFIED | _ => (_: Long) => true
       }
     }
   }
