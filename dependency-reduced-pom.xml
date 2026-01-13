@@ -491,14 +491,14 @@
     </dependency>
   </dependencies>
   <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
-    <encoding>UTF-8</encoding>
-    <artifact.scala.version>${scala.major.version}</artifact.scala.version>
     <maven.compiler.target>1.8</maven.compiler.target>
     <spark.version>3.5.0</spark.version>
+    <maven.compiler.source>1.8</maven.compiler.source>
     <protobuf.version>3.23.4</protobuf.version>
+    <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
     <scala.major.version>2.12</scala.major.version>
     <scala.version>${scala.major.version}.18</scala.version>
+    <encoding>UTF-8</encoding>
+    <artifact.scala.version>${scala.major.version}</artifact.scala.version>
   </properties>
 </project>
