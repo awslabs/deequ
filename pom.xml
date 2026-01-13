@@ -14,11 +14,13 @@
         <encoding>UTF-8</encoding>
 
         <scala.major.version>2.12</scala.major.version>
-        <scala.version>${scala.major.version}.10</scala.version>
+        <scala.version>${scala.major.version}.18</scala.version>
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
         <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 
         <spark.version>3.5.0</spark.version>
+        <!-- Must match Spark's protobuf version exactly for Spark Connect compatibility -->
+        <protobuf.version>3.23.4</protobuf.version>
     </properties>
 
     <name>deequ</name>
@@ -100,6 +102,21 @@
             <version>${spark.version}</version>
         </dependency>
 
+        <!-- Spark Connect for server-side plugin -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-connect_${scala.major.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Protobuf for wire protocol -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.scalanlp</groupId>
             <artifactId>breeze_${scala.major.version}</artifactId>
@@ -174,7 +191,34 @@
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
 
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.1</version>
+            </extension>
+        </extensions>
+
         <plugins>
+            <!-- Protobuf compilation -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <protoSourceRoot>${project.basedir}/src/main/protobuf</protoSourceRoot>
+                    <outputDirectory>${project.build.directory}/generated-sources/protobuf/java</outputDirectory>
+                    <clearOutputDirectory>false</clearOutputDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
@@ -198,6 +242,27 @@
                         <goals>
                             <goal>testCompile</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Add generated protobuf sources -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-protobuf-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/protobuf/java</source>
+                            </sources>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -274,6 +339,53 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Shade plugin to relocate com.google.protobuf to org.sparkproject.connect.protobuf -->
+            <!-- This is required because Spark Connect uses shaded protobuf at runtime -->
+            <!-- See: https://semyonsinchenko.github.io/ssinchenko/post/porting_deequ_to_sparkconnect/ -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <shadedArtifactAttached>false</shadedArtifactAttached>
+                    <shadeTestJar>false</shadeTestJar>
+                    <artifactSet>
+                        <includes>
+                            <include>com.google.protobuf:*</include>
+                        </includes>
+                    </artifactSet>
+                    <relocations>
+                        <relocation>
+                            <pattern>com.google.protobuf</pattern>
+                            <shadedPattern>org.sparkproject.connect.protobuf</shadedPattern>
+                            <includes>
+                                <include>com.google.protobuf.**</include>
+                            </includes>
+                        </relocation>
+                    </relocations>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                                <exclude>google/protobuf/**</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>

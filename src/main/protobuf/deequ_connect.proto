@@ -1,0 +1,174 @@
+/**
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+syntax = "proto3";
+
+package com.amazon.deequ.connect;
+
+option java_multiple_files = true;
+option java_package = "com.amazon.deequ.connect.proto";
+option java_outer_classname = "DeequConnectProtos";
+
+// ============================================================================
+// Main Request Messages - Used as Spark Connect Relation Extensions
+// ============================================================================
+
+// Verification request - runs checks and returns results as DataFrame
+message DeequVerificationRelation {
+  // Reference to the input DataFrame (serialized Spark Connect Relation)
+  bytes input_relation = 1;
+
+  // Checks to run
+  repeated CheckMessage checks = 2;
+
+  // Additional analyzers to run (beyond those required by checks)
+  repeated AnalyzerMessage required_analyzers = 3;
+}
+
+// Analysis request - runs analyzers and returns metrics as DataFrame
+message DeequAnalysisRelation {
+  // Reference to the input DataFrame
+  bytes input_relation = 1;
+
+  // Analyzers to run
+  repeated AnalyzerMessage analyzers = 2;
+}
+
+// ============================================================================
+// Check Messages
+// ============================================================================
+
+// Check definition - a named collection of constraints
+message CheckMessage {
+  // Check severity level
+  enum Level {
+    ERROR = 0;
+    WARNING = 1;
+  }
+
+  Level level = 1;
+  string description = 2;
+  repeated ConstraintMessage constraints = 3;
+}
+
+// ============================================================================
+// Constraint Messages
+// ============================================================================
+
+// Constraint definition - a single data quality rule
+message ConstraintMessage {
+  // Constraint type identifier
+  string type = 1;
+
+  // Common fields
+  string column = 2;                    // Single column name
+  repeated string columns = 3;          // Multiple column names
+  PredicateMessage assertion = 4;       // Assertion predicate
+  string hint = 5;                      // Hint message for failures
+  string where = 6;                     // SQL WHERE clause filter
+
+  // Type-specific fields
+  string pattern = 7;                   // Regex pattern (for hasPattern, containsEmail, etc.)
+  string column_condition = 8;          // SQL condition (for satisfies)
+  string constraint_name = 9;           // Name for custom constraints (for satisfies)
+  repeated string allowed_values = 10;  // Allowed values (for isContainedIn)
+
+  // Numeric parameters
+  double quantile = 11;                 // For hasApproxQuantile
+}
+
+// ============================================================================
+// Predicate Messages - Replaces Python Lambda Assertions
+// ============================================================================
+
+// Predicate for numeric assertions
+message PredicateMessage {
+  enum Operator {
+    EQ = 0;       // ==
+    NE = 1;       // !=
+    GT = 2;       // >
+    GE = 3;       // >=
+    LT = 4;       // <
+    LE = 5;       // <=
+    BETWEEN = 6;  // lower <= x <= upper
+  }
+
+  Operator operator = 1;
+  double value = 2;           // For comparison operators
+  double lower_bound = 3;     // For BETWEEN
+  double upper_bound = 4;     // For BETWEEN
+}
+
+// ============================================================================
+// Analyzer Messages
+// ============================================================================
+
+// Analyzer definition - computes a metric on data
+message AnalyzerMessage {
+  // Analyzer type identifier
+  string type = 1;
+
+  // Common fields
+  string column = 2;              // Single column name
+  repeated string columns = 3;    // Multiple column names
+  string where = 4;               // SQL WHERE clause filter
+
+  // Type-specific parameters
+  double quantile = 5;            // For ApproxQuantile
+  double relative_error = 6;      // For ApproxQuantile, ApproxCountDistinct
+  string pattern = 7;             // For PatternMatch
+  int32 max_detail_bins = 8;      // For Histogram
+
+  // KLL Sketch parameters
+  KLLParameters kll_parameters = 9;
+}
+
+// Parameters for KLL Sketch analyzer
+message KLLParameters {
+  int32 sketch_size = 1;
+  double shrinking_factor = 2;
+  int32 number_of_buckets = 3;
+}
+
+// ============================================================================
+// Result Messages
+// ============================================================================
+
+// Verification result status
+enum VerificationStatus {
+  VERIFICATION_SUCCESS = 0;
+  VERIFICATION_WARNING = 1;
+  VERIFICATION_ERROR = 2;
+}
+
+// Check result status
+enum CheckStatus {
+  CHECK_SUCCESS = 0;
+  CHECK_WARNING = 1;
+  CHECK_ERROR = 2;
+}
+
+// Constraint result status
+enum ConstraintStatus {
+  CONSTRAINT_SUCCESS = 0;
+  CONSTRAINT_FAILURE = 1;
+}
+
+// Metric entity type
+enum MetricEntity {
+  DATASET = 0;
+  COLUMN = 1;
+  MULTICOLUMN = 2;
+}
