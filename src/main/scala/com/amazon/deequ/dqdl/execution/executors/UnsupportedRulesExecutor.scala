@@ -23,7 +23,8 @@ import software.amazon.glue.dqdl.model.DQRule
 
 object UnsupportedRulesExecutor extends DQDLExecutor.RuleExecutor[UnsupportedExecutableRule] {
 
-  override def executeRules(rules: Seq[UnsupportedExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] =
+  override def executeRules(rules: Seq[UnsupportedExecutableRule], df: DataFrame,
+                            additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] =
     rules.map { r =>
       val failureReason = "Rule (or nested rule) not supported" + r.reason.map(re => s" due to: $re").getOrElse("")
       r.dqRule -> RuleOutcome(r.dqRule, Failed, Some(failureReason))

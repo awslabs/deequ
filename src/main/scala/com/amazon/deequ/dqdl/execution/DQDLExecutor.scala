@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, UnsupportedRulesExecutor}
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, RuleOutcome, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -28,23 +28,27 @@ import software.amazon.glue.dqdl.model.DQRule
 object DQDLExecutor {
 
   trait RuleExecutor[T <: ExecutableRule] {
-    def executeRules(rules: Seq[T], df: DataFrame): Map[DQRule, RuleOutcome]
+    def executeRules(rules: Seq[T], df: DataFrame,
+                     additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome]
   }
 
   // Map from rule class to its executor
   private val executors = Map[Class[_ <: ExecutableRule], RuleExecutor[_ <: ExecutableRule]](
     classOf[DeequExecutableRule] -> DeequRulesExecutor,
-    classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor
+    classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor,
+    classOf[RowCountMatchExecutableRule] -> RowCountMatchExecutor
   )
 
-  def executeRules(rules: Seq[ExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] = {
+  def executeRules(rules: Seq[ExecutableRule], df: DataFrame,
+                   additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
     // Group rules to execute each group with the corresponding executor
     val rulesByType = rules.groupBy(_.getClass)
 
     rulesByType.flatMap {
       case (ruleClass, rules) =>
         executors.get(ruleClass) match {
-          case Some(executor) => executor.asInstanceOf[RuleExecutor[ExecutableRule]].executeRules(rules, df)
+          case Some(executor) =>
+            executor.asInstanceOf[RuleExecutor[ExecutableRule]].executeRules(rules, df, additionalDataSources)
           case None => handleError(rules)
         }
     }

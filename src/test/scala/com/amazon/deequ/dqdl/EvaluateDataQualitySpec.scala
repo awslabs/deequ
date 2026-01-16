@@ -532,6 +532,118 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         metrics should contain value expectedMetric
       }
     }
+
+    "support RowCountMatch rule" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        ("1", "Alice"),
+        ("2", "Bob"),
+        ("3", "Charlie"),
+        ("4", "Joshua Z")
+      ).toDF("id", "name")
+
+      val referenceDF = Seq(
+        ("1", "Dave"),
+        ("2", "Eve"),
+        ("3", "Frank"),
+        ("4", "Grace"),
+        ("5", "Henry"),
+        ("6", "Ivy"),
+        ("7", "Jack")
+      ).toDF("id", "name")
+
+      val additionalDataSources = Map("ref" -> referenceDF)
+      val ruleset = """Rules=[RowCountMatch "ref" >= 0.5]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, additionalDataSources)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Dataset.ref.RowCountMatch"
+      metrics("Dataset.ref.RowCountMatch") should be(4.0 / 7.0 +- 0.01)
+    }
+
+    "support RowCountMatch rule with between" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        ("1", "Alice"),
+        ("2", "Bob"),
+        ("3", "Charlie"),
+        ("4", "Joshua Z")
+      ).toDF("id", "name")
+
+      val referenceDF = Seq(
+        ("1", "Dave"),
+        ("2", "Eve"),
+        ("3", "Frank"),
+        ("4", "Grace"),
+        ("5", "Henry"),
+        ("6", "Ivy"),
+        ("7", "Jack")
+      ).toDF("id", "name")
+
+      val additionalDataSources = Map("ref" -> referenceDF)
+      val ruleset = """Rules=[RowCountMatch "ref" between 0.5 and 0.6]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, additionalDataSources)
+
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support RowCountMatch rule with not between" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        ("1", "Alice"),
+        ("2", "Joshua Z")
+      ).toDF("id", "name")
+
+      val referenceDF = Seq(
+        ("1", "Bob"),
+        ("2", "Charlie"),
+        ("3", "Dave"),
+        ("4", "Eve")
+      ).toDF("id", "name")
+
+      val additionalDataSources = Map("ref" -> referenceDF)
+      val ruleset = """Rules=[RowCountMatch "ref" not between 0.8 and 0.9]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, additionalDataSources)
+
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support RowCountMatch rule when failed" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(("1", "a"), ("2", "b")).toDF("id", "value")
+      val referenceDF = Seq(("1", "a"), ("2", "b"), ("3", "c"), ("4", "d")).toDF("id", "value")
+
+      val additionalDataSources = Map("ref" -> referenceDF)
+      val ruleset = """Rules=[RowCountMatch "ref" = 1.0]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, additionalDataSources)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("does not meet the constraint requirement")
+    }
+
+    "support RowCountMatch rule when reference not found" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(("1", "a")).toDF("id", "value")
+      val ruleset = """Rules=[RowCountMatch "missing" >= 0.5]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found in additional data sources")
+    }
   }
 
 }

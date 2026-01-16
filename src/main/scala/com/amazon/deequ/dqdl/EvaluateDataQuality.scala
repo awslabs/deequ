@@ -44,6 +44,21 @@ object EvaluateDataQuality {
    * @return a Spark DataFrame containing the aggregated data quality results.
    */
   def process(df: DataFrame, rulesetDefinition: String): DataFrame = {
+    process(df, rulesetDefinition, Map.empty[String, DataFrame])
+  }
+
+  /**
+   * Validates the given Spark DataFrame against a set of data quality rules defined in DQDL format.
+   *
+   * @param df                    the Spark DataFrame to analyze.
+   * @param rulesetDefinition     the data quality ruleset (defined in DQDL string format) to apply to the DataFrame.
+   * @param additionalDataSources A map of additional source aliases to their DataFrames.
+   *                              Used for dataset comparison rules like RowCountMatch.
+   * @return a Spark DataFrame containing the aggregated data quality results.
+   */
+  def process(df: DataFrame,
+              rulesetDefinition: String,
+              additionalDataSources: Map[String, DataFrame]): DataFrame = {
     // 1. Parse the ruleset
     val ruleset: DQRuleset = DefaultDQDLParser.parse(rulesetDefinition)
 
@@ -51,7 +66,7 @@ object EvaluateDataQuality {
     val executableRules: Seq[ExecutableRule] = DQDLRuleTranslator.toExecutableRules(ruleset)
 
     // 3. Execute the rules against the DataFrame.
-    val executedRulesResult = DQDLExecutor.executeRules(executableRules, df)
+    val executedRulesResult = DQDLExecutor.executeRules(executableRules, df, additionalDataSources)
 
     // 4. Translate the results into a Spark DataFrame.
     DeequOutcomeTranslator.translate(executedRulesResult, df)
