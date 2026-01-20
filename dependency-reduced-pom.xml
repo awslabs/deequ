@@ -4,7 +4,7 @@
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
   <name>deequ</name>
-  <version>2.0.13-spark-3.5</version>
+  <version>2.1.0b-spark-3.5</version>
   <description>Deequ is a library built on top of Apache Spark for defining "unit tests for data",
         which measure data quality in large datasets.</description>
   <url>https://github.com/awslabs/deequ</url>
