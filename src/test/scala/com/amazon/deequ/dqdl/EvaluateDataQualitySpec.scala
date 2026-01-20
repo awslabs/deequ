@@ -238,7 +238,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // given
       val df = getDfFull(sparkSession)
       // Rule is not yet supported
-      val ruleset = "Rules=[ColumnValues \"Foo\" = 5]"
+      val ruleset = "Rules=[DataFreshness \"Foo\" > 1 days]"
 
       // when
       val resultDf = EvaluateDataQuality.process(df, ruleset)
@@ -246,7 +246,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       // then
       resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
       resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
-        "No converter found for rule type: ColumnValues")
+        "No converter found for rule type: DataFreshness")
     }
 
     "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
@@ -531,6 +531,93 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         metrics should contain key s"Dataset.$columnName.ColumnExists"
         metrics should contain value expectedMetric
       }
+    }
+
+    "support ColumnValues rule with GREATER_THAN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" > 0]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.att1.Minimum"
+    }
+
+    "support ColumnValues rule with GREATER_THAN when failed" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" > 10]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support ColumnValues rule with LESS_THAN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" < 100]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.att1.Maximum"
+    }
+
+    "support ColumnValues rule with BETWEEN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" between 0 and 100]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.att1.Minimum"
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.att1.Maximum"
+    }
+
+    "support ColumnValues rule with string IN" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" in [\"a\",\"b\"]]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics").keys.exists(
+        _.contains("ColumnValues.Compliance")) should be(true)
+    }
+
+    "support ColumnValues rule with string IN when failed" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" in [\"x\",\"y\"]]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support ColumnValues rule with MATCHES" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" matches \"[a-z]+\"]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.att1.PatternMatch"
+    }
+
+    "support ColumnValues rule with where clause" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" > 0 where \"att2 > 1\"]"
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
     }
   }
 
