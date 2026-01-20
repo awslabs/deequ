@@ -202,20 +202,20 @@ class DeequRelationPlugin extends RelationPlugin {
       context: AnalyzerContext): DataFrame = {
 
     import spark.implicits._
-    import com.amazon.deequ.metrics.DoubleMetric
 
-    // Get metrics as rows with proper Double type for value
-    // Filter to only DoubleMetric types and extract the Double value
-    val metrics = context.metricMap.toSeq.collect {
-      case (analyzer, metric: DoubleMetric) =>
-        val value: Double = metric.value.getOrElse(Double.NaN)
+    // Flatten all metrics (converts HistogramMetric, KLLMetric, etc. to DoubleMetrics)
+    // then extract the Double values
+    val metrics = context.metricMap.toSeq.flatMap { case (analyzer, metric) =>
+      metric.flatten().map { doubleMetric =>
+        val value: Double = doubleMetric.value.getOrElse(Double.NaN)
         (
           analyzer.toString,
-          metric.entity.toString,
-          metric.instance,
-          metric.name,
+          doubleMetric.entity.toString,
+          doubleMetric.instance,
+          doubleMetric.name,
           value
         )
+      }
     }
 
     metrics.toDF(
