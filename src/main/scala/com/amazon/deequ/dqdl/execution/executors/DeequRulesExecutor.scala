@@ -26,7 +26,8 @@ import software.amazon.glue.dqdl.model.DQRule
 object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule] {
   private val delim = "."
 
-  override def executeRules(rules: Seq[DeequExecutableRule], df: DataFrame): Map[DQRule, RuleOutcome] = {
+  override def executeRules(rules: Seq[DeequExecutableRule], df: DataFrame,
+                            additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
     val verificationResult = VerificationSuite()
       .onData(df.toDF())
       .addChecks(rules.map(_.check))
