@@ -41,6 +41,13 @@ case class DeequExecutableRule(dqRule: DQRule,
   }
 }
 
+case class RowCountMatchExecutableRule(dqRule: DQRule,
+                                       referenceDatasetAlias: String,
+                                       assertion: Double => Boolean) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Dataset.$referenceDatasetAlias.RowCountMatch")
+}
+
 case class DeequMetricMapping(entity: String,
                               instance: String,
                               name: String,
