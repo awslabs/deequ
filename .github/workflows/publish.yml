@@ -1,0 +1,141 @@
+name: Publish to Maven Central
+
+on:
+  workflow_dispatch:
+    inputs:
+      spark_version:
+        description: 'Spark version'
+        required: true
+        type: choice
+        options:
+          - '3.5'
+          - '3.4'
+          - '3.3'
+          - 'all'
+      release_version:
+        description: 'Release version (check README badge for current version)'
+        required: true
+      dry_run:
+        description: 'Dry run (skip actual deploy)'
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        spark: ${{ inputs.spark_version == 'all' && fromJSON('["3.5", "3.4", "3.3"]') || fromJSON(format('["{0}"]', inputs.spark_version)) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ matrix.spark == '3.5' && 'master' || format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}
+
+      - name: Configure AWS credentials
+        if: ${{ !inputs.dry_run }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::059379938386:role/GitHubActionsDeequPublish
+          aws-region: us-east-1
+
+      - name: Fetch secrets from AWS Secrets Manager
+        if: ${{ !inputs.dry_run }}
+        id: secrets
+        run: |
+          GPG_PASSPHRASE=$(aws secretsmanager get-secret-value --secret-id gpg_passphrase --query SecretString --output text)
+          echo "::add-mask::$GPG_PASSPHRASE"
+          echo "GPG_PASSPHRASE=$GPG_PASSPHRASE" >> $GITHUB_OUTPUT
+          
+          CENTRAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id central_portal_token --query SecretString --output text)
+          echo "::add-mask::$CENTRAL_TOKEN"
+          CENTRAL_USERNAME=$(echo $CENTRAL_TOKEN | jq -r 'keys[0]')
+          CENTRAL_PASSWORD=$(echo $CENTRAL_TOKEN | jq -r 'to_entries[0].value')
+          echo "::add-mask::$CENTRAL_USERNAME"
+          echo "::add-mask::$CENTRAL_PASSWORD"
+          echo "CENTRAL_USERNAME=$CENTRAL_USERNAME" >> $GITHUB_OUTPUT
+          echo "CENTRAL_PASSWORD=$CENTRAL_PASSWORD" >> $GITHUB_OUTPUT
+          
+          aws secretsmanager get-secret-value --secret-id gpg_private_key --query SecretString --output text > /tmp/private_key.asc
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          java-version: '8'
+          distribution: 'corretto'
+          cache: maven
+
+      - name: Import GPG key
+        if: ${{ !inputs.dry_run }}
+        run: |
+          mkdir -p ~/.gnupg
+          echo "use-agent" > ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+          chmod 700 ~/.gnupg
+          chmod 600 ~/.gnupg/gpg.conf
+          gpg --batch --import /tmp/private_key.asc
+          rm /tmp/private_key.asc
+
+      - name: Configure Maven settings
+        if: ${{ !inputs.dry_run }}
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << EOF
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${{ steps.secrets.outputs.CENTRAL_USERNAME }}</username>
+                <password>${{ steps.secrets.outputs.CENTRAL_PASSWORD }}</password>
+              </server>
+            </servers>
+            <profiles>
+              <profile>
+                <id>release</id>
+                <properties>
+                  <gpg.executable>gpg</gpg.executable>
+                  <gpg.passphrase>${{ steps.secrets.outputs.GPG_PASSPHRASE }}</gpg.passphrase>
+                </properties>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>release</activeProfile>
+            </activeProfiles>
+          </settings>
+          EOF
+
+      - name: Update version in pom.xml
+        run: |
+          mvn versions:set -DnewVersion=${{ inputs.release_version }}-spark-${{ matrix.spark }} -DgenerateBackupPoms=false
+
+      - name: Build and Deploy
+        if: ${{ !inputs.dry_run }}
+        run: mvn clean deploy -P release -DskipTests --batch-mode
+        env:
+          GPG_TTY: $(tty)
+
+      - name: Dry Run Build
+        if: ${{ inputs.dry_run }}
+        run: mvn clean verify -DskipTests --batch-mode
+
+      - name: Summary
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "### Dry run completed for ${{ inputs.release_version }}-spark-${{ matrix.spark }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Published ${{ inputs.release_version }}-spark-${{ matrix.spark }}" >> $GITHUB_STEP_SUMMARY
+            echo "View at: https://central.sonatype.com" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          rm -rf ~/.gnupg
+          rm -rf ~/.m2/settings.xml
+          rm -f /tmp/private_key.asc
