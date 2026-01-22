@@ -34,6 +34,7 @@ import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
+import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
@@ -81,6 +82,11 @@ object DQDLRuleTranslator {
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     rule.getRuleType match {
       case "RowCountMatch" => RowCountMatchRule.toExecutableRule(rule)
+      case "ReferentialIntegrity" =>
+        ReferentialIntegrityRule.toExecutableRule(rule) match {
+          case Right(executableRule) => executableRule
+          case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
       case _ =>
         translateRule(rule) match {
           case Right(deequExecutableRule) => deequExecutableRule
