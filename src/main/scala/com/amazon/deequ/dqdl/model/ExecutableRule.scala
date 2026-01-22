@@ -48,6 +48,15 @@ case class RowCountMatchExecutableRule(dqRule: DQRule,
     Some(s"Dataset.$referenceDatasetAlias.RowCountMatch")
 }
 
+case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
+                                              primaryColumns: Seq[String],
+                                              referenceDatasetAlias: String,
+                                              referenceColumns: Seq[String],
+                                              assertion: Double => Boolean) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Column.$referenceDatasetAlias.ReferentialIntegrity")
+}
+
 case class DeequMetricMapping(entity: String,
                               instance: String,
                               name: String,

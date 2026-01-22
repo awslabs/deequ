@@ -8,3 +8,4 @@ target/
 .DS_Store
 .scalafmt.conf
 *.log
+.attach_pid*

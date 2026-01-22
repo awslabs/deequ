@@ -644,6 +644,145 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("Outcome") should be("Failed")
       row.getAs[String]("FailureReason") should include("not found in additional data sources")
     }
+
+    "support ReferentialIntegrity rule" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      // All primary values exist in reference - 100% match
+      val primaryDF = Seq("CA", "NY").toDF("state")
+      val referenceDF = Seq("CA", "NY", "FL").toDF("state_code")
+
+      val ruleset = """Rules=[ReferentialIntegrity "state" "ref.state_code" > 0.95]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain key "Column.ref.ReferentialIntegrity"
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(1.0)
+    }
+
+    "support ReferentialIntegrity rule with partial match" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      // 3 out of 4 match = 75%
+      val primaryDF = Seq(
+        ("California", "CA"),
+        ("New York", "NY"),
+        ("New York", "NY"),
+        ("Texas", "TX")  // TX not in reference
+      ).toDF("State Name", "State Abbreviation")
+
+      val referenceDF = Seq("CA", "NY", "FL").toDF("State Abbreviation")
+
+      val ruleset = """Rules=[ReferentialIntegrity "State Abbreviation" "ref.State Abbreviation" > 0.6]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(0.75)
+    }
+
+    "support ReferentialIntegrity rule when failed with stricter threshold" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      // 3 out of 4 match = 75%, but threshold is 90%
+      val primaryDF = Seq(
+        ("California", "CA"),
+        ("New York", "NY"),
+        ("New York", "NY"),
+        ("Texas", "TX")
+      ).toDF("State Name", "State Abbreviation")
+
+      val referenceDF = Seq("CA", "NY", "FL").toDF("State Abbreviation")
+
+      val ruleset = """Rules=[ReferentialIntegrity "State Abbreviation" "ref.State Abbreviation" > 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("does not meet the constraint requirement")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(0.75)
+    }
+
+    "support ReferentialIntegrity rule with multiple columns" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        ("Canada", "CA"),    // Incorrect - Canada/CA combo not in reference
+        ("New York", "NY")   // Correct
+      ).toDF("State Name", "State Abbreviation")
+
+      val referenceDF = Seq(
+        ("California", "CA"),
+        ("New York", "NY"),
+        ("Texas", "TX")
+      ).toDF("State Name", "State Abbreviation")
+
+      // 1 out of 2 match = 50%
+      val ruleset =
+        """Rules=[ReferentialIntegrity "State Name,State Abbreviation" """ +
+        """"ref.{State Name,State Abbreviation}" > 0.4]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(0.5)
+    }
+
+    "support ReferentialIntegrity rule when reference not found" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq("CA").toDF("state")
+      val ruleset = """Rules=[ReferentialIntegrity "state" "missing.state_code" >= 0.9]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found in additional sources")
+    }
+
+    "support ReferentialIntegrity rule when column not found in primary" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(("California", "CA")).toDF("State Name", "State Abbreviation")
+      val referenceDF = Seq("CA", "NY").toDF("State Abbreviation")
+
+      val ruleset = """Rules=[ReferentialIntegrity "NonExistentColumn" "ref.State Abbreviation" > 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("does not exist")
+    }
+
+    "support ReferentialIntegrity rule when column not found in reference" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq("CA", "NY").toDF("state")
+      val referenceDF = Seq("California", "New York").toDF("state_name")
+
+      val ruleset = """Rules=[ReferentialIntegrity "state" "ref.NonExistentColumn" > 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("does not exist")
+    }
+
+    "support ReferentialIntegrity with different column names" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq("CA", "NY", "TX").toDF("state_abbr")
+      val referenceDF = Seq("CA", "NY", "TX", "FL").toDF("abbreviation")
+
+      val ruleset = """Rules=[ReferentialIntegrity "state_abbr" "ref.abbreviation" = 1.0]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(1.0)
+    }
   }
 
 }
