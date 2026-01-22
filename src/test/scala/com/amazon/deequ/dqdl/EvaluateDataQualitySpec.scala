@@ -618,6 +618,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
 
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+    }
     "support RowCountMatch rule" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
 
