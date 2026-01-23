@@ -33,13 +33,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           ref: ${{ matrix.spark == '3.5' && 'master' || format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}
 
       - name: Configure AWS credentials
         if: ${{ !inputs.dry_run }}
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
           role-to-assume: arn:aws:iam::059379938386:role/GitHubActionsDeequPublish
           aws-region: us-east-1
@@ -48,23 +48,26 @@ jobs:
         if: ${{ !inputs.dry_run }}
         id: secrets
         run: |
+          KEY_FILE=$(mktemp)
+          echo "KEY_FILE=$KEY_FILE" >> $GITHUB_OUTPUT
+          
           GPG_PASSPHRASE=$(aws secretsmanager get-secret-value --secret-id gpg_passphrase --query SecretString --output text)
           echo "::add-mask::$GPG_PASSPHRASE"
           echo "GPG_PASSPHRASE=$GPG_PASSPHRASE" >> $GITHUB_OUTPUT
           
           CENTRAL_TOKEN=$(aws secretsmanager get-secret-value --secret-id central_portal_token --query SecretString --output text)
           echo "::add-mask::$CENTRAL_TOKEN"
-          CENTRAL_USERNAME=$(echo $CENTRAL_TOKEN | jq -r 'keys[0]')
-          CENTRAL_PASSWORD=$(echo $CENTRAL_TOKEN | jq -r 'to_entries[0].value')
+          CENTRAL_USERNAME=$(echo "$CENTRAL_TOKEN" | jq -r 'keys[0]')
+          CENTRAL_PASSWORD=$(echo "$CENTRAL_TOKEN" | jq -r 'to_entries[0].value')
           echo "::add-mask::$CENTRAL_USERNAME"
           echo "::add-mask::$CENTRAL_PASSWORD"
           echo "CENTRAL_USERNAME=$CENTRAL_USERNAME" >> $GITHUB_OUTPUT
           echo "CENTRAL_PASSWORD=$CENTRAL_PASSWORD" >> $GITHUB_OUTPUT
           
-          aws secretsmanager get-secret-value --secret-id gpg_private_key --query SecretString --output text > /tmp/private_key.asc
+          aws secretsmanager get-secret-value --secret-id gpg_private_key --query SecretString --output text > "$KEY_FILE"
 
       - name: Set up JDK 8
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
         with:
           java-version: '8'
           distribution: 'corretto'
@@ -79,8 +82,10 @@ jobs:
           echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
           chmod 700 ~/.gnupg
           chmod 600 ~/.gnupg/gpg.conf
-          gpg --batch --import /tmp/private_key.asc
-          rm /tmp/private_key.asc
+          gpg --batch --import "$KEY_FILE"
+          rm -f "$KEY_FILE"
+        env:
+          KEY_FILE: ${{ steps.secrets.outputs.KEY_FILE }}
 
       - name: Configure Maven settings
         if: ${{ !inputs.dry_run }}
@@ -91,8 +96,8 @@ jobs:
             <servers>
               <server>
                 <id>central</id>
-                <username>${{ steps.secrets.outputs.CENTRAL_USERNAME }}</username>
-                <password>${{ steps.secrets.outputs.CENTRAL_PASSWORD }}</password>
+                <username>${CENTRAL_USERNAME}</username>
+                <password>${CENTRAL_PASSWORD}</password>
               </server>
             </servers>
             <profiles>
@@ -100,7 +105,7 @@ jobs:
                 <id>release</id>
                 <properties>
                   <gpg.executable>gpg</gpg.executable>
-                  <gpg.passphrase>${{ steps.secrets.outputs.GPG_PASSPHRASE }}</gpg.passphrase>
+                  <gpg.passphrase>${GPG_PASSPHRASE}</gpg.passphrase>
                 </properties>
               </profile>
             </profiles>
@@ -109,10 +114,17 @@ jobs:
             </activeProfiles>
           </settings>
           EOF
+        env:
+          CENTRAL_USERNAME: ${{ steps.secrets.outputs.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ steps.secrets.outputs.CENTRAL_PASSWORD }}
+          GPG_PASSPHRASE: ${{ steps.secrets.outputs.GPG_PASSPHRASE }}
 
       - name: Update version in pom.xml
         run: |
-          mvn versions:set -DnewVersion=${{ inputs.release_version }}-spark-${{ matrix.spark }} -DgenerateBackupPoms=false
+          mvn versions:set -DnewVersion="${RELEASE_VERSION}-spark-${SPARK_VERSION}" -DgenerateBackupPoms=false
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          SPARK_VERSION: ${{ matrix.spark }}
 
       - name: Build and Deploy
         if: ${{ !inputs.dry_run }}
@@ -126,16 +138,22 @@ jobs:
 
       - name: Summary
         run: |
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            echo "### Dry run completed for ${{ inputs.release_version }}-spark-${{ matrix.spark }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "### Dry run completed for ${RELEASE_VERSION}-spark-${SPARK_VERSION}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### Published ${{ inputs.release_version }}-spark-${{ matrix.spark }}" >> $GITHUB_STEP_SUMMARY
+            echo "### Published ${RELEASE_VERSION}-spark-${SPARK_VERSION}" >> $GITHUB_STEP_SUMMARY
             echo "View at: https://central.sonatype.com" >> $GITHUB_STEP_SUMMARY
           fi
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          SPARK_VERSION: ${{ matrix.spark }}
 
       - name: Cleanup sensitive files
         if: always()
         run: |
           rm -rf ~/.gnupg
           rm -rf ~/.m2/settings.xml
-          rm -f /tmp/private_key.asc
+          rm -f "${KEY_FILE:-}"
+        env:
+          KEY_FILE: ${{ steps.secrets.outputs.KEY_FILE }}
