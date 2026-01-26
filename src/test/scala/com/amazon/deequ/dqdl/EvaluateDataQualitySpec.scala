@@ -783,6 +783,72 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("Outcome") should be("Passed")
       row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(1.0)
     }
+
+    "support ColumnNamesMatchPattern - pattern 'col_.*' matches all columns" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("col_one", "col_two")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(1.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'col_.*' fails for 'other'" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("col_one", "col_two", "other")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        row.getAs[String]("FailureReason") should include("other")
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Province.*' matches zero columns" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("State Name", "State Abbreviation")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "Province.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(0.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Building[\\s|_|\\.]Code'" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("Building Code", "Building_Code", "Building.Code")
+
+        val rule = "ColumnNamesMatchPattern \"Building[\\s|_|\\.]Code\""
+        val results = EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(1.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Building\\s*Code' partial match" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("Building Code", "Building_Code", "Building.Code")
+
+        val rule = "ColumnNamesMatchPattern \"Building\\s*Code\""
+        val results = EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        row.getAs[String]("FailureReason") should include("Building_Code")
+        row.getAs[String]("FailureReason") should include("Building.Code")
+      }
   }
 
 }
