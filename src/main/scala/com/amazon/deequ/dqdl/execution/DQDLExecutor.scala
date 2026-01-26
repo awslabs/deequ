@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor}
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.execution.executors.{DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, SchemaMatchExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, SchemaMatchExecutableRule, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -37,7 +37,8 @@ object DQDLExecutor {
     classOf[DeequExecutableRule] -> DeequRulesExecutor,
     classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor,
     classOf[RowCountMatchExecutableRule] -> RowCountMatchExecutor,
-    classOf[ReferentialIntegrityExecutableRule] -> ReferentialIntegrityExecutor
+    classOf[ReferentialIntegrityExecutableRule] -> ReferentialIntegrityExecutor,
+    classOf[SchemaMatchExecutableRule] -> SchemaMatchExecutor
   )
 
   def executeRules(rules: Seq[ExecutableRule], df: DataFrame,
