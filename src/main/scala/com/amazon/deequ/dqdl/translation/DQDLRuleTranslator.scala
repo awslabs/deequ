@@ -17,24 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
-import com.amazon.deequ.dqdl.translation.rules.ColumnCorrelationRule
-import com.amazon.deequ.dqdl.translation.rules.CompletenessRule
-import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
-import com.amazon.deequ.dqdl.translation.rules.DistinctValuesCountRule
-import com.amazon.deequ.dqdl.translation.rules.EntropyRule
-import com.amazon.deequ.dqdl.translation.rules.IsCompleteRule
-import com.amazon.deequ.dqdl.translation.rules.IsPrimaryKeyRule
-import com.amazon.deequ.dqdl.translation.rules.IsUniqueRule
-import com.amazon.deequ.dqdl.translation.rules.MeanRule
-import com.amazon.deequ.dqdl.translation.rules.RowCountRule
-import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
-import com.amazon.deequ.dqdl.translation.rules.SumRule
-import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
-import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
-import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
-import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
-import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
-import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
+import com.amazon.deequ.dqdl.translation.rules.{ColumnCorrelationRule, ColumnExistsRule, ColumnLengthRule, CompletenessRule, CustomSqlRule, DistinctValuesCountRule, EntropyRule, IsCompleteRule, IsPrimaryKeyRule, IsUniqueRule, MeanRule, ReferentialIntegrityRule, RowCountMatchRule, RowCountRule, SchemaMatchRule, StandardDeviationRule, SumRule, UniqueValueRatioRule, UniquenessRule}
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
@@ -87,6 +70,7 @@ object DQDLRuleTranslator {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }
+      case "SchemaMatch" => SchemaMatchRule.toExecutableRule(rule)
       case _ =>
         translateRule(rule) match {
           case Right(deequExecutableRule) => deequExecutableRule
