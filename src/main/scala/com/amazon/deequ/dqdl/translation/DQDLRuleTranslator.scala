@@ -34,6 +34,7 @@ import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnValuesRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
@@ -67,7 +68,8 @@ object DQDLRuleTranslator {
     "CustomSql" -> new CustomSqlRule,
     "IsPrimaryKey" -> new IsPrimaryKeyRule,
     "ColumnLength" -> new ColumnLengthRule,
-    "ColumnExists" -> new ColumnExistsRule
+    "ColumnExists" -> new ColumnExistsRule,
+    "ColumnValues" -> new ColumnValuesRule
   )
 
   /**

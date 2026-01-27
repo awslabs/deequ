@@ -156,6 +156,7 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **IsPrimaryKey**: `IsPrimaryKey "column"`
 - **ColumnLength**: `ColumnLength "column" between 1 and 5`
 - **ColumnExists**: `ColumnExists "column"`
+- **ColumnValues**: `ColumnValues "column" in ["A", "B", "C"]` or `ColumnValues "column" > 10` or `ColumnValues "column" matches "[a-z]*"`
 - **RowCountMatch**: `RowCountMatch "referenceDataset" >= 0.9`
 - **DataFreshness**: `DataFreshness "Order_Date" <= 24 hours`
 - **Composite Rules**: Combine multiple rules with `and` / `or` operators
