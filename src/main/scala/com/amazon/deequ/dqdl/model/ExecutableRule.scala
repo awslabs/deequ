@@ -16,8 +16,10 @@
 
 package com.amazon.deequ.dqdl.model
 
+import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.dqdl.util.DQDLUtility.convertWhereClauseForMetric
+import org.apache.spark.sql.Column
 import software.amazon.glue.dqdl.model.DQRule
 
 trait ExecutableRule {
@@ -46,6 +48,14 @@ case class RowCountMatchExecutableRule(dqRule: DQRule,
                                        assertion: Double => Boolean) extends ExecutableRule {
   override val evaluatedMetricName: Option[String] =
     Some(s"Dataset.$referenceDatasetAlias.RowCountMatch")
+}
+
+case class DataFreshnessExecutableRule(dqRule: DQRule,
+                                       column: String,
+                                       outcomeExpression: Column,
+                                       filteredRow: FilteredRowOutcome) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Column.$column.DataFreshness.Compliance")
 }
 
 case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
