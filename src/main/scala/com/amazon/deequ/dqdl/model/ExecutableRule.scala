@@ -67,6 +67,15 @@ case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
     Some(s"Column.$referenceDatasetAlias.ReferentialIntegrity")
 }
 
+case class ColumnDataTypeExecutableRule(dqRule: DQRule,
+                                        column: String,
+                                        outcomeExpression: Column,
+                                        assertion: Double => Boolean,
+                                        filteredRow: FilteredRowOutcome) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Column.$column.ColumnDataType.Compliance")
+}
+
 case class DeequMetricMapping(entity: String,
                               instance: String,
                               name: String,
