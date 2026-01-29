@@ -849,6 +849,34 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         row.getAs[String]("FailureReason") should include("Building_Code")
         row.getAs[String]("FailureReason") should include("Building.Code")
       }
+
+    "support ColumnNamesMatchPattern - invalid regex throws IllegalArgumentException" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("col_one", "col_two")
+
+        val rule = """ColumnNamesMatchPattern "[invalid(""""
+        val ex = the [IllegalArgumentException] thrownBy {
+          EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+        }
+        ex.getMessage should include("Invalid regex pattern")
+        ex.getMessage should include("[invalid(")
+      }
+
+    "support ColumnNamesMatchPattern - empty dataframe returns Passed with NaN metric" in
+      withSparkSession { sparkSession =>
+        val df = sparkSession.createDataFrame(
+          sparkSession.sparkContext.emptyRDD[org.apache.spark.sql.Row],
+          org.apache.spark.sql.types.StructType(Seq())
+        )
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio").isNaN should be(true)
+      }
   }
 
 }

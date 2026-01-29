@@ -22,13 +22,17 @@ import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
 import scala.util.matching.Regex
+import scala.util.Try
 
 object ColumnNamesMatchPatternExecutor extends DQDLExecutor.RuleExecutor[ColumnNamesMatchPatternExecutableRule] {
 
   override def executeRules(rules: Seq[ColumnNamesMatchPatternExecutableRule], df: DataFrame,
                             additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
     rules.map { rule =>
-      val pattern = new Regex(rule.pattern)
+      val pattern = Try(new Regex(rule.pattern)).getOrElse {
+        throw new IllegalArgumentException(
+          s"Invalid regex pattern '${rule.pattern}' for ColumnNamesMatchPattern rule")
+      }
       val columns = df.columns
       val columnCount = columns.length
       val unmatchedColumns = columns.filter { col => pattern.findAllMatchIn(col).isEmpty }
