@@ -64,9 +64,9 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
   this test should be removed once all rules are supported. till then just put the next unimplemented rule here.
    */
   "get unknown executable rule" in {
-    // given - using a rule type that doesn't exist yet
+    // given
     val ruleset: DQRuleset = DefaultDQDLParser
-      .parse("Rules=[ColumnCount = 5]")
+      .parse("Rules=[ColumnValues \"Foo\" = 5]")
 
     // when
     val rules = DQDLRuleTranslator.toExecutableRules(ruleset)

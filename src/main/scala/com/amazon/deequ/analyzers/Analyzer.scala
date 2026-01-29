@@ -279,7 +279,10 @@ object FilteredRowOutcome extends Enumeration {
   val NULL, TRUE = Value
 
   implicit class FilteredRowOutcomeOps(value: FilteredRowOutcome) {
-    def getExpression: Column = expr(value.toString)
+    def getExpression: Column = value match {
+      case TRUE => lit(true)
+      case NULL => lit(null).cast("boolean")
+    }
   }
 }
 
