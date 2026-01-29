@@ -66,7 +66,7 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
   "get unknown executable rule" in {
     // given - using a rule type that doesn't exist yet
     val ruleset: DQRuleset = DefaultDQDLParser
-      .parse("Rules=[DataFreshness \"Foo\" > 1 days]")
+      .parse("Rules=[ColumnCount = 5]")
 
     // when
     val rules = DQDLRuleTranslator.toExecutableRules(ruleset)

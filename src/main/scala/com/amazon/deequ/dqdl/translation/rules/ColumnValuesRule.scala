@@ -37,20 +37,22 @@ import scala.collection.JavaConverters._
 case class ColumnValuesRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val targetColumn = rule.getParameters.asScala("TargetColumn")
+    val transformedCol = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
 
     rule.getCondition match {
       case condition: NumberBasedCondition =>
-        mkNumericCheck(check, targetColumn, condition, rule)
+        mkNumericCheck(check, targetColumn, transformedCol, condition, rule)
       case condition: StringBasedCondition =>
-        mkStringCheck(check, targetColumn, condition, rule)
+        mkStringCheck(check, targetColumn, transformedCol, condition, rule)
       case _ =>
         Left(s"Unsupported condition type for ColumnValues rule: " +
           s"${Option(rule.getCondition).map(_.getClass.getSimpleName).getOrElse("null")}")
     }
   }
 
-  private def mkNumericCheck(check: Check, targetColumn: String, condition: NumberBasedCondition,
+  private def mkNumericCheck(check: Check, targetColumn: String, transformedCol: String,
+                             condition: NumberBasedCondition,
                              rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val rawOperands = condition.getOperands.asScala
     if (!rawOperands.forall(_.isInstanceOf[AtomicNumberOperand])) {
@@ -61,7 +63,6 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
     }
 
     val operands = rawOperands.map(_.getOperand.toDouble)
-    val transformedCol = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
 
     condition.getOperator match {
       case GREATER_THAN =>
@@ -172,25 +173,18 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
     }
   }
 
-  private def mkStringCheck(check: Check, targetColumn: String, condition: StringBasedCondition,
+  private def mkStringCheck(check: Check, targetColumn: String, transformedCol: String,
+                            condition: StringBasedCondition,
                             rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
-    val transformedCol = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
-
     condition.getOperator match {
       case StringBasedConditionOperator.MATCHES =>
-        val pattern = condition.getOperands.asScala.head match {
-          case q: QuotedStringOperand => q.getOperand
-          case other => other.toString
-        }
+        val pattern = extractPattern(condition)
         val fullRegex = s"^${pattern}$$".r
         Right((addWhereClause(rule, check.hasPattern(targetColumn, fullRegex)),
           Seq(DeequMetricMapping("Column", targetColumn, "PatternMatch", "PatternMatch", None, rule = rule))))
 
       case StringBasedConditionOperator.NOT_MATCHES =>
-        val pattern = condition.getOperands.asScala.head match {
-          case q: QuotedStringOperand => q.getOperand
-          case other => other.toString
-        }
+        val pattern = extractPattern(condition)
         val fullRegex = s"^(?!\\b${pattern}\\b).*$$".r
         Right((addWhereClause(rule, check.hasPattern(targetColumn, fullRegex)),
           Seq(DeequMetricMapping("Column", targetColumn, "PatternMatch", "PatternMatch", None, rule = rule))))
@@ -256,4 +250,10 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
   private def complianceMetric(targetColumn: String, desc: String, rule: DQRule): Seq[DeequMetricMapping] =
     Seq(DeequMetricMapping("Column", targetColumn, "ColumnValues.Compliance", "Compliance", Some(desc),
       rule = rule))
+
+  private def extractPattern(condition: StringBasedCondition): String =
+    condition.getOperands.asScala.head match {
+      case q: QuotedStringOperand => q.getOperand
+      case other => other.toString
+    }
 }

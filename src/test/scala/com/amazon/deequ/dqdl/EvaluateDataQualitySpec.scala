@@ -792,6 +792,157 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("Outcome") should be("Passed")
     }
 
+    "support ColumnValues rule with GREATER_THAN_EQUAL_TO" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[ColumnValues "att1" >= 1]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with LESS_THAN_EQUAL_TO" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[ColumnValues "att1" <= 6]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with numeric IN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[ColumnValues "att1" in [1,2,3,4,5,6]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with numeric NOT IN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[ColumnValues "att1" not in [100,200]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with numeric NOT EQUALS" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[ColumnValues "att1" != 100]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with string EQUALS" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", "active"), ("2", "active")).toDF("id", "status")
+      val ruleset = """Rules=[ColumnValues "status" = "active"]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with string NOT EQUALS" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", "active"), ("2", "pending")).toDF("id", "status")
+      val ruleset = """Rules=[ColumnValues "status" != "deleted"]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with IN containing NULL keyword" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(
+        ("1", null: String),
+        ("2", null: String)
+      ).toDF("id", "value")
+      // NULL combined with quoted string forces string condition parsing
+      val ruleset = """Rules=[ColumnValues "value" in [NULL, "valid"]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with IN EMPTY keyword" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", ""), ("2", "")).toDF("id", "value")
+      val ruleset = """Rules=[ColumnValues "value" in [EMPTY]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with IN WHITESPACES_ONLY keyword" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", "   "), ("2", "  ")).toDF("id", "value")
+      val ruleset = """Rules=[ColumnValues "value" in [WHITESPACES_ONLY]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with NOT IN containing NULL keyword" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", "a"), ("2", "b")).toDF("id", "value")
+      // NULL combined with quoted string forces string condition parsing
+      val ruleset = """Rules=[ColumnValues "value" not in [NULL, ""]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with NOT IN EMPTY keyword" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", "a"), ("2", "b")).toDF("id", "value")
+      val ruleset = """Rules=[ColumnValues "value" not in [EMPTY]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues rule with NOT IN WHITESPACES_ONLY keyword" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(("1", "hello"), ("2", "world")).toDF("id", "value")
+      val ruleset = """Rules=[ColumnValues "value" not in [WHITESPACES_ONLY]]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
     "support ReferentialIntegrity rule" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
 
