@@ -1024,6 +1024,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("FailureReason") should include("not found")
     }
 
+
     "support ColumnNamesMatchPattern - pattern 'col_.*' matches all columns" in
       withSparkSession { sparkSession =>
         import sparkSession.implicits._
@@ -1198,6 +1199,163 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       results.count() should be(1)
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support AggregateMatch rule with sum on same dataset" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(
+        (100.0, 100.0),
+        (200.0, 200.0),
+        (300.0, 300.0)
+      ).toDF("colA", "colB")
+
+      val ruleset = """Rules=[AggregateMatch "sum(colA)" "sum(colB)" = 1.0]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.colA,colB.AggregateMatch"
+      metrics("Column.colA,colB.AggregateMatch") should be(1.0)
+    }
+
+    "support AggregateMatch rule with sum across datasets" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(100.0, 200.0).toDF("amount")
+      val referenceDF = Seq(150.0, 250.0).toDF("amount")
+
+      val additionalDataSources = Map("ref" -> referenceDF)
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(ref.amount)" > 0.7]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, additionalDataSources)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.amount.AggregateMatch"
+      metrics("Column.amount.AggregateMatch") should be(0.75 +- 0.01)
+    }
+
+    "support AggregateMatch rule with avg" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(
+        (10.0, 20.0),
+        (20.0, 40.0),
+        (30.0, 60.0)
+      ).toDF("colA", "colB")
+
+      val ruleset = """Rules=[AggregateMatch "avg(colA)" "avg(colB)" = 0.5]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics("Column.colA,colB.AggregateMatch") should be(0.5)
+    }
+
+    "support AggregateMatch rule with between" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(100.0, 200.0).toDF("amount")
+      val referenceDF = Seq(150.0, 250.0).toDF("amount")
+
+      val additionalDataSources = Map("ref" -> referenceDF)
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(ref.amount)" between 0.7 and 0.8]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, additionalDataSources)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support AggregateMatch rule when failed" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(
+        (100.0, 200.0),
+        (100.0, 200.0)
+      ).toDF("colA", "colB")
+
+      val ruleset = """Rules=[AggregateMatch "sum(colA)" "sum(colB)" > 0.9]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("does not meet the constraint requirement")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics("Column.colA,colB.AggregateMatch") should be(0.5)
+    }
+
+    "support AggregateMatch rule when reference not found" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(100.0).toDF("amount")
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(missing.amount)" > 0.5]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found")
+    }
+
+    "support AggregateMatch rule with same column name" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(100.0, 200.0).toDF("amount")
+
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(amount)" = 1.0]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.amount.AggregateMatch"
+    }
+
+    "support AggregateMatch rule with divide by zero (0/0 = 1.0)" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(0.0).toDF("value")
+      val referenceDF = Seq(0.0).toDF("value")
+
+      val ruleset = """Rules=[AggregateMatch "sum(value)" "sum(ref.value)" = 1.0]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.value.AggregateMatch") should be(1.0)
+    }
+
+    "support AggregateMatch rule with NULL values ignored" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        Some(10.0),
+        None,
+        Some(20.0),
+        None
+      ).toDF("value")
+
+      val referenceDF = Seq(15.0, 15.0).toDF("value")
+
+      val ruleset = """Rules=[AggregateMatch "avg(value)" "avg(ref.value)" = 1.0]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support AggregateMatch rule with invalid column name" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(100.0).toDF("amount")
+
+      val ruleset = """Rules=[AggregateMatch "sum(nonexistent)" "sum(amount)" = 1.0]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
     }
   }
 
