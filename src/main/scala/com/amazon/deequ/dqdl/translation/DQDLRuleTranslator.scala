@@ -37,6 +37,7 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
@@ -89,6 +90,7 @@ object DQDLRuleTranslator {
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }
       case "RowCountMatch" => RowCountMatchRule.toExecutableRule(rule)
+      case "ColumnNamesMatchPattern" => ColumnNamesMatchPatternRule.toExecutableRule(rule)
       case "ReferentialIntegrity" =>
         ReferentialIntegrityRule.toExecutableRule(rule) match {
           case Right(executableRule) => executableRule
