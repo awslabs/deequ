@@ -877,6 +877,88 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
         metrics("Dataset.*.ColumnNamesPatternMatchRatio").isNaN should be(true)
       }
+
+    "evaluate simple AND composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 0) and (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[String]("FailureReason") should be(null)
+    }
+
+    "evaluate simple OR composite rule with one passing" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 10) or (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "evaluate nested composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(RowCount > 0) or ((IsComplete "att2") and (IsUnique "att2"))]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "evaluate composite rule with AND failure" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 100) and (Sum "att3" > 100)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should not be null
+    }
+
+    "evaluate composite rule with OR failure" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 100) or (Sum "att3" > 100)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should not be null
+    }
+
+    "collect metrics from all nested rules in composite" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 0) and (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.att2.Mean"
+      metrics should contain key "Column.att3.Sum"
+    }
+
+    "evaluate complex nested composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[((RowCount > 0) and (ColumnCount = 4)) or ((Mean "att2" > 0) and (Sum "att3" > 0))]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
   }
 
 }
