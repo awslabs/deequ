@@ -85,9 +85,14 @@ object DQDLRuleTranslator {
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     rule.getRuleType match {
       case "Composite" =>
-        // Recursively translate nested rules
-        val nestedExecutableRules = rule.getNestedRules.asScala.map(toExecutableRule).toSeq
-        CompositeExecutableRule(rule, nestedExecutableRules, rule.getOperator)
+        // Validate nested rules exist
+        if (rule.getNestedRules == null || rule.getNestedRules.isEmpty) {
+          UnsupportedExecutableRule(rule, Some("Composite rule must have at least one nested rule"))
+        } else {
+          // Recursively translate nested rules
+          val nestedExecutableRules = rule.getNestedRules.asScala.map(toExecutableRule).toSeq
+          CompositeExecutableRule(rule, nestedExecutableRules, rule.getOperator)
+        }
 
       case "DataFreshness" =>
         DataFreshnessRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {

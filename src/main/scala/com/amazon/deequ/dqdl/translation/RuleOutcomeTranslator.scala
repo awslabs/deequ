@@ -74,6 +74,15 @@ object RuleOutcomeTranslator {
     rule: DQRule,
     outcomeMap: Map[DQRule, RuleOutcome]
   ): RuleOutcome = {
+    // Validate that nested rules exist
+    if (rule.getNestedRules == null || rule.getNestedRules.isEmpty) {
+      return RuleOutcome(
+        rule,
+        Failed,
+        Some("Composite rule must have at least one nested rule")
+      )
+    }
+
     val results: Seq[RuleOutcome] =
       rule.getNestedRules.asScala.map(r => collectOutcome(r, outcomeMap)).toSeq
 
