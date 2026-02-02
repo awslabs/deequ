@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.analyzers.FilteredRowOutcome
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.model.{CompositeExecutableRule, DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
 import com.amazon.deequ.dqdl.translation.rules.ColumnCorrelationRule
 import com.amazon.deequ.dqdl.translation.rules.CompletenessRule
 import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
@@ -84,6 +84,16 @@ object DQDLRuleTranslator {
 
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     rule.getRuleType match {
+      case "Composite" =>
+        // Validate nested rules exist
+        if (rule.getNestedRules == null || rule.getNestedRules.isEmpty) {
+          UnsupportedExecutableRule(rule, Some("Composite rule must have at least one nested rule"))
+        } else {
+          // Recursively translate nested rules
+          val nestedExecutableRules = rule.getNestedRules.asScala.map(toExecutableRule).toSeq
+          CompositeExecutableRule(rule, nestedExecutableRules, rule.getOperator)
+        }
+
       case "DataFreshness" =>
         DataFreshnessRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
           case Right(executableRule) => executableRule

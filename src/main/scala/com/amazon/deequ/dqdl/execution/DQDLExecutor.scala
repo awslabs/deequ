@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.{ColumnNamesMatchPatternExecutor, DataFreshnessExecutor, DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor}
-import com.amazon.deequ.dqdl.model.{ColumnNamesMatchPatternExecutableRule, DataFreshnessExecutableRule, DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.execution.executors.{ColumnNamesMatchPatternExecutor, CompositeRulesExecutor, DataFreshnessExecutor, DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{ColumnNamesMatchPatternExecutableRule, CompositeExecutableRule, DataFreshnessExecutableRule, DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -35,6 +35,7 @@ object DQDLExecutor {
   // Map from rule class to its executor
   private val executors = Map[Class[_ <: ExecutableRule], RuleExecutor[_ <: ExecutableRule]](
     classOf[DeequExecutableRule] -> DeequRulesExecutor,
+    classOf[CompositeExecutableRule] -> CompositeRulesExecutor,
     classOf[UnsupportedExecutableRule] -> UnsupportedRulesExecutor,
     classOf[RowCountMatchExecutableRule] -> RowCountMatchExecutor,
     classOf[ReferentialIntegrityExecutableRule] -> ReferentialIntegrityExecutor,
