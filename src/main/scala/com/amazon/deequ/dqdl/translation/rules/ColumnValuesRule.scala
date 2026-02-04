@@ -25,6 +25,7 @@ import com.amazon.deequ.dqdl.util.DQDLUtility.isWhereClausePresent
 import com.amazon.deequ.dqdl.util.DQDLUtility.requiresToBeQuoted
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.AtomicNumberOperand
+import software.amazon.glue.dqdl.model.condition.number.NullNumericOperand
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedConditionOperator._
 import software.amazon.glue.dqdl.model.condition.string.KeywordStringOperand
@@ -35,6 +36,7 @@ import software.amazon.glue.dqdl.model.condition.string.StringBasedConditionOper
 import scala.collection.JavaConverters._
 
 case class ColumnValuesRule() extends DQDLRuleConverter {
+
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val targetColumn = rule.getParameters.asScala("TargetColumn")
     val transformedCol = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
@@ -55,24 +57,25 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
                              condition: NumberBasedCondition,
                              rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val rawOperands = condition.getOperands.asScala
-    if (!rawOperands.forall(_.isInstanceOf[AtomicNumberOperand])) {
-      return Left("ColumnValues rule only supports atomic operands in numeric conditions.")
+    if (!rawOperands.forall(op => op.isInstanceOf[AtomicNumberOperand] || op.isInstanceOf[NullNumericOperand])) {
+      return Left("ColumnValues rule only supports atomic operands or NULL keyword in conditions.")
     }
     if (rawOperands.isEmpty) {
       return Left("ColumnValues rule requires at least one operand.")
     }
 
-    val operands = rawOperands.map(_.getOperand.toDouble)
+    val hasNullOperand = rawOperands.exists(_.isInstanceOf[NullNumericOperand])
+    val numericOperands = rawOperands.collect { case a: AtomicNumberOperand => a.getOperand.toDouble }
 
     condition.getOperator match {
       case GREATER_THAN =>
         val resultCheck = if (isWhereClausePresent(rule)) {
           check
-            .hasMin(targetColumn, _ > operands.head).where(rule.getWhereClause)
+            .hasMin(targetColumn, _ > numericOperands.head).where(rule.getWhereClause)
             .isComplete(targetColumn).where(rule.getWhereClause)
         } else {
           check
-            .hasMin(targetColumn, _ > operands.head)
+            .hasMin(targetColumn, _ > numericOperands.head)
             .isComplete(targetColumn)
         }
         Right((resultCheck, minMetric(targetColumn, rule)))
@@ -80,11 +83,11 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       case GREATER_THAN_EQUAL_TO =>
         val resultCheck = if (isWhereClausePresent(rule)) {
           check
-            .hasMin(targetColumn, _ >= operands.head).where(rule.getWhereClause)
+            .hasMin(targetColumn, _ >= numericOperands.head).where(rule.getWhereClause)
             .isComplete(targetColumn).where(rule.getWhereClause)
         } else {
           check
-            .hasMin(targetColumn, _ >= operands.head)
+            .hasMin(targetColumn, _ >= numericOperands.head)
             .isComplete(targetColumn)
         }
         Right((resultCheck, minMetric(targetColumn, rule)))
@@ -92,11 +95,11 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       case LESS_THAN =>
         val resultCheck = if (isWhereClausePresent(rule)) {
           check
-            .hasMax(targetColumn, _ < operands.head).where(rule.getWhereClause)
+            .hasMax(targetColumn, _ < numericOperands.head).where(rule.getWhereClause)
             .isComplete(targetColumn).where(rule.getWhereClause)
         } else {
           check
-            .hasMax(targetColumn, _ < operands.head)
+            .hasMax(targetColumn, _ < numericOperands.head)
             .isComplete(targetColumn)
         }
         Right((resultCheck, maxMetric(targetColumn, rule)))
@@ -104,69 +107,91 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       case LESS_THAN_EQUAL_TO =>
         val resultCheck = if (isWhereClausePresent(rule)) {
           check
-            .hasMax(targetColumn, _ <= operands.head).where(rule.getWhereClause)
+            .hasMax(targetColumn, _ <= numericOperands.head).where(rule.getWhereClause)
             .isComplete(targetColumn).where(rule.getWhereClause)
         } else {
           check
-            .hasMax(targetColumn, _ <= operands.head)
+            .hasMax(targetColumn, _ <= numericOperands.head)
             .isComplete(targetColumn)
         }
         Right((resultCheck, maxMetric(targetColumn, rule)))
 
       case BETWEEN =>
-        if (operands.size < 2) {
+        if (numericOperands.size < 2) {
           return Left("BETWEEN requires two operands.")
         }
         val resultCheck = if (isWhereClausePresent(rule)) {
-          check
-            .hasMin(targetColumn, _ > operands.head).where(rule.getWhereClause)
-            .hasMax(targetColumn, _ < operands.last).where(rule.getWhereClause)
+          check.isContainedIn(targetColumn, numericOperands.head, numericOperands.last,
+            includeLowerBound = false, includeUpperBound = false).where(rule.getWhereClause)
             .isComplete(targetColumn).where(rule.getWhereClause)
         } else {
-          check
-            .hasMin(targetColumn, _ > operands.head)
-            .hasMax(targetColumn, _ < operands.last)
+          check.isContainedIn(targetColumn, numericOperands.head, numericOperands.last,
+            includeLowerBound = false, includeUpperBound = false)
             .isComplete(targetColumn)
         }
-        Right((resultCheck, minMetric(targetColumn, rule) ++ maxMetric(targetColumn, rule)))
+        Right((resultCheck, complianceMetric(targetColumn, check.description, rule)))
 
       case NOT_BETWEEN =>
-        if (operands.size < 2) {
+        if (numericOperands.size < 2) {
           return Left("NOT BETWEEN requires two operands.")
         }
         val sql = s"$transformedCol IS NULL OR " +
-          s"($transformedCol <= ${operands.head} OR $transformedCol >= ${operands.last})"
+          s"($transformedCol <= ${numericOperands.head} OR $transformedCol >= ${numericOperands.last})"
         Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
           columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
 
       case IN =>
-        val sql = s"$transformedCol IS NOT NULL AND $transformedCol IN (${operands.mkString(",")})"
+        val nums = numericOperands.mkString(", ")
+        val sql = (numericOperands.nonEmpty, hasNullOperand) match {
+          case (true, false) => s"$transformedCol IS NOT NULL AND $transformedCol IN ($nums)"
+          case (true, true) => s"$transformedCol IN ($nums) OR $transformedCol IS NULL"
+          case (false, true) => s"$transformedCol IS NULL"
+          case _ => "FALSE"
+        }
         Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
           columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
 
       case NOT_IN =>
-        val sql = s"$transformedCol IS NULL OR $transformedCol NOT IN (${operands.mkString(",")})"
+        val nums = numericOperands.mkString(", ")
+        val sql = (numericOperands.nonEmpty, hasNullOperand) match {
+          case (true, false) => s"$transformedCol IS NULL OR $transformedCol NOT IN ($nums)"
+          case (true, true) => s"$transformedCol NOT IN ($nums) AND $transformedCol IS NOT NULL"
+          case (false, true) => s"$transformedCol IS NOT NULL"
+          case _ => "TRUE"
+        }
         Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
           columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
 
       case EQUALS =>
-        val resultCheck = if (isWhereClausePresent(rule)) {
-          check
-            .hasMin(targetColumn, _ == operands.head).where(rule.getWhereClause)
-            .hasMax(targetColumn, _ == operands.head).where(rule.getWhereClause)
-            .isComplete(targetColumn).where(rule.getWhereClause)
+        if (hasNullOperand) {
+          val sql = s"$transformedCol IS NULL"
+          Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+            columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
         } else {
-          check
-            .hasMin(targetColumn, _ == operands.head)
-            .hasMax(targetColumn, _ == operands.head)
-            .isComplete(targetColumn)
+          val resultCheck = if (isWhereClausePresent(rule)) {
+            check
+              .hasMin(targetColumn, _ == numericOperands.head).where(rule.getWhereClause)
+              .hasMax(targetColumn, _ == numericOperands.head).where(rule.getWhereClause)
+              .isComplete(targetColumn).where(rule.getWhereClause)
+          } else {
+            check
+              .hasMin(targetColumn, _ == numericOperands.head)
+              .hasMax(targetColumn, _ == numericOperands.head)
+              .isComplete(targetColumn)
+          }
+          Right((resultCheck, minMetric(targetColumn, rule) ++ maxMetric(targetColumn, rule)))
         }
-        Right((resultCheck, minMetric(targetColumn, rule) ++ maxMetric(targetColumn, rule)))
 
       case NOT_EQUALS =>
-        val sql = s"$transformedCol IS NULL OR $transformedCol != ${operands.head}"
-        Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
-          columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
+        if (hasNullOperand) {
+          val sql = s"$transformedCol IS NOT NULL"
+          Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+            columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
+        } else {
+          val sql = s"$transformedCol IS NULL OR $transformedCol != ${numericOperands.head}"
+          Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+            columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
+        }
 
       case _ =>
         Left(s"Unsupported operator for ColumnValues numeric condition: ${condition.getOperator}")
@@ -223,7 +248,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         conditions += s"(LENGTH(TRIM($targetColumn)) > 0 OR LENGTH($targetColumn) = 0)"
       }
       if (quotedStrings.nonEmpty) {
-        val valueList = quotedStrings.map(s => s"'${s.replace("'", "\\'")}'").mkString(", ")
+        val valueList = quotedStrings.map(s => s"'${s.replace("'", "''")}'").mkString(", ")
         conditions += s"($targetColumn IS NULL OR $targetColumn NOT IN ($valueList))"
       }
       if (conditions.isEmpty) "TRUE" else conditions.mkString(" AND ")
@@ -234,7 +259,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         conditions += s"(LENGTH(TRIM($targetColumn)) = 0 AND LENGTH($targetColumn) > 0)"
       }
       if (quotedStrings.nonEmpty) {
-        val valueList = quotedStrings.map(s => s"'${s.replace("'", "\\'")}'").mkString(", ")
+        val valueList = quotedStrings.map(s => s"'${s.replace("'", "''")}'").mkString(", ")
         conditions += s"($targetColumn IS NOT NULL AND $targetColumn IN ($valueList))"
       }
       if (conditions.isEmpty) "FALSE" else conditions.mkString(" OR ")

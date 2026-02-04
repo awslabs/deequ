@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2026 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -34,12 +34,15 @@ import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnValuesRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnValuesDateRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
+import software.amazon.glue.dqdl.model.condition.date.DateBasedCondition
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
@@ -67,7 +70,8 @@ object DQDLRuleTranslator {
     "CustomSql" -> new CustomSqlRule,
     "IsPrimaryKey" -> new IsPrimaryKeyRule,
     "ColumnLength" -> new ColumnLengthRule,
-    "ColumnExists" -> new ColumnExistsRule
+    "ColumnExists" -> new ColumnExistsRule,
+    "ColumnValues" -> new ColumnValuesRule
   )
 
   /**
@@ -103,6 +107,11 @@ object DQDLRuleTranslator {
       case "ColumnNamesMatchPattern" => ColumnNamesMatchPatternRule.toExecutableRule(rule)
       case "ReferentialIntegrity" =>
         ReferentialIntegrityRule.toExecutableRule(rule) match {
+          case Right(executableRule) => executableRule
+          case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
+      case "ColumnValues" if rule.getCondition.isInstanceOf[DateBasedCondition] =>
+        ColumnValuesDateRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }

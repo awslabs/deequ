@@ -59,22 +59,4 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
     rule.evaluatedMetricName.get should equal("Dataset.*.RowCount")
     rule.dqRule.getRuleType should equal("RowCount")
   }
-
-  /*
-  this test should be removed once all rules are supported. till then just put the next unimplemented rule here.
-   */
-  "get unknown executable rule" in {
-    // given
-    val ruleset: DQRuleset = DefaultDQDLParser
-      .parse("Rules=[ColumnValues \"Foo\" = 5]")
-
-    // when
-    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
-
-    // then
-    rules.size should equal(1)
-    val rule = rules.head
-    rule shouldBe an[UnsupportedExecutableRule]
-    rule.evaluatedMetricName should equal(None)
-  }
 }
