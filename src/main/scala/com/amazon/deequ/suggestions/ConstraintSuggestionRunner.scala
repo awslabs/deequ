@@ -139,7 +139,7 @@ class ConstraintSuggestionRunner {
       .map(suggestion => suggestion.columnName -> suggestion)
       .groupBy { case (columnName, _) => columnName }
       .mapValues { groupedSuggestionsWithColumnNames =>
-        groupedSuggestionsWithColumnNames.map { case (_, suggestion) => suggestion } }
+        groupedSuggestionsWithColumnNames.map { case (_, suggestion) => suggestion } }.toMap
 
     ConstraintSuggestionResult(columnProfiles.profiles, columnProfiles.numRecords,
       columnsWithSuggestions, verificationResult)
