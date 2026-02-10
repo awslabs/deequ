@@ -44,7 +44,12 @@ object DatasetMatchExecutor extends DQDLExecutor.RuleExecutor[DatasetMatchExecut
             case Success(Right(augmentedDF)) =>
               val filteredCount = augmentedDF.filter(col(outcomeCol) === lit(true)).count()
               val totalCount = df.count()
-              val ratio = filteredCount.toDouble / totalCount
+              if (totalCount == 0) {
+   return RuleOutcome(rule.dqRule, Failed, Some("Cannot evaluate: primary DataFrame is empty"))
+}
+              else{
+   val ratio = filteredCount.toDouble / totalCount
+}
               val metrics = Map(s"Dataset.${rule.referenceDatasetAlias}.DatasetMatch" -> ratio)
 
               if (rule.assertion(ratio)) RuleOutcome(rule.dqRule, Passed, None, metrics)
