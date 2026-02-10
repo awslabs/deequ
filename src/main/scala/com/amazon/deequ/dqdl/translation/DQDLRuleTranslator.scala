@@ -16,7 +16,8 @@
 
 package com.amazon.deequ.dqdl.translation
 
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
+import com.amazon.deequ.analyzers.FilteredRowOutcome
+import com.amazon.deequ.dqdl.model.{CompositeExecutableRule, DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
 import com.amazon.deequ.dqdl.translation.rules.ColumnCorrelationRule
 import com.amazon.deequ.dqdl.translation.rules.CompletenessRule
 import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
@@ -36,6 +37,8 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DatasetMatchRule
+import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
@@ -82,7 +85,23 @@ object DQDLRuleTranslator {
 
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     rule.getRuleType match {
+      case "Composite" =>
+        // Validate nested rules exist
+        if (rule.getNestedRules == null || rule.getNestedRules.isEmpty) {
+          UnsupportedExecutableRule(rule, Some("Composite rule must have at least one nested rule"))
+        } else {
+          // Recursively translate nested rules
+          val nestedExecutableRules = rule.getNestedRules.asScala.map(toExecutableRule).toSeq
+          CompositeExecutableRule(rule, nestedExecutableRules, rule.getOperator)
+        }
+
+      case "DataFreshness" =>
+        DataFreshnessRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
+          case Right(executableRule) => executableRule
+          case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
       case "RowCountMatch" => RowCountMatchRule.toExecutableRule(rule)
+      case "ColumnNamesMatchPattern" => ColumnNamesMatchPatternRule.toExecutableRule(rule)
       case "ReferentialIntegrity" =>
         ReferentialIntegrityRule.toExecutableRule(rule) match {
           case Right(executableRule) => executableRule

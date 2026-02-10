@@ -1023,6 +1023,182 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("Outcome") should be("Failed")
       row.getAs[String]("FailureReason") should include("not found")
     }
+
+    "support ColumnNamesMatchPattern - pattern 'col_.*' matches all columns" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("col_one", "col_two")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(1.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'col_.*' fails for 'other'" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("col_one", "col_two", "other")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        row.getAs[String]("FailureReason") should include("other")
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Province.*' matches zero columns" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("State Name", "State Abbreviation")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "Province.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(0.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Building[\\s|_|\\.]Code'" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("Building Code", "Building_Code", "Building.Code")
+
+        val rule = "ColumnNamesMatchPattern \"Building[\\s|_|\\.]Code\""
+        val results = EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(1.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Building\\s*Code' partial match" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("Building Code", "Building_Code", "Building.Code")
+
+        val rule = "ColumnNamesMatchPattern \"Building\\s*Code\""
+        val results = EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        row.getAs[String]("FailureReason") should include("Building_Code")
+        row.getAs[String]("FailureReason") should include("Building.Code")
+      }
+
+    "support ColumnNamesMatchPattern - invalid regex throws IllegalArgumentException" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("col_one", "col_two")
+
+        val rule = """ColumnNamesMatchPattern "[invalid(""""
+        val ex = the [IllegalArgumentException] thrownBy {
+          EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+        }
+        ex.getMessage should include("Invalid regex pattern")
+        ex.getMessage should include("[invalid(")
+      }
+
+    "support ColumnNamesMatchPattern - empty dataframe returns Passed with NaN metric" in
+      withSparkSession { sparkSession =>
+        val df = sparkSession.createDataFrame(
+          sparkSession.sparkContext.emptyRDD[org.apache.spark.sql.Row],
+          org.apache.spark.sql.types.StructType(Seq())
+        )
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio").isNaN should be(true)
+      }
+
+    "evaluate simple AND composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 0) and (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[String]("FailureReason") should be(null)
+    }
+
+    "evaluate simple OR composite rule with one passing" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 10) or (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "evaluate nested composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(RowCount > 0) or ((IsComplete "att2") and (IsUnique "att2"))]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "evaluate composite rule with AND failure" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 100) and (Sum "att3" > 100)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should not be null
+    }
+
+    "evaluate composite rule with OR failure" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 100) or (Sum "att3" > 100)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should not be null
+    }
+
+    "collect metrics from all nested rules in composite" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 0) and (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.att2.Mean"
+      metrics should contain key "Column.att3.Sum"
+    }
+
+    "evaluate complex nested composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[((RowCount > 0) and (ColumnCount = 4)) or ((Mean "att2" > 0) and (Sum "att3" > 0))]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
   }
 
 }
