@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.{ColumnNamesMatchPatternExecutor, CompositeRulesExecutor, DataFreshnessExecutor, DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor}
-import com.amazon.deequ.dqdl.model.{ColumnNamesMatchPatternExecutableRule, CompositeExecutableRule, DataFreshnessExecutableRule, DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.execution.executors.{ColumnNamesMatchPatternExecutor, CompositeRulesExecutor, DataFreshnessExecutor, DatasetMatchExecutor, DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{ColumnNamesMatchPatternExecutableRule, CompositeExecutableRule, DataFreshnessExecutableRule, DatasetMatchExecutableRule, DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -40,7 +40,8 @@ object DQDLExecutor {
     classOf[RowCountMatchExecutableRule] -> RowCountMatchExecutor,
     classOf[ReferentialIntegrityExecutableRule] -> ReferentialIntegrityExecutor,
     classOf[DataFreshnessExecutableRule] -> DataFreshnessExecutor,
-    classOf[ColumnNamesMatchPatternExecutableRule] -> ColumnNamesMatchPatternExecutor
+    classOf[ColumnNamesMatchPatternExecutableRule] -> ColumnNamesMatchPatternExecutor,
+    classOf[DatasetMatchExecutableRule] -> DatasetMatchExecutor
   )
 
   def executeRules(rules: Seq[ExecutableRule], df: DataFrame,
