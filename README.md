@@ -2,7 +2,7 @@
 [![GitHub license](https://img.shields.io/github/license/awslabs/deequ.svg)](https://github.com/awslabs/deequ/blob/master/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/awslabs/deequ.svg)](https://github.com/awslabs/deequ/issues)
 [![Build Status](https://github.com/awslabs/deequ/actions/workflows/maven.yml/badge.svg?branch=master)](https://github.com/awslabs/deequ/actions/workflows/maven.yml?query=branch%3Amaster)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.deequ/deequ)
+[![Maven Central](https://img.shields.io/maven-central/v/com.amazon.deequ/deequ.svg)](https://search.maven.org/artifact/com.amazon.deequ/deequ)
 
 Deequ is a library built on top of Apache Spark for defining "unit tests for data", which measure data quality in large datasets. We are happy to receive feedback and [contributions](CONTRIBUTING.md).
 
@@ -158,6 +158,10 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **ColumnExists**: `ColumnExists "column"`
 - **RowCountMatch**: `RowCountMatch "referenceDataset" >= 0.9`
 - **SchemaMatch**: `SchemaMatch "referenceDataset" > 0.8`
+- **DataFreshness**: `DataFreshness "Order_Date" <= 24 hours`
+- **Composite Rules**: Combine multiple rules with `and` / `or` operators
+  - Simple: `(RowCount > 0) and (IsComplete "column")`
+  - Nested: `(Rule1) or ((Rule2) and (Rule3))`
 
 ### Scala Example
 
@@ -222,6 +226,57 @@ String ruleset = "Rules=[IsUnique \"item\", RowCount < 10, Completeness \"item\"
 Dataset<Row> results = EvaluateDataQuality.process(df, ruleset);
 results.show();
 ```
+
+### Composite Rules Example
+
+Composite rules allow you to combine multiple data quality checks using logical operators (`and`, `or`). This enables complex validation scenarios:
+
+```scala
+import com.amazon.deequ.dqdl.EvaluateDataQuality
+import org.apache.spark.sql.SparkSession
+
+val spark = SparkSession.builder()
+  .appName("Composite Rules Example")
+  .master("local[*]")
+  .getOrCreate()
+
+import spark.implicits._
+
+val df = Seq(
+  (1, "Alice", 25, "alice@example.com"),
+  (2, "Bob", 30, "bob@example.com"),
+  (3, "Charlie", 35, "charlie@example.com")
+).toDF("id", "name", "age", "email")
+
+// Simple AND: Both conditions must be true
+val andRule = """Rules=[(RowCount > 0) and (IsComplete "email")]"""
+val andResults = EvaluateDataQuality.process(df, andRule)
+andResults.show()
+
+// Simple OR: At least one condition must be true
+val orRule = """Rules=[(RowCount > 100) or (IsUnique "id")]"""
+val orResults = EvaluateDataQuality.process(df, orRule)
+orResults.show()
+
+// Nested composition: Complex logic with multiple levels
+val nestedRule = """Rules=[
+  ((IsComplete "name") and (IsComplete "email")) or 
+  ((RowCount > 0) and (IsUnique "id"))
+]"""
+val nestedResults = EvaluateDataQuality.process(df, nestedRule)
+nestedResults.show()
+
+// Multiple composite rules in one ruleset
+val multipleRules = """Rules=[
+  (RowCount > 0) and (IsComplete "id"),
+  (IsUnique "id") or (IsUnique "email"),
+  ((Mean "age" > 20) and (Mean "age" < 50)) or (RowCount < 10)
+]"""
+val multipleResults = EvaluateDataQuality.process(df, multipleRules)
+multipleResults.show()
+```
+
+**Note:** Composite rules currently support dataset-level evaluation only. Row-level evaluation (identifying which specific rows pass/fail) is not yet implemented.
 
 ## Citation
 

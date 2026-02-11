@@ -16,9 +16,11 @@
 
 package com.amazon.deequ.dqdl.model
 
+import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.dqdl.util.DQDLUtility.convertWhereClauseForMetric
-import software.amazon.glue.dqdl.model.DQRule
+import org.apache.spark.sql.Column
+import software.amazon.glue.dqdl.model.{DQRule, DQRuleLogicalOperator}
 
 trait ExecutableRule {
   val dqRule: DQRule
@@ -48,6 +50,14 @@ case class RowCountMatchExecutableRule(dqRule: DQRule,
     Some(s"Dataset.$referenceDatasetAlias.RowCountMatch")
 }
 
+case class DataFreshnessExecutableRule(dqRule: DQRule,
+                                       column: String,
+                                       outcomeExpression: Column,
+                                       filteredRow: FilteredRowOutcome) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Column.$column.DataFreshness.Compliance")
+}
+
 case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
                                               primaryColumns: Seq[String],
                                               referenceDatasetAlias: String,
@@ -62,6 +72,39 @@ case class SchemaMatchExecutableRule(dqRule: DQRule,
                                      assertion: Double => Boolean) extends ExecutableRule {
   override val evaluatedMetricName: Option[String] =
     Some(s"Dataset.$referenceDatasetAlias.SchemaMatch")
+}
+
+case class DatasetMatchExecutableRule(dqRule: DQRule,
+                                      referenceDatasetAlias: String,
+                                      keyColumnMappings: Map[String, String],
+                                      matchColumnMappings: Option[Map[String, String]],
+                                      assertion: Double => Boolean) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Dataset.$referenceDatasetAlias.DatasetMatch")
+}
+
+case class ColumnNamesMatchPatternExecutableRule(dqRule: DQRule,
+                                                 pattern: String) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some("Dataset.*.ColumnNamesPatternMatchRatio")
+}
+
+/**
+ * Represents a composite rule that combines multiple nested rules using logical operators (AND/OR).
+ * Composite rules allow complex data quality checks by composing simpler rules.
+ *
+ * Example: `(RowCount > 0) and (IsComplete "column")`
+ *
+ * Note: Currently only supports dataset-level evaluation. Row-level evaluation is not yet implemented.
+ *
+ * @param dqRule The DQDL rule definition
+ * @param nestedRules The child rules to be evaluated and combined
+ * @param operator The logical operator (AND/OR) used to combine nested rule outcomes
+ */
+case class CompositeExecutableRule(dqRule: DQRule,
+                                   nestedRules: Seq[ExecutableRule],
+                                   operator: DQRuleLogicalOperator) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] = None
 }
 
 case class DeequMetricMapping(entity: String,

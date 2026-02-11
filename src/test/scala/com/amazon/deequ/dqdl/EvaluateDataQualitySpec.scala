@@ -780,6 +780,28 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(0.5)
     }
 
+    "support ReferentialIntegrity with different column names" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        ("Seattle", "WA"),
+        ("Portland", "OR")
+      ).toDF("city", "state")
+
+      val referenceDF = Seq(
+        ("Seattle", "WA"),
+        ("Portland", "OR"),
+        ("Denver", "CO")
+      ).toDF("ref_city", "ref_state")
+
+      val ruleset = """Rules=[ReferentialIntegrity "city,state" "ref.{ref_city,ref_state}" = 1.0]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(1.0)
+    }
+
     "support ReferentialIntegrity rule when reference not found" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
 
@@ -821,18 +843,412 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("FailureReason") should include("does not exist")
     }
 
-    "support ReferentialIntegrity with different column names" in withSparkSession { sparkSession =>
+    "support DatasetMatch rule" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
 
-      val primaryDF = Seq("CA", "NY", "TX").toDF("state_abbr")
-      val referenceDF = Seq("CA", "NY", "TX", "FL").toDF("abbreviation")
+      val primaryDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY")
+      ).toDF("ID", "State Name", "State Abbreviation")
 
-      val ruleset = """Rules=[ReferentialIntegrity "state_abbr" "ref.abbreviation" = 1.0]"""
+      val referenceDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY")
+      ).toDF("ID", "State Name", "State Abbreviation")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" >= 0.9]"""
       val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
 
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Passed")
-      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Column.ref.ReferentialIntegrity") should be(1.0)
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Dataset.ref.DatasetMatch") should be(1.0)
+    }
+
+    "support DatasetMatch rule with different key column names" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        (1, "California"),
+        (2, "New York")
+      ).toDF("ID", "State")
+
+      val referenceDF = Seq(
+        (1, "California"),
+        (2, "New York")
+      ).toDF("ID_ref", "State")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID->ID_ref" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Dataset.ref.DatasetMatch") should be(1.0)
+    }
+
+    "support DatasetMatch rule with partial match passes threshold" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY"),
+        (3, "New Jersey", "NJ"),
+        (4, "Texas", "TX")
+      ).toDF("ID", "State Name", "State Abbreviation")
+
+      val referenceDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY"),
+        (3, "New Jersey", "NJ"),
+        (4, "Texas", "TEX")  // TX != TEX
+      ).toDF("ID", "State Name", "State Abbreviation")
+
+      // 3 out of 4 match = 75%
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" >= 0.7]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Dataset.ref.DatasetMatch") should be(0.75)
+    }
+
+    "support DatasetMatch rule with partial match fails threshold" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY"),
+        (3, "New Jersey", "NJ"),
+        (4, "Texas", "TX")
+      ).toDF("ID", "State Name", "State Abbreviation")
+
+      val referenceDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY"),
+        (3, "New Jersey", "NJ"),
+        (4, "Texas", "TEX")  // TX != TEX
+      ).toDF("ID", "State Name", "State Abbreviation")
+
+      // 3 out of 4 match = 75%, but threshold is 90%
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" > 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("does not meet the constraint requirement")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Dataset.ref.DatasetMatch") should be(0.75)
+    }
+
+    "support DatasetMatch rule with match column mappings" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY")
+      ).toDF("ID", "State Name", "State Abbreviation")
+
+      val referenceDF = Seq(
+        (1, "California", "CA"),
+        (2, "New York", "NY")
+      ).toDF("ID_ref", "Name", "Abbr")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID->ID_ref" "State Name->Name" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DatasetMatch rule with composite key" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        (1, 1, 100.0),
+        (1, 2, 200.0),
+        (2, 1, 300.0)
+      ).toDF("ID_1", "ID_2", "Amount")
+
+      val referenceDF = Seq(
+        (1, 1, 100.0),
+        (1, 2, 200.0),
+        (2, 1, 300.0)
+      ).toDF("ID_ref1", "ID_ref2", "Amount")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID_1->ID_ref1,ID_2->ID_ref2" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics")("Dataset.ref.DatasetMatch") should be(1.0)
+    }
+
+    "support DatasetMatch rule with composite key and match columns" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        (1, 1, 100.0),
+        (1, 2, 200.0),
+        (2, 1, 300.0)
+      ).toDF("ID_1", "ID_2", "Amount1")
+
+      val referenceDF = Seq(
+        (1, 1, 100.0),
+        (1, 2, 200.0),
+        (2, 1, 999.0)  // Amount differs
+      ).toDF("ID_ref1", "ID_ref2", "Amount2")
+
+      // 2 out of 3 match = 66.7%
+      val ruleset = """Rules=[DatasetMatch "ref" "ID_1->ID_ref1,ID_2->ID_ref2" "Amount1->Amount2" >= 0.6]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DatasetMatch rule when reference not found" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq((1, "CA")).toDF("ID", "state")
+      val ruleset = """Rules=[DatasetMatch "missing" "ID" >= 0.9]"""
+
+      val results = EvaluateDataQuality.process(primaryDF, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found in additional sources")
+    }
+
+    "support DatasetMatch rule when key column not found" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq((1, "CA")).toDF("ID", "state")
+      val referenceDF = Seq((1, "CA")).toDF("ID_ref", "state")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("key columns were not found")
+    }
+
+    "support DatasetMatch rule when match column not found in primary" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq((1, "CA")).toDF("ID", "state")
+      val referenceDF = Seq((1, "CA")).toDF("ID", "amount")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" "missing->amount" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found")
+    }
+
+    "support DatasetMatch rule when match column not found in reference" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq((1, "CA")).toDF("ID", "state")
+      val referenceDF = Seq((1, "CA")).toDF("ID", "other")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" "state->missing" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found")
+    }
+
+    "support DatasetMatch rule when non-key columns do not match" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      // Primary has "state", reference has "other" - different non-key column names
+      // When no match cols provided, it tries to match primary's non-key cols in reference
+      val primaryDF = Seq((1, "CA")).toDF("ID", "state")
+      val referenceDF = Seq((1, "NY")).toDF("ID", "other")
+
+      val ruleset = """Rules=[DatasetMatch "ref" "ID" >= 0.9]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should include("not found")
+    }
+
+    "support ColumnNamesMatchPattern - pattern 'col_.*' matches all columns" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("col_one", "col_two")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(1.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'col_.*' fails for 'other'" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("col_one", "col_two", "other")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        row.getAs[String]("FailureReason") should include("other")
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Province.*' matches zero columns" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("State Name", "State Abbreviation")
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "Province.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(0.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Building[\\s|_|\\.]Code'" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("Building Code", "Building_Code", "Building.Code")
+
+        val rule = "ColumnNamesMatchPattern \"Building[\\s|_|\\.]Code\""
+        val results = EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio") should be(1.0)
+      }
+
+    "support ColumnNamesMatchPattern - pattern 'Building\\s*Code' partial match" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b", "c")).toDF("Building Code", "Building_Code", "Building.Code")
+
+        val rule = "ColumnNamesMatchPattern \"Building\\s*Code\""
+        val results = EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Failed")
+        row.getAs[String]("FailureReason") should include("Building_Code")
+        row.getAs[String]("FailureReason") should include("Building.Code")
+      }
+
+    "support ColumnNamesMatchPattern - invalid regex throws IllegalArgumentException" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("a", "b")).toDF("col_one", "col_two")
+
+        val rule = """ColumnNamesMatchPattern "[invalid(""""
+        val ex = the [IllegalArgumentException] thrownBy {
+          EvaluateDataQuality.process(df, s"Rules = [ $rule ]")
+        }
+        ex.getMessage should include("Invalid regex pattern")
+        ex.getMessage should include("[invalid(")
+      }
+
+    "support ColumnNamesMatchPattern - empty dataframe returns Passed with NaN metric" in
+      withSparkSession { sparkSession =>
+        val df = sparkSession.createDataFrame(
+          sparkSession.sparkContext.emptyRDD[org.apache.spark.sql.Row],
+          org.apache.spark.sql.types.StructType(Seq())
+        )
+
+        val results = EvaluateDataQuality.process(df, """Rules=[ColumnNamesMatchPattern "col_.*"]""")
+
+        val row = results.collect()(0)
+        row.getAs[String]("Outcome") should be("Passed")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        metrics("Dataset.*.ColumnNamesPatternMatchRatio").isNaN should be(true)
+      }
+
+    "evaluate simple AND composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 0) and (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[String]("FailureReason") should be(null)
+    }
+
+    "evaluate simple OR composite rule with one passing" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 10) or (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "evaluate nested composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(RowCount > 0) or ((IsComplete "att2") and (IsUnique "att2"))]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "evaluate composite rule with AND failure" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 100) and (Sum "att3" > 100)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should not be null
+    }
+
+    "evaluate composite rule with OR failure" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 100) or (Sum "att3" > 100)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[String]("FailureReason") should not be null
+    }
+
+    "collect metrics from all nested rules in composite" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[(Mean "att2" > 0) and (Sum "att3" > 0)]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics should contain key "Column.att2.Mean"
+      metrics should contain key "Column.att3.Sum"
+    }
+
+    "evaluate complex nested composite rule" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = """Rules=[((RowCount > 0) and (ColumnCount = 4)) or ((Mean "att2" > 0) and (Sum "att3" > 0))]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      results.count() should be(1)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
     }
   }
 
