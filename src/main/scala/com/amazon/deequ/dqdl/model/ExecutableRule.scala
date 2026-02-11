@@ -58,14 +58,6 @@ case class DataFreshnessExecutableRule(dqRule: DQRule,
     Some(s"Column.$column.DataFreshness.Compliance")
 }
 
-case class ColumnValuesDateExecutableRule(dqRule: DQRule,
-                                          column: String,
-                                          dateColumnExpression: Column,
-                                          filteredRow: FilteredRowOutcome) extends ExecutableRule {
-  override val evaluatedMetricName: Option[String] =
-    Some(s"Column.$column.ColumnValues.Compliance")
-}
-
 case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
                                               primaryColumns: Seq[String],
                                               referenceDatasetAlias: String,

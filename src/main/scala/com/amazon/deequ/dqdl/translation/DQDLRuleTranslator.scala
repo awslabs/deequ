@@ -35,14 +35,12 @@ import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnValuesRule
-import com.amazon.deequ.dqdl.translation.rules.ColumnValuesDateRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
-import software.amazon.glue.dqdl.model.condition.date.DateBasedCondition
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
@@ -107,11 +105,6 @@ object DQDLRuleTranslator {
       case "ColumnNamesMatchPattern" => ColumnNamesMatchPatternRule.toExecutableRule(rule)
       case "ReferentialIntegrity" =>
         ReferentialIntegrityRule.toExecutableRule(rule) match {
-          case Right(executableRule) => executableRule
-          case Left(message) => UnsupportedExecutableRule(rule, Some(message))
-        }
-      case "ColumnValues" if rule.getCondition.isInstanceOf[DateBasedCondition] =>
-        ColumnValuesDateRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }
