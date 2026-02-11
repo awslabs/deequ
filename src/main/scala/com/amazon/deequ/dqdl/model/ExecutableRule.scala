@@ -119,7 +119,6 @@ case class AggregateMatchExecutableRule(dqRule: DQRule,
     Some(s"Column.$instance.AggregateMatch")
   }
 }
-}
 
 case class DeequMetricMapping(entity: String,
                               instance: String,

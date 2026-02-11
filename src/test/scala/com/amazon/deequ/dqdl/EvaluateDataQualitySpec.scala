@@ -1357,6 +1357,45 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Failed")
     }
+
+    "support AggregateMatch rule with column not found in reference dataset" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(100.0).toDF("amount")
+      val referenceDF = Seq(100.0).toDF("other_column")
+
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(ref.amount)" > 0.5]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support AggregateMatch rule with empty DataFrame" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq.empty[Double].toDF("amount")
+      val referenceDF = Seq(100.0).toDF("amount")
+
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(ref.amount)" = 1.0]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support AggregateMatch rule with all NULL values" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(Option.empty[Double], Option.empty[Double]).toDF("amount")
+      val referenceDF = Seq(100.0).toDF("amount")
+
+      val ruleset = """Rules=[AggregateMatch "sum(amount)" "sum(ref.amount)" > 0.5]"""
+      val results = EvaluateDataQuality.process(primaryDF, ruleset, Map("ref" -> referenceDF))
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
   }
 
 }
