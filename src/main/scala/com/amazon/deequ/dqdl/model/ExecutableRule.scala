@@ -100,6 +100,26 @@ case class CompositeExecutableRule(dqRule: DQRule,
   override val evaluatedMetricName: Option[String] = None
 }
 
+sealed trait AggregateOperation {
+  def dataSourceAlias: String
+  def column: String
+}
+
+case class Sum(dataSourceAlias: String, column: String) extends AggregateOperation
+case class Avg(dataSourceAlias: String, column: String) extends AggregateOperation
+
+case class AggregateMatchExecutableRule(dqRule: DQRule,
+                                        firstAggregateOperation: AggregateOperation,
+                                        secondAggregateOperation: AggregateOperation,
+                                        assertion: Double => Boolean) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] = {
+    val col1 = firstAggregateOperation.column
+    val col2 = secondAggregateOperation.column
+    val instance = if (col1 == col2) col1 else s"$col1,$col2"
+    Some(s"Column.$instance.AggregateMatch")
+  }
+}
+
 case class DeequMetricMapping(entity: String,
                               instance: String,
                               name: String,
