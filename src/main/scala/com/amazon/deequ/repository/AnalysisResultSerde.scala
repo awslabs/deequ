@@ -36,7 +36,6 @@ import com.amazon.deequ.analyzers.NullBehavior.NullBehavior
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
 
-import scala.collection.JavaConversions._
 
 private[repository] object JsonSerializationConstants {
 
@@ -67,12 +66,13 @@ private[deequ] object SimpleResultSerde {
       .toJson(javaSuccessData, STRING_MAP_TYPE)
   }
 
-  def deserialize(json: String): Seq[immutable.Map[String, Any]] = {
+  def deserialize(json: String): immutable.Seq[immutable.Map[String, Any]] = {
     new GsonBuilder().create
       .fromJson(json, STRING_MAP_TYPE)
       .asInstanceOf[JArrayList[JMap[String, String]]]
       .asScala
       .map(map => immutable.Map(map.asScala.toList: _*))
+      .toList
   }
 }
 
@@ -97,7 +97,7 @@ object AnalysisResultSerde {
     gson.toJson(analysisResults.asJava, new TypeToken[JList[AnalysisResult]]() {}.getType)
   }
 
-  def deserialize(analysisResults: String): Seq[AnalysisResult] = {
+  def deserialize(analysisResults: String): immutable.Seq[AnalysisResult] = {
     val gson = new GsonBuilder()
       .serializeSpecialFloatingPointValues()
       .registerTypeAdapter(classOf[ResultKey], ResultKeyDeserializer)
@@ -113,7 +113,7 @@ object AnalysisResultSerde {
 
     gson.fromJson(analysisResults,
       new TypeToken[JList[AnalysisResult]]() {}.getType)
-        .asInstanceOf[JArrayList[AnalysisResult]].asScala
+        .asInstanceOf[JArrayList[AnalysisResult]].asScala.toList
   }
 }
 
@@ -453,10 +453,10 @@ private[deequ] object AnalyzerDeserializer
   extends JsonDeserializer[Analyzer[State[_], Metric[_]]] {
 
   private[this] def getColumnsAsSeq(context: JsonDeserializationContext,
-    json: JsonObject): Seq[String] = {
+    json: JsonObject): immutable.Seq[String] = {
 
     context.deserialize(json.get(COLUMNS_FIELD), new TypeToken[JList[String]]() {}.getType)
-      .asInstanceOf[JArrayList[String]].asScala
+      .asInstanceOf[JArrayList[String]].asScala.toList
   }
 
   override def deserialize(jsonElement: JsonElement, t: Type,
@@ -777,7 +777,7 @@ private[deequ] object MetricDeserializer extends JsonDeserializer[Metric[_]] {
         val instance = jsonObject.get("instance").getAsString
         if (jsonObject.has("value")) {
           val entries = jsonObject.get("value").getAsJsonObject
-          val values = entries.entrySet().map { entry =>
+          val values = entries.entrySet().asScala.map { entry =>
             entry.getKey -> entry.getValue.getAsDouble
           }
           .toMap

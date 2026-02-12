@@ -27,12 +27,11 @@ import com.amazon.deequ.suggestions.rules.interval.WilsonScoreIntervalStrategy
 import com.amazon.deequ.utils.FixtureSupport
 import com.amazon.deequ.{SparkContextSpec, VerificationSuite}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inspectors.forAll
-import org.scalatest.WordSpec
-import org.scalatest.prop.Tables.Table
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.prop.TableDrivenPropertyChecks
 
-class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContextSpec
-  with MockFactory{
+class ConstraintRulesTest extends AnyWordSpec with FixtureSupport with SparkContextSpec
+  with MockFactory with TableDrivenPropertyChecks {
 
 
   "CompleteIfCompleteRule" should {
