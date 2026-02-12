@@ -53,7 +53,7 @@ object EvaluateDataQuality {
    * @param df                    the Spark DataFrame to analyze.
    * @param rulesetDefinition     the data quality ruleset (defined in DQDL string format) to apply to the DataFrame.
    * @param additionalDataSources A map of additional source aliases to their DataFrames.
-   *                              Used for dataset comparison rules like RowCountMatch.
+   *                              Used for dataset comparison rules like RowCountMatch and SchemaMatch.
    * @return a Spark DataFrame containing the aggregated data quality results.
    */
   def process(df: DataFrame,

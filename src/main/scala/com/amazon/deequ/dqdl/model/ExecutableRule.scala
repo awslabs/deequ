@@ -67,6 +67,13 @@ case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
     Some(s"Column.$referenceDatasetAlias.ReferentialIntegrity")
 }
 
+case class SchemaMatchExecutableRule(dqRule: DQRule,
+                                     referenceDatasetAlias: String,
+                                     assertion: Double => Boolean) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Dataset.$referenceDatasetAlias.SchemaMatch")
+}
+
 case class DatasetMatchExecutableRule(dqRule: DQRule,
                                       referenceDatasetAlias: String,
                                       keyColumnMappings: Map[String, String],
