@@ -44,7 +44,10 @@ object ColumnDataTypeRule {
 
   def toExecutableRule(rule: DQRule, filteredRowOutcome: FilteredRowOutcome):
       Either[String, ColumnDataTypeExecutableRule] = {
-    val columnName = rule.getParameters.asScala("TargetColumn")
+    val columnName = rule.getParameters.asScala.getOrElse("TargetColumn", null)
+    if (columnName == null || columnName.isEmpty) {
+      return Left("ColumnDataType rule requires a TargetColumn parameter")
+    }
     val tags = Option(rule.getTags).map(_.asScala.toMap).getOrElse(Map.empty[String, String])
 
     rule.getCondition match {

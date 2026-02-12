@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2026 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -17,7 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.analyzers.FilteredRowOutcome
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
+import com.amazon.deequ.dqdl.model.{CompositeExecutableRule, DeequExecutableRule, ExecutableRule, UnsupportedExecutableRule}
 import com.amazon.deequ.dqdl.translation.rules.ColumnCorrelationRule
 import com.amazon.deequ.dqdl.translation.rules.CompletenessRule
 import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
@@ -36,8 +36,12 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
+import com.amazon.deequ.dqdl.translation.rules.DatasetMatchRule
 import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnDataTypeRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
+import com.amazon.deequ.dqdl.translation.rules.SchemaMatchRule
+import com.amazon.deequ.dqdl.translation.rules.AggregateMatchRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
@@ -89,14 +93,31 @@ object DQDLRuleTranslator {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }
+      case "Composite" =>
+        // Validate nested rules exist
+        if (rule.getNestedRules == null || rule.getNestedRules.isEmpty) {
+          UnsupportedExecutableRule(rule, Some("Composite rule must have at least one nested rule"))
+        } else {
+          // Recursively translate nested rules
+          val nestedExecutableRules = rule.getNestedRules.asScala.map(toExecutableRule).toSeq
+          CompositeExecutableRule(rule, nestedExecutableRules, rule.getOperator)
+        }
       case "DataFreshness" =>
         DataFreshnessRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }
       case "RowCountMatch" => RowCountMatchRule.toExecutableRule(rule)
+      case "ColumnNamesMatchPattern" => ColumnNamesMatchPatternRule.toExecutableRule(rule)
+      case "AggregateMatch" => AggregateMatchRule.toExecutableRule(rule)
       case "ReferentialIntegrity" =>
         ReferentialIntegrityRule.toExecutableRule(rule) match {
+          case Right(executableRule) => executableRule
+          case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
+      case "SchemaMatch" => SchemaMatchRule.toExecutableRule(rule)
+      case "DatasetMatch" =>
+        DatasetMatchRule.toExecutableRule(rule) match {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
         }

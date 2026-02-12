@@ -199,5 +199,16 @@ class ColumnDataTypeRuleSpec extends AnyWordSpec with Matchers {
       result.isRight shouldBe true
       result.right.get.column shouldBe "column-with-dashes"
     }
+
+    "fail when TargetColumn is missing" in {
+      val parameters = Map.empty[String, String]
+      val condition = createStringCondition(StringBasedConditionOperator.EQUALS, "DATE")
+      val rule = new DQRule("ColumnDataType", parameters.asJava, condition)
+
+      val result = ColumnDataTypeRule.toExecutableRule(rule, FilteredRowOutcome.TRUE)
+
+      result.isLeft shouldBe true
+      result.left.get should include("TargetColumn")
+    }
   }
 }
