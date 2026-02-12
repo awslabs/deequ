@@ -58,7 +58,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
                              rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val rawOperands = condition.getOperands.asScala
     if (!rawOperands.forall(op => op.isInstanceOf[AtomicNumberOperand] || op.isInstanceOf[NullNumericOperand])) {
-      return Left("ColumnValues rule only supports atomic operands or NULL keyword in conditions.")
+      return Left("ColumnValues rule only supports numeric operands or NULL keyword in conditions.")
     }
     if (rawOperands.isEmpty) {
       return Left("ColumnValues rule requires at least one operand.")
@@ -135,7 +135,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         if (numericOperands.size < 2) {
           return Left("NOT BETWEEN requires two operands.")
         }
-        val sql = s"$transformedCol IS NULL OR " +
+        val sql = s"$transformedCol IS NOT NULL AND " +
           s"($transformedCol <= ${numericOperands.head} OR $transformedCol >= ${numericOperands.last})"
         Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
           columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))

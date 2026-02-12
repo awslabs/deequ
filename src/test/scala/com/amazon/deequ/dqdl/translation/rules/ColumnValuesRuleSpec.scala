@@ -309,7 +309,7 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       val (check, _) = result.right.get
       check.constraints.size shouldBe 1
       check.constraints(0).toString should include(
-        "value IS NULL OR (value <= 10.0 OR value >= 20.0)")
+        "value IS NOT NULL AND (value <= 10.0 OR value >= 20.0)")
     }
 
     "convert EQUALS NULL numeric rule" in {
