@@ -645,6 +645,57 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[String]("FailureReason") should include("not found in additional data sources")
     }
 
+    "support SchemaMatch rule" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val primaryDF = Seq(
+        ("California", "CA", 1),
+        ("New York", "NY", 2),
+        ("New Jersey", "NJ", 3)
+      ).toDF("State Name", "State Abbreviation", "ID")
+
+      val referenceDF = Seq(
+        ("California", "CA", "extra"),
+        ("New York", "NY", "column"),
+        ("New Jersey", "NJ", "here")
+      ).toDF("State Name", "State Abbreviation", "Description")
+
+      val referenceDatasetAlias = "ref"
+      val additionalDataSources = Map(referenceDatasetAlias -> referenceDF)
+
+      // Schema has 2 matching columns out of 3 = 0.666...
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        s"""SchemaMatch "$referenceDatasetAlias" = 1.0""" -> false,
+        s"""SchemaMatch "$referenceDatasetAlias" != 1.0""" -> true,
+        s"""SchemaMatch "$referenceDatasetAlias" > 0.65""" -> true,
+        s"""SchemaMatch "$referenceDatasetAlias" >= 0.67""" -> false,
+        s"""SchemaMatch "$referenceDatasetAlias" < 0.7""" -> true,
+        s"""SchemaMatch "$referenceDatasetAlias" <= 0.67""" -> true,
+        s"""SchemaMatch "$referenceDatasetAlias" between 0.6 and 0.7""" -> true,
+        s"""SchemaMatch "$referenceDatasetAlias" not between 0.7 and 0.9""" -> true,
+        s"""SchemaMatch "$referenceDatasetAlias" not between 0.1 and 0.6""" -> true
+      )
+
+      rulesToResultMap.foreach { case (rule, expected) =>
+        val results = EvaluateDataQuality.process(
+          primaryDF,
+          s"Rules = [ $rule ]",
+          additionalDataSources
+        )
+
+        val row = results.collect()(0)
+        val actual = row.getAs[String]("Outcome") == "Passed"
+        val failureReason = Option(row.getAs[String]("FailureReason")).getOrElse("")
+        val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+        val metricValue = metrics.getOrElse(s"Dataset.$referenceDatasetAlias.SchemaMatch", 0.0)
+
+        assert(actual == expected,
+          s"Result should be $expected for rule: $rule. " +
+            s"Metric value: $metricValue, Failure reason: $failureReason")
+      }
+    }
+
+
     "support ReferentialIntegrity rule" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
 
