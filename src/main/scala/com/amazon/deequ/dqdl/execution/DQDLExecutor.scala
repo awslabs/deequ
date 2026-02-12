@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2026 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -16,8 +16,8 @@
 
 package com.amazon.deequ.dqdl.execution
 
-import com.amazon.deequ.dqdl.execution.executors.{AggregateMatchExecutor, ColumnNamesMatchPatternExecutor, CompositeRulesExecutor, DataFreshnessExecutor, DatasetMatchExecutor, DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, UnsupportedRulesExecutor, SchemaMatchExecutor}
-import com.amazon.deequ.dqdl.model.{AggregateMatchExecutableRule, ColumnNamesMatchPatternExecutableRule, CompositeExecutableRule, DataFreshnessExecutableRule, DatasetMatchExecutableRule, DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, UnsupportedExecutableRule, SchemaMatchExecutableRule}
+import com.amazon.deequ.dqdl.execution.executors.{AggregateMatchExecutor, ColumnDataTypeExecutor, ColumnNamesMatchPatternExecutor, CompositeRulesExecutor, DataFreshnessExecutor, DatasetMatchExecutor, DeequRulesExecutor, ReferentialIntegrityExecutor, RowCountMatchExecutor, SchemaMatchExecutor, UnsupportedRulesExecutor}
+import com.amazon.deequ.dqdl.model.{AggregateMatchExecutableRule, ColumnDataTypeExecutableRule, ColumnNamesMatchPatternExecutableRule, CompositeExecutableRule, DataFreshnessExecutableRule, DatasetMatchExecutableRule, DeequExecutableRule, ExecutableRule, Failed, ReferentialIntegrityExecutableRule, RowCountMatchExecutableRule, RuleOutcome, SchemaMatchExecutableRule, UnsupportedExecutableRule}
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
@@ -41,6 +41,7 @@ object DQDLExecutor {
     classOf[ReferentialIntegrityExecutableRule] -> ReferentialIntegrityExecutor,
     classOf[SchemaMatchExecutableRule] -> SchemaMatchExecutor,
     classOf[DataFreshnessExecutableRule] -> DataFreshnessExecutor,
+    classOf[ColumnDataTypeExecutableRule] -> ColumnDataTypeExecutor,
     classOf[ColumnNamesMatchPatternExecutableRule] -> ColumnNamesMatchPatternExecutor,
     classOf[DatasetMatchExecutableRule] -> DatasetMatchExecutor,
     classOf[AggregateMatchExecutableRule] -> AggregateMatchExecutor
