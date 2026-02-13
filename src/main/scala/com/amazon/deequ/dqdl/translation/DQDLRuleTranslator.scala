@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2026 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -34,6 +34,7 @@ import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnValuesRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DatasetMatchRule
@@ -70,7 +71,8 @@ object DQDLRuleTranslator {
     "CustomSql" -> new CustomSqlRule,
     "IsPrimaryKey" -> new IsPrimaryKeyRule,
     "ColumnLength" -> new ColumnLengthRule,
-    "ColumnExists" -> new ColumnExistsRule
+    "ColumnExists" -> new ColumnExistsRule,
+    "ColumnValues" -> new ColumnValuesRule
   )
 
   /**

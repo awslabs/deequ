@@ -234,21 +234,6 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(75)
     }
 
-    "work with not yet supported rule" in withSparkSession { sparkSession =>
-      // given
-      val df = getDfFull(sparkSession)
-      // Rule is not yet supported
-      val ruleset = "Rules=[ColumnValues \"Foo\" = 5]"
-
-      // when
-      val resultDf = EvaluateDataQuality.process(df, ruleset)
-
-      // then
-      resultDf.collect()(0).getAs[String]("Outcome") should be("Failed")
-      resultDf.collect()(0).getAs[String]("FailureReason") should be("Rule (or nested rule) not supported due to: " +
-        "No converter found for rule type: ColumnValues")
-    }
-
     "support CustomSql rule when Passed" in withSparkSession { sparkSession =>
       // given
       val df = getDfWithNumericValues(sparkSession)
@@ -531,6 +516,70 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
         metrics should contain key s"Dataset.$columnName.ColumnExists"
         metrics should contain value expectedMetric
       }
+    }
+
+    "support ColumnValues numeric GREATER_THAN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" > 0]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues numeric LESS_THAN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" < 10]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues numeric BETWEEN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" between 0 and 7]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues numeric IN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" in [1, 2, 3, 4, 5, 6]]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues numeric NOT IN" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" not in [100, 200]]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues string IN" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" in [\"a\", \"b\"]]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues string IN with NULL keyword" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"attNull\" in [5, 6, 7, NULL]]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues when failed" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val ruleset = "Rules=[ColumnValues \"att1\" > 100]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
     }
 
     "support RowCountMatch rule" in withSparkSession { sparkSession =>
