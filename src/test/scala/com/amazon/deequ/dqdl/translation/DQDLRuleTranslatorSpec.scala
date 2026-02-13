@@ -44,6 +44,21 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
       deequRuleOpt shouldBe defined
       deequRuleOpt.get.check.toString should include("SizeConstraint")
     }
+
+    "translate ColumnCount rule" in {
+      val parameters: Map[String, String] = Map.empty
+      val rule: DQRule = new DQRule("ColumnCount", parameters.asJava, "=3".asCondition)
+      val deequRuleOpt: Option[DeequExecutableRule] = DQDLRuleTranslator.translateRule(rule).toOption
+      deequRuleOpt shouldBe defined
+      deequRuleOpt.get.check.toString should include("ColumnCountConstraint")
+    }
+  }
+
+  "get executable rules for ColumnCount" in {
+    val ruleset: DQRuleset = DefaultDQDLParser.parse("Rules=[ColumnCount = 3]")
+    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
+    rules.size should equal(1)
+    rules.head.evaluatedMetricName.get should equal("Dataset.*.ColumnCount")
   }
 
   "get executable rules for RowCount" in {

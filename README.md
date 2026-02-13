@@ -141,6 +141,7 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 ### Supported DQDL Rules
 
 - **RowCount**: `RowCount < 100`
+- **ColumnCount**: `ColumnCount = 10`
 - **Completeness**: `Completeness "column" > 0.9`
 - **IsComplete**: `IsComplete "column"`
 - **Uniqueness**: `Uniqueness "column" = 1.0`
