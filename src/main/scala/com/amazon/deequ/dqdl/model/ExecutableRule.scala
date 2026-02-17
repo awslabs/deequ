@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2026 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -65,6 +65,15 @@ case class ReferentialIntegrityExecutableRule(dqRule: DQRule,
                                               assertion: Double => Boolean) extends ExecutableRule {
   override val evaluatedMetricName: Option[String] =
     Some(s"Column.$referenceDatasetAlias.ReferentialIntegrity")
+}
+
+case class ColumnDataTypeExecutableRule(dqRule: DQRule,
+                                        column: String,
+                                        outcomeExpression: Column,
+                                        assertion: Double => Boolean,
+                                        filteredRow: FilteredRowOutcome) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some(s"Column.$column.ColumnDataType.Compliance")
 }
 
 case class SchemaMatchExecutableRule(dqRule: DQRule,
