@@ -50,7 +50,7 @@ private[repository] object AnalysisResult {
       .withColumn(DATASET_DATE_FIELD, lit(analysisResult.resultKey.dataSetDate))
 
     analysisResult.resultKey.tags
-      .filterKeys(tagName => withTags.isEmpty || withTags.contains(tagName))
+      .filter { case (tagName, _) => withTags.isEmpty || withTags.contains(tagName) }
       .map { case (tagName, tagValue) =>
           formatTagColumnNameInDataFrame(tagName, analyzerContextDF) -> tagValue}
       .foreach {
@@ -81,7 +81,7 @@ private[repository] object AnalysisResult {
       serializableResult, DATASET_DATE_FIELD, analysisResult.resultKey.dataSetDate)
 
     analysisResult.resultKey.tags
-      .filterKeys(tagName => withTags.isEmpty || withTags.contains(tagName))
+      .filter { case (tagName, _) => withTags.isEmpty || withTags.contains(tagName) }
       .map { case (tagName, tagValue) =>
         (formatTagColumnNameInJson(tagName, serializableResult), tagValue)}
       .foreach { case (key, value) => serializableResult = addColumnToSerializableResult(

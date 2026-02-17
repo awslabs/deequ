@@ -221,6 +221,6 @@ class VerificationResultTest extends WordSpec with Matchers with SparkContextSpe
   }
 
   private[this] def assertSameResultsJson(jsonA: String, jsonB: String): Unit = {
-    assert(SimpleResultSerde.deserialize(jsonA).toSet.sameElements(SimpleResultSerde.deserialize(jsonB).toSet))
+    assert(SimpleResultSerde.deserialize(jsonA).toSet == SimpleResultSerde.deserialize(jsonB).toSet)
   }
 }

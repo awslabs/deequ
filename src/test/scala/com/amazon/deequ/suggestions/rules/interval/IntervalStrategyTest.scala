@@ -20,12 +20,11 @@ import com.amazon.deequ.SparkContextSpec
 import com.amazon.deequ.suggestions.rules.interval.ConfidenceIntervalStrategy.ConfidenceInterval
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inspectors.forAll
-import org.scalatest.prop.Tables.Table
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.prop.TableDrivenPropertyChecks
 
 class IntervalStrategyTest extends AnyWordSpec with FixtureSupport with SparkContextSpec
-  with MockFactory {
+  with MockFactory with TableDrivenPropertyChecks {
 
   "ConfidenceIntervalStrategy" should {
     "be calculated correctly" in {

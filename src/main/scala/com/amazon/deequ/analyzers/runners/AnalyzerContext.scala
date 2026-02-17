@@ -82,7 +82,7 @@ object AnalyzerContext {
 
     analyzerContext.metricMap
       // Get matching analyzers
-      .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer))
+      .filter { case (analyzer, _) => forAnalyzers.isEmpty || forAnalyzers.contains(analyzer) }
       // Get analyzers with successful results
       .filter { case (_, metrics) => metrics.value.isSuccess }
       // Get metrics as Double and replace simple name with description

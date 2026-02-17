@@ -27,7 +27,7 @@ import com.amazon.deequ.utils.FixtureSupport
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DecimalType, DoubleType, FloatType, StringType, StructField, StructType}
 import org.scalatest.Inside.inside
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
@@ -257,7 +257,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         case hv =>
           assert(hv.numberOfBins == 3)
           assert(hv.values.size == 3)
-          assert(hv.values.keys == Set("a", "b", Histogram.NullFieldReplacement))
+          assert(hv.values.keys.toSet == Set("a", "b", Histogram.NullFieldReplacement))
 
       }
     }
@@ -271,7 +271,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         case hv =>
           assert(hv.numberOfBins == 3)
           assert(hv.values.size == 3)
-          assert(hv.values.keys == Set("Furniture", "Cosmetics", "Electronics"))
+          assert(hv.values.keys.toSet == Set("Furniture", "Cosmetics", "Electronics"))
           assert(hv("Furniture").absolute == 55)
           assert(hv("Furniture").ratio == 55.0 / (55 + 20 + 60))
           assert(hv("Cosmetics").absolute == 20)
@@ -310,7 +310,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       histogram.value.get match {
         case hv =>
           assert(hv.numberOfBins == 2)
-          assert(hv.values.keys == Set("Value1", "Value2"))
+          assert(hv.values.keys.toSet == Set("Value1", "Value2"))
 
       }
     }
@@ -324,7 +324,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         case hv =>
           assert(hv.numberOfBins == 3)
           assert(hv.values.size == 2)
-          assert(hv.values.keys == Set("a", Histogram.NullFieldReplacement))
+          assert(hv.values.keys.toSet == Set("a", Histogram.NullFieldReplacement))
 
       }
     }
@@ -348,12 +348,11 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val nonZeroValuesWithStringKeys = nonZeroValues.toSeq
         .map { case (instance, distValue) => instance.toString -> distValue }
 
-      val dataTypes = DataTypeInstances.values.map { _.toString }
+      val dataTypes = DataTypeInstances.values.map { _.toString }.toSeq
 
       val zeros = dataTypes
-        .diff { nonZeroValuesWithStringKeys.map { case (distKey, _) => distKey }.toSet }
+        .diff(nonZeroValuesWithStringKeys.map { case (distKey, _) => distKey }.toSeq)
         .map(dataType => dataType -> DistributionValue(0, 0.0))
-        .toSeq
 
       val distributionValues = Map(zeros ++ nonZeroValuesWithStringKeys: _*)
 
