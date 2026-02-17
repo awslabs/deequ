@@ -28,6 +28,8 @@ import software.amazon.glue.dqdl.model.condition.number.AtomicNumberOperand
 import software.amazon.glue.dqdl.model.condition.number.NullNumericOperand
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedConditionOperator._
+import software.amazon.glue.dqdl.model.condition.date.DateBasedCondition
+import software.amazon.glue.dqdl.model.condition.date.DateBasedConditionOperator
 import software.amazon.glue.dqdl.model.condition.string.KeywordStringOperand
 import software.amazon.glue.dqdl.model.condition.string.QuotedStringOperand
 import software.amazon.glue.dqdl.model.condition.string.StringBasedCondition
@@ -47,6 +49,8 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         mkNumericCheck(check, targetColumn, transformedCol, condition, rule)
       case condition: StringBasedCondition =>
         mkStringCheck(check, targetColumn, transformedCol, condition, rule)
+      case condition: DateBasedCondition =>
+        mkDateCheck(check, targetColumn, transformedCol, condition, rule)
       case _ =>
         Left(s"Unsupported condition type for ColumnValues rule: " +
           s"${Option(rule.getCondition).map(_.getClass.getSimpleName).getOrElse("null")}")
@@ -264,6 +268,72 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       }
       if (conditions.isEmpty) "FALSE" else conditions.mkString(" OR ")
     }
+  }
+
+  private def mkDateCheck(check: Check, targetColumn: String, transformedCol: String,
+                          condition: DateBasedCondition,
+                          rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+    val dateCol = s"to_date($transformedCol)"
+    val datePrefixLength = "yyyy-MM-dd".length
+
+    val allOperands = condition.getOperands.asScala
+    val hasNullOperand = allOperands.exists(_.getEvaluatedExpression == null)
+    val dateOperands = allOperands
+      .filter(_.getEvaluatedExpression != null)
+      .map { op =>
+        val evaluated = op.getEvaluatedExpression.toString
+        if (evaluated.length >= datePrefixLength) evaluated.substring(0, datePrefixLength)
+        else evaluated
+      }
+
+    val sql = condition.getOperator match {
+      case DateBasedConditionOperator.GREATER_THAN =>
+        s"$dateCol > '${dateOperands.head}'"
+      case DateBasedConditionOperator.GREATER_THAN_EQUAL_TO =>
+        s"$dateCol >= '${dateOperands.head}'"
+      case DateBasedConditionOperator.LESS_THAN =>
+        s"$dateCol < '${dateOperands.head}'"
+      case DateBasedConditionOperator.LESS_THAN_EQUAL_TO =>
+        s"$dateCol <= '${dateOperands.head}'"
+      case DateBasedConditionOperator.EQUALS =>
+        if (hasNullOperand) s"$transformedCol IS NULL"
+        else s"$dateCol = '${dateOperands.head}'"
+      case DateBasedConditionOperator.NOT_EQUALS =>
+        if (hasNullOperand) s"$transformedCol IS NOT NULL"
+        else s"$transformedCol IS NULL OR $dateCol != '${dateOperands.head}'"
+      case DateBasedConditionOperator.BETWEEN =>
+        s"$dateCol > '${dateOperands.head}' AND $dateCol < '${dateOperands.last}'"
+      case DateBasedConditionOperator.NOT_BETWEEN =>
+        s"$dateCol <= '${dateOperands.head}' OR $dateCol >= '${dateOperands.last}'"
+      case DateBasedConditionOperator.IN =>
+        val datePart = if (dateOperands.nonEmpty) {
+          s"$dateCol IN (${dateOperands.map(o => s"'$o'").mkString(", ")})"
+        } else { "" }
+        val nullPart = if (hasNullOperand) { s"$transformedCol IS NULL" } else { "" }
+        (datePart, nullPart) match {
+          case (d, n) if d.nonEmpty && n.nonEmpty => s"$d OR $n"
+          case (d, _) if d.nonEmpty => d
+          case (_, n) if n.nonEmpty => n
+          case _ => "FALSE"
+        }
+      case DateBasedConditionOperator.NOT_IN =>
+        val datePart = if (dateOperands.nonEmpty) {
+          s"$dateCol NOT IN (${dateOperands.map(o => s"'$o'").mkString(", ")})"
+        } else { "" }
+        val nullPart = if (hasNullOperand) { s"$transformedCol IS NOT NULL" } else { "" }
+        (datePart, nullPart) match {
+          case (d, n) if d.nonEmpty && n.nonEmpty => s"$d AND $n"
+          case (d, _) if d.nonEmpty =>
+            s"$transformedCol IS NULL OR $d"
+          case (_, n) if n.nonEmpty => n
+          case _ => "TRUE"
+        }
+      case _ =>
+        return Left(s"Unsupported operator for date condition: ${condition.getOperator}")
+    }
+
+    Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+      columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule)))
   }
 
   private def minMetric(targetColumn: String, rule: DQRule): Seq[DeequMetricMapping] =

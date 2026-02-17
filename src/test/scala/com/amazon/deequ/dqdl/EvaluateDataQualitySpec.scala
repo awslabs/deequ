@@ -1866,6 +1866,132 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Failed")
     }
+
+    "support ColumnValues date GREATER_THAN" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" > "2022-01-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date LESS_THAN" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" < "2023-01-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date BETWEEN" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" between "2022-01-01" and "2022-12-31"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date IN" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2022-01-05"), (2, "2022-01-05"), (3, "2022-03-15")
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" in ["2022-01-05", "2022-03-15"]]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date when failed" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" > "2023-01-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support ColumnValues date with typed DateType column" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      import org.apache.spark.sql.functions.col
+      import org.apache.spark.sql.types.DateType
+
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-07-01")
+      ).toDF("id", "order_date").withColumn("order_date", col("order_date").cast(DateType))
+
+      val ruleset = """Rules=[ColumnValues "order_date" >= "2022-02-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date with column name containing spaces" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "Some Date")
+
+      val ruleset = """Rules=[ColumnValues "Some Date" > "2022-01-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "fail ColumnValues date when column has NULLs" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, Some("2022-02-01")), (2, None), (3, Some("2022-04-01"))
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" > "2022-01-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Failed")
+    }
+
+    "pass ColumnValues date NOT_EQUALS when column has NULLs" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, Some("2022-02-01")), (2, None), (3, Some("2022-04-01"))
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" != "2099-01-01"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date with where clause" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "2021-06-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "order_date")
+
+      // Without where clause this would fail (row 1 is before 2022)
+      val ruleset = """Rules=[ColumnValues "order_date" > "2022-01-01" where "id > 1"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnValues date with dynamic now() expression" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      // All dates are in the past, so they should be less than now()
+      val df = Seq(
+        (1, "2022-02-01"), (2, "2022-03-01"), (3, "2022-04-01")
+      ).toDF("id", "order_date")
+
+      val ruleset = """Rules=[ColumnValues "order_date" < (now() - 1 days)]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+    }
   }
 
 }

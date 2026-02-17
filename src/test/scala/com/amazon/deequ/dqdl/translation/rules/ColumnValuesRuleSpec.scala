@@ -20,6 +20,10 @@ import com.amazon.deequ.utils.ConditionUtils.ConditionAsString
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.glue.dqdl.model.DQRule
+import software.amazon.glue.dqdl.model.condition.date.{DateBasedCondition, DateBasedConditionOperator}
+import software.amazon.glue.dqdl.model.condition.date.DateExpression
+import software.amazon.glue.dqdl.model.condition.date.DateExpression.StaticDate
+import software.amazon.glue.dqdl.model.condition.date.NullDateExpression
 import software.amazon.glue.dqdl.model.condition.number.{AtomicNumberOperand, NullNumericOperand, NumberBasedCondition, NumberBasedConditionOperator, NumericOperand}
 import software.amazon.glue.dqdl.model.condition.string.{Keyword, KeywordStringOperand, QuotedStringOperand, StringBasedCondition, StringBasedConditionOperator, StringOperand}
 
@@ -622,6 +626,238 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       val (check, _) = result.right.get
       check.constraints(0).toString should include(
         "status IS NULL OR status NOT IN ('inactive', 'deleted')")
+    }
+
+    // Date-based condition tests
+
+    "convert date GREATER_THAN rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2022-01-01")).asJava
+      val condition = new DateBasedCondition(
+        "> \"2022-01-01\"", DateBasedConditionOperator.GREATER_THAN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, metrics) = result.right.get
+      check.constraints(0).toString should include("to_date(`order_date`) > '2022-01-01'")
+      metrics.head.name shouldBe "ColumnValues.Compliance"
+    }
+
+    "convert date LESS_THAN rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2023-12-31")).asJava
+      val condition = new DateBasedCondition(
+        "< \"2023-12-31\"", DateBasedConditionOperator.LESS_THAN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include("to_date(`order_date`) < '2023-12-31'")
+    }
+
+    "convert date GREATER_THAN_EQUAL_TO rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2022-01-01")).asJava
+      val condition = new DateBasedCondition(
+        ">= \"2022-01-01\"", DateBasedConditionOperator.GREATER_THAN_EQUAL_TO, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include("to_date(`order_date`) >= '2022-01-01'")
+    }
+
+    "convert date LESS_THAN_EQUAL_TO rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2023-12-31")).asJava
+      val condition = new DateBasedCondition(
+        "<= \"2023-12-31\"", DateBasedConditionOperator.LESS_THAN_EQUAL_TO, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include("to_date(`order_date`) <= '2023-12-31'")
+    }
+
+    "convert date EQUALS rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2022-06-15")).asJava
+      val condition = new DateBasedCondition(
+        "= \"2022-06-15\"", DateBasedConditionOperator.EQUALS, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include("to_date(`order_date`) = '2022-06-15'")
+    }
+
+    "convert date NOT_EQUALS rule with NULL passthrough" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2022-06-15")).asJava
+      val condition = new DateBasedCondition(
+        "!= \"2022-06-15\"", DateBasedConditionOperator.NOT_EQUALS, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "`order_date` IS NULL OR to_date(`order_date`) != '2022-06-15'")
+    }
+
+    "convert date BETWEEN rule with exclusive bounds" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](
+        new StaticDate("2022-01-01"), new StaticDate("2023-01-01")).asJava
+      val condition = new DateBasedCondition(
+        "between \"2022-01-01\" and \"2023-01-01\"", DateBasedConditionOperator.BETWEEN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "to_date(`order_date`) > '2022-01-01' AND to_date(`order_date`) < '2023-01-01'")
+    }
+
+    "convert date NOT_BETWEEN rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](
+        new StaticDate("2022-01-01"), new StaticDate("2023-01-01")).asJava
+      val condition = new DateBasedCondition(
+        "not between \"2022-01-01\" and \"2023-01-01\"", DateBasedConditionOperator.NOT_BETWEEN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "to_date(`order_date`) <= '2022-01-01' OR to_date(`order_date`) >= '2023-01-01'")
+    }
+
+    "convert date IN rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](
+        new StaticDate("2022-01-05"), new StaticDate("2022-03-15")).asJava
+      val condition = new DateBasedCondition(
+        "in [\"2022-01-05\", \"2022-03-15\"]", DateBasedConditionOperator.IN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "to_date(`order_date`) IN ('2022-01-05', '2022-03-15')")
+    }
+
+    "convert date NOT_IN rule with NULL passthrough" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2022-01-05")).asJava
+      val condition = new DateBasedCondition(
+        "not in [\"2022-01-05\"]", DateBasedConditionOperator.NOT_IN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "`order_date` IS NULL OR to_date(`order_date`) NOT IN ('2022-01-05')")
+    }
+
+    "convert date rule with column name requiring quotes" in {
+      val parameters = Map("TargetColumn" -> "Some Date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](new StaticDate("2022-01-01")).asJava
+      val condition = new DateBasedCondition(
+        "> \"2022-01-01\"", DateBasedConditionOperator.GREATER_THAN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include("to_date(`Some Date`) > '2022-01-01'")
+    }
+
+    "convert date EQUALS NULL rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] =
+        List[DateExpression](new NullDateExpression()).asJava
+      val condition = new DateBasedCondition(
+        "= NULL", DateBasedConditionOperator.EQUALS, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "`order_date` IS NULL")
+    }
+
+    "convert date NOT_EQUALS NULL rule" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] =
+        List[DateExpression](new NullDateExpression()).asJava
+      val condition = new DateBasedCondition(
+        "!= NULL", DateBasedConditionOperator.NOT_EQUALS, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints(0).toString should include(
+        "`order_date` IS NOT NULL")
+    }
+
+    "convert date IN rule with NULL operand" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](
+        new StaticDate("2022-01-05"), new NullDateExpression()).asJava
+      val condition = new DateBasedCondition(
+        "in [\"2022-01-05\", NULL]", DateBasedConditionOperator.IN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      val constraint = check.constraints(0).toString
+      constraint should include("to_date(`order_date`) IN ('2022-01-05')")
+      constraint should include("`order_date` IS NULL")
+    }
+
+    "convert date NOT_IN rule with NULL operand" in {
+      val parameters = Map("TargetColumn" -> "order_date")
+      val operands: java.util.List[DateExpression] = List[DateExpression](
+        new StaticDate("2022-01-05"), new NullDateExpression()).asJava
+      val condition = new DateBasedCondition(
+        "not in [\"2022-01-05\", NULL]",
+        DateBasedConditionOperator.NOT_IN, operands)
+      val rule = new DQRule("ColumnValues", parameters.asJava, condition)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      val constraint = check.constraints(0).toString
+      constraint should include("NOT IN ('2022-01-05')")
+      constraint should include("`order_date` IS NOT NULL")
     }
   }
 }
