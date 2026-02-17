@@ -16,9 +16,11 @@
 
 package com.amazon.deequ.dqdl.execution.executors
 
+import com.amazon.deequ.VerificationResult
+import com.amazon.deequ.VerificationSuite
+import com.amazon.deequ.constraints.{RowLevelAssertedConstraint, RowLevelConstraint, RowLevelGroupedConstraint}
 import com.amazon.deequ.dqdl.execution.DQDLExecutor
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, Failed, RuleOutcome}
-import com.amazon.deequ.{VerificationResult, VerificationSuite}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, Failed, NoColumn, RuleOutcome, SingularColumn}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, concat, lit}
 import software.amazon.glue.dqdl.model.DQRule
@@ -26,12 +28,24 @@ import software.amazon.glue.dqdl.model.DQRule
 object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule] {
   private val delim = "."
 
+  private val _lastRowLevelData = new ThreadLocal[Option[DataFrame]] {
+    override def initialValue(): Option[DataFrame] = None
+  }
+
+  def lastRowLevelData: Option[DataFrame] = _lastRowLevelData.get()
+
+  def resetRowLevelData(): Unit = _lastRowLevelData.set(None)
+
   override def executeRules(rules: Seq[DeequExecutableRule], df: DataFrame,
                             additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
     val verificationResult = VerificationSuite()
       .onData(df.toDF())
       .addChecks(rules.map(_.check))
       .run()
+
+    _lastRowLevelData.set(Some(
+      VerificationResult.rowLevelResultsAsDataFrame(df.sparkSession, verificationResult, df)
+    ))
 
     val metricsDF = VerificationResult.successMetricsAsDataFrame(df.sparkSession, verificationResult)
 
@@ -44,18 +58,34 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
       key -> value
     }.toMap
 
-    val resultMap: Map[DQRule, RuleOutcome] = rules.map { r =>
+    val rowLevelCheckDescriptions: Set[String] = verificationResult.checkResults.flatMap {
+      case (check, checkResult) =>
+        val hasRowLevel = checkResult.constraintResults.exists { cr =>
+          cr.constraint match {
+            case _: RowLevelConstraint | _: RowLevelAssertedConstraint | _: RowLevelGroupedConstraint => true
+            case _ => false
+          }
+        }
+        if (hasRowLevel) Some(check.description) else None
+    }.toSet
 
+    rules.map { r =>
       val outcome = verificationResult.checkResults.get(r.check)
-        .map(
-          c => RuleOutcome(r.dqRule, c).copy(
-            evaluatedMetrics = extractEvaluatedMetrics(deequMetricMap, r.deequMetricMappings)
-          ))
+        .map { c =>
+          val rowLevelOutcome = if (rowLevelCheckDescriptions.contains(r.check.description)) {
+            SingularColumn(r.check.description)
+          } else {
+            NoColumn()
+          }
+          RuleOutcome(r.dqRule, c).copy(
+            evaluatedMetrics = extractEvaluatedMetrics(deequMetricMap, r.deequMetricMappings),
+            rowLevelOutcome = rowLevelOutcome
+          )
+        }
         .getOrElse(RuleOutcome(r.dqRule, Failed, failureReason = Some("Failed to check status")))
 
       r.dqRule -> outcome
     }.toMap
-    resultMap
   }
 
   private[dqdl] def extractEvaluatedMetrics(deequMetricMap: Map[String, Double],

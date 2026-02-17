@@ -16,12 +16,13 @@
 
 package com.amazon.deequ.dqdl
 
-import com.amazon.deequ.dqdl.execution.DQDLExecutor
-import com.amazon.deequ.dqdl.model.ExecutableRule
+import com.amazon.deequ.dqdl.execution.{DQDLExecutor, RowLevelResultHelper}
+import com.amazon.deequ.dqdl.execution.executors.DeequRulesExecutor
+import com.amazon.deequ.dqdl.model.{ExecutableRule, RuleOutcome}
 import com.amazon.deequ.dqdl.translation.{DQDLRuleTranslator, DeequOutcomeTranslator}
-import com.amazon.deequ.dqdl.util.DefaultDQDLParser
+import com.amazon.deequ.dqdl.util.{DefaultDQDLParser, RowLevelDataTracker}
 import org.apache.spark.sql.DataFrame
-import software.amazon.glue.dqdl.model.DQRuleset
+import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
 /**
  * Entry point for evaluating data quality.
@@ -32,6 +33,10 @@ import software.amazon.glue.dqdl.model.DQRuleset
  *  - Translates the outcome back to a Spark DataFrame.
  */
 object EvaluateDataQuality {
+
+  val ORIGINAL_DATA_KEY = "originalData"
+  val RULE_OUTCOMES_KEY = "ruleOutcomes"
+  val ROW_LEVEL_OUTCOMES_KEY = "rowLevelOutcomes"
 
   /**
    * Validates the given Spark DataFrame against a set of data quality rules defined in DQDL format.
@@ -53,12 +58,68 @@ object EvaluateDataQuality {
    * @param df                    the Spark DataFrame to analyze.
    * @param rulesetDefinition     the data quality ruleset (defined in DQDL string format) to apply to the DataFrame.
    * @param additionalDataSources A map of additional source aliases to their DataFrames.
-   *                              Used for dataset comparison rules like RowCountMatch and SchemaMatch.
+   *                              Used for dataset comparison rules like RowCountMatch.
    * @return a Spark DataFrame containing the aggregated data quality results.
    */
   def process(df: DataFrame,
               rulesetDefinition: String,
               additionalDataSources: Map[String, DataFrame]): DataFrame = {
+    val (_, executedRulesResult) = executeRuleset(df, rulesetDefinition, additionalDataSources)
+    DeequOutcomeTranslator.translate(executedRulesResult, df)
+  }
+
+  /**
+   * Evaluates data quality rules and returns row-level results.
+   *
+   * @param df                    the Spark DataFrame to analyze.
+   * @param rulesetDefinition     the data quality ruleset (defined in DQDL string format).
+   * @return A map containing:
+   *         - "originalData" -> the original DataFrame
+   *         - "ruleOutcomes" -> DataFrame with overall rule outcomes
+   *         - "rowLevelOutcomes" -> DataFrame with per-row pass/fail/skip arrays
+   */
+  def processRows(df: DataFrame, rulesetDefinition: String): Map[String, DataFrame] = {
+    processRows(df, rulesetDefinition, Map.empty[String, DataFrame])
+  }
+
+  /**
+   * Evaluates data quality rules and returns row-level results.
+   *
+   * @param df                    the Spark DataFrame to analyze.
+   * @param rulesetDefinition     the data quality ruleset (defined in DQDL string format).
+   * @param additionalDataSources A map of additional source aliases to their DataFrames.
+   * @return A map containing:
+   *         - "originalData" -> the original DataFrame
+   *         - "ruleOutcomes" -> DataFrame with overall rule outcomes
+   *         - "rowLevelOutcomes" -> DataFrame with per-row pass/fail/skip arrays
+   */
+  def processRows(df: DataFrame,
+                  rulesetDefinition: String,
+                  additionalDataSources: Map[String, DataFrame]): Map[String, DataFrame] = {
+    val (executableRules, executedRulesResult) = executeRuleset(df, rulesetDefinition, additionalDataSources)
+
+    val ruleOutcomes = DeequOutcomeTranslator.translate(executedRulesResult, df)
+
+    val rowLevelData = buildRowLevelData(df, executedRulesResult)
+
+    val orderedOutcomes = executableRules.flatMap(r => executedRulesResult.get(r.dqRule))
+    val rowLevelOutcomes = RowLevelResultHelper.convert(rowLevelData, orderedOutcomes)
+
+    Map(
+      ORIGINAL_DATA_KEY -> df,
+      RULE_OUTCOMES_KEY -> ruleOutcomes,
+      ROW_LEVEL_OUTCOMES_KEY -> rowLevelOutcomes
+    )
+  }
+
+  private def executeRuleset(
+    df: DataFrame,
+    rulesetDefinition: String,
+    additionalDataSources: Map[String, DataFrame]
+  ): (Seq[ExecutableRule], Map[DQRule, RuleOutcome]) = {
+    RowLevelDataTracker.reset()
+    DeequRulesExecutor.resetRowLevelData()
+
     // 1. Parse the ruleset
     val ruleset: DQRuleset = DefaultDQDLParser.parse(rulesetDefinition)
 
@@ -67,9 +128,19 @@ object EvaluateDataQuality {
 
     // 3. Execute the rules against the DataFrame.
     val executedRulesResult = DQDLExecutor.executeRules(executableRules, df, additionalDataSources)
-
-    // 4. Translate the results into a Spark DataFrame.
-    DeequOutcomeTranslator.translate(executedRulesResult, df)
+    (executableRules, executedRulesResult)
   }
 
+  private def buildRowLevelData(df: DataFrame, outcomes: Map[DQRule, RuleOutcome]): DataFrame = {
+    val baseData = DeequRulesExecutor.lastRowLevelData.getOrElse(df)
+
+    val customColumns = RowLevelDataTracker.getColumns
+    customColumns.foldLeft(baseData) { case (data, (colName, expression)) =>
+      if (!data.columns.contains(colName)) {
+        data.withColumn(colName, expression)
+      } else {
+        data
+      }
+    }
+  }
 }
