@@ -59,6 +59,376 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.RowCount" -> 4.0)
     }
 
+    "support ColumnCount rule" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnCount = 3]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 3.0)
+    }
+
+    "support ColumnCount rule when failed" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      val ruleset = "Rules=[ColumnCount = 10]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 3.0)
+    }
+
+    "support ColumnCount rule with all operators" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("JFK14", 15, "New York", "NY"),
+        ("SEA53", 20, "Seattle", "WA")
+      ).toDF("Building Code", "Floors", "City", "State")
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        // Equals
+        "ColumnCount = 4" -> true,
+        "ColumnCount = 3" -> false,
+        "ColumnCount = 5" -> false,
+        "ColumnCount = 4.0" -> true,
+        "ColumnCount = 4.9" -> false,
+        // Not equals
+        "ColumnCount != 4" -> false,
+        "ColumnCount != 3" -> true,
+        "ColumnCount != 5" -> true,
+        // Greater than
+        "ColumnCount > 3" -> true,
+        "ColumnCount > 4" -> false,
+        "ColumnCount > 5" -> false,
+        "ColumnCount > 3.9" -> true,
+        "ColumnCount > 3.01" -> true,
+        "ColumnCount > 10" -> false,
+        "ColumnCount > 10.0" -> false,
+        // Greater than or equal
+        "ColumnCount >= 4" -> true,
+        "ColumnCount >= 3" -> true,
+        "ColumnCount >= 5" -> false,
+        "ColumnCount >= 5.554" -> false,
+        // Less than
+        "ColumnCount < 5" -> true,
+        "ColumnCount < 4" -> false,
+        "ColumnCount < 3" -> false,
+        "ColumnCount < 4.1" -> true,
+        // Less than or equal
+        "ColumnCount <= 4" -> true,
+        "ColumnCount <= 5" -> true,
+        "ColumnCount <= 3" -> false,
+        "ColumnCount <= 5.2" -> true,
+        // Between
+        "ColumnCount between 2 and 5" -> true,
+        "ColumnCount between 4 and 5" -> false,
+        "ColumnCount between 3 and 4" -> false,
+        "ColumnCount between 5 and 6" -> false,
+        "ColumnCount between 1 and 3" -> false,
+        "ColumnCount between 3.9 and 6" -> true,
+        "ColumnCount between 2 and 5.4454" -> true,
+        "ColumnCount between 3.5 and 4.5" -> true,
+        // Not between
+        "ColumnCount not between 5 and 6" -> true,
+        "ColumnCount not between 4 and 5" -> true,
+        "ColumnCount not between 3 and 5" -> false,
+        "ColumnCount not between 1 and 10" -> false,
+        // Not in
+        "ColumnCount not in [1,4]" -> false,
+        "ColumnCount not in [10,40]" -> true,
+        "ColumnCount not in [1,2,3]" -> true,
+        "ColumnCount not in [4]" -> false,
+        "ColumnCount not in [1,2,3,5,6]" -> true
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+        row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 4.0)
+      }
+    }
+
+    "support ColumnCount with empty DataFrame" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq.empty[(String, Int, Double)].toDF("a", "b", "c")
+      val ruleset = "Rules=[ColumnCount = 3]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 3.0)
+    }
+
+    "support ColumnCount with empty dataset with no columns" in withSparkSession { sparkSession =>
+      val schema = org.apache.spark.sql.types.StructType(Seq.empty)
+      val df = sparkSession.createDataFrame(
+        sparkSession.sparkContext.emptyRDD[org.apache.spark.sql.Row], schema)
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount = 0" -> true,
+        "ColumnCount > 0" -> false,
+        "ColumnCount >= 0" -> true,
+        "ColumnCount < 1" -> true,
+        "ColumnCount != 0" -> false
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+        row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 0.0)
+      }
+    }
+
+    "support ColumnCount with single column" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq("a", "b", "c").toDF("only_col")
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount = 1" -> true,
+        "ColumnCount = 0" -> false,
+        "ColumnCount > 0" -> true,
+        "ColumnCount >= 1" -> true,
+        "ColumnCount < 1" -> false,
+        "ColumnCount <= 1" -> true,
+        "ColumnCount between 0 and 2" -> true,
+        "ColumnCount between 2 and 5" -> false
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+      }
+    }
+
+    "support ColumnCount with many columns" in withSparkSession { sparkSession =>
+      val columns = (1 to 50).map(i => s"col$i")
+      val schema = org.apache.spark.sql.types.StructType(
+        columns.map(c => org.apache.spark.sql.types.StructField(c, org.apache.spark.sql.types.StringType))
+      )
+      val df = sparkSession.createDataFrame(
+        sparkSession.sparkContext.parallelize(Seq(org.apache.spark.sql.Row(columns.map(_ => "v"): _*))),
+        schema
+      )
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount = 50" -> true,
+        "ColumnCount >= 50" -> true,
+        "ColumnCount > 49" -> true,
+        "ColumnCount < 51" -> true,
+        "ColumnCount between 40 and 60" -> true,
+        "ColumnCount between 51 and 100" -> false
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+        row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 50.0)
+      }
+    }
+
+    "support ColumnCount with all operators against zero-column dataset" in withSparkSession { sparkSession =>
+      val schema = org.apache.spark.sql.types.StructType(Seq.empty)
+      val df = sparkSession.createDataFrame(
+        sparkSession.sparkContext.emptyRDD[org.apache.spark.sql.Row], schema)
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount > 0" -> false,
+        "ColumnCount >= 0" -> true,
+        "ColumnCount = 0" -> true,
+        "ColumnCount != 0" -> false,
+        "ColumnCount < 0" -> false,
+        "ColumnCount <= 0" -> true
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+      }
+    }
+
+    "support ColumnCount with negative thresholds" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b")).toDF("c1", "c2")
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount > -1" -> true,
+        "ColumnCount >= -5" -> true,
+        "ColumnCount > -100" -> true,
+        "ColumnCount != -1" -> true,
+        "ColumnCount = -1" -> false,
+        "ColumnCount < -1" -> false,
+        "ColumnCount between -10 and 10" -> true,
+        "ColumnCount not between -5 and -1" -> true
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+      }
+    }
+
+    "support ColumnCount with large thresholds" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b")).toDF("c1", "c2")
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount < 1000000" -> true,
+        "ColumnCount <= 999999999" -> true,
+        "ColumnCount > 1000000" -> false,
+        "ColumnCount between 0 and 1000000" -> true,
+        "ColumnCount not in [1000000, 2000000]" -> true
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+      }
+    }
+
+    "support ColumnCount combined with other rules" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "x"),
+        ("2", "b", "y")
+      ).toDF("id", "name", "code")
+      val ruleset = """Rules=[ColumnCount = 3, RowCount = 2, IsComplete "id"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val rows = results.collect()
+      rows.length should be(3)
+      rows.foreach { row =>
+        row.getAs[String]("Outcome") should be("Passed")
+      }
+    }
+
+    "support multiple ColumnCount rules in same ruleset" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b", "c", "d")).toDF("c1", "c2", "c3", "c4")
+      val ruleset = "Rules=[ColumnCount >= 3, ColumnCount <= 5, ColumnCount between 2 and 6]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val rows = results.collect()
+      rows.length should be(3)
+      rows.foreach { row =>
+        row.getAs[String]("Outcome") should be("Passed")
+        row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 4.0)
+      }
+    }
+
+    "support ColumnCount with DataFrame containing null values" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        (Some("a"), None, Some("c")),
+        (None, Some("b"), None)
+      ).toDF("c1", "c2", "c3")
+      val ruleset = "Rules=[ColumnCount = 3]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 3.0)
+    }
+
+    "support ColumnCount with different column types" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("str", 1, 1.5, true, java.sql.Date.valueOf("2024-01-01"))
+      ).toDF("string_col", "int_col", "double_col", "bool_col", "date_col")
+      val ruleset = "Rules=[ColumnCount = 5]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should contain("Dataset.*.ColumnCount" -> 5.0)
+    }
+
+    "support ColumnCount with special column names" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b", "c")).toDF("col with space", "col-with-dash", "col.with.dot")
+      val ruleset = "Rules=[ColumnCount = 3]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support ColumnCount at exact boundary values" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b", "c", "d")).toDF("c1", "c2", "c3", "c4")
+
+      val rulesToResultMap: Map[String, Boolean] = Map(
+        "ColumnCount between 4 and 4" -> false,
+        "ColumnCount between 3 and 5" -> true,
+        "ColumnCount between 4 and 5" -> false,
+        "ColumnCount between 3 and 4" -> false,
+        "ColumnCount not between 4 and 4" -> true,
+        "ColumnCount >= 4" -> true,
+        "ColumnCount <= 4" -> true,
+        "ColumnCount > 4" -> false,
+        "ColumnCount < 4" -> false
+      )
+
+      rulesToResultMap.foreach { case (rule, expectedOutcome) =>
+        val ruleset = s"Rules=[$rule]"
+        val results = EvaluateDataQuality.process(df, ruleset)
+        val row = results.collect()(0)
+        val actualOutcome = row.getAs[String]("Outcome") == "Passed"
+        withClue(s"Rule '$rule' expected $expectedOutcome but got $actualOutcome: ") {
+          actualOutcome should be(expectedOutcome)
+        }
+      }
+    }
+
+    "support ColumnCount rule with FailureReason on failure" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b")).toDF("c1", "c2")
+      val ruleset = "Rules=[ColumnCount = 10]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+      val failureReason = row.getAs[String]("FailureReason")
+      failureReason should not be null
+      failureReason should not be empty
+    }
+
+    "support ColumnCount rule populates EvaluatedRule field" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", "b")).toDF("c1", "c2")
+      val ruleset = "Rules=[ColumnCount = 2]"
+      val results = EvaluateDataQuality.process(df, ruleset)
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[String]("FailureReason") should be(null)
+    }
+
     "support Completeness rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfFull(sparkSession)
