@@ -44,6 +44,7 @@ import com.amazon.deequ.repository.MetricsRepository
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
 
+import java.time.Instant
 import scala.util.matching.Regex
 
 object CheckLevel extends Enumeration {
@@ -1318,6 +1319,96 @@ case class Check(
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint,
       columns = List(column), analyzerOptions = analyzerOptions)
   }
+
+  def hasMinTimestamp(
+    column: String,
+    assertion: Instant => Boolean,
+    hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = addFilterableConstraint { filter =>
+    minTimestampConstraint(column, assertion, filter, hint)
+  }
+
+  def hasMaxTimestamp(
+    column: String,
+    assertion: Instant => Boolean,
+    hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = addFilterableConstraint { filter =>
+    maxTimestampConstraint(column, assertion, filter, hint)
+  }
+
+  /**
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * is less than the given datetime (Timestamp)
+   *
+   * @param column    Column to run the assertion on
+   * @param datetime  value of Timestamp to run assert
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint      A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def isDateTimeLessThan(
+    column: String,
+    datetime: Instant,
+    assertion: Double => Boolean = Check.IsOne,
+    hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = satisfies(s"$column < to_timestamp('${datetime.toString}')",
+    s"$column is less than '${datetime.toString}'", assertion,
+    hint = hint)
+
+  /**
+   *
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * is greater than the given datetime (Timestamp)
+   *
+   * @param column    Column to run the assertion on
+   * @param datetime  value of Timestamp to run assert
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint      A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def isDateTimeGreaterThan(
+    column: String,
+    datetime: Instant,
+    assertion: Double => Boolean = Check.IsOne,
+    hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = satisfies(s"$column > to_timestamp('${datetime.toString}')",
+    s"$column is greater than '${datetime.toString}'", assertion,
+    hint = hint)
+
+  /**
+   *
+   * Asserts that, in each row, the value of column (DateType or TimestampType) contains a past date
+   *
+   * @param column    Column to run the assertion on
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint      A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasPastDates(
+    column: String,
+    assertion: Double => Boolean = Check.IsOne,
+    hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = satisfies(s"$column < now()",
+    s"$column has all past dates", assertion,
+    hint = hint)
+
+  /**
+   *
+   * Asserts that, in each row, the value of column (DateType or TimestampType)
+   * contains a future date
+   *
+   * @param column    Column to run the assertion on
+   * @param assertion Function that receives a Timestamp input parameter and returns a boolean
+   * @param hint      A hint to provide additional context why a constraint could have failed
+   * @return
+   */
+  def hasFutureDates(
+    column: String,
+    assertion: Double => Boolean = Check.IsOne,
+    hint: Option[String] = None)
+  : CheckWithLastConstraintFilterable = satisfies(s"$column > now()",
+    s"$column has all future dates", assertion,
+    hint = hint)
 
   /**
     * Evaluate this check on computed metrics
