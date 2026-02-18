@@ -1,0 +1,34 @@
+name: Mark and Close stale issues and pull requests
+
+on:
+  schedule:
+  - cron: "30 0 * * *"
+
+jobs:
+  # Mark and Close stale
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/stale@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        stale-pr-message: >
+          We're closing this PR because it hasn't been updated in a while.
+          This isn't a judgement on the merit of the PR in any way. It's just
+          a way of keeping the PR queue manageable.
+          If you'd like to revive this PR, please reopen it and ask a
+          committer to remove the Stale tag!
+        stale-pr-label: 'no-pr-activity'
+        stale-issue-message: >
+          We're closing this issue because it hasn't been updated in a while.
+          This isn't a judgement on the merit of the issue in any way.
+          It's just a way of keeping the issues clean.
+          This issue is stale because it has been open 30 days with no activity.
+          Remove stale label or comment or this will be closed in 5 days
+        stale-issue-label: 'no-issue-activity'
+        exempt-issue-labels: 'blocked,must,should,keep'
+        days-before-stale: 30
+        days-before-close: 5

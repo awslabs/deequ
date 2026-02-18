@@ -1,0 +1,17 @@
+# Reference: https://github.com/SvanBoxel/delete-merged-branch
+name: Delete Merged Branches
+# The event that triggers the workflow
+on:
+  pull_request:
+    types:
+      - closed
+jobs:
+  delete_branch:
+    # The machine each job should run
+    runs-on: ubuntu-latest
+    # The tasks each job should run
+    steps:
+      - name: delete branch
+        uses: SvanBoxel/delete-merged-branch@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
