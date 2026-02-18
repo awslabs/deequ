@@ -124,7 +124,7 @@ object Constraint {
   }
 
   def fromAnalyzer(size: Size, assertion: Long => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](size,
+    val constraint = AnalysisBasedConstraint[Double, Long](size,
       assertion, Some(_.toLong), hint)
 
     new NamedConstraint(constraint, s"SizeConstraint($size)")
@@ -137,7 +137,7 @@ object Constraint {
 
 
   def fromAnalyzer(colCount: ColumnCount, assertion: Long => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](colCount, assertion, Some(_.toLong), hint)
+    val constraint = AnalysisBasedConstraint[Double, Long](colCount, assertion, Some(_.toLong), hint)
 
     new NamedConstraint(constraint, name = s"ColumnCountConstraint($colCount)")
   }
@@ -164,7 +164,7 @@ object Constraint {
 
     val histogram = Histogram(column, binningUdf, maxBins, where)
 
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Distribution](
+    val constraint = AnalysisBasedConstraint[Distribution, Distribution](
       histogram, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"HistogramConstraint($histogram)")
@@ -193,7 +193,7 @@ object Constraint {
 
     val histogram = Histogram(column, binningUdf, maxBins, where, computeFrequenciesAsRatio)
 
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Distribution, Long](
+    val constraint = AnalysisBasedConstraint[Distribution, Long](
       histogram, assertion, Some(_.numberOfBins), hint)
 
     new NamedConstraint(constraint, s"HistogramBinConstraint($histogram)")
@@ -262,7 +262,7 @@ object Constraint {
   def fromAnalyzer(completeness: Completeness,
                    assertion: Double => Boolean,
                    hint: Option[String] = None): Constraint = {
-    val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       completeness, assertion, hint = hint)
 
     new RowLevelConstraint(constraint, s"CompletenessConstraint($completeness)", s"Completeness-${completeness.column}")
@@ -276,13 +276,13 @@ object Constraint {
     *                           (since the metric is double metric) and returns a boolean
     * @param hint A hint to provide additional context why a constraint could have failed
     */
-  def anomalyConstraint[S <: State[S]](
-      analyzer: Analyzer[S, Metric[Double]],
+  def anomalyConstraint(
+      analyzer: Analyzer[_ <: State[_], Metric[Double]],
       anomalyAssertion: Double => Boolean,
       hint: Option[String] = None)
     : Constraint = {
 
-    val constraint = AnalysisBasedConstraint[S, Double, Double](analyzer, anomalyAssertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](analyzer, anomalyAssertion,
       hint = hint)
 
     new NamedConstraint(constraint, s"AnomalyConstraint($analyzer)")
@@ -313,7 +313,7 @@ object Constraint {
   }
 
   def fromAnalyzer(uniqueness: Uniqueness, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       uniqueness, assertion, hint = hint)
 
     new RowLevelGroupedConstraint(constraint,
@@ -343,7 +343,7 @@ object Constraint {
   }
 
   def fromAnalyzer(distinctness: Distinctness, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       distinctness, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"DistinctnessConstraint($distinctness)")
@@ -376,7 +376,7 @@ object Constraint {
       assertion: Double => Boolean,
       hint: Option[String])
     : Constraint = {
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       uniqueValueRatio, assertion, hint = hint)
 
     new RowLevelGroupedConstraint(constraint,
@@ -409,7 +409,7 @@ object Constraint {
   }
 
   private def fromAnalyzer(compliance: Compliance, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       compliance, assertion, hint = hint)
 
     new RowLevelConstraint(
@@ -450,7 +450,7 @@ object Constraint {
                     name: Option[String],
                     hint: Option[String]): Constraint = {
     val column: String = patternMatch.column
-    val constraint = AnalysisBasedConstraint[NumMatchesAndCount, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       patternMatch, assertion, hint = hint)
 
     val constraintName = name match {
@@ -483,7 +483,7 @@ object Constraint {
   }
 
   def fromAnalyzer(entropy: Entropy, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       entropy, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"EntropyConstraint($entropy)")
@@ -517,7 +517,7 @@ object Constraint {
       assertion: Double => Boolean,
       hint: Option[String])
     : Constraint = {
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       mutualInformation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"MutualInformationConstraint($mutualInformation)")
@@ -547,7 +547,7 @@ object Constraint {
   }
 
   def fromAnalyzer(approxQuantile: ApproxQuantile, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[ApproxQuantileState, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       approxQuantile, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"ApproxQuantileConstraint($approxQuantile)")
@@ -577,7 +577,7 @@ object Constraint {
   }
 
   def fromAnalyzer(exactQuantile: ExactQuantile, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[ExactQuantileState, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       exactQuantile, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"ExactQuantileConstraint($exactQuantile)")
@@ -606,7 +606,7 @@ object Constraint {
 
   def fromAnalyzer(maxLength: MaxLength, assertion: Double => Boolean, hint: Option[String]): Constraint = {
     val column: String = maxLength.column
-    val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](maxLength, assertion,
       hint = hint)
 
     val updatedAssertion = getUpdatedRowLevelAssertionForLengthConstraint(assertion, maxLength.analyzerOptions)
@@ -642,7 +642,7 @@ object Constraint {
 
   def fromAnalyzer(minLength: MinLength, assertion: Double => Boolean, hint: Option[String]): Constraint = {
     val column: String = minLength.column
-    val constraint = AnalysisBasedConstraint[MinState, Double, Double](minLength, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](minLength, assertion,
       hint = hint)
 
     val updatedAssertion = getUpdatedRowLevelAssertionForLengthConstraint(assertion, minLength.analyzerOptions)
@@ -679,7 +679,7 @@ object Constraint {
 
   def fromAnalyzer(minimum: Minimum, assertion: Double => Boolean, hint: Option[String]): Constraint = {
     val column: String = minimum.column
-    val constraint = AnalysisBasedConstraint[MinState, Double, Double](minimum, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](minimum, assertion,
       hint = hint)
 
     val updatedAssertion = getUpdatedRowLevelAssertion(assertion, minimum.analyzerOptions)
@@ -715,7 +715,7 @@ object Constraint {
 
   def fromAnalyzer(maximum: Maximum, assertion: Double => Boolean, hint: Option[String]): Constraint = {
     val column: String = maximum.column
-    val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maximum, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](maximum, assertion,
       hint = hint)
 
     val updatedAssertion = getUpdatedRowLevelAssertion(assertion, maximum.analyzerOptions)
@@ -748,7 +748,7 @@ object Constraint {
   }
 
   def fromAnalyzer(mean: Mean, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[MeanState, Double, Double](mean, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](mean, assertion,
       hint = hint)
 
     new NamedConstraint(constraint, s"MeanConstraint($mean)")
@@ -774,7 +774,7 @@ object Constraint {
   }
 
   def fromAnalyzer(sum: Sum, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[SumState, Double, Double](sum, assertion,
+    val constraint = AnalysisBasedConstraint[Double, Double](sum, assertion,
       hint = hint)
 
     new NamedConstraint(constraint, s"SumConstraint($sum)")
@@ -823,7 +823,7 @@ object Constraint {
       assertion: Double => Boolean,
       hint: Option[String])
     : Constraint = {
-    val constraint = AnalysisBasedConstraint[StandardDeviationState, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       standardDeviation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"StandardDeviationConstraint($standardDeviation)")
@@ -853,7 +853,7 @@ object Constraint {
       assertion: Double => Boolean,
       hint: Option[String])
     : Constraint = {
-    val constraint = AnalysisBasedConstraint[ApproxCountDistinctState, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       approxCountDistinct, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"ApproxCountDistinctConstraint($approxCountDistinct)")
@@ -881,7 +881,7 @@ object Constraint {
   }
 
   def fromAnalyzer(correlation: Correlation, assertion: Double => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[CorrelationState, Double, Double](
+    val constraint = AnalysisBasedConstraint[Double, Double](
       correlation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"CorrelationConstraint($correlation)")
@@ -919,7 +919,7 @@ object Constraint {
       }
     }
 
-    AnalysisBasedConstraint[DataTypeHistogram, Distribution, Double](DataType(column, where),
+    AnalysisBasedConstraint[Distribution, Double](DataType(column, where),
       assertion, Some(valuePicker), hint)
   }
 
@@ -944,7 +944,7 @@ object Constraint {
   }
 
   def fromAnalyzer(kllSketch: KLLSketch, assertion: BucketDistribution => Boolean, hint: Option[String]): Constraint = {
-    val constraint = AnalysisBasedConstraint[KLLState, BucketDistribution, BucketDistribution](
+    val constraint = AnalysisBasedConstraint[BucketDistribution, BucketDistribution](
       kllSketch, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"kllSketchConstraint($kllSketch)")

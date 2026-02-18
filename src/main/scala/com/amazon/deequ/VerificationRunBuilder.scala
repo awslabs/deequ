@@ -216,6 +216,22 @@ class VerificationRunBuilderWithRepository(
   }
 
   /**
+   * Add a check using Anomaly Detection methods. The Anomaly Detection Strategy only checks
+   * if the new value is an Anomaly.
+   *
+   * @param anomalyDetectionStrategy The anomaly detection strategy
+   * @param analyzer The analyzer for the metric to run anomaly detection on
+   * @param anomalyCheckConfig Some configuration settings for the Check
+   */
+  def addAnomalyCheck[S <: State[S]](
+    anomalyDetectionStrategy: AnomalyDetectionStrategy,
+    analyzer: Analyzer[S, Metric[Double]],
+    anomalyCheckConfig: Option[AnomalyCheckConfig] = None)
+  : this.type = {
+    addAnomalyCheck_(anomalyDetectionStrategy, analyzer, anomalyCheckConfig)
+  }
+
+  /**
     * Add a check using Anomaly Detection methods. The Anomaly Detection Strategy only checks
     * if the new value is an Anomaly.
     *
@@ -223,9 +239,9 @@ class VerificationRunBuilderWithRepository(
     * @param analyzer The analyzer for the metric to run anomaly detection on
     * @param anomalyCheckConfig Some configuration settings for the Check
     */
-  def addAnomalyCheck[S <: State[S]](
+  def addAnomalyCheck_(
       anomalyDetectionStrategy: AnomalyDetectionStrategy,
-      analyzer: Analyzer[S, Metric[Double]],
+      analyzer: Analyzer[_ <: State[_], Metric[Double]],
       anomalyCheckConfig: Option[AnomalyCheckConfig] = None)
     : this.type = {
 
@@ -298,10 +314,10 @@ private[this] object VerificationRunBuilderHelper {
     * @param analyzer The analyzer for the metric to run anomaly detection on
     * @param anomalyCheckConfig Some configuration settings for the Check
     */
-  def getAnomalyCheck[S <: State[S]](
+  def getAnomalyCheck(
       metricsRepository: MetricsRepository,
       anomalyDetectionStrategy: AnomalyDetectionStrategy,
-      analyzer: Analyzer[S, Metric[Double]],
+      analyzer: Analyzer[_ <: State[_], Metric[Double]],
       anomalyCheckConfig: AnomalyCheckConfig)
     : Check = {
 
