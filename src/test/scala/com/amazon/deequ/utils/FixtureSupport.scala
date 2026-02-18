@@ -466,7 +466,26 @@ trait FixtureSupport {
       ("bar", 20)
     ).toDF("name", "age")
   }
+  
+  def getDfWithPatternMatch(sparkSession: SparkSession): DataFrame = {
+  import sparkSession.implicits._
 
+  Seq(
+    // SSN                 PostalCode    PhoneNumber
+    ("123-45-6789",       "12345",      "+1 234-567-8901"),       // All valid
+    ("078-05-1120",       "12345-6789", "(234) 567-8901 x1234"),  // All valid with extension
+    ("000-12-3456",       "12345",      "234-567-8901"),          // Invalid SSN (000 area), valid others
+    ("666-45-6789",       "54321",      "1234567890"),            // Invalid SSN (666 area), valid phone
+    ("900-12-3456",       "54321-1234", "+1 (234) 567 8901"),     // Invalid SSN (900 range), valid postal and phone
+    ("123-45-0000",       "ABCDE",      "+1 234 567-8901"),       // Invalid SSN (0000 serial), invalid postal code
+    ("123-00-6789",       "54321",      "123-45-6789"),           // Invalid SSN (00 group), phone looks like SSN
+    ("123-45-6789",       "123",        "234-567-8901"),          // Valid SSN, invalid postal (too short)
+    ("123-45-6789",       "123456789",  "+1 234 567 8901 ext1234"),// Valid SSN, valid phone with extension, invalid postal (no dash)
+    ("999-99-9999",       "54321-6789", "234 567 8901"),          // Invalid SSN (invalid area code 999), valid postal, valid phone
+    ("123-45-6789",       "54321",      "1234"),                  // Valid SSN, valid postal, invalid phone (too short)
+    ("",                  "",           "")                       // Empty row, testing blanks
+  ).toDF("SSN", "PostalCode", "PhoneNumber")
+}
   def getFakeNumericColumnProfileWithMinMaxMeanAndStdDev(
     columnName: String,
     completeness: Double,
