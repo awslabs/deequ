@@ -62,7 +62,7 @@ case class Compliance(instance: String,
 
   private def rowLevelResults: Column = {
     val filteredRowOutcome = getRowLevelFilterTreatment(analyzerOptions)
-    val whereNotCondition = where.map { expression => not(expr(expression)) }
+    val whereNotCondition = where.map { expression => not(expr(expression)) || expr(expression).isNull }
 
     filteredRowOutcome match {
       case FilteredRowOutcome.TRUE =>
