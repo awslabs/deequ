@@ -71,6 +71,31 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
         if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(true, true, true, false, true, true)
     }
 
+    "return row-level results with NULL in where clause column treated as filtered" in withSparkSession { session =>
+      import session.implicits._
+
+      val data = Seq(
+        ("1", "USA", "AUS"),  // matches WHERE, predicate passes -> true
+        ("2", "GER", "AUS"),  // matches WHERE, predicate fails -> false
+        ("3", "USA", null),   // NULL in WHERE col, should be filtered -> true
+        ("4", "GER", null),   // NULL in WHERE col, should be filtered -> true
+        ("5", "USA", "USA")   // doesn't match WHERE -> true (filtered)
+      ).toDF("item", "championnationality", "runnerupnationality")
+
+      val compliance = Compliance(
+        "rule1",
+        "championnationality IN ('USA', 'AUS')",
+        where = Option("runnerupnationality = 'AUS'"),
+        analyzerOptions = Option(AnalyzerOptions(filteredRow = FilteredRowOutcome.TRUE))
+      )
+
+      val state = compliance.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = compliance.computeMetricFrom(state)
+
+      data.withColumn("result", metric.fullColumn.get).collect().map(r =>
+        r.getAs[Boolean]("result")) shouldBe Seq(true, false, true, true, true)
+    }
+
     "return row-level results for compliance in bounds" in withSparkSession { session =>
       val column = "att1"
       val leftOperand = ">="
