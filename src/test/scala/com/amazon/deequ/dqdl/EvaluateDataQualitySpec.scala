@@ -1866,6 +1866,30 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       val row = results.collect()(0)
       row.getAs[String]("Outcome") should be("Failed")
     }
+
+    "treat NULL in where clause column as filtered rows" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+
+      val df = Seq(
+        ("1", "USA", "AUS"),  // matches WHERE, predicate passes
+        ("2", "GER", "AUS"),  // matches WHERE, predicate fails
+        ("3", "USA", null),   // NULL in WHERE col, should be filtered
+        ("4", "GER", null),   // NULL in WHERE col, should be filtered
+        ("5", "USA", "USA")   // doesn't match WHERE, filtered
+      ).toDF("item", "championnationality", "runnerupnationality")
+
+      // Only 2 rows match WHERE (rows 1 and 2), 1 passes predicate -> 50%
+      val ruleset =
+        """Rules=[ColumnValues "championnationality" in ["USA","AUS"] """ +
+        """where "runnerupnationality = 'AUS'"]"""
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      // Should fail because only 1 of 2 filtered rows passes (50% < 100%)
+      row.getAs[String]("Outcome") should be("Failed")
+      val metrics = row.getAs[Map[String, Double]]("EvaluatedMetrics")
+      metrics("Column.championnationality.ColumnValues.Compliance") should be(0.5)
+    }
   }
 
 }
