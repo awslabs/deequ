@@ -40,6 +40,7 @@ import com.amazon.deequ.dqdl.translation.rules.RowCountMatchRule
 import com.amazon.deequ.dqdl.translation.rules.ReferentialIntegrityRule
 import com.amazon.deequ.dqdl.translation.rules.DatasetMatchRule
 import com.amazon.deequ.dqdl.translation.rules.DataFreshnessRule
+import com.amazon.deequ.dqdl.translation.rules.ColumnDataTypeRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import com.amazon.deequ.dqdl.translation.rules.SchemaMatchRule
 import com.amazon.deequ.dqdl.translation.rules.AggregateMatchRule
@@ -91,6 +92,11 @@ object DQDLRuleTranslator {
 
   private[dqdl] def toExecutableRule(rule: DQRule): ExecutableRule = {
     rule.getRuleType match {
+      case "ColumnDataType" =>
+        ColumnDataTypeRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
+          case Right(executableRule) => executableRule
+          case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
       case "Composite" =>
         // Validate nested rules exist
         if (rule.getNestedRules == null || rule.getNestedRules.isEmpty) {
@@ -100,7 +106,6 @@ object DQDLRuleTranslator {
           val nestedExecutableRules = rule.getNestedRules.asScala.map(toExecutableRule).toSeq
           CompositeExecutableRule(rule, nestedExecutableRules, rule.getOperator)
         }
-
       case "DataFreshness" =>
         DataFreshnessRule.toExecutableRule(rule, FilteredRowOutcome.TRUE) match {
           case Right(executableRule) => executableRule
