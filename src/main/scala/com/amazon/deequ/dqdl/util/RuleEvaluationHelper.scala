@@ -18,11 +18,13 @@ package com.amazon.deequ.dqdl.util
 
 import com.amazon.deequ.analyzers.FilteredRowOutcome
 import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome
-import com.amazon.deequ.dqdl.model.{RuleOutcome, Passed, Failed}
+import com.amazon.deequ.dqdl.model.{RuleOutcome, Passed, Failed, SingularColumn}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.functions._
 import software.amazon.glue.dqdl.model.DQRule
 import scala.util.{Try, Success, Failure}
+
+case class RuleEvaluationResult(outcome: RuleOutcome, rowLevelColumnName: Option[String] = None)
 
 object RuleEvaluationHelper {
 
@@ -35,29 +37,36 @@ object RuleEvaluationHelper {
     outcomeExpression: Column,
     assertion: Option[Double => Boolean] = None
   ): RuleOutcome = {
+    evaluateRuleWithRowLevel(df, rule, targetColumn, filteredRowOutcome, metricName,
+      outcomeExpression, assertion).outcome
+  }
+
+  def evaluateRuleWithRowLevel(
+    df: DataFrame,
+    rule: DQRule,
+    targetColumn: String,
+    filteredRowOutcome: FilteredRowOutcome,
+    metricName: String,
+    outcomeExpression: Column,
+    assertion: Option[Double => Boolean] = None
+  ): RuleEvaluationResult = {
 
     val whereClause = Option(rule.getWhereClause)
 
-    // Check if target column exists
     if (Try(df(targetColumn)).isFailure) {
-      return RuleOutcome(
-        rule,
-        Failed,
-        Some(s"Column $targetColumn does not exist in the dataset")
-      )
+      return RuleEvaluationResult(RuleOutcome(
+        rule, Failed, Some(s"Column $targetColumn does not exist in the dataset")
+      ))
     }
 
-    // Validate where clause if provided
     val validatedFilteredDf = whereClause match {
       case Some(where) =>
         Try(df.where(where)).toOption match {
           case Some(filtered) => Some(filtered)
           case None =>
-            return RuleOutcome(
-              rule,
-              Failed,
-              Some("The provided where clause is invalid")
-            )
+            return RuleEvaluationResult(RuleOutcome(
+              rule, Failed, Some("The provided where clause is invalid")
+            ))
         }
       case None => None
     }
@@ -67,22 +76,27 @@ object RuleEvaluationHelper {
       val totalCount = filteredDf.count()
 
       if (totalCount == 0) {
-        RuleOutcome(rule, Passed, Some("No rows matched the filter"))
+        RuleEvaluationResult(RuleOutcome(rule, Passed, Some("No rows matched the filter")))
       } else {
-        val tempCol = java.util.UUID.randomUUID().toString
+        val rowLevelColName = java.util.UUID.randomUUID().toString
         val augmentedDfWithResults = whereClause match {
           case Some(where) =>
-            df.withColumn(tempCol, when(not(expr(where)), null).otherwise(outcomeExpression))
+            df.withColumn(rowLevelColName, when(not(expr(where)), null).otherwise(outcomeExpression))
           case None =>
-            df.withColumn(tempCol, outcomeExpression)
+            df.withColumn(rowLevelColName, outcomeExpression)
         }
 
-        val filteredCount = augmentedDfWithResults.where(col(tempCol) === true).count()
+        val filteredCount = augmentedDfWithResults.where(col(rowLevelColName) === true).count()
         val ratio = filteredCount.toDouble / totalCount
 
         val evaluatedMetrics = Map(metricName -> ratio)
 
-        assertion match {
+        RowLevelDataTracker.addColumn(rowLevelColName, whereClause match {
+          case Some(where) => when(not(expr(where)), null).otherwise(outcomeExpression)
+          case None => outcomeExpression
+        })
+
+        val outcome = assertion match {
           case Some(assertFn) =>
             if (assertFn(ratio)) {
               RuleOutcome(rule, Passed, None, evaluatedMetrics)
@@ -91,7 +105,6 @@ object RuleEvaluationHelper {
                 Some(s"Value: $ratio does not meet the constraint requirement."), evaluatedMetrics)
             }
           case None =>
-            // No assertion provided, assume 1.0 threshold
             if (ratio == 1.0) {
               RuleOutcome(rule, Passed, None, evaluatedMetrics)
             } else {
@@ -99,15 +112,18 @@ object RuleEvaluationHelper {
                 Some(s"${(ratio * 100).formatted("%.2f")}% of rows passed"), evaluatedMetrics)
             }
         }
+
+        RuleEvaluationResult(
+          outcome.copy(rowLevelOutcome = SingularColumn(rowLevelColName)),
+          Some(rowLevelColName)
+        )
       }
     } match {
       case Success(result) => result
       case Failure(ex) =>
-        RuleOutcome(
-          rule,
-          Failed,
-          Some(s"Exception thrown while evaluating rule: ${ex.getMessage}")
-        )
+        RuleEvaluationResult(RuleOutcome(
+          rule, Failed, Some(s"Exception thrown while evaluating rule: ${ex.getMessage}")
+        ))
     }
   }
 }

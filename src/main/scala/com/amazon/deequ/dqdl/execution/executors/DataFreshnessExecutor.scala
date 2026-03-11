@@ -28,7 +28,7 @@ object DataFreshnessExecutor extends DQDLExecutor.RuleExecutor[DataFreshnessExec
                             additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
     rules.map { rule =>
       val metricName = s"Column.${rule.column}.DataFreshness.Compliance"
-      val outcome = RuleEvaluationHelper.evaluateRuleAgainstColumn(
+      val result = RuleEvaluationHelper.evaluateRuleWithRowLevel(
         df,
         rule.dqRule,
         rule.column,
@@ -37,7 +37,7 @@ object DataFreshnessExecutor extends DQDLExecutor.RuleExecutor[DataFreshnessExec
         rule.outcomeExpression,
         None
       )
-      rule.dqRule -> outcome
+      rule.dqRule -> result.outcome
     }.toMap
   }
 }
