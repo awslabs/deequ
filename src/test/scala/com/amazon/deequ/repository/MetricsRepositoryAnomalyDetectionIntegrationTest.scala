@@ -195,7 +195,7 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with 
 
     // New size value is 8, that is an anomaly because it is lower than the last value, 10
     val sizeAnomalyCheckWithResult = verificationResult.checkResults
-      .filterKeys(_.description == "Size only increases")
+      .filter { case (check, _) => check.description == "Size only increases" }
       .head
     val (_, checkResultSizeAnomalyCheck) = sizeAnomalyCheckWithResult
 
@@ -205,7 +205,7 @@ class MetricsRepositoryAnomalyDetectionIntegrationTest extends AnyWordSpec with 
     // (1 to 30) * 7 and it is within the range of 2 standard deviations
     // (mean: ~111, stdDeviation: ~62)
     val meanSalesAnomalyCheckWithResult = verificationResult.checkResults
-      .filterKeys(_.description == "Sales mean within 2 standard deviations")
+      .filter { case (check, _) => check.description == "Sales mean within 2 standard deviations" }
       .head
     val (_, checkResultMeanSalesAnomalyCheck) = meanSalesAnomalyCheckWithResult
 

@@ -26,7 +26,7 @@ import com.amazon.deequ.dqdl.util.DefaultDQDLParser
 import software.amazon.glue.dqdl.model.DQRuleset
 
 
-import scala.jdk.CollectionConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters.mapAsJavaMapConverter
 
 
 class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {

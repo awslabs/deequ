@@ -116,13 +116,13 @@ case class Histogram(
             .find(_ == column)
             .getOrElse(throw new IllegalStateException(s"Column $column not found"))
 
-          val histogramDetails = topNRowsDF
+          val histogramDetails: ListMap[String, DistributionValue] = ListMap(topNRowsDF
             .map { row =>
               val discreteValue = row.getAs[String](columnName)
               val absolute = row.getAs[Long](countColumnName)
               val ratio = absolute.toDouble / theState.numRows
               discreteValue -> DistributionValue(absolute, ratio)
-            }(collection.breakOut): ListMap[String, DistributionValue]
+            }.toSeq: _*)
 
           Distribution(histogramDetails, binCount)
         }

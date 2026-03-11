@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import software.amazon.glue.dqdl.model.DQRule
 
-import scala.jdk.CollectionConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters.mapAsJavaMapConverter
 
 class ColumnLengthRuleSpec extends AnyWordSpec with Matchers {
 
