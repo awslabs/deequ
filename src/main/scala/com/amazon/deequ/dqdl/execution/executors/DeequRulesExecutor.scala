@@ -1,5 +1,5 @@
 /**
- * Copyright 2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2026 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License
@@ -16,46 +16,79 @@
 
 package com.amazon.deequ.dqdl.execution.executors
 
-import com.amazon.deequ.dqdl.execution.DQDLExecutor
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, Failed, RuleOutcome}
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
+import com.amazon.deequ.constraints.{RowLevelAssertedConstraint, RowLevelConstraint, RowLevelGroupedConstraint}
+import com.amazon.deequ.dqdl.execution.DQDLExecutor
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, Failed, NoColumn, RuleOutcome, SingularColumn}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, concat, lit}
 import software.amazon.glue.dqdl.model.DQRule
+
+case class DeequExecutionResult(outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame)
 
 object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule] {
   private val delim = "."
 
   override def executeRules(rules: Seq[DeequExecutableRule], df: DataFrame,
                             additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
+    executeWithRowLevel(rules, df).outcomes
+  }
+
+  def executeWithRowLevel(rules: Seq[DeequExecutableRule],
+                          df: DataFrame): DeequExecutionResult = {
+    if (rules.isEmpty) {
+      return DeequExecutionResult(Map.empty, df)
+    }
+
     val verificationResult = VerificationSuite()
       .onData(df.toDF())
       .addChecks(rules.map(_.check))
       .run()
 
-    val metricsDF = VerificationResult.successMetricsAsDataFrame(df.sparkSession, verificationResult)
+    val rowLevelData = VerificationResult.rowLevelResultsAsDataFrame(
+      df.sparkSession, verificationResult, df)
 
+    val metricsDF = VerificationResult.successMetricsAsDataFrame(df.sparkSession, verificationResult)
     val deequMetricMap = metricsDF.select(
       concat(col("entity"), lit(delim), col("instance"), lit(delim), col("name")).as("key"),
       col("value")
     ).collect().map { row =>
-      val key = row.getAs[String]("key")
-      val value = row.getAs[Double]("value")
-      key -> value
+      row.getAs[String]("key") -> row.getAs[Double]("value")
     }.toMap
 
-    val resultMap: Map[DQRule, RuleOutcome] = rules.map { r =>
+    val rowLevelCheckDescriptions = verificationResult.checkResults.flatMap {
+      case (check, checkResult) =>
+        val hasRowLevel = checkResult.constraintResults.exists { cr =>
+          cr.constraint match {
+            case _: RowLevelConstraint | _: RowLevelAssertedConstraint
+                 | _: RowLevelGroupedConstraint => true
+            case _ => false
+          }
+        }
+        if (hasRowLevel) Some(check.description) else None
+    }.toSet
+
+    val outcomes = rules.map { r =>
+      val rowLevelOutcome = if (rowLevelCheckDescriptions.contains(r.check.description)) {
+        SingularColumn(r.check.description)
+      } else {
+        NoColumn()
+      }
 
       val outcome = verificationResult.checkResults.get(r.check)
-        .map(
-          c => RuleOutcome(r.dqRule, c).copy(
-            evaluatedMetrics = extractEvaluatedMetrics(deequMetricMap, r.deequMetricMappings)
-          ))
-        .getOrElse(RuleOutcome(r.dqRule, Failed, failureReason = Some("Failed to check status")))
+        .map { c =>
+          RuleOutcome(r.dqRule, c).copy(
+            evaluatedMetrics = extractEvaluatedMetrics(deequMetricMap, r.deequMetricMappings),
+            rowLevelOutcome = rowLevelOutcome
+          )
+        }
+        .getOrElse(RuleOutcome(r.dqRule, Failed, Some("Failed to check status"),
+          rowLevelOutcome = rowLevelOutcome))
 
       r.dqRule -> outcome
     }.toMap
-    resultMap
+
+    DeequExecutionResult(outcomes, rowLevelData)
   }
 
   private[dqdl] def extractEvaluatedMetrics(deequMetricMap: Map[String, Double],
@@ -69,5 +102,4 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
       }
     }.toMap
   }
-
 }

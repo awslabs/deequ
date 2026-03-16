@@ -195,6 +195,37 @@ val results = EvaluateDataQuality.process(df, ruleset)
 results.show()
 ```
 
+### Row-Level Results
+
+Use `processRows()` to identify which specific rows pass or fail each rule:
+
+```scala
+val df = Seq(
+  ("1", "Alice", Some(25)),
+  ("2", "Bob", None),
+  ("3", null, Some(30))
+).toDF("id", "name", "age")
+
+val ruleset = """Rules=[IsComplete "name", IsComplete "age"]"""
+
+val results = EvaluateDataQuality.processRows(df, ruleset)
+
+// Access the row-level outcomes
+val rowLevelOutcomes = results("rowLevelOutcomes")
+rowLevelOutcomes.select("id", "DataQualityRulesPass", "DataQualityRulesFail", "DataQualityEvaluationResult").show(false)
+
+// Filter to failed rows
+val failedRows = rowLevelOutcomes.filter($"DataQualityEvaluationResult" === "Failed")
+```
+
+The `rowLevelOutcomes` DataFrame contains:
+- `DataQualityRulesPass`: Array of rules that passed for each row
+- `DataQualityRulesFail`: Array of rules that failed for each row  
+- `DataQualityRulesSkip`: Array of rules without row-level support
+- `DataQualityEvaluationResult`: "Passed" or "Failed" for each row
+
+**Note:** Row-level evaluation is supported for `IsComplete`, `IsUnique`, `ColumnValues` (IN/NOT IN), `Completeness`, `Uniqueness`, and composite rules. Dataset-level rules like `RowCount` and `Mean` are marked as skipped.
+
 ### Java Example
 
 JavaDQDLExample.java
