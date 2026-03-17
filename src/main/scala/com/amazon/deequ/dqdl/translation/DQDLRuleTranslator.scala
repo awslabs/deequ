@@ -47,7 +47,7 @@ import com.amazon.deequ.dqdl.translation.rules.AggregateMatchRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
 
-import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.jdk.CollectionConverters._
 
 
 /**

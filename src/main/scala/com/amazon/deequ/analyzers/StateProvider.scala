@@ -22,7 +22,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.catalyst.expressions.aggregate.DeequHyperLogLogPlusPlusUtils
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
 
 private object StateInformation {

@@ -17,11 +17,12 @@
 package com.amazon.deequ.anomalydetection
 
 import com.amazon.deequ.metrics.{DoubleMetric, Entity}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.{Failure, Success}
 
-class HistoryUtilsTest extends WordSpec with Matchers {
+class HistoryUtilsTest extends AnyWordSpec with Matchers {
 
   "History Utils" should {
     val sampleException = new IllegalArgumentException()

@@ -19,7 +19,7 @@ package com.amazon.deequ.utils
 import software.amazon.glue.dqdl.model.condition.Condition
 import software.amazon.glue.dqdl.model.condition.number.{AtomicNumberOperand, NumberBasedCondition, NumberBasedConditionOperator, NumericOperand}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 
 object ConditionUtils {

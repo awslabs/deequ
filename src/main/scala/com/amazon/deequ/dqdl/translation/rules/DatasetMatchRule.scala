@@ -21,12 +21,12 @@ import com.amazon.deequ.dqdl.model.DatasetMatchExecutableRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object DatasetMatchRule {
 
   def toExecutableRule(rule: DQRule): Either[String, DatasetMatchExecutableRule] = {
-    val params = rule.getParameters.asScala.mapValues(_.replaceAll("\"", ""))
+    val params = rule.getParameters.asScala.mapValues(_.replaceAll("\"", "")).toMap
 
     val referenceAlias = params("ReferenceDatasetAlias")
     val keyMappings = parseColumnMappings(params("KeyColumnMappings"))

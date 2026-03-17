@@ -16,9 +16,10 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SimpleThresholdStrategyTest extends WordSpec with Matchers {
+class SimpleThresholdStrategyTest extends AnyWordSpec with Matchers {
 
   "Simple Threshold Strategy" should {
 

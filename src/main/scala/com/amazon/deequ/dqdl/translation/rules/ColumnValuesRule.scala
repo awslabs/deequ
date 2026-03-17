@@ -33,7 +33,7 @@ import software.amazon.glue.dqdl.model.condition.string.QuotedStringOperand
 import software.amazon.glue.dqdl.model.condition.string.StringBasedCondition
 import software.amazon.glue.dqdl.model.condition.string.StringBasedConditionOperator
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 case class ColumnValuesRule() extends DQDLRuleConverter {
 

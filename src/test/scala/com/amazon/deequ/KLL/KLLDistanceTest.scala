@@ -21,11 +21,11 @@ import com.amazon.deequ.analyzers.Distance.{ChisquareMethod, LInfinityMethod}
 import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.metrics.BucketValue
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import com.amazon.deequ.metrics.BucketValue
 import org.scalactic.Tolerance.convertNumericToPlusOrMinusWrapper
 
-class KLLDistanceTest extends WordSpec with SparkContextSpec
+class KLLDistanceTest extends AnyWordSpec with SparkContextSpec
   with FixtureSupport{
 
   "KLL distance calculator should compute correct linf_simple" in {

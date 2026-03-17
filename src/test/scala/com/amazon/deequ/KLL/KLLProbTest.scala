@@ -16,14 +16,14 @@
 
 package com.amazon.deequ.KLL
 
-import org.scalatest.FlatSpec
-import org.scalatest.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest._
 
 import scala.util.Random
 import com.amazon.deequ.analyzers.QuantileNonSample
 
-class KLLProbTest extends FlatSpec with Matchers {
+class KLLProbTest extends AnyFlatSpec with Matchers {
 
   "sketch" should "not crash or have a huge error for simple stream" in {
 

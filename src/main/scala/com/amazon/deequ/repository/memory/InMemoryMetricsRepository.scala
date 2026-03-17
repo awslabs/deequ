@@ -21,7 +21,7 @@ import com.amazon.deequ.metrics.Metric
 import com.amazon.deequ.repository._
 import com.amazon.deequ.analyzers.runners.AnalyzerContext
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.util.concurrent.ConcurrentHashMap
 
 /** A simple Repository implementation backed by a concurrent hash map */

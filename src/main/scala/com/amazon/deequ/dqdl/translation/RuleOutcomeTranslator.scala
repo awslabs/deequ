@@ -19,7 +19,7 @@ package com.amazon.deequ.dqdl.translation
 import com.amazon.deequ.dqdl.model.{CompositeOutcome, Failed, RuleOutcome}
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleLogicalOperator}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * Translates and composes outcomes for composite rules.

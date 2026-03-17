@@ -16,11 +16,12 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.Random
 
-class BatchNormalStrategyTest extends WordSpec with Matchers {
+class BatchNormalStrategyTest extends AnyWordSpec with Matchers {
 
   "Batch Normal Strategy" should {
 

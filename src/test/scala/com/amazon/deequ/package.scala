@@ -28,7 +28,7 @@ package object deequ {
       values: Row*)
     : DataFrame = {
 
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val struct = StructType(StructField(name, columnType) :: Nil)
     sparkSession.createDataFrame(values.asJava, struct).toDF(name)
   }

@@ -27,7 +27,7 @@ import com.google.gson._
 import com.google.gson.reflect.TypeToken
 
 import scala.collection._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.util.{ArrayList => JArrayList, HashMap => JHashMap, List => JList, Map => JMap}
 import JsonSerializationConstants._
 import com.amazon.deequ.analyzers.FilteredRowOutcome.FilteredRowOutcome

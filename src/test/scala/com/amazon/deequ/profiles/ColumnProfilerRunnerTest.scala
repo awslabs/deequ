@@ -24,10 +24,11 @@ import com.amazon.deequ.metrics.{DoubleMetric, Entity}
 import com.amazon.deequ.repository.ResultKey
 import com.amazon.deequ.repository.memory.InMemoryMetricsRepository
 import com.amazon.deequ.utils.{FixtureSupport, TempFileUtils}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import scala.util.Try
 
-class ColumnProfilerRunnerTest extends WordSpec with Matchers with SparkContextSpec
+class ColumnProfilerRunnerTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport {
 
   "Column Profiler runner" should {

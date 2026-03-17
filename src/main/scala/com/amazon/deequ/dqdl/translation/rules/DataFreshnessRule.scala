@@ -23,7 +23,7 @@ import org.apache.spark.sql.functions.{col, current_timestamp, round, to_timesta
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.duration.{Duration, DurationBasedCondition, DurationBasedConditionOperator, DurationUnit}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object DataFreshnessRule {
 

@@ -20,9 +20,10 @@ import com.amazon.deequ.profiles.StringColumnProfile
 import com.amazon.deequ.profiles.ColumnProfiler
 import com.amazon.deequ.utils.FixtureSupport
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class DatatypeSuggestionTest extends WordSpec with Matchers with SparkContextSpec
+class DatatypeSuggestionTest extends AnyWordSpec with Matchers with SparkContextSpec
   with FixtureSupport with MockFactory{
 
   "Column Profiler" should {
