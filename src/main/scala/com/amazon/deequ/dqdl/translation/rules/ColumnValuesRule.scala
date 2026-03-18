@@ -28,6 +28,8 @@ import software.amazon.glue.dqdl.model.condition.number.AtomicNumberOperand
 import software.amazon.glue.dqdl.model.condition.number.NullNumericOperand
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedConditionOperator._
+import software.amazon.glue.dqdl.model.condition.date.DateBasedCondition
+import software.amazon.glue.dqdl.model.condition.date.DateBasedConditionOperator
 import software.amazon.glue.dqdl.model.condition.string.KeywordStringOperand
 import software.amazon.glue.dqdl.model.condition.string.QuotedStringOperand
 import software.amazon.glue.dqdl.model.condition.string.StringBasedCondition
@@ -47,6 +49,8 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         mkNumericCheck(check, targetColumn, transformedCol, condition, rule)
       case condition: StringBasedCondition =>
         mkStringCheck(check, targetColumn, transformedCol, condition, rule)
+      case condition: DateBasedCondition =>
+        mkDateCheck(check, targetColumn, transformedCol, condition, rule)
       case _ =>
         Left(s"Unsupported condition type for ColumnValues rule: " +
           s"${Option(rule.getCondition).map(_.getClass.getSimpleName).getOrElse("null")}")
@@ -264,6 +268,100 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       }
       if (conditions.isEmpty) "FALSE" else conditions.mkString(" OR ")
     }
+  }
+
+  private def mkDateCheck(check: Check, targetColumn: String, transformedCol: String,
+                          condition: DateBasedCondition,
+                          rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+    val allOperands = condition.getOperands.asScala
+
+    try {
+      val hasNull = allOperands.exists(_.getEvaluatedExpression == null)
+      val dateStrings = allOperands
+        .filter(_.getEvaluatedExpression != null)
+        .map(_.getEvaluatedExpression.toLocalDate
+          .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE))
+
+      for {
+        _ <- validateDateOperandCount(condition.getOperator, dateStrings.size, hasNull)
+        sql <- buildDateSql(condition.getOperator, transformedCol, dateStrings, hasNull)
+      } yield {
+        val assertion = parseThresholdAssertion(rule).getOrElse(Check.IsOne)
+        (addWhereClause(rule, check.satisfies(sql, check.description, assertion,
+          columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule))
+      }
+    } catch {
+      case e: java.time.DateTimeException =>
+        Left(s"Invalid date operand in ColumnValues rule: ${e.getMessage}")
+    }
+  }
+
+  private def validateDateOperandCount(op: DateBasedConditionOperator,
+                                       dateCount: Int,
+                                       hasNull: Boolean): Either[String, Unit] = {
+    op match {
+      case DateBasedConditionOperator.BETWEEN | DateBasedConditionOperator.NOT_BETWEEN =>
+        if (dateCount != 2) Left(s"ColumnValues date ${op.name} requires exactly 2 date operands, got $dateCount.")
+        else Right(())
+      case DateBasedConditionOperator.IN | DateBasedConditionOperator.NOT_IN =>
+        if (dateCount == 0 && !hasNull) Left(s"ColumnValues date ${op.name} requires at least one operand.")
+        else Right(())
+      case DateBasedConditionOperator.EQUALS | DateBasedConditionOperator.NOT_EQUALS =>
+        if (dateCount == 0 && !hasNull) Left(s"ColumnValues date ${op.name} requires one operand.")
+        else if (dateCount > 1) Left(s"ColumnValues date ${op.name} requires exactly 1 operand, got $dateCount.")
+        else Right(())
+      case _ =>
+        if (dateCount != 1) Left(s"ColumnValues date ${op.name} requires exactly 1 date operand, got $dateCount.")
+        else Right(())
+    }
+  }
+
+  private def buildDateSql(op: DateBasedConditionOperator, col: String,
+                           dates: Seq[String], hasNull: Boolean): Either[String, String] = {
+    val dc = s"to_date($col)"
+    def q(d: String): String = s"'${d.replace("'", "''")}'"
+    def notNull(expr: String): String = s"$col IS NOT NULL AND $expr"
+    def nullOr(expr: String): String = s"$col IS NULL OR $expr"
+
+    Right(op match {
+      case DateBasedConditionOperator.GREATER_THAN => notNull(s"$dc > ${q(dates.head)}")
+      case DateBasedConditionOperator.GREATER_THAN_EQUAL_TO => notNull(s"$dc >= ${q(dates.head)}")
+      case DateBasedConditionOperator.LESS_THAN => notNull(s"$dc < ${q(dates.head)}")
+      case DateBasedConditionOperator.LESS_THAN_EQUAL_TO => notNull(s"$dc <= ${q(dates.head)}")
+      case DateBasedConditionOperator.EQUALS =>
+        if (hasNull) s"$col IS NULL" else notNull(s"$dc = ${q(dates.head)}")
+      case DateBasedConditionOperator.NOT_EQUALS =>
+        if (hasNull) s"$col IS NOT NULL" else nullOr(s"$dc != ${q(dates.head)}")
+      case DateBasedConditionOperator.BETWEEN =>
+        notNull(s"$dc > ${q(dates.head)} AND $dc < ${q(dates.last)}")
+      case DateBasedConditionOperator.NOT_BETWEEN =>
+        nullOr(s"$dc <= ${q(dates.head)} OR $dc >= ${q(dates.last)}")
+      case DateBasedConditionOperator.IN =>
+        buildSetSql(col, dc, dates.map(q), hasNull, negated = false)
+      case DateBasedConditionOperator.NOT_IN =>
+        buildSetSql(col, dc, dates.map(q), hasNull, negated = true)
+    })
+  }
+
+  private def buildSetSql(col: String, expr: String, quotedVals: Seq[String],
+                          hasNull: Boolean, negated: Boolean): String = {
+    val vals = quotedVals.mkString(", ")
+    (quotedVals.nonEmpty, hasNull, negated) match {
+      case (true, false, false) => s"$col IS NOT NULL AND $expr IN ($vals)"
+      case (true, true, false) => s"$expr IN ($vals) OR $col IS NULL"
+      case (false, true, false) => s"$col IS NULL"
+      case (true, false, true) => s"$col IS NULL OR $expr NOT IN ($vals)"
+      case (true, true, true) => s"$expr NOT IN ($vals) AND $col IS NOT NULL"
+      case (false, true, true) => s"$col IS NOT NULL"
+      case _ => if (negated) "TRUE" else "FALSE"
+    }
+  }
+
+  private def parseThresholdAssertion(rule: DQRule): Option[Double => Boolean] = {
+    Option(rule.getThresholdCondition)
+      .filter(_.getConditionAsString.nonEmpty)
+      .map(_.asInstanceOf[NumberBasedCondition])
+      .map(t => assertionAsScala(rule, t))
   }
 
   private def minMetric(targetColumn: String, rule: DQRule): Seq[DeequMetricMapping] =
