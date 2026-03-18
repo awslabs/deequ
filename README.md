@@ -157,6 +157,10 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **IsPrimaryKey**: `IsPrimaryKey "column"`
 - **ColumnLength**: `ColumnLength "column" between 1 and 5`
 - **ColumnExists**: `ColumnExists "column"`
+- **ColumnValues**: Validate column values against numeric, string, or date expressions
+  - Numeric: `ColumnValues "price" > 0`, `ColumnValues "age" between 18 and 65`
+  - String: `ColumnValues "status" in ["active", "inactive"]`
+  - Date: `ColumnValues "order_date" > "2022-01-01"`, `ColumnValues "order_date" between "2022-01-01" and "2023-01-01"`
 - **RowCountMatch**: `RowCountMatch "referenceDataset" >= 0.9`
 - **SchemaMatch**: `SchemaMatch "referenceDataset" > 0.8`
 - **DataFreshness**: `DataFreshness "Order_Date" <= 24 hours`
