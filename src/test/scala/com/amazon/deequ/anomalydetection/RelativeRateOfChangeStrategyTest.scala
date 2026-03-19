@@ -17,9 +17,10 @@
 package com.amazon.deequ.anomalydetection
 
 import breeze.linalg.DenseVector
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class RelativeRateOfChangeStrategyTest extends WordSpec with Matchers {
+class RelativeRateOfChangeStrategyTest extends AnyWordSpec with Matchers {
 
   "Relative Rate of Change Strategy" should {
 

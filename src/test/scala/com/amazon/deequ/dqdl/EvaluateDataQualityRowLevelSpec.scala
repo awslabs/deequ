@@ -239,7 +239,7 @@ class EvaluateDataQualityRowLevelSpec extends AnyWordSpec with Matchers with Spa
       val skipped = rowLevel.select(RowLevelResultHelper.ROW_LEVEL_SKIP).collect()
 
       skipped.foreach { row =>
-        val skipList = row.getAs[Seq[String]](0)
+        val skipList = row.getAs[scala.collection.Seq[String]](0)
         skipList.size should be(2)
       }
       val outcomes = rowLevel.select(RowLevelResultHelper.ROW_LEVEL_OUTCOME_COLUMN)

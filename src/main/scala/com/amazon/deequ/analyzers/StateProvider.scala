@@ -22,7 +22,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.ApproximatePercentile
 import org.apache.spark.sql.catalyst.expressions.aggregate.DeequHyperLogLogPlusPlusUtils
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
 
 private object StateInformation {
@@ -56,7 +56,7 @@ case class InMemoryStateProvider() extends StateLoader with StatePersister {
 
   override def toString: String = {
     val buffer = new StringBuilder()
-    statesByAnalyzer.foreach { case (analyzer, state) =>
+    statesByAnalyzer.asScala.foreach { case (analyzer, state) =>
       buffer.append(analyzer.toString)
       buffer.append(" => ")
       buffer.append(state.toString)

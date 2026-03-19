@@ -116,7 +116,7 @@ case class OnlineNormalStrategy(
         ret += OnlineCalculationResult(currentMean, stdDev, isAnomaly = true)
       }
     }
-    ret
+    ret.toSeq
   }
 
 

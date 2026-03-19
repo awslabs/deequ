@@ -18,7 +18,8 @@ package com.amazon.deequ
 package constraints
 
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import ConstraintUtils.calculate
 import com.amazon.deequ.analyzers.{Completeness, NumMatchesAndCount}
 import org.apache.spark.sql.Row
@@ -26,7 +27,7 @@ import org.apache.spark.sql.types.{DoubleType, StringType}
 import Constraint._
 import com.amazon.deequ.SparkContextSpec
 
-class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with FixtureSupport {
+class ConstraintsTest extends AnyWordSpec with Matchers with SparkContextSpec with FixtureSupport {
 
   "Completeness constraint" should {
     "assert on wrong completeness" in withSparkSession { sparkSession =>

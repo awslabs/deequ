@@ -16,13 +16,14 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 /**
  * The tested class RateOfChangeStrategy is deprecated.
  * This test is to ensure backwards compatibility for deequ checks that still rely on this strategy.
  */
-class RateOfChangeStrategyTest extends WordSpec with Matchers {
+class RateOfChangeStrategyTest extends AnyWordSpec with Matchers {
 
   "RateOfChange Strategy" should {
 

@@ -26,7 +26,7 @@ import com.amazon.deequ.dqdl.util.DQDLUtility.requiresToBeQuoted
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 case class ColumnLengthRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
@@ -49,7 +49,7 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
                                   rule: DQRule): Either[String, Check] = {
     import software.amazon.glue.dqdl.model.condition.number.NumberBasedConditionOperator._
     import software.amazon.glue.dqdl.model.condition.number.AtomicNumberOperand
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
 
     val rawOperands = condition.getOperands.asScala
     if (!rawOperands.forall(_.isInstanceOf[AtomicNumberOperand])) {

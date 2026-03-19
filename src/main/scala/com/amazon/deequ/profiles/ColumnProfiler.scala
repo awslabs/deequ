@@ -347,11 +347,13 @@ object ColumnProfiler {
         analyzerContextWithAllPreviousResults.foreach { analyzerContextWithAllPreviousResults =>
 
           val relevantEntries = analyzerContextWithAllPreviousResults.metricMap
-            .filterKeys {
-              case histogram: Histogram =>
-                targetColumnsForHistograms.contains(histogram.column) &&
-                  Histogram(histogram.column).equals(histogram)
-              case _ => false
+            .filter { case (k, _) =>
+              k match {
+                case histogram: Histogram =>
+                  targetColumnsForHistograms.contains(histogram.column) &&
+                    Histogram(histogram.column).equals(histogram)
+                case _ => false
+              }
             }
           analyzerContextExistingValues = AnalyzerContext(relevantEntries)
         }

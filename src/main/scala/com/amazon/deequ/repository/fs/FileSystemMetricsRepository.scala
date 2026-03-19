@@ -155,7 +155,9 @@ class FileSystemMetricsRepositoryMultipleResultsLoader(allResults: Seq[AnalysisR
         val requestedMetrics = analysisResult
           .analyzerContext
           .metricMap
-          .filterKeys(analyzer => forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer))
+          .filter { case (analyzer, _) =>
+            forAnalyzers.isEmpty || forAnalyzers.get.contains(analyzer)
+          }
 
         val requestedAnalyzerContext = AnalyzerContext(requestedMetrics)
 

@@ -49,7 +49,7 @@ object DataFreshnessRule {
     val diffSecs = currentTs - targetTs
     val diffHours = round(diffSecs / 3600, 2)
 
-    val evaluatedOperands = durationCondition.getOperands.asScala.map(evaluateDurationToHours)
+    val evaluatedOperands = durationCondition.getOperands.asScala.map(evaluateDurationToHours).toSeq
 
     durationCondition.getOperator match {
       case DurationBasedConditionOperator.BETWEEN =>

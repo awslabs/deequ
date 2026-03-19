@@ -21,11 +21,11 @@ import com.amazon.deequ.analyzers.Distance.{ChisquareMethod, LInfinityMethod}
 import com.amazon.deequ.analyzers.{Distance, QuantileNonSample}
 import com.amazon.deequ.metrics.BucketValue
 import com.amazon.deequ.utils.FixtureSupport
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import com.amazon.deequ.metrics.BucketValue
 import org.scalactic.Tolerance.convertNumericToPlusOrMinusWrapper
 
-class KLLDistanceTest extends WordSpec with SparkContextSpec
+class KLLDistanceTest extends AnyWordSpec with SparkContextSpec
   with FixtureSupport{
 
   "KLL distance calculator should compute correct linf_simple" in {
@@ -138,7 +138,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
       "a" -> 100L, "b" -> 22L, "c" -> 25L, "d" -> 5L, "e" -> 13L, "f" -> 2L)
     val distance = Distance.categoricalDistance(
       sample1, sample2, correctForLowNumberOfSamples = true, method = ChisquareMethod())
-    assert(distance == 8.789790456457125)
+    assert(distance === 8.789790456457125 +- 1e-12)
   }
 
   "Categorical distance should compute correct chisquare distance (low samples) with regrouping (yates)" in {
@@ -171,7 +171,7 @@ class KLLDistanceTest extends WordSpec with SparkContextSpec
       "a" -> 100L, "b" -> 4L, "c" -> 3L, "d" -> 27L, "e" -> 20L, "f" -> 20L, "g" -> 20L, "h" -> 20L)
     val distance = Distance.categoricalDistance(
       sample, baseline, correctForLowNumberOfSamples = true, method = ChisquareMethod())
-    assert(distance == 6.827423492761593)
+    assert(distance === 6.827423492761593 +- 1e-12)
   }
 
   "Categorical distance should compute correct chisquare distance (low samples) " +

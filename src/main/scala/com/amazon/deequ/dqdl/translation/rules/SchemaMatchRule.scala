@@ -21,7 +21,7 @@ import com.amazon.deequ.dqdl.model.SchemaMatchExecutableRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
-import scala.jdk.CollectionConverters.mapAsScalaMapConverter
+import scala.jdk.CollectionConverters._
 
 object SchemaMatchRule {
   def toExecutableRule(rule: DQRule): SchemaMatchExecutableRule = {

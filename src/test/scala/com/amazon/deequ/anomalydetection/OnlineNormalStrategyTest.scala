@@ -16,13 +16,31 @@
 
 package com.amazon.deequ.anomalydetection
 
-import org.scalatest.{Matchers, WordSpec}
-import breeze.stats.meanAndVariance
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import scala.util.Random
 
 import scala.math.abs
+import scala.math.sqrt
 
-class OnlineNormalStrategyTest extends WordSpec with Matchers {
+class OnlineNormalStrategyTest extends AnyWordSpec with Matchers {
+
+  /** Welford's online algorithm for mean and sample standard deviation,
+   *  matching breeze's meanAndVariance implementation. */
+  private def computeMeanAndStdDev(data: Seq[Double]): (Double, Double) = {
+    var n = 0L
+    var mean = 0.0
+    var m2 = 0.0
+    for (x <- data) {
+      n += 1
+      val delta = x - mean
+      mean += delta / n
+      val delta2 = x - mean
+      m2 += delta * delta2
+    }
+    val variance = if (n > 1) m2 / (n - 1) else 0.0
+    (mean, sqrt(variance))
+  }
 
   "Online Normal Strategy" should {
 
@@ -102,12 +120,10 @@ class OnlineNormalStrategyTest extends WordSpec with Matchers {
       }).toVector
       val lastPoint = strategy.computeStatsAndAnomalies(data).last
 
-      val breezeResult = meanAndVariance(data)
-      val breezeMean = breezeResult.mean
-      val breezeStdDev = breezeResult.stdDev
+      val (expectedMean, expectedStdDev) = computeMeanAndStdDev(data)
 
-      assert(lastPoint.mean == breezeMean)
-      assert(abs(lastPoint.stdDev - breezeStdDev) < breezeStdDev * 0.001)
+      assert(lastPoint.mean == expectedMean)
+      assert(abs(lastPoint.stdDev - expectedStdDev) < expectedStdDev * 0.001)
     }
 
     "ignores anomalies in calculation if wanted" in {
@@ -124,12 +140,10 @@ class OnlineNormalStrategyTest extends WordSpec with Matchers {
       val data: Vector[Double] = Vector(1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0)
       val lastPoint = strategy.computeStatsAndAnomalies(data).last
 
-      val breezeResult = meanAndVariance(data)
-      val breezeMean = breezeResult.mean
-      val breezeStdDev = breezeResult.stdDev
+      val (expectedMean, expectedStdDev) = computeMeanAndStdDev(data)
 
-      assert(lastPoint.mean == breezeMean)
-      assert(abs(lastPoint.stdDev - breezeStdDev) < breezeStdDev * 0.1)
+      assert(lastPoint.mean == expectedMean)
+      assert(abs(lastPoint.stdDev - expectedStdDev) < expectedStdDev * 0.1)
     }
 
     "throw an error when no factor given" in {

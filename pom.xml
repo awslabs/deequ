@@ -13,8 +13,8 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
 
-        <scala.major.version>2.12</scala.major.version>
-        <scala.version>${scala.major.version}.10</scala.version>
+        <scala.major.version>2.13</scala.major.version>
+        <scala.version>${scala.major.version}.16</scala.version>
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
         <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 
@@ -115,14 +115,14 @@
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.major.version}</artifactId>
-            <version>3.1.2</version>
+            <version>3.2.19</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.scalamock</groupId>
             <artifactId>scalamock_${scala.major.version}</artifactId>
-            <version>4.4.0</version>
+            <version>5.2.0</version>
             <scope>test</scope>
         </dependency>
 

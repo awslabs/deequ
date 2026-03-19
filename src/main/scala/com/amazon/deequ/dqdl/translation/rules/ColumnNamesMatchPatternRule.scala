@@ -19,7 +19,7 @@ package com.amazon.deequ.dqdl.translation.rules
 import com.amazon.deequ.dqdl.model.ColumnNamesMatchPatternExecutableRule
 import software.amazon.glue.dqdl.model.DQRule
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object ColumnNamesMatchPatternRule {
   def toExecutableRule(rule: DQRule): ColumnNamesMatchPatternExecutableRule = {
