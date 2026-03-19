@@ -2203,6 +2203,184 @@ class VerificationSuiteTest extends WordSpec with Matchers with SparkContextSpec
     test(repository)
   }
 
+    "return correct row-level results when where clause in hasMin/hasMax filters all rows" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        val check = new Check(CheckLevel.Error, "min-max-where-zero-match")
+          .hasMin("att1", _ >= 0.0).where("att1 > 100")
+          .hasMax("att1", _ <= 1000.0).where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+
+        val resultData = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, result, data)
+        val newCols = resultData.columns.diff(data.columns)
+        val resultColumn = newCols.head
+        val rowValues = resultData.select(resultColumn).collect().map(_.getBoolean(0))
+        rowValues.foreach(v => assert(v))
+      }
+
+    "return Success when where clause filters all rows and assertion would otherwise fail" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        // att1 values are 1-6, assertion _ >= 10 would fail without the where clause
+        val check = new Check(CheckLevel.Error, "min-where-would-fail")
+          .hasMin("att1", _ >= 10.0).where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+      }
+
+    "return null row-level results when where clause filters all rows with FilteredRowOutcome.NULL" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+        val opts = Some(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL))
+
+        val check = new Check(CheckLevel.Error, "min-max-where-zero-match-null")
+          .hasMin("att1", _ >= 0.0, analyzerOptions = opts).where("att1 > 100")
+          .hasMax("att1", _ <= 1000.0, analyzerOptions = opts).where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+
+        val resultData = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, result, data)
+        val newCols = resultData.columns.diff(data.columns)
+        val resultColumn = newCols.head
+        val rowValues = resultData.select(resultColumn).collect().map(_.isNullAt(0))
+        rowValues.foreach(v => assert(v))
+      }
+
+    "return Error when where clause matches rows and assertion fails" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        // att1 values 4,5,6 match the filter, min is 4, assertion _ >= 10 fails
+        val check = new Check(CheckLevel.Error, "min-where-legit-fail")
+          .hasMin("att1", _ >= 10.0).where("att1 > 3")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Error)
+      }
+
+    "return Success for isComplete when where clause filters all rows" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        val check = new Check(CheckLevel.Error, "complete-where-zero-match")
+          .isComplete("att1").where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+
+        val resultData = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, result, data)
+        val newCols = resultData.columns.diff(data.columns)
+        val resultColumn = newCols.head
+        val rowValues = resultData.select(resultColumn).collect().map(_.getBoolean(0))
+        rowValues.foreach(v => assert(v))
+      }
+
+    "return Error for isComplete when where clause matches rows with nulls" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        // attNull has nulls for items 1-3, where clause matches all rows
+        val check = new Check(CheckLevel.Error, "complete-where-legit-fail")
+          .isComplete("attNull").where("att1 > 0")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Error)
+      }
+
+    "return Error for hasMax when where clause matches rows and assertion fails" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        // att1 values 4,5,6 match the filter, max is 6, assertion _ <= 3 fails
+        val check = new Check(CheckLevel.Error, "max-where-legit-fail")
+          .hasMax("att1", _ <= 3.0).where("att1 > 3")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Error)
+      }
+
+    "return Success for satisfies when where clause filters all rows" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        val check = new Check(CheckLevel.Error, "satisfies-where-zero-match")
+          .satisfies("att1 > 0", "att1 positive").where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+
+        val resultData = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, result, data)
+        val newCols = resultData.columns.diff(data.columns)
+        val resultColumn = newCols.head
+        val rowValues = resultData.select(resultColumn).collect().map(_.getBoolean(0))
+        rowValues.foreach(v => assert(v))
+      }
+
+    "return Error for satisfies when where clause matches rows and assertion fails" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+
+        // att1 values 4,5,6 match the filter, but att1 > 10 fails for all of them
+        val check = new Check(CheckLevel.Error, "satisfies-where-legit-fail")
+          .satisfies("att1 > 10", "att1 big").where("att1 > 3")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Error)
+      }
+
+    "return null row-level results for isComplete when where clause filters all rows with FilteredRowOutcome.NULL" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+        val opts = Some(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL))
+
+        val check = new Check(CheckLevel.Error, "complete-where-null")
+          .isComplete("att1", analyzerOptions = opts).where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+
+        val resultData = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, result, data)
+        val newCols = resultData.columns.diff(data.columns)
+        val resultColumn = newCols.head
+        val rowValues = resultData.select(resultColumn).collect().map(_.isNullAt(0))
+        rowValues.foreach(v => assert(v))
+      }
+
+    "return null row-level results for satisfies when where clause filters all rows with FilteredRowOutcome.NULL" in
+      withSparkSession { sparkSession =>
+        val data = getDfWithNumericValues(sparkSession)
+        val opts = Some(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL))
+
+        val check = new Check(CheckLevel.Error, "satisfies-where-null")
+          .satisfies("att1 > 0", "att1 positive", analyzerOptions = opts).where("att1 > 100")
+
+        val result = VerificationSuite().onData(data).addCheck(check).run()
+
+        assert(result.status == CheckStatus.Success)
+
+        val resultData = VerificationResult.rowLevelResultsAsDataFrame(sparkSession, result, data)
+        val newCols = resultData.columns.diff(data.columns)
+        val resultColumn = newCols.head
+        val rowValues = resultData.select(resultColumn).collect().map(_.isNullAt(0))
+        rowValues.foreach(v => assert(v))
+      }
+
   private[this] def assertSameRows(dataframeA: DataFrame, dataframeB: DataFrame): Unit = {
     assert(dataframeA.collect().toSet == dataframeB.collect().toSet)
   }

@@ -612,5 +612,45 @@ class EvaluateDataQualityRowLevelSpec extends AnyWordSpec with Matchers with Spa
         skip.size should be(1)
       }
     }
+
+    "pass ColumnValues rule when WHERE clause filters all rows" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(
+        (1, "D", 10),
+        (2, "D", 20),
+        (3, "D", 30)
+      ).toDF("id", "action", "value")
+
+      val ruleset = """Rules = [ ColumnValues "value" >= 0 where "action in ('I','U')" ]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val outcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      outcomes.collect()(0).getAs[String]("Outcome") should be("Passed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val failArrays = rowLevel.select(RowLevelResultHelper.ROW_LEVEL_FAIL)
+        .collect().map(_.getSeq[String](0))
+      failArrays.foreach(_ shouldBe empty)
+    }
+
+    "pass date ColumnValues rule when WHERE clause filters all rows" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(
+        (1, "D", "2025-01-01"),
+        (2, "D", "2025-06-15"),
+        (3, "D", "2025-12-31")
+      ).toDF("id", "action", "date_col")
+
+      val ruleset = """Rules = [ ColumnValues "date_col" > "2024-01-01" where "action in ('I','U')" ]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val outcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      outcomes.collect()(0).getAs[String]("Outcome") should be("Passed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val failArrays = rowLevel.select(RowLevelResultHelper.ROW_LEVEL_FAIL)
+        .collect().map(_.getSeq[String](0))
+      failArrays.foreach(_ shouldBe empty)
+    }
   }
 }
