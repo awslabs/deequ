@@ -1300,7 +1300,8 @@ class VerificationSuiteTest extends AnyWordSpec with Matchers with SparkContextS
         val checkFailedResultStringType = verificationResult.checkResults(complianceCheckThatShouldFail)
         checkFailedResultStringType.constraintResults.map(_.message) shouldBe
           List(Some("Empty state for analyzer Compliance(name between 1.0 and 3.0,`name`" +
-            " IS NULL OR (`name` >= 1.0 AND `name` <= 3.0)," +
+            " IS NULL OR (try_cast(`name` AS DOUBLE) >= 1.0 AND " +
+            "try_cast(`name` AS DOUBLE) <= 3.0)," +
             "None,List(name),None), all input values were NULL."))
         assert(checkFailedResultStringType.status == CheckStatus.Error)
 

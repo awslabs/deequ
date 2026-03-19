@@ -26,14 +26,14 @@ class ColumnConditionTest extends AnyWordSpec {
     "return the correct isEachNotNull condition" in {
       assert(
         ColumnCondition.isEachNotNull(Seq("att1", "att2", "att3")) ==
-        "(((att1 IS NOT NULL) AND (att2 IS NOT NULL)) AND (att3 IS NOT NULL))"
+        "and(and(isNotNull(att1), isNotNull(att2)), isNotNull(att3))"
       )
     }
 
     "return the correct isAnyNotNull condition" in {
       assert(
         ColumnCondition.isAnyNotNull(Seq("att1", "att2", "att3")) ==
-          "(((att1 IS NOT NULL) OR (att2 IS NOT NULL)) OR (att3 IS NOT NULL))"
+          "or(or(isNotNull(att1), isNotNull(att2)), isNotNull(att3))"
       )
     }
   }

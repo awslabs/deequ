@@ -116,20 +116,20 @@ object ColumnDataTypeRule {
               if (validateDateFormat(fmt)) {
                 if (validatePartialDateFormat(fmt)) {
                   val (exprColumn, outputFormat) = handlePartialDates(targetColumn, fmt)
-                  to_date(exprColumn, outputFormat).cast(sparkType).isNotNull
+                  to_date(exprColumn, outputFormat).try_cast(sparkType).isNotNull
                 } else {
                   val colExpr = col(targetColumn).cast(StringType)
-                  to_date(colExpr, fmt).cast(sparkType).isNotNull
+                  to_date(colExpr, fmt).try_cast(sparkType).isNotNull
                 }
               } else {
                 lit(false)
               }
             case _ =>
-              col(targetColumn).cast(sparkType).isNotNull
+              col(targetColumn).try_cast(sparkType).isNotNull
           }
         }
       case _ =>
-        col(targetColumn).cast(sparkType).isNotNull
+        col(targetColumn).try_cast(sparkType).isNotNull
     }
   }
 

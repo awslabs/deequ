@@ -1313,7 +1313,8 @@ case class Check(
     val rightOperand = if (includeUpperBound) "<=" else "<"
 
     val predicate = s"`$column` IS NULL OR " +
-      s"(`$column` $leftOperand $lowerBound AND `$column` $rightOperand $upperBound)"
+      s"(try_cast(`$column` AS DOUBLE) $leftOperand $lowerBound AND " +
+      s"try_cast(`$column` AS DOUBLE) $rightOperand $upperBound)"
 
     satisfies(predicate, s"$column between $lowerBound and $upperBound", hint = hint,
       columns = List(column), analyzerOptions = analyzerOptions)

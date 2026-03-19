@@ -18,16 +18,23 @@ package org.apache.spark.sql
 
 
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateFunction, StatefulApproxQuantile, StatefulHyperloglogPlus}
-import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.catalyst.expressions.{Expression, Literal}
+import org.apache.spark.sql.classic.{ColumnNodeToExpressionConverter, ExpressionColumnNode}
 
 /* Custom aggregation functions used internally by deequ */
 object DeequFunctions {
+
+  private[this] def toExpr(col: Column): Expression =
+    ColumnNodeToExpressionConverter(col.node)
+
+  private[this] def fromExpr(expr: Expression): Column =
+    Column(ExpressionColumnNode(expr))
 
   private[this] def withAggregateFunction(
       func: AggregateFunction,
       isDistinct: Boolean = false): Column = {
 
-    Column(func.toAggregateExpression(isDistinct))
+    fromExpr(func.toAggregateExpression(isDistinct))
   }
 
   /** Pearson correlation with state */
@@ -37,7 +44,7 @@ object DeequFunctions {
 
   /** Pearson correlation with state */
   def stateful_corr(columnA: Column, columnB: Column): Column = withAggregateFunction {
-    new StatefulCorrelation(columnA.expr, columnB.expr)
+    new StatefulCorrelation(toExpr(columnA), toExpr(columnB))
   }
 
   /** Standard deviation with state */
@@ -47,7 +54,7 @@ object DeequFunctions {
 
   /** Standard deviation with state */
   def stateful_stddev_pop(column: Column): Column = withAggregateFunction {
-    StatefulStdDevPop(column.expr)
+    StatefulStdDevPop(toExpr(column))
   }
 
   /** Approximate number of distinct values with state via HLL's */
@@ -57,7 +64,7 @@ object DeequFunctions {
 
   /** Approximate number of distinct values with state via HLL's */
   def stateful_approx_count_distinct(column: Column): Column = withAggregateFunction {
-    StatefulHyperloglogPlus(column.expr)
+    StatefulHyperloglogPlus(toExpr(column))
   }
 
   def stateful_approx_quantile(
@@ -66,7 +73,7 @@ object DeequFunctions {
     : Column = withAggregateFunction {
 
     StatefulApproxQuantile(
-      column.expr,
+      toExpr(column),
       // val relativeError = 1.0D / accuracy inside StatefulApproxQuantile
       Literal(1.0 / relativeError),
       mutableAggBufferOffset = 0,
