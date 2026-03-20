@@ -2,9 +2,9 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "Release/2.0.14-spark-4.0" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "Release/2.0.14-spark-4.0" ]
 
 jobs:
   build:
@@ -13,12 +13,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up JDK 8
+    - name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: '8'
+        java-version: ${{ contains(github.base_ref || github.ref_name, 'spark-4.0') && '17' || '8' }}
         distribution: 'corretto'
         cache: maven
     - name: Build with Maven
       run: mvn clean verify
-
