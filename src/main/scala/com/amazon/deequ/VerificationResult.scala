@@ -81,7 +81,10 @@ object VerificationResult {
 
     import sparkSession.implicits._
 
-    simplifiedCheckResults.toDF("check", "check_level", "check_status", "constraint",
+    simplifiedCheckResults
+      .map(r => (r.checkDescription, r.checkLevel, r.checkStatus,
+        r.constraint, r.constraintStatus, r.constraintMessage))
+      .toDF("check", "check_level", "check_status", "constraint",
       "constraint_status", "constraint_message")
   }
 

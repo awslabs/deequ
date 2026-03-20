@@ -107,6 +107,7 @@ trait SparkContextSpec {
       .config("spark.ui.enabled", "false")
       .config("spark.sql.shuffle.partitions", 2.toString)
       .config("spark.sql.adaptive.enabled", value = false)
+      .config("spark.driver.host", "127.0.0.1")
       .config("spark.driver.bindAddress", "127.0.0.1")
 
     val session = wareHouseDir.fold(sessionBuilder.getOrCreate())(sessionBuilder

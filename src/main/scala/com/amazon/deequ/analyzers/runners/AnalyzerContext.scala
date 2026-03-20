@@ -55,7 +55,8 @@ object AnalyzerContext {
 
     import sparkSession.implicits._
 
-    metricsList.toDF("entity", "instance", "name", "value")
+    metricsList.map(m => (m.entity, m.instance, m.name, m.value))
+      .toDF("entity", "instance", "name", "value")
   }
 
   def successMetricsAsJson(analyzerContext: AnalyzerContext,

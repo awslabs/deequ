@@ -47,14 +47,14 @@ case class CustomSql(expression: String, disambiguator: String = "*") extends An
   override def computeStateFrom(data: DataFrame, filterCondition: Option[String] = None): Option[CustomSqlState] = {
 
     Try {
-      data.sqlContext.sql(expression)
+      data.sparkSession.sql(expression)
     } match {
       case Failure(e) => Some(CustomSqlState(Right(e.getMessage)))
       case Success(dfSql) =>
         val cols = dfSql.columns.toSeq
         cols match {
           case Seq(resultCol) =>
-            val dfSqlCast = dfSql.withColumn(resultCol, col(resultCol).cast(DoubleType))
+            val dfSqlCast = dfSql.withColumn(resultCol, col(resultCol).try_cast(DoubleType))
             val results: Seq[Row] = dfSqlCast.collect()
             if (results.size != 1) {
               Some(CustomSqlState(Right("Custom SQL did not return exactly 1 row")))

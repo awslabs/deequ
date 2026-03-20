@@ -6,11 +6,11 @@
 
     <groupId>com.amazon.deequ</groupId>
     <artifactId>deequ</artifactId>
-    <version>2.0.14-spark-3.5</version>
+    <version>2.0.14-spark-4.0</version>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <encoding>UTF-8</encoding>
 
         <scala.major.version>2.13</scala.major.version>
@@ -18,7 +18,7 @@
         <artifact.scala.version>${scala.major.version}</artifact.scala.version>
         <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 
-        <spark.version>3.5.0</spark.version>
+        <spark.version>4.0.1</spark.version>
     </properties>
 
     <name>deequ</name>
@@ -109,7 +109,7 @@
         <dependency>
             <groupId>software.amazon.glue</groupId>
             <artifactId>dqdl</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.2</version>
         </dependency>
 
         <dependency>
@@ -163,8 +163,8 @@
 
         <dependency>
             <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-spark-runtime-3.3_2.12</artifactId>
-            <version>0.14.0</version>
+            <artifactId>iceberg-spark-runtime-4.0_2.13</artifactId>
+            <version>1.10.1</version>
             <scope>test</scope>
         </dependency>
 
@@ -222,6 +222,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>WDF TestSuite.txt</filereports>
+                    <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED</argLine>
                 </configuration>
                 <executions>
                     <execution>
@@ -389,7 +390,7 @@
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <version>2.9.1</version>
                         <configuration>
-                            <source>8</source>
+                            <source>17</source>
                         </configuration>
                         <executions>
                             <execution>

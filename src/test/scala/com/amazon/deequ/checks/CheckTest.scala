@@ -829,7 +829,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val baseCheck = Check(CheckLevel.Error, description = "a description")
         val df = getDfWithVariableStringLengthValues(sparkSession)
         val context = AnalysisRunner.onData(df)
-          .addAnalyzers(Seq(MinLength("att1"), MaxLength("att1"))).run()
+          .addAnalyzers(Seq(MinLength("att1"), analyzers.MaxLength("att1"))).run()
 
         assertSuccess(baseCheck.hasMinLength("att1", _ == 0.0), context)
         assertSuccess(baseCheck.hasMaxLength("att1", _ == 4.0), context)
@@ -842,7 +842,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val df = getDfCompleteAndInCompleteColumnsAndVarLengthStrings(sparkSession)
         val context = AnalysisRunner.onData(df)
           .addAnalyzers(Seq(MinLength("item", Option("val1 > 3"), emptyNulLBehavior),
-            MaxLength("item", Option("val1 <= 3"), emptyNulLBehavior))).run()
+            analyzers.MaxLength("item", Option("val1 <= 3"), emptyNulLBehavior))).run()
 
         assertSuccess(baseCheck.hasMinLength("item", _ >= 4.0, analyzerOptions = emptyNulLBehavior)
           .where("val1 > 3"), context) // 1 without where clause

@@ -16,8 +16,14 @@
 
 package com.amazon.deequ.schema
 
-import org.apache.spark.sql.functions.{col, expr, length, not, unix_timestamp, regexp_extract}
-import org.apache.spark.sql.types.{DataTypes, DecimalType, IntegerType, TimestampType}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.length
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.not
+import org.apache.spark.sql.functions.try_to_timestamp
+import org.apache.spark.sql.functions.regexp_extract
+import org.apache.spark.sql.types.{DataTypes, DecimalType, IntegerType}
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.storage.StorageLevel
 
@@ -44,7 +50,7 @@ private[this] case class IntColumnDefinition(
     maxValue: Option[Int] = None)
   extends ColumnDefinition {
 
-  override def castExpression(): Column = { col(name).cast(IntegerType).as(name) }
+  override def castExpression(): Column = { col(name).try_cast(IntegerType).as(name) }
 }
 
 private[this] case class DecimalColumnDefinition(
@@ -54,7 +60,7 @@ private[this] case class DecimalColumnDefinition(
     isNullable: Boolean = true)
   extends ColumnDefinition {
 
-  override def castExpression(): Column = { col(name).cast(DecimalType(precision, scale)).as(name) }
+  override def castExpression(): Column = { col(name).try_cast(DecimalType(precision, scale)).as(name) }
 }
 
 private[this] case class TimestampColumnDefinition(
@@ -64,7 +70,7 @@ private[this] case class TimestampColumnDefinition(
   extends ColumnDefinition {
 
   override def castExpression(): Column = {
-    unix_timestamp(col(name), mask).cast(TimestampType).as(name)
+    try_to_timestamp(col(name), lit(mask)).as(name)
   }
 }
 
@@ -237,7 +243,7 @@ object RowLevelSchemaValidator {
 
         case intDef: IntColumnDefinition =>
 
-          val colAsInt = col(intDef.name).cast(IntegerType)
+          val colAsInt = col(intDef.name).try_cast(IntegerType)
 
           /* null or successfully casted */
           nextCnf = nextCnf.and(colIsNull.or(colAsInt.isNotNull))
@@ -253,7 +259,7 @@ object RowLevelSchemaValidator {
         case decDef: DecimalColumnDefinition =>
 
           val decType = DataTypes.createDecimalType(decDef.precision, decDef.scale)
-          nextCnf = nextCnf.and(colIsNull.or(col(decDef.name).cast(decType).isNotNull))
+          nextCnf = nextCnf.and(colIsNull.or(col(decDef.name).try_cast(decType).isNotNull))
 
         case strDef: StringColumnDefinition =>
 
@@ -272,8 +278,8 @@ object RowLevelSchemaValidator {
 
         case tsDef: TimestampColumnDefinition =>
           /* null or successfully casted */
-          nextCnf = nextCnf.and(colIsNull.or(unix_timestamp(col(tsDef.name), tsDef.mask)
-            .cast(TimestampType).isNotNull))
+          nextCnf = nextCnf.and(colIsNull.or(try_to_timestamp(col(tsDef.name), lit(tsDef.mask))
+            .isNotNull))
       }
 
       nextCnf
