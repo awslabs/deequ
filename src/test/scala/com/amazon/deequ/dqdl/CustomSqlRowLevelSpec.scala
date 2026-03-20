@@ -32,8 +32,15 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       ).toDF("id", "name")
 
       val ruleset = """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      ruleOutcomes.collect()(0).getAs[String]("Outcome") should be("Passed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Passed"))
     }
 
     "fail when not all rows match" in withSparkSession { spark =>
@@ -62,9 +69,17 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
         ("1", Some("Alice")), ("2", None), ("3", Some("Charlie"))
       ).toDF("id", "name")
 
-      val ruleset = """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL" with threshold > 0.5]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+      val ruleset =
+        """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL" with threshold > 0.5]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      ruleOutcomes.collect()(0).getAs[String]("Outcome") should be("Passed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes should be(Array("Passed", "Failed", "Passed"))
     }
 
     "fail with threshold when not enough rows match" in withSparkSession { spark =>
@@ -73,9 +88,17 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
         ("1", Some("Alice")), ("2", None), ("3", Some("Charlie"))
       ).toDF("id", "name")
 
-      val ruleset = """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL" with threshold > 0.9]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      results.collect()(0).getAs[String]("Outcome") should be("Failed")
+      val ruleset =
+        """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL" with threshold > 0.9]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      ruleOutcomes.collect()(0).getAs[String]("Outcome") should be("Failed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes should be(Array("Passed", "Failed", "Passed"))
     }
 
     "still route scalar CustomSql through Deequ path" in withSparkSession { spark =>
@@ -95,8 +118,15 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       val df = Seq(("1", "Alice")).toDF("id", "name")
 
       val ruleset = """Rules=[CustomSql "SELECT nonexistent FROM primary"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      results.collect()(0).getAs[String]("Outcome") should be("Failed")
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      ruleOutcomes.collect()(0).getAs[String]("Outcome") should be("Failed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Failed"))
     }
 
     "fail when SQL returns columns not in primary" in withSparkSession { spark =>
@@ -106,10 +136,17 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       ref.createOrReplaceTempView("ref")
 
       val ruleset = """Rules=[CustomSql "SELECT id, other_col FROM ref"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      val row = results.collect()(0)
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      val row = ruleOutcomes.collect()(0)
       row.getAs[String]("Outcome") should be("Failed")
       row.getAs[String]("FailureReason") should include("not found")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Failed"))
     }
 
     "fail on empty DataFrame" in withSparkSession { spark =>
@@ -117,8 +154,10 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       val df = Seq.empty[(String, String)].toDF("id", "name")
 
       val ruleset = """Rules=[CustomSql "SELECT id, name FROM primary"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      results.collect()(0).getAs[String]("Outcome") should be("Failed")
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      ruleOutcomes.collect()(0).getAs[String]("Outcome") should be("Failed")
     }
 
     "work with multiple columns in SQL result" in withSparkSession { spark =>
@@ -151,10 +190,17 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       val ruleset =
         """Rules=[CustomSql "SELECT COUNT(*) FROM primary" > 0, """ +
         """CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      val rows = results.collect()
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      val rows = ruleOutcomes.collect()
       rows.length should be(2)
       rows.foreach(_.getAs[String]("Outcome") should be("Passed"))
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Passed"))
     }
 
     "handle NULL values in SQL result correctly" in withSparkSession { spark =>
@@ -200,10 +246,17 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       ref.createOrReplaceTempView("ref_table")
 
       val ruleset = """Rules=[CustomSql "SELECT id, amount FROM ref_table"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      val row = results.collect()(0)
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      val row = ruleOutcomes.collect()(0)
       row.getAs[String]("Outcome") should be("Failed")
       row.getAs[String]("FailureReason") should include("not found")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Failed"))
     }
 
     "fail when joining ref table and selecting non-primary columns" in withSparkSession { spark =>
@@ -215,10 +268,17 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       val ruleset =
         """Rules=[CustomSql "SELECT ref_join.id, ref_join.amount """ +
         """FROM primary JOIN ref_join ON primary.id = ref_join.id"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      val row = results.collect()(0)
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      val row = ruleOutcomes.collect()(0)
       row.getAs[String]("Outcome") should be("Failed")
       row.getAs[String]("FailureReason") should include("not found")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Failed"))
     }
 
     "handle column that exists in both primary and reference" in withSparkSession { spark =>
@@ -229,8 +289,15 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
 
       val ruleset =
         """Rules=[CustomSql "SELECT primary.id FROM primary JOIN ref_shared ON primary.id = ref_shared.id"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      results.collect()(0).getAs[String]("Outcome") should be("Passed")
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      ruleOutcomes.collect()(0).getAs[String]("Outcome") should be("Passed")
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      val outcomes = rowLevel.select("DataQualityEvaluationResult")
+        .collect().map(_.getString(0))
+      outcomes.foreach(_ should be("Passed"))
     }
 
     "handle non-primary-key selection with duplicates" in withSparkSession { spark =>
@@ -240,9 +307,12 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       ).toDF("id", "name")
 
       val ruleset = """Rules=[CustomSql "SELECT name FROM primary WHERE name = 'Alice'"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      val compliance = results.collect()(0).getAs[Map[String, Double]]("EvaluatedMetrics")(
-        "Dataset.*.CustomSQL.Compliance")
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      val compliance = ruleOutcomes.collect()(0)
+        .getAs[Map[String, Double]]("EvaluatedMetrics")(
+          "Dataset.*.CustomSQL.Compliance")
       compliance should be > 0.5
     }
 
@@ -253,26 +323,13 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
       ).toDF("id", "name")
 
       val ruleset = """Rules=[CustomSql "SELECT id, name FROM primary WHERE name = 'Alice'"]"""
-      val results = EvaluateDataQuality.process(df, ruleset)
-      val compliance = results.collect()(0).getAs[Map[String, Double]]("EvaluatedMetrics")(
-        "Dataset.*.CustomSQL.Compliance")
-      compliance should be > 1.0 - 0.01
-    }
-
-    "return row-level results for processRows" in withSparkSession { spark =>
-      import spark.implicits._
-      val df = Seq(
-        ("1", Some("Alice")), ("2", None), ("3", Some("Charlie"))
-      ).toDF("id", "name")
-
-      val ruleset = """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL"]"""
       val results = EvaluateDataQuality.processRows(df, ruleset)
 
-      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
-      val outcomes = rowLevel.select("DataQualityEvaluationResult")
-        .collect().map(_.getString(0))
-
-      outcomes should be(Array("Passed", "Failed", "Passed"))
+      val ruleOutcomes = results(EvaluateDataQuality.RULE_OUTCOMES_KEY)
+      val compliance = ruleOutcomes.collect()(0)
+        .getAs[Map[String, Double]]("EvaluatedMetrics")(
+          "Dataset.*.CustomSQL.Compliance")
+      compliance should be > 1.0 - 0.01
     }
   }
 }
