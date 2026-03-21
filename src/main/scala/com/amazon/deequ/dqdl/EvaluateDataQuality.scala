@@ -17,8 +17,8 @@
 package com.amazon.deequ.dqdl
 
 import com.amazon.deequ.dqdl.execution.{DQDLExecutor, RowLevelResultHelper}
-import com.amazon.deequ.dqdl.execution.executors.DeequRulesExecutor
-import com.amazon.deequ.dqdl.model.{CompositeExecutableRule, DeequExecutableRule, ExecutableRule, RuleOutcome}
+import com.amazon.deequ.dqdl.execution.executors.{CustomSqlRowLevelExecutor, DeequRulesExecutor}
+import com.amazon.deequ.dqdl.model.{CompositeExecutableRule, CustomSqlRowLevelExecutableRule, DeequExecutableRule, ExecutableRule, RuleOutcome}
 import com.amazon.deequ.dqdl.translation.{DQDLRuleTranslator, DeequOutcomeTranslator}
 import com.amazon.deequ.dqdl.util.DefaultDQDLParser
 import org.apache.spark.sql.DataFrame
@@ -102,18 +102,25 @@ object EvaluateDataQuality {
     val allDeequRules = collectDeequRules(executableRules).distinct
     val deequResult = DeequRulesExecutor.executeWithRowLevel(allDeequRules, df)
 
-    val otherRules = executableRules.filterNot(_.isInstanceOf[DeequExecutableRule])
-    val otherOutcomes = if (otherRules.nonEmpty) {
-      DQDLExecutor.executeRules(otherRules, df, additionalDataSources)
+    val (customSqlRules, remainingRules) = executableRules
+      .filterNot(_.isInstanceOf[DeequExecutableRule])
+      .partition(_.isInstanceOf[CustomSqlRowLevelExecutableRule])
+
+    val customSqlResult = CustomSqlRowLevelExecutor.executeWithRowLevel(
+      customSqlRules.map(_.asInstanceOf[CustomSqlRowLevelExecutableRule]),
+      df, additionalDataSources, Some(deequResult.rowLevelData))
+
+    val remainingOutcomes = if (remainingRules.nonEmpty) {
+      DQDLExecutor.executeRules(remainingRules, df, additionalDataSources)
     } else {
       Map.empty[DQRule, RuleOutcome]
     }
 
-    val allOutcomes = deequResult.outcomes ++ otherOutcomes
+    val allOutcomes = deequResult.outcomes ++ customSqlResult.outcomes ++ remainingOutcomes
     val ruleOutcomes = DeequOutcomeTranslator.translate(allOutcomes, df)
 
     val orderedOutcomes = executableRules.flatMap(r => allOutcomes.get(r.dqRule))
-    val rowLevelOutcomes = RowLevelResultHelper.convert(deequResult.rowLevelData, orderedOutcomes)
+    val rowLevelOutcomes = RowLevelResultHelper.convert(customSqlResult.rowLevelData, orderedOutcomes)
 
     Map(
       ORIGINAL_DATA_KEY -> df,

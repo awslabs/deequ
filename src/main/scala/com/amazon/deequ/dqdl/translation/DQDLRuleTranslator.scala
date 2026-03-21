@@ -44,8 +44,10 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnDataTypeRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import com.amazon.deequ.dqdl.translation.rules.SchemaMatchRule
 import com.amazon.deequ.dqdl.translation.rules.AggregateMatchRule
+import com.amazon.deequ.dqdl.translation.rules.CustomSqlRowLevelRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
+import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
@@ -124,6 +126,16 @@ object DQDLRuleTranslator {
         DatasetMatchRule.toExecutableRule(rule) match {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
+      case "CustomSql" =>
+        rule.getCondition match {
+          case _: NumberBasedCondition =>
+            translateRule(rule) match {
+              case Right(deequExecutableRule) => deequExecutableRule
+              case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+            }
+          case _ =>
+            CustomSqlRowLevelRule.toExecutableRule(rule)
         }
       case _ =>
         translateRule(rule) match {
