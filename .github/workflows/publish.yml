@@ -22,7 +22,8 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   publish:
@@ -157,3 +158,49 @@ jobs:
           rm -f "${KEY_FILE:-}"
         env:
           KEY_FILE: ${{ steps.secrets.outputs.KEY_FILE }}
+
+  bump-version:
+    needs: publish
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        spark: ${{ inputs.spark_version == 'all' && fromJSON('["3.5", "3.4", "3.3"]') || fromJSON(format('["{0}"]', inputs.spark_version)) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ matrix.spark == '3.5' && 'master' || format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
+        with:
+          java-version: '8'
+          distribution: 'corretto'
+
+      - name: Bump version and create PR
+        run: |
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${RELEASE_VERSION}"
+          NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          TARGET_BRANCH="${{ matrix.spark == '3.5' && 'master' || format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}"
+          BRANCH_NAME="bump-version-${NEXT_VERSION}-spark-${SPARK_VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "${BRANCH_NAME}"
+          mvn versions:set -DnewVersion="${NEXT_VERSION}-spark-${SPARK_VERSION}" -DgenerateBackupPoms=false
+          git add pom.xml
+          git commit -m "Update version in pom.xml to ${NEXT_VERSION}-spark-${SPARK_VERSION}"
+          git push origin "${BRANCH_NAME}"
+
+          gh pr create \
+            --base "${TARGET_BRANCH}" \
+            --head "${BRANCH_NAME}" \
+            --title "Update version in pom.xml to ${NEXT_VERSION}-spark-${SPARK_VERSION}" \
+            --body "Automated version bump after publishing ${RELEASE_VERSION}-spark-${SPARK_VERSION} to Maven Central."
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          SPARK_VERSION: ${{ matrix.spark }}
+          GH_TOKEN: ${{ github.token }}
