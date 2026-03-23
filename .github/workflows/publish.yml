@@ -9,10 +9,6 @@ on:
         type: choice
         options:
           - '4.0'
-          - '3.5'
-          - '3.4'
-          - '3.3'
-          - 'all'
       release_version:
         description: 'Release version (check README badge for current version)'
         required: true
@@ -30,13 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        spark: ${{ inputs.spark_version == 'all' && fromJSON('["4.0", "3.5", "3.4", "3.3"]') || fromJSON(format('["{0}"]', inputs.spark_version)) }}
+        spark: ${{ fromJSON('["4.0"]') }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
-          ref: ${{ matrix.spark == '3.5' && 'master' || format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}
+          ref: ${{ format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}
 
       - name: Configure AWS credentials
         if: ${{ !inputs.dry_run }}
