@@ -407,5 +407,130 @@ class AnalysisRunnerTests extends AnyWordSpec
 
       assert(!computed.metricMap.keys.exists(_.isInstanceOf[Size]))
     }
+
+    "produce correct results with column pruning for analyzers without where clauses" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        // These analyzers all declare their columns, so pruning will be active
+        val completeness = Completeness("att1")
+        val mean = Mean("att1")
+        val maximum = Maximum("att2")
+        val size = Size()
+
+        val analysis = Analysis()
+          .addAnalyzer(completeness)
+          .addAnalyzer(mean)
+          .addAnalyzer(maximum)
+          .addAnalyzer(size)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        // Compute expected values directly on individual analyzers (no pruning path)
+        val expectedCompleteness = completeness.calculate(data)
+        val expectedMean = mean.calculate(data)
+        val expectedMaximum = maximum.calculate(data)
+        val expectedSize = size.calculate(data)
+
+        // Verify pruned results match direct computation exactly
+        assert(result.metric(completeness).get.value === expectedCompleteness.value)
+        assert(result.metric(mean).get.value === expectedMean.value)
+        assert(result.metric(maximum).get.value === expectedMaximum.value)
+        assert(result.metric(size).get.value === expectedSize.value)
+      }
+
+    "produce correct results when analyzers have where clauses (pruning disabled)" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val completenessWithWhere = Completeness("att1", Some("att2 > 0"))
+        val mean = Mean("att1")
+
+        val analysis = Analysis()
+          .addAnalyzer(completenessWithWhere)
+          .addAnalyzer(mean)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        // Verify values match direct computation
+        val expectedCompleteness = completenessWithWhere.calculate(data)
+        val expectedMean = mean.calculate(data)
+
+        assert(result.metric(completenessWithWhere).get.value === expectedCompleteness.value)
+        assert(result.metric(mean).get.value === expectedMean.value)
+      }
+
+    "produce correct results when mixing Compliance (unknown columns) with other analyzers" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val compliance = Compliance("att1 > 0", "att1 > 0", columns = List("att1"))
+        val completeness = Completeness("att2")
+
+        val analysis = Analysis()
+          .addAnalyzer(compliance)
+          .addAnalyzer(completeness)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        val expectedCompliance = compliance.calculate(data)
+        val expectedCompleteness = completeness.calculate(data)
+
+        assert(result.metric(compliance).get.value === expectedCompliance.value)
+        assert(result.metric(completeness).get.value === expectedCompleteness.value)
+      }
+
+    "produce correct results with only dataset-level analyzers (no column pruning needed)" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val size = Size()
+        val analysis = Analysis().addAnalyzer(size)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        val expectedSize = size.calculate(data)
+        assert(result.metric(size).get.value === expectedSize.value)
+      }
+
+    "produce correct results with multi-column analyzers" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val correlation = Correlation("att1", "att2")
+        val completeness = Completeness("att1")
+
+        val analysis = Analysis()
+          .addAnalyzer(correlation)
+          .addAnalyzer(completeness)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        val expectedCorrelation = correlation.calculate(data)
+        val expectedCompleteness = completeness.calculate(data)
+
+        assert(result.metric(correlation).get.value === expectedCorrelation.value)
+        assert(result.metric(completeness).get.value === expectedCompleteness.value)
+      }
+
+    "produce correct results when same column is referenced by multiple analyzers" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val completeness = Completeness("att1")
+        val mean = Mean("att1")
+        val minimum = Minimum("att1")
+
+        val analysis = Analysis()
+          .addAnalyzer(completeness)
+          .addAnalyzer(mean)
+          .addAnalyzer(minimum)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        assert(result.metric(completeness).get.value === completeness.calculate(data).value)
+        assert(result.metric(mean).get.value === mean.calculate(data).value)
+        assert(result.metric(minimum).get.value === minimum.calculate(data).value)
+      }
   }
 }

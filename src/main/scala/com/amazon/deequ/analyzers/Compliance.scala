@@ -75,4 +75,8 @@ case class Compliance(instance: String,
 
   override protected def additionalPreconditions(): Seq[StructType => Unit] =
     columns.map(hasColumn)
+
+  // Compliance uses free-form SQL predicates that can reference arbitrary columns,
+  // so we cannot safely determine which columns are needed.
+  override def columnsReferenced(): Option[Set[String]] = None
 }
