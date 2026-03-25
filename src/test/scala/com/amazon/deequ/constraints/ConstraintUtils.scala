@@ -27,6 +27,6 @@ object ConstraintUtils {
         case c: Constraint => c
     }
 
-    analysisBasedConstraint.asInstanceOf[AnalysisBasedConstraint[_, _, _]].calculateAndEvaluate(df)
+    analysisBasedConstraint.asInstanceOf[AnalysisBasedConstraint[_, _]].calculateAndEvaluate(df)
   }
 }
