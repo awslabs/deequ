@@ -181,24 +181,22 @@ jobs:
 
       - name: Bump version and create PR
         run: |
-          IFS='.' read -r MAJOR MINOR PATCH <<< "${RELEASE_VERSION}"
-          NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           TARGET_BRANCH="${{ matrix.spark == '3.5' && 'master' || format('release/{0}-spark-{1}', inputs.release_version, matrix.spark) }}"
-          BRANCH_NAME="bump-version-${NEXT_VERSION}-spark-${SPARK_VERSION}"
+          BRANCH_NAME="bump-version-${RELEASE_VERSION}-spark-${SPARK_VERSION}"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git checkout -b "${BRANCH_NAME}"
-          mvn versions:set -DnewVersion="${NEXT_VERSION}-spark-${SPARK_VERSION}" -DgenerateBackupPoms=false
+          mvn versions:set -DnewVersion="${RELEASE_VERSION}-spark-${SPARK_VERSION}" -DgenerateBackupPoms=false
           git add pom.xml
-          git commit -m "Update version in pom.xml to ${NEXT_VERSION}-spark-${SPARK_VERSION}"
+          git commit -m "Update version in pom.xml to ${RELEASE_VERSION}-spark-${SPARK_VERSION}"
           git push origin "${BRANCH_NAME}"
 
           gh pr create \
             --base "${TARGET_BRANCH}" \
             --head "${BRANCH_NAME}" \
-            --title "Update version in pom.xml to ${NEXT_VERSION}-spark-${SPARK_VERSION}" \
+            --title "Update version in pom.xml to ${RELEASE_VERSION}-spark-${SPARK_VERSION}" \
             --body "Automated version bump after publishing ${RELEASE_VERSION}-spark-${SPARK_VERSION} to Maven Central."
         env:
           RELEASE_VERSION: ${{ inputs.release_version }}
