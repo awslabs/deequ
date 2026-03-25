@@ -60,4 +60,6 @@ case class ColumnCount() extends Analyzer[NumMatches, DoubleMetric] {
   override private[deequ] def toFailureMetric(failure: Exception): DoubleMetric = {
     Analyzers.metricFromFailure(failure, name, instance, entity)
   }
+
+  override def columnsReferenced(): Option[Set[String]] = Some(Set.empty)
 }

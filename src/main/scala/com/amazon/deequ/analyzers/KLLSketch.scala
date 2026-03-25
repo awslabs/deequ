@@ -167,6 +167,8 @@ case class KLLSketch(
   override def preconditions(): Seq[StructType => Unit] = {
     PARAM_CHECK :: hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def columnsReferenced(): Option[Set[String]] = Some(Set(column))
 }
 
 object KLLSketch {
