@@ -106,7 +106,7 @@ case class Histogram(
 
           // sort in descending frequency
           val topNRowsDF = theState.frequencies
-            .orderBy(col(countColumnName).desc)
+            .orderBy(col(countColumnName).desc, col(column).asc)
             .limit(maxDetailBins)
             .collect()
 
