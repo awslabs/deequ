@@ -310,6 +310,23 @@ class HistogramTest extends AnyWordSpec with Matchers with SparkContextSpec with
       keys(1) shouldBe "Electronics"  // second highest: 600
     }
 
+    "sort tied frequencies alphabetically" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = (Seq.fill(51)("Iris-setosa") ++
+        Seq.fill(50)("Iris-virginica") ++
+        Seq.fill(50)("Iris-versicolor") ++
+        Seq.fill(10)("Iris-xiphium")).toDF("class")
+
+      val histogram = Histogram("class", computeFrequenciesAsRatio = false)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val keys = result.value.get.values.keys.toSeq
+
+      keys shouldBe Seq("Iris-setosa", "Iris-versicolor", "Iris-virginica", "Iris-xiphium")
+    }
+
     "handle all null data gracefully" in withSparkSession { spark =>
       import spark.implicits._
 
