@@ -224,5 +224,34 @@ class ComplianceTest extends AnyWordSpec with Matchers with SparkContextSpec wit
       data.withColumn("new", metric.fullColumn.get).collect().map(r =>
         if (r == null) null else r.getAs[Boolean]("new")) shouldBe Seq(false, false, true, true, true, true)
     }
+
+    "preserve fullColumn in metric when where clause filters all rows" in withSparkSession { session =>
+      val data = getDfWithNumericValues(session)
+
+      val analyzer = Compliance("att1 positive", "att1 > 0", where = Some("att1 > 100"))
+      val state = analyzer.computeStateFrom(data)
+      val metric = analyzer.computeMetricFrom(state)
+
+      state shouldBe None
+      metric.value.isFailure shouldBe true
+      metric.fullColumn shouldBe defined
+    }
+
+    "return null row-level results when where filters all rows with NULL" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val analyzer = Compliance("att1 positive", "att1 > 0",
+          where = Some("att1 > 100"),
+          analyzerOptions = Some(AnalyzerOptions(
+            filteredRow = FilteredRowOutcome.NULL)))
+        val state = analyzer.computeStateFrom(data)
+        val metric = analyzer.computeMetricFrom(state)
+
+        metric.fullColumn shouldBe defined
+        val results = data.withColumn("result", metric.fullColumn.get)
+          .collect().map(r => r.isNullAt(r.fieldIndex("result")))
+        results.foreach(_ shouldBe true)
+      }
   }
 }

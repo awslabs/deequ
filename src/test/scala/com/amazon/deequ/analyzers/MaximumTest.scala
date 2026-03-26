@@ -59,5 +59,17 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
         .map(r => if (r == null) null else r.getAs[Double](tempColName))
       values shouldBe Seq(null, null, null, 5.0, 6.0, 7.0)
     }
+
+    "preserve fullColumn in metric when where clause filters all rows" in withSparkSession { session =>
+      val data = getDfWithNumericValues(session)
+
+      val analyzer = Maximum("att1", where = Some("att1 > 100"))
+      val state = analyzer.computeStateFrom(data)
+      val metric = analyzer.computeMetricFrom(state)
+
+      state shouldBe None
+      metric.value.isFailure shouldBe true
+      metric.fullColumn shouldBe defined
+    }
   }
 }
