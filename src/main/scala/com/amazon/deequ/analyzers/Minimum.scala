@@ -67,7 +67,7 @@ case class Minimum(column: String, where: Option[String] = None, analyzerOptions
   override def computeMetricFrom(state: Option[MinState]): DoubleMetric = {
     state match {
       case None if where.isDefined =>
-        metricFromEmpty(this, "Minimum", column).copy(fullColumn = Some(criterion))
+        metricFromEmptyWithColumn(this, "Minimum", column, criterion)
       case _ => super.computeMetricFrom(state)
     }
   }

@@ -67,7 +67,7 @@ case class Maximum(column: String, where: Option[String] = None, analyzerOptions
   override def computeMetricFrom(state: Option[MaxState]): DoubleMetric = {
     state match {
       case None if where.isDefined =>
-        metricFromEmpty(this, "Maximum", column).copy(fullColumn = Some(criterion))
+        metricFromEmptyWithColumn(this, "Maximum", column, criterion)
       case _ => super.computeMetricFrom(state)
     }
   }

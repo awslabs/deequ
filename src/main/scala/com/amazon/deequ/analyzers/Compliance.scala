@@ -57,7 +57,7 @@ case class Compliance(instance: String,
   override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
     state match {
       case None if where.isDefined =>
-        metricFromEmpty(this, "Compliance", instance).copy(fullColumn = Some(rowLevelResults))
+        metricFromEmptyWithColumn(this, "Compliance", instance, rowLevelResults)
       case _ => super.computeMetricFrom(state)
     }
   }

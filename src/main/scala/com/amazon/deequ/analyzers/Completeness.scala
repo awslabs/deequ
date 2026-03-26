@@ -43,10 +43,16 @@ case class Completeness(column: String, where: Option[String] = None,
   // because .isNotNull in criterion converts null to false (0), preventing null propagation
   // through sum(). We detect this via count=0 and return a Failure metric with fullColumn
   // so row-level results correctly label filtered rows.
+  //
+  // Behavior change: previously this case produced Success(NaN) (0/0), which appeared in
+  // successMetricsAsDataFrame/Json. Now it produces a Failure metric, so it will be excluded
+  // from success metrics. This is consistent with how Min/Max/Compliance already behave
+  // (they return Failure when all rows are filtered) and avoids NaN propagating into
+  // dashboards or anomaly detection.
   override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
     state match {
       case Some(NumMatchesAndCount(_, 0, _)) if where.isDefined =>
-        metricFromEmpty(this, "Completeness", column).copy(fullColumn = Some(rowLevelResults))
+        metricFromEmptyWithColumn(this, "Completeness", column, rowLevelResults)
       case _ => super.computeMetricFrom(state)
     }
   }
