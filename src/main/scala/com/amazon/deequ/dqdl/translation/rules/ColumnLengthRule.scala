@@ -59,15 +59,20 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
     val operands = rawOperands.map(_.getOperand.toDouble)
     val transformedColForSparkSql = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
 
-    def withMultipleConstraints(minAssertion: Double => Boolean, maxAssertion: Double => Boolean): Check = {
+    val opts = DEFAULT_ANALYZER_OPTION
+
+    def withMultipleConstraints(minAssertion: Double => Boolean,
+                                maxAssertion: Double => Boolean): Check = {
       if (isWhereClausePresent(rule)) {
         check
-          .hasMinLength(targetColumn, minAssertion).where(rule.getWhereClause)
-          .hasMaxLength(targetColumn, maxAssertion).where(rule.getWhereClause)
+          .hasMinLength(targetColumn, minAssertion, analyzerOptions = opts)
+          .where(rule.getWhereClause)
+          .hasMaxLength(targetColumn, maxAssertion, analyzerOptions = opts)
+          .where(rule.getWhereClause)
       } else {
         check
-          .hasMinLength(targetColumn, minAssertion)
-          .hasMaxLength(targetColumn, maxAssertion)
+          .hasMinLength(targetColumn, minAssertion, analyzerOptions = opts)
+          .hasMaxLength(targetColumn, maxAssertion, analyzerOptions = opts)
       }
     }
 
@@ -76,16 +81,20 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
         Right(withMultipleConstraints(_ > operands.head, _ < operands.last))
 
       case GREATER_THAN_EQUAL_TO =>
-        Right(addWhereClause(rule, check.hasMinLength(targetColumn, _ >= operands.head)))
+        Right(addWhereClause(rule, check.hasMinLength(targetColumn, _ >= operands.head,
+          analyzerOptions = opts)))
 
       case GREATER_THAN =>
-        Right(addWhereClause(rule, check.hasMinLength(targetColumn, _ > operands.head)))
+        Right(addWhereClause(rule, check.hasMinLength(targetColumn, _ > operands.head,
+          analyzerOptions = opts)))
 
       case LESS_THAN_EQUAL_TO =>
-        Right(addWhereClause(rule, check.hasMaxLength(targetColumn, _ <= operands.head)))
+        Right(addWhereClause(rule, check.hasMaxLength(targetColumn, _ <= operands.head,
+          analyzerOptions = opts)))
 
       case LESS_THAN =>
-        Right(addWhereClause(rule, check.hasMaxLength(targetColumn, _ < operands.head)))
+        Right(addWhereClause(rule, check.hasMaxLength(targetColumn, _ < operands.head,
+          analyzerOptions = opts)))
 
       case EQUALS =>
         Right(withMultipleConstraints(_ == operands.head, _ == operands.head))
@@ -103,7 +112,7 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
               s"length($transformedColForSparkSql) in (${operands.mkString(",")})"
           }
         Right(addWhereClause(rule, check.satisfies(complianceCondition, check.description, _ == 1.0,
-          columns = List(transformedColForSparkSql))))
+          columns = List(transformedColForSparkSql), analyzerOptions = opts)))
 
       case NOT_IN =>
         val complianceCondition =
@@ -115,7 +124,7 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
               s"length($transformedColForSparkSql) not in (${operands.mkString(",")})"
           }
         Right(addWhereClause(rule, check.satisfies(complianceCondition, check.description, _ == 1.0,
-          columns = List(transformedColForSparkSql))))
+          columns = List(transformedColForSparkSql), analyzerOptions = opts)))
 
       case NOT_BETWEEN =>
         val notBetweenSparkSql = s"(length($transformedColForSparkSql) <= ${operands.head}) or " +
@@ -124,7 +133,7 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
           if (operands.contains(0.0)) s"$transformedColForSparkSql is not NULL or ($notBetweenSparkSql)"
           else s"$transformedColForSparkSql is NULL or ($notBetweenSparkSql)"
         Right(addWhereClause(rule, check.satisfies(complianceCondition, check.description, _ == 1.0,
-          columns = List(transformedColForSparkSql))))
+          columns = List(transformedColForSparkSql), analyzerOptions = opts)))
 
       case _ => Left("Unsupported operator for ColumnLength rule.")
     }
