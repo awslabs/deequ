@@ -16,20 +16,29 @@
 
 package com.amazon.deequ.dqdl.translation
 
+import com.amazon.deequ.analyzers.{AnalyzerOptions, FilteredRowOutcome, NullBehavior}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.dqdl.execution.DefaultOperandEvaluator
 import com.amazon.deequ.dqdl.model.DeequMetricMapping
+import com.amazon.deequ.dqdl.util.DQDLUtility.isWhereClausePresent
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 
 trait DQDLRuleConverter {
+
+  val DEFAULT_ANALYZER_OPTION: Option[AnalyzerOptions] =
+    Some(AnalyzerOptions(NullBehavior.EmptyString, FilteredRowOutcome.TRUE))
+
   def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])]
 
   def assertionAsScala(dqRule: DQRule, e: NumberBasedCondition): Double => Boolean = {
     val evaluator = DefaultOperandEvaluator
     (d: Double) => e.evaluate(d, dqRule, evaluator)
   }
+
+  protected def analyzerOptionsForWhereClause(rule: DQRule): Option[AnalyzerOptions] =
+    if (isWhereClausePresent(rule)) DEFAULT_ANALYZER_OPTION else None
 }
 
 

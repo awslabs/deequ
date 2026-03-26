@@ -133,8 +133,10 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       result.isRight shouldBe true
       val (check, _) = result.right.get
       check.constraints.size shouldBe 3
-      check.constraints(0).toString shouldBe "MinimumConstraint(Minimum(flag,None,None))"
-      check.constraints(1).toString shouldBe "MaximumConstraint(Maximum(flag,None,None))"
+      check.constraints(0).toString shouldBe
+        "MinimumConstraint(Minimum(flag,None,Some(AnalyzerOptions(Fail,TRUE))))"
+      check.constraints(1).toString shouldBe
+        "MaximumConstraint(Maximum(flag,None,Some(AnalyzerOptions(Fail,TRUE))))"
       check.constraints(2).toString shouldBe "CompletenessConstraint(Completeness(flag,None,None))"
     }
 
@@ -211,7 +213,7 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       val (check, _) = result.right.get
       check.constraints.size shouldBe 1
       check.constraints(0).toString should include(
-        "(LENGTH(TRIM(description)) = 0 AND LENGTH(description) > 0)")
+        "(description IS NOT NULL AND LENGTH(TRIM(description)) = 0 AND LENGTH(description) > 0)")
     }
 
     "convert string NOT IN with NULL keyword (NULLs should fail)" in {
@@ -260,7 +262,7 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       val (check, _) = result.right.get
       check.constraints.size shouldBe 1
       check.constraints(0).toString should include(
-        "(LENGTH(TRIM(description)) > 0 OR LENGTH(description) = 0)")
+        "(description IS NULL OR LENGTH(TRIM(description)) > 0 OR LENGTH(description) = 0)")
     }
 
     "handle string IN with commas inside operand values" in {
@@ -525,7 +527,7 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       result.isRight shouldBe true
       val (check, _) = result.right.get
       check.constraints(0).toString should include(
-        "(LENGTH(TRIM(description)) > 0 OR LENGTH(description) = 0)")
+        "(description IS NULL OR LENGTH(TRIM(description)) > 0 OR LENGTH(description) = 0)")
     }
 
     "IN WHITESPACES_ONLY should fail for empty string" in {
@@ -541,7 +543,7 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       result.isRight shouldBe true
       val (check, _) = result.right.get
       check.constraints(0).toString should include(
-        "(LENGTH(TRIM(description)) = 0 AND LENGTH(description) > 0)")
+        "(description IS NOT NULL AND LENGTH(TRIM(description)) = 0 AND LENGTH(description) > 0)")
     }
 
     "return error for empty numeric operands" in {
