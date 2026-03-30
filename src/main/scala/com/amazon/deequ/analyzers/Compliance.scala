@@ -21,6 +21,7 @@ import org.apache.spark.sql.{Column, Row}
 import org.apache.spark.sql.functions._
 import Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
+import com.amazon.deequ.metrics.DoubleMetric
 import com.google.common.annotations.VisibleForTesting
 
 /**
@@ -47,6 +48,17 @@ case class Compliance(instance: String,
   override def fromAggregationResult(result: Row, offset: Int): Option[NumMatchesAndCount] = {
     ifNoNullsIn(result, offset, howMany = 2) { _ =>
       NumMatchesAndCount(result.getLong(offset), result.getLong(offset + 1), Some(rowLevelResults))
+    }
+  }
+
+  // When WHERE clause filters all rows, sum(criterion) returns null (criterion is null for
+  // non-matching rows), so fromAggregationResult returns None. We still need the fullColumn
+  // (rowLevelResults) for correct row-level results.
+  override def computeMetricFrom(state: Option[NumMatchesAndCount]): DoubleMetric = {
+    state match {
+      case None if where.isDefined =>
+        metricFromEmptyWithColumn(this, "Compliance", instance, rowLevelResults)
+      case _ => super.computeMetricFrom(state)
     }
   }
 

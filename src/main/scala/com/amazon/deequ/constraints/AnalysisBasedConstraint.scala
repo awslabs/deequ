@@ -16,7 +16,8 @@
 
 package com.amazon.deequ.constraints
 
-import com.amazon.deequ.analyzers.{Analyzer, State}
+import com.amazon.deequ.analyzers.{Analyzer, FilterableAnalyzer, State}
+import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 import scala.util.{Failure, Success, Try}
@@ -90,9 +91,26 @@ private[deequ] case class AnalysisBasedConstraint[S <: State[S], M, V](
             ConstraintResult(this, ConstraintStatus.Failure,
               Some(s"${AnalysisBasedConstraint.ProblematicMetricPicker}: $msg!"), Some(metric))
         }
-      // An exception occurred during analysis
-      case Failure(e) => ConstraintResult(this,
-        ConstraintStatus.Failure, Some(e.getMessage), Some(metric))
+      // An exception occurred during analysis.
+      // If the analyzer has a WHERE clause and the state is empty (all rows filtered out),
+      // treat as success -- there are no matching rows to violate the constraint.
+      // This is the best outcome given the binary Success/Failure model;
+      // ideally a "NotApplicable" status would exist for this case.
+      //
+      // Assumption: filterCondition accurately reflects the analyzer's WHERE clause.
+      // All current FilterableAnalyzer implementations return their `where` field from
+      // filterCondition. If a future implementation diverges, this check could
+      // incorrectly treat a real failure as success.
+      case Failure(e) =>
+        val isEmptyDueToFilter = e.isInstanceOf[EmptyStateException] &&
+          analyzer.isInstanceOf[FilterableAnalyzer] &&
+          analyzer.asInstanceOf[FilterableAnalyzer].filterCondition.isDefined
+
+        if (isEmptyDueToFilter) {
+          ConstraintResult(this, ConstraintStatus.Success, metric = Some(metric))
+        } else {
+          ConstraintResult(this, ConstraintStatus.Failure, Some(e.getMessage), Some(metric))
+        }
     }
   }
 

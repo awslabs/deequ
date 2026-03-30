@@ -19,6 +19,7 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Analyzers._
 import com.amazon.deequ.analyzers.Preconditions.hasColumn
 import com.amazon.deequ.analyzers.Preconditions.isNumeric
+import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn
 import com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.functions.col
@@ -55,6 +56,19 @@ case class Maximum(column: String, where: Option[String] = None, analyzerOptions
   override def fromAggregationResult(result: Row, offset: Int): Option[MaxState] = {
     ifNoNullsIn(result, offset) { _ =>
       MaxState(result.getDouble(offset), Some(criterion))
+    }
+  }
+
+  // When WHERE clause filters all rows, max(null) returns null, so fromAggregationResult
+  // returns None. We still need the fullColumn (criterion) for correct row-level results.
+  // Note: criterion is the raw augmented column ["FilteredData", null]. The FilteredRowOutcome
+  // treatment (TRUE vs NULL) is applied downstream by the assertion UDF in
+  // RowLevelAssertedConstraint, unlike Completeness/Compliance which bake it into rowLevelResults.
+  override def computeMetricFrom(state: Option[MaxState]): DoubleMetric = {
+    state match {
+      case None if where.isDefined =>
+        metricFromEmptyWithColumn(this, "Maximum", column, criterion)
+      case _ => super.computeMetricFrom(state)
     }
   }
 
