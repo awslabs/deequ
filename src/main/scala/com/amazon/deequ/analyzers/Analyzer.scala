@@ -582,6 +582,17 @@ private[deequ] object Analyzers {
     metricFromFailure(emptyStateException(analyzer), name, instance, entity)
   }
 
+  /** metricFromEmpty that preserves a fullColumn for correct row-level results
+    * when a WHERE clause filters out all rows. */
+  def metricFromEmptyWithColumn(
+      analyzer: Analyzer[_, _],
+      name: String,
+      instance: String,
+      fullColumn: Column)
+    : DoubleMetric = {
+    metricFromEmpty(analyzer, name, instance).copy(fullColumn = Some(fullColumn))
+  }
+
   def metricFromFailure(
       exception: Throwable,
       name: String,

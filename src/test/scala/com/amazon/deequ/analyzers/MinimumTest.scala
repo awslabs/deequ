@@ -17,6 +17,7 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.SparkContextSpec
+import com.amazon.deequ.analyzers.runners.EmptyStateException
 import com.amazon.deequ.metrics.DoubleMetric
 import com.amazon.deequ.metrics.FullColumn
 import com.amazon.deequ.utils.FixtureSupport
@@ -57,6 +58,19 @@ class MinimumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
       val values = getValuesDF(data, metric.fullColumn.get)
         .map(r => if (r == null) null else r.getAs[Double](tempColName))
       values shouldBe Seq(null, null, null, 5.0, 6.0, 7.0)
+    }
+
+    "preserve fullColumn in metric when where clause filters all rows" in withSparkSession { session =>
+      val data = getDfWithNumericValues(session)
+
+      val analyzer = Minimum("att1", where = Some("att1 > 100"))
+      val state = analyzer.computeStateFrom(data)
+      val metric = analyzer.computeMetricFrom(state)
+
+      state shouldBe None
+      metric.value.isFailure shouldBe true
+      metric.value.failed.get shouldBe an[EmptyStateException]
+      metric.fullColumn shouldBe defined
     }
   }
 }
