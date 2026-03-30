@@ -21,6 +21,7 @@ import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
@@ -360,7 +361,9 @@ object AnalysisRunner {
         val offsets = shareableAnalyzers.scanLeft(0) { case (current, analyzer) =>
           current + analyzer.aggregationFunctions().length
         }
-        val results = data.agg(aggregations.head, aggregations.tail: _*).collect().head
+
+        val prunedData = pruneColumns(data, shareableAnalyzers)
+        val results = prunedData.agg(aggregations.head, aggregations.tail: _*).collect().head
         shareableAnalyzers.zip(offsets).map { case (analyzer, offset) =>
           analyzer ->
             successOrFailureMetricFrom(analyzer, results, offset, aggregateWith, saveStatesTo)
@@ -380,6 +383,35 @@ object AnalysisRunner {
       .toMap[Analyzer[_, Metric[_]], Metric[_]]
 
     sharedResults ++ AnalyzerContext(otherMetrics)
+  }
+
+  /**
+    * Attempts to select only the columns needed by the given analyzers.
+    * This enables column pruning for V2 DataSource connectors (e.g. Iceberg, Delta Lake)
+    * which make scan-planning decisions before Spark's optimizer can simplify the plan.
+    *
+    * Falls back to the original DataFrame if any analyzer cannot statically declare its columns
+    * (e.g. analyzers with free-form SQL predicates or WHERE clauses).
+    */
+  private[this] def pruneColumns(
+      data: DataFrame,
+      analyzers: Seq[Analyzer[_, _]])
+    : DataFrame = {
+
+    val allColumns = analyzers.map(_.columnsReferenced())
+
+    if (allColumns.exists(_.isEmpty)) {
+      // At least one analyzer cannot declare its columns; skip pruning
+      data
+    } else {
+      val neededColumns = allColumns.flatMap(_.get).distinct
+      if (neededColumns.isEmpty) {
+        // All analyzers are dataset-level (e.g. Size), no column selection needed
+        data
+      } else {
+        data.select(neededColumns.map(col): _*)
+      }
+    }
   }
 
   /** Compute scan-shareable analyzer metric from aggregation result, mapping generic exceptions

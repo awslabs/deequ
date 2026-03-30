@@ -183,4 +183,7 @@ case class DataType(
   }
 
   override def filterCondition: Option[String] = where
+
+  override def columnsReferenced(): Option[Set[String]] =
+    if (where.isDefined) None else Some(Set(column))
 }
