@@ -59,5 +59,16 @@ class MaximumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
         .map(r => if (r == null) null else r.getAs[Double](tempColName))
       values shouldBe Seq(null, null, null, 5.0, 6.0, 7.0)
     }
+
+    "handle non-numeric strings" in withSparkSession { session =>
+      val data = getDfWithNonNumericValues(session)
+
+      val att1Maximum = Maximum("att1")
+      val state: Option[MaxState] = att1Maximum.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = att1Maximum.computeMetricFrom(state)
+
+      metric.value.isSuccess shouldBe true
+      metric.value.get shouldBe 10.0
+    }
   }
 }

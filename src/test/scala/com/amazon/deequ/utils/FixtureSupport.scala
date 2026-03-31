@@ -260,6 +260,19 @@ trait FixtureSupport {
     ).toDF("item", "att1", "att2", "att3", "attNull")
   }
 
+  def getDfWithNonNumericValues(sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
+
+    Seq(
+      ("3", "foo", "10"),
+      ("10", "bar", "20"),
+      ("foo", "5", "baz"),
+      ("5", "10", "30"),
+      ("bar", "baz", "qux"),
+      ("1", "20", "40")
+    ).toDF("att1", "att2", "attAllNonNumeric")
+  }
+
   def getDfWithEscapeCharacters(sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
     // The names are with escape characters '

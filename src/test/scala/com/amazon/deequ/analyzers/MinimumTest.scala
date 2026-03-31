@@ -58,5 +58,17 @@ class MinimumTest extends AnyWordSpec with Matchers with SparkContextSpec with F
         .map(r => if (r == null) null else r.getAs[Double](tempColName))
       values shouldBe Seq(null, null, null, 5.0, 6.0, 7.0)
     }
+
+    "handle non-numeric strings" in withSparkSession { session =>
+      val data = getDfWithNonNumericValues(session)
+
+      val att1Minimum = Minimum("att1")
+      val state: Option[MinState] = att1Minimum.computeStateFrom(data)
+      val metric: DoubleMetric with FullColumn = att1Minimum.computeMetricFrom(state)
+
+      metric.value.isSuccess shouldBe true
+      metric.value.get shouldBe 1.0
+    }
+
   }
 }
