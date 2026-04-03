@@ -210,4 +210,85 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
         results.foreach(_ should be("Passed"))
       }
   }
+
+  "ColumnValues with threshold" should {
+
+    "pass string IN when compliance exceeds threshold" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 3 of 4 rows match -> 75% compliance
+        // threshold > 0.5 -> should pass
+        val df = Seq(
+          (1, "active"), (2, "active"), (3, "active"),
+          (4, "deleted")
+        ).toDF("id", "status")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "status" in ["active"] """ +
+          """with threshold > 0.5]"""
+        ) should be("Passed")
+      }
+
+    "fail string IN when compliance below threshold" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 3 of 4 rows match -> 75% compliance
+        // threshold > 0.8 -> should fail
+        val df = Seq(
+          (1, "active"), (2, "active"), (3, "active"),
+          (4, "deleted")
+        ).toDF("id", "status")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "status" in ["active"] """ +
+          """with threshold > 0.8]"""
+        ) should be("Failed")
+      }
+
+    "pass matches when compliance exceeds threshold" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 3 of 4 rows match pattern -> 75%
+        val df = Seq(
+          (1, "abc"), (2, "def"), (3, "ghi"), (4, "123")
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" matches "[a-z]+" """ +
+          """with threshold > 0.5]"""
+        ) should be("Passed")
+      }
+
+    "pass with threshold between range" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 3 of 4 match -> 75%
+        // threshold between 0.5 and 0.9 -> 0.75 is in range
+        val df = Seq(
+          (1, "active"), (2, "active"), (3, "active"),
+          (4, "deleted")
+        ).toDF("id", "status")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "status" in ["active"] """ +
+          """with threshold between 0.5 and 0.9]"""
+        ) should be("Passed")
+      }
+
+    "work with threshold and where clause together" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // grp='a': 3 rows, 2 match "active" -> 67%
+        // threshold > 0.5 -> should pass
+        val df = Seq(
+          (1, "a", "active"), (2, "a", "active"),
+          (3, "a", "deleted"), (4, "b", "deleted")
+        ).toDF("id", "grp", "status")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "status" in ["active"] """ +
+          """where "grp = 'a'" with threshold > 0.5]"""
+        ) should be("Passed")
+      }
+  }
 }
