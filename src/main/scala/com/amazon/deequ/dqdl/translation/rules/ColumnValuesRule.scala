@@ -159,7 +159,8 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
           case (false, true) => s"$transformedCol IS NULL"
           case _ => "FALSE"
         }
-        Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+        Right((addWhereClause(rule, check.satisfies(sql, check.description,
+          thresholdOrDefault(rule),
           columns = List(transformedCol), analyzerOptions = opts)),
           complianceMetric(targetColumn, check.description, rule)))
 
@@ -171,14 +172,16 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
           case (false, true) => s"$transformedCol IS NOT NULL"
           case _ => "TRUE"
         }
-        Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+        Right((addWhereClause(rule, check.satisfies(sql, check.description,
+          thresholdOrDefault(rule),
           columns = List(transformedCol), analyzerOptions = opts)),
           complianceMetric(targetColumn, check.description, rule)))
 
       case EQUALS =>
         if (hasNullOperand) {
           val sql = s"$transformedCol IS NULL"
-          Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+          Right((addWhereClause(rule, check.satisfies(sql,
+            check.description, thresholdOrDefault(rule),
             columns = List(transformedCol), analyzerOptions = opts)),
             complianceMetric(targetColumn, check.description, rule)))
         } else {
@@ -202,12 +205,14 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       case NOT_EQUALS =>
         if (hasNullOperand) {
           val sql = s"$transformedCol IS NOT NULL"
-          Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+          Right((addWhereClause(rule, check.satisfies(sql,
+            check.description, thresholdOrDefault(rule),
             columns = List(transformedCol), analyzerOptions = opts)),
             complianceMetric(targetColumn, check.description, rule)))
         } else {
           val sql = s"$transformedCol IS NULL OR $transformedCol != ${numericOperands.head}"
-          Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+          Right((addWhereClause(rule, check.satisfies(sql,
+            check.description, thresholdOrDefault(rule),
             columns = List(transformedCol), analyzerOptions = opts)),
             complianceMetric(targetColumn, check.description, rule)))
         }
@@ -224,27 +229,35 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       case StringBasedConditionOperator.MATCHES =>
         val pattern = extractPattern(condition)
         val fullRegex = s"^${pattern}$$".r
-        Right((addWhereClause(rule, check.hasPattern(targetColumn, fullRegex,
+        Right((addWhereClause(rule, check.hasPattern(targetColumn,
+          fullRegex, thresholdOrDefault(rule),
           analyzerOptions = analyzerOptionsForWhereClause(rule))),
-          Seq(DeequMetricMapping("Column", targetColumn, "PatternMatch", "PatternMatch", None, rule = rule))))
+          Seq(DeequMetricMapping("Column", targetColumn,
+            "PatternMatch", "PatternMatch", None, rule = rule))))
 
       case StringBasedConditionOperator.NOT_MATCHES =>
         val pattern = extractPattern(condition)
         val fullRegex = s"^(?!\\b${pattern}\\b).*$$".r
-        Right((addWhereClause(rule, check.hasPattern(targetColumn, fullRegex,
+        Right((addWhereClause(rule, check.hasPattern(targetColumn,
+          fullRegex, thresholdOrDefault(rule),
           analyzerOptions = analyzerOptionsForWhereClause(rule))),
-          Seq(DeequMetricMapping("Column", targetColumn, "PatternMatch", "PatternMatch", None, rule = rule))))
+          Seq(DeequMetricMapping("Column", targetColumn,
+            "PatternMatch", "PatternMatch", None, rule = rule))))
 
       case StringBasedConditionOperator.IN | StringBasedConditionOperator.EQUALS =>
         val sql = constructComplianceCondition(transformedCol, condition, isNegated = false)
-        Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
-          columns = List(transformedCol), analyzerOptions = analyzerOptionsForWhereClause(rule))),
+        Right((addWhereClause(rule, check.satisfies(sql,
+          check.description, thresholdOrDefault(rule),
+          columns = List(transformedCol),
+          analyzerOptions = analyzerOptionsForWhereClause(rule))),
           complianceMetric(targetColumn, check.description, rule)))
 
       case StringBasedConditionOperator.NOT_IN | StringBasedConditionOperator.NOT_EQUALS =>
         val sql = constructComplianceCondition(transformedCol, condition, isNegated = true)
-        Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
-          columns = List(transformedCol), analyzerOptions = analyzerOptionsForWhereClause(rule))),
+        Right((addWhereClause(rule, check.satisfies(sql,
+          check.description, thresholdOrDefault(rule),
+          columns = List(transformedCol),
+          analyzerOptions = analyzerOptionsForWhereClause(rule))),
           complianceMetric(targetColumn, check.description, rule)))
 
       case _ =>
@@ -376,12 +389,17 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
     }
   }
 
-  private def parseThresholdAssertion(rule: DQRule): Option[Double => Boolean] = {
+  private def parseThresholdAssertion(
+    rule: DQRule): Option[Double => Boolean] = {
     Option(rule.getThresholdCondition)
       .filter(_.getConditionAsString.nonEmpty)
       .map(_.asInstanceOf[NumberBasedCondition])
       .map(t => assertionAsScala(rule, t))
   }
+
+  private def thresholdOrDefault(
+    rule: DQRule): Double => Boolean =
+    parseThresholdAssertion(rule).getOrElse(Check.IsOne)
 
   private def minMetric(targetColumn: String, rule: DQRule): Seq[DeequMetricMapping] =
     Seq(DeequMetricMapping("Column", targetColumn, "Minimum", "Minimum", None, rule = rule))

@@ -986,5 +986,27 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
       result.isLeft shouldBe true
       result.left.get should include("Invalid date operand")
     }
+
+    "use threshold assertion for string IN when threshold specified" in {
+      val parameters = Map("TargetColumn" -> "status")
+      val operands: java.util.List[StringOperand] =
+        List[StringOperand](new QuotedStringOperand("active")).asJava
+      val condition = new StringBasedCondition("in [\"active\"]",
+        StringBasedConditionOperator.IN, operands)
+      val thresholdOperands: java.util.List[NumericOperand] =
+        List[NumericOperand](new AtomicNumberOperand("0.8")).asJava
+      val threshold = new NumberBasedCondition("> 0.8",
+        NumberBasedConditionOperator.GREATER_THAN, thresholdOperands)
+      val rule = new DQRule("ColumnValues", parameters.asJava,
+        condition, threshold, null, null, null)
+
+      val result = ColumnValuesRule().convert(rule)
+
+      result.isRight shouldBe true
+      val (check, _) = result.right.get
+      check.constraints.size shouldBe 1
+      val desc = check.constraints(0).toString
+      desc should include("Compliance")
+    }
   }
 }
