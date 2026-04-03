@@ -29,7 +29,8 @@ case class CompletenessRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val col = rule.getParameters.asScala("TargetColumn")
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
-      .hasCompleteness(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]), None, None)
+      .hasCompleteness(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]),
+        None, analyzerOptionsForWhereClause(rule))
     Right(
       addWhereClause(rule, check),
       Seq(DeequMetricMapping("Column", col, "Completeness", "Completeness", None, rule = rule)))

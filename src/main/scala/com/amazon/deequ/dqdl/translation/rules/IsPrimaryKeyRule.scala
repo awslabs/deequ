@@ -29,10 +29,12 @@ case class IsPrimaryKeyRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val columns = rule.getParameters.asScala.collect { case (k, v) if k.startsWith("TargetColumn") => v }.toSeq
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
+    val opts = analyzerOptionsForWhereClause(rule)
     columns match {
       case Nil => Left("Required parameters not found")
       case Seq(singleCol) =>
-        val singleColCheck = addWhereClause(rule, check.isPrimaryKey(singleCol, None)).isComplete(singleCol, None)
+        val singleColCheck = addWhereClause(rule, check.isPrimaryKey(singleCol, None, opts))
+          .isComplete(singleCol, None, opts)
         Right(
           addWhereClause(rule, singleColCheck),
           Seq(
@@ -41,15 +43,15 @@ case class IsPrimaryKeyRule() extends DQDLRuleConverter {
           )
         )
       case cols@(head +: tail) =>
-        val multiColCheck = addWhereClause(rule, check.isPrimaryKey(head, None, tail: _*))
-        cols.foldLeft(multiColCheck) {
-          (mc, col) => addWhereClause(rule, mc.isComplete(col))
+        val multiColCheck = addWhereClause(rule, check.isPrimaryKey(head, None, opts, tail: _*))
+        val withCompleteness = cols.foldLeft(multiColCheck) {
+          (mc, col) => addWhereClause(rule, mc.isComplete(col, None, opts))
         }
         val completenessMetricMappings = cols.map(
           col => DeequMetricMapping("Column", col, "Completeness", "Completeness", None, rule = rule)
         )
         Right(
-          multiColCheck,
+          withCompleteness,
           Seq(DeequMetricMapping("Multicolumn", cols.mkString(","), "Uniqueness", "Uniqueness", None, rule = rule))
             ++ completenessMetricMappings
         )
