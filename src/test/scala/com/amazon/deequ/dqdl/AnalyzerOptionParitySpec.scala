@@ -290,5 +290,36 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
           """where "grp = 'a'" with threshold > 0.5]"""
         ) should be("Passed")
       }
+
+    "match case-insensitively with IGNORE_CASE tag" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // "Active" and "ACTIVE" should match "active" with IGNORE_CASE
+        val df = Seq(
+          (1, "Active"), (2, "ACTIVE"), (3, "active"),
+          (4, "deleted")
+        ).toDF("id", "status")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "status" in ["active"] """ +
+          """with IGNORE_CASE = "true" with threshold > 0.5]"""
+        ) should be("Passed")
+      }
+
+    "apply IGNORE_CASE only to quoted strings, not keywords" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // NULL rows should still be handled by keyword logic, not lowercased
+        val df = Seq(
+          (1, Some("Active")), (2, Some("ACTIVE")),
+          (3, None), (4, Some("deleted"))
+        ).toDF("id", "status")
+
+        // in ["active", NULL] with IGNORE_CASE: rows 1,2,3 match -> 75%
+        outcomeOf(df,
+          """Rules=[ColumnValues "status" in ["active", NULL] """ +
+          """with IGNORE_CASE = "true" with threshold > 0.5]"""
+        ) should be("Passed")
+      }
   }
 }

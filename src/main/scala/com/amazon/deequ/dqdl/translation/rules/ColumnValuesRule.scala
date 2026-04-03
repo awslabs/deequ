@@ -225,6 +225,9 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
   private def mkStringCheck(check: Check, targetColumn: String, transformedCol: String,
                             condition: StringBasedCondition,
                             rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+    val shouldIgnoreCase = Option(rule.getTags)
+      .flatMap(t => Option(t.get("IGNORE_CASE")))
+      .exists(_.equalsIgnoreCase("true"))
     condition.getOperator match {
       case StringBasedConditionOperator.MATCHES =>
         val pattern = extractPattern(condition)
@@ -245,7 +248,8 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
             "PatternMatch", "PatternMatch", None, rule = rule))))
 
       case StringBasedConditionOperator.IN | StringBasedConditionOperator.EQUALS =>
-        val sql = constructComplianceCondition(transformedCol, condition, isNegated = false)
+        val sql = constructComplianceCondition(transformedCol, condition,
+          isNegated = false, shouldIgnoreCase)
         Right((addWhereClause(rule, check.satisfies(sql,
           check.description, thresholdOrDefault(rule),
           columns = List(transformedCol),
@@ -253,7 +257,8 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
           complianceMetric(targetColumn, check.description, rule)))
 
       case StringBasedConditionOperator.NOT_IN | StringBasedConditionOperator.NOT_EQUALS =>
-        val sql = constructComplianceCondition(transformedCol, condition, isNegated = true)
+        val sql = constructComplianceCondition(transformedCol, condition,
+          isNegated = true, shouldIgnoreCase)
         Right((addWhereClause(rule, check.satisfies(sql,
           check.description, thresholdOrDefault(rule),
           columns = List(transformedCol),
@@ -266,7 +271,8 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
   }
 
   private def constructComplianceCondition(targetColumn: String, condition: StringBasedCondition,
-                                           isNegated: Boolean): String = {
+                                           isNegated: Boolean,
+                                           shouldIgnoreCase: Boolean = false): String = {
     val operands = condition.getOperands.asScala
     val quotedStrings = operands.collect { case q: QuotedStringOperand => q.getOperand }
     val keywordOperands = operands.collect { case k: KeywordStringOperand => k.formatOperand() }
@@ -275,6 +281,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
     val hasEmpty = keywordOperands.contains("EMPTY")
     val hasWhitespacesOnly = keywordOperands.contains("WHITESPACES_ONLY")
 
+    val col = if (shouldIgnoreCase) s"lower($targetColumn)" else targetColumn
     val conditions = scala.collection.mutable.ListBuffer[String]()
 
     if (isNegated) {
@@ -284,8 +291,12 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         conditions += s"($targetColumn IS NULL OR LENGTH(TRIM($targetColumn)) > 0 OR LENGTH($targetColumn) = 0)"
       }
       if (quotedStrings.nonEmpty) {
-        val valueList = quotedStrings.map(s => s"'${s.replace("'", "''")}'").mkString(", ")
-        conditions += s"($targetColumn IS NULL OR $targetColumn NOT IN ($valueList))"
+        val valueList = if (shouldIgnoreCase) {
+          quotedStrings.map(s => s"'${s.replace("'", "''").toLowerCase}'").mkString(", ")
+        } else {
+          quotedStrings.map(s => s"'${s.replace("'", "''")}'").mkString(", ")
+        }
+        conditions += s"($targetColumn IS NULL OR $col NOT IN ($valueList))"
       }
       if (conditions.isEmpty) "TRUE" else conditions.mkString(" AND ")
     } else {
@@ -295,8 +306,12 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         conditions += s"($targetColumn IS NOT NULL AND LENGTH(TRIM($targetColumn)) = 0 AND LENGTH($targetColumn) > 0)"
       }
       if (quotedStrings.nonEmpty) {
-        val valueList = quotedStrings.map(s => s"'${s.replace("'", "''")}'").mkString(", ")
-        conditions += s"($targetColumn IS NOT NULL AND $targetColumn IN ($valueList))"
+        val valueList = if (shouldIgnoreCase) {
+          quotedStrings.map(s => s"'${s.replace("'", "''").toLowerCase}'").mkString(", ")
+        } else {
+          quotedStrings.map(s => s"'${s.replace("'", "''")}'").mkString(", ")
+        }
+        conditions += s"($targetColumn IS NOT NULL AND $col IN ($valueList))"
       }
       if (conditions.isEmpty) "FALSE" else conditions.mkString(" OR ")
     }
