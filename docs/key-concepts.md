@@ -1,4 +1,3 @@
-# Test
 # Key Concepts in the Codebase
 There are a few key concepts that will help you to understand the codebase.
 
