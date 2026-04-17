@@ -1,0 +1,121 @@
+name: Deequ Bot
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue/PR number to process"
+        required: true
+      dry_run:
+        description: "Dry run (no writes)"
+        type: boolean
+        default: true
+
+# Serialize per issue/PR to prevent duplicate comments
+concurrency:
+  group: bot-${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.actor != 'github-actions[bot]' &&
+       (github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request') &&
+       (github.event.issue.pull_request == null || github.event_name == 'pull_request'))
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests boto3
+
+      - name: Run analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
+          EVENT_TYPE: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
+          KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
+          BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
+          BEDROCK_API_VERSION: ${{ secrets.BEDROCK_API_VERSION }}
+          ISSUE_CLASSIFY_PROMPT: ${{ secrets.ISSUE_CLASSIFY_PROMPT }}
+          ISSUE_RESPOND_PROMPT: ${{ secrets.ISSUE_RESPOND_PROMPT }}
+          PR_FILE_REVIEW_PROMPT: ${{ secrets.PR_FILE_REVIEW_PROMPT }}
+          FOLLOWUP_PROMPT: ${{ secrets.FOLLOWUP_PROMPT }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          ARTIFACT_PATH: ${{ runner.temp }}/bot_result.json
+        run: python -m issue_bot.main analyze
+        working-directory: src/scripts
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-result
+          path: ${{ runner.temp }}/bot_result.json
+          retention-days: 1
+
+  act:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    needs: analyze
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests boto3
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bot-result
+          path: ${{ runner.temp }}
+
+      - name: Execute actions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
+          EVENT_TYPE: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          ARTIFACT_PATH: ${{ runner.temp }}/bot_result.json
+        run: python -m issue_bot.main act
+        working-directory: src/scripts
