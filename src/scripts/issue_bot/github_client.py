@@ -124,15 +124,28 @@ class GitHubClient:
         if self._dry_run:
             logger.info(f"[DRY RUN] PR review on #{number}: {len(inline_comments)} inline comments")
             return True
-        comments = []
+
+        # Get valid diff lines per file from the PR
+        valid_lines = self._get_valid_diff_lines(number)
+
+        valid_comments = []
+        invalid_comments = []
         for ic in inline_comments:
-            comment = {"path": ic["file"], "body": ic["comment"]}
-            if ic.get("line"):
-                comment["line"] = ic["line"]
-                comment["side"] = "RIGHT"
-            comments.append(comment)
-        if comments:
-            payload = {"body": summary, "event": "REQUEST_CHANGES", "comments": comments}
+            line = ic.get("line")
+            path = ic.get("file", "")
+            if line and path in valid_lines and line in valid_lines[path]:
+                valid_comments.append({"path": path, "body": ic["comment"], "line": line, "side": "RIGHT"})
+            else:
+                invalid_comments.append(ic)
+
+        if valid_comments:
+            body = summary
+            if invalid_comments:
+                body += "\n\n**Additional feedback:**\n"
+                for ic in invalid_comments:
+                    line_ref = f":{ic['line']}" if ic.get('line') else ""
+                    body += f"\n`{ic['file']}{line_ref}` — {ic['comment']}\n"
+            payload = {"body": body, "event": "REQUEST_CHANGES", "comments": valid_comments}
             try:
                 resp = requests.post(
                     f"https://api.github.com/repos/{self._repo}/pulls/{number}/reviews",
@@ -143,14 +156,41 @@ class GitHubClient:
                 logger.error(f"PR review API failed: {resp.status_code}, falling back to comment")
             except Exception as e:
                 logger.error(f"PR review API failed: {e}, falling back to comment")
-        # Fallback: post as regular comment with inline feedback in the body
+
+        # Fallback: post all as regular comment
+        all_comments = inline_comments
         body = summary
-        if inline_comments:
+        if all_comments:
             body += "\n\n**Inline feedback:**\n"
-            for ic in inline_comments:
+            for ic in all_comments:
                 line_ref = f":{ic['line']}" if ic.get('line') else ""
                 body += f"\n`{ic['file']}{line_ref}` — {ic['comment']}\n"
         return self._post(f"/repos/{self._repo}/issues/{number}/comments", {"body": body})
+
+    def _get_valid_diff_lines(self, number):
+        """Extract valid right-side line numbers from each file's diff hunks."""
+        import re
+        valid = {}
+        files = self.get_pr_files(number)
+        for f in files:
+            path = f.get("filename", "")
+            patch = f.get("patch", "")
+            if not patch:
+                continue
+            lines = set()
+            current_line = 0
+            for line in patch.split("\n"):
+                hunk = re.match(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
+                if hunk:
+                    current_line = int(hunk.group(1))
+                    continue
+                if line.startswith("-"):
+                    continue
+                if line.startswith("+") or not line.startswith("\\"):
+                    lines.add(current_line)
+                    current_line += 1
+            valid[path] = lines
+        return valid
 
     def add_labels(self, number, labels):
         if not labels:
