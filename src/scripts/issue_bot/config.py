@@ -16,12 +16,12 @@ class Config:
         self.actor = os.getenv("GITHUB_ACTOR", "")
 
         self.bedrock_model_id = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-opus-4-6-v1")
-        self.bedrock_api_version = os.getenv("BEDROCK_API_VERSION", "bedrock-2023-05-31")
 
         self.kb_s3_bucket = os.getenv("KB_S3_BUCKET", "")
         self.kb_s3_key = os.getenv("KB_S3_KEY", "")
 
         self.slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
+        self.guardrail_id = os.getenv("GUARDRAIL_ID", "")
 
         self.dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
         self.enable_slack = bool(self.slack_webhook_url)
@@ -33,6 +33,10 @@ class Config:
         self.max_context_chars = 200000
         self.max_github_search_results = 8
         self.github_api_timeout = 10
+        self.allowed_labels = {
+            "bug", "enhancement", "question", "documentation",
+            "help-wanted", "dqdl", "analyzer", "spark-compatibility",
+        }
 
 
 def _require(name):

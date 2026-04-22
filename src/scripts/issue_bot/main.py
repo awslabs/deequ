@@ -10,6 +10,7 @@ import sys
 import os
 import datetime
 import logging
+from string import Template
 
 from .config import Config
 from .bedrock_client import BedrockClient
@@ -23,6 +24,25 @@ logger = logging.getLogger("issue_bot")
 
 ARTIFACT_PATH = os.getenv("ARTIFACT_PATH", "/tmp/bot_result.json")
 _MAX_BOT_REPLIES = 2
+
+
+def _render(template_str, **kwargs):
+    """Render a prompt template safely. Converts {var} to $var for Template.safe_substitute
+    so untrusted content like PR bodies containing {braces} won't crash or leak."""
+    converted = template_str.replace("{", "${")
+    return Template(converted).safe_substitute(**kwargs)
+
+
+def _load_schema(name):
+    """Load a JSON schema file from the schemas directory."""
+    path = os.path.join(os.path.dirname(__file__), "schemas", name)
+    with open(path) as f:
+        return f.read()
+
+
+ISSUE_RESPONSE_SCHEMA = _load_schema("issue_response.json")
+PR_REVIEW_SCHEMA = _load_schema("pr_review_response.json")
+FOLLOWUP_SCHEMA = _load_schema("followup_response.json")
 
 
 def analyze():
@@ -118,20 +138,24 @@ def analyze():
         diff = gh.get_pr_diff(number)
         review_comments = gh.get_pr_review_comments(number)
         existing_feedback = _format_pr_feedback(comments_data, review_comments)
-        prompt = tmpl.format(
+        user_prompt = _render(tmpl,
             context=context, codebase_map=codebase_map, title=title, body=body,
             diff=diff, current_date=datetime.date.today().isoformat(),
             existing_feedback=existing_feedback,
         )
-        raw = bedrock.invoke(prompt, max_tokens=4000)
-        if not raw or raw.strip().lower() == "no issues":
+        raw = bedrock.invoke(user_prompt, max_tokens=4000, json_schema=PR_REVIEW_SCHEMA)
+        if not raw:
             _write_artifact({
                 "action": "SKIP", "reason": "no_issues_found", "title": title,
                 "html_url": html_url, "number": number, "is_pr": True,
                 "prompt_id": prompts.prompt_version(tmpl), "model_id": cfg.bedrock_model_id,
             })
             return
-        inline_comments = _parse_file_review_multi(raw)
+        try:
+            pr_result = json.loads(raw)
+            inline_comments = pr_result.get("comments", [])
+        except json.JSONDecodeError:
+            inline_comments = _parse_file_review_multi(raw)
         _write_artifact({
             "action": "RESPOND" if inline_comments else "SKIP",
             "labels": [], "response": "",
@@ -150,7 +174,7 @@ def analyze():
                 "reason": "prompt_load_failed", "title": title, "html_url": html_url,
                 "number": number, "is_pr": is_pr, "prompt_id": "n/a", "model_id": cfg.bedrock_model_id})
             return
-        prompt = tmpl.format(context=context, title=title, body=body, comments=comments_text)
+        user_prompt = _render(tmpl, context=context, title=title, body=body, comments=comments_text)
         prompt_id = prompts.prompt_version(tmpl)
     else:
         tmpl = prompts.get_issue_prompt()
@@ -159,11 +183,12 @@ def analyze():
                 "reason": "prompt_load_failed", "title": title, "html_url": html_url,
                 "number": number, "is_pr": is_pr, "prompt_id": "n/a", "model_id": cfg.bedrock_model_id})
             return
-        prompt = tmpl.format(context=context, title=title, body=body,
+        user_prompt = _render(tmpl, context=context, title=title, body=body,
                              comments=comments_text, codebase_map=codebase_map)
         prompt_id = prompts.prompt_version(tmpl)
 
-    raw = bedrock.invoke(prompt)
+    schema = FOLLOWUP_SCHEMA if is_followup else ISSUE_RESPONSE_SCHEMA
+    raw = bedrock.invoke(user_prompt, json_schema=schema)
 
     if raw is None:
         _write_artifact({
@@ -181,11 +206,11 @@ def analyze():
         if snippets:
             respond_tmpl = prompts.get_issue_respond_prompt()
             if respond_tmpl:
-                prompt2 = respond_tmpl.format(
+                user_prompt2 = _render(respond_tmpl,
                     context=context, source_code=snippets, title=title,
                     body=body, comments=comments_text,
                 )
-                raw2 = bedrock.invoke(prompt2)
+                raw2 = bedrock.invoke(user_prompt2, json_schema=ISSUE_RESPONSE_SCHEMA)
                 if raw2:
                     parsed2 = _parse_response(raw2, is_pr)
                     parsed2["labels"] = parsed2.get("labels") or parsed.get("labels", [])
@@ -215,7 +240,10 @@ def act():
     is_pr = result.get("is_pr", False)
     title = result.get("title", "")
     html_url = result.get("html_url", "")
-    labels = result.get("labels", [])
+    raw_labels = result.get("labels", [])
+    if not isinstance(raw_labels, list):
+        raw_labels = []
+    labels = [l for l in raw_labels if isinstance(l, str) and l in cfg.allowed_labels]
     response = result.get("response", "")
     prompt_id = result.get("prompt_id", "unknown")
     model_id = result.get("model_id", "unknown")
@@ -339,6 +367,23 @@ _HEADER_PREFIXES = ("ACTION:", "LABELS:", "READ_FILES:", "SEARCH:", "SEARCH_TERM
 
 
 def _parse_response(raw, is_pr):
+    # Try structured JSON first (from Bedrock structured output)
+    try:
+        parsed = json.loads(raw)
+        result = {
+            "action": parsed.get("action", "ESCALATE"),
+            "labels": parsed.get("labels", []),
+            "read_files": parsed.get("read_files", []),
+            "response": parsed.get("response", ""),
+            "inline_comments": [],
+        }
+        if is_pr and result["action"] == "CLOSE":
+            result["action"] = "ESCALATE"
+        return result
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Fallback: parse free-text format
     lines = raw.strip().split("\n")
     result = {"action": "ESCALATE", "labels": [], "response": "", "read_files": [], "inline_comments": []}
     response_lines = []

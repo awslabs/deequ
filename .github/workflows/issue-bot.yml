@@ -64,7 +64,7 @@ jobs:
           KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
           KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
           BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
-          BEDROCK_API_VERSION: ${{ secrets.BEDROCK_API_VERSION }}
+          GUARDRAIL_ID: ${{ secrets.GUARDRAIL_ID }}
           ISSUE_CLASSIFY_PROMPT: ${{ secrets.ISSUE_CLASSIFY_PROMPT }}
           ISSUE_RESPOND_PROMPT: ${{ secrets.ISSUE_RESPOND_PROMPT }}
           PR_FILE_REVIEW_PROMPT: ${{ secrets.PR_FILE_REVIEW_PROMPT }}
@@ -86,6 +86,7 @@ jobs:
     timeout-minutes: 1
     needs: analyze
     permissions:
+      contents: read
       issues: write
       pull-requests: write
 

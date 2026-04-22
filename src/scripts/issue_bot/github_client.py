@@ -11,7 +11,7 @@ class GitHubClient:
         self._repo = cfg.repo
         self._timeout = cfg.github_api_timeout
         self._dry_run = cfg.dry_run
-        self._repo_root = os.getenv("GITHUB_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+        self._repo_root = os.getenv("GITHUB_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
         self._headers = {
             "Authorization": f"token {self._token}",
             "Accept": "application/vnd.github.v3+json",
@@ -52,7 +52,6 @@ class GitHubClient:
         return self._get(f"/repos/{self._repo}/pulls/{number}/files") or []
 
     def get_pr_review_comments(self, number):
-        """Get all existing review comments on a PR."""
         comments = []
         page = 1
         while True:
@@ -72,7 +71,7 @@ class GitHubClient:
         return False
 
     def get_codebase_map(self, src_dir="src/main/scala"):
-        """List all Scala source files (excluding examples) as relative paths."""
+        """List all Python source files (excluding tests) as relative paths."""
         import subprocess
         full_dir = os.path.join(self._repo_root, src_dir)
         prefix = self._repo_root.rstrip("/") + "/"
@@ -91,8 +90,8 @@ class GitHubClient:
             return ""
 
     def read_local_file(self, path):
-        if not path.startswith("src/"):
-            logger.error(f"Blocked read outside src/: {path}")
+        if not path.startswith("src/") and not path.startswith("src/test/") and not path.startswith("docs/"):
+            logger.error(f"Blocked read outside allowed dirs: {path}")
             return ""
         full_path = os.path.join(self._repo_root, path)
         try:
