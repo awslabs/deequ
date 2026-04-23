@@ -307,6 +307,11 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(WHERE_FIELD, maximum.where.orNull)
         result.add(ANALYZER_OPTIONS_FIELD, context.serialize(maximum.analyzerOptions.orNull))
 
+      case range: Range =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Range")
+        result.addProperty(COLUMN_FIELD, range.column)
+        result.addProperty(WHERE_FIELD, range.where.orNull)
+
       case countDistinct: CountDistinct =>
         result.addProperty(ANALYZER_NAME_FIELD, "CountDistinct")
         result.add(COLUMNS_FIELD, context.serialize(countDistinct.columns.asJava,
@@ -522,6 +527,11 @@ private[deequ] object AnalyzerDeserializer
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json),
           getOptionalAnalyzerOptions(json))
+
+      case "Range" =>
+        Range(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
 
       case "CountDistinct" =>
         CountDistinct(getColumnsAsSeq(context, json))

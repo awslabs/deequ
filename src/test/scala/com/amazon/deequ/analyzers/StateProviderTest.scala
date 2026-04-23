@@ -49,6 +49,7 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
       assertCorrectlyRestoresState[MinState](provider, provider, Minimum("price"), data)
       assertCorrectlyRestoresState[MaxState](provider, provider, Maximum("price"), data)
+      assertCorrectlyRestoresState[RangeState](provider, provider, Range("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
       assertCorrectlyRestoresState[VarianceState](provider, provider,
@@ -91,6 +92,7 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
       assertCorrectlyRestoresMinState(provider, provider, Minimum("price"), data)
       assertCorrectlyRestoresMaxState(provider, provider, Maximum("price"), data)
+      assertCorrectlyRestoresState[RangeState](provider, provider, Range("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
       assertCorrectlyRestoresState[VarianceState](provider, provider,

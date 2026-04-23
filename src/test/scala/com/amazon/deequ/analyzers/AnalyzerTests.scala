@@ -563,6 +563,16 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Maximum("att1").calculate(df).value.isFailure)
     }
 
+    "compute range correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Range("att1").calculate(df).value
+      result shouldBe Success(5.0)
+    }
+    "fail to compute range for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(Range("att1").calculate(df).value.isFailure)
+    }
+
     "compute sum correctly for numeric data" in withSparkSession { session =>
       val df = getDfWithNumericValues(session)
       Sum("att1").calculate(df).value shouldBe Success(21)
