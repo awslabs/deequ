@@ -522,6 +522,16 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(StandardDeviation("att1").calculate(df).value.isFailure)
     }
 
+    "compute variance correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Variance("att1").calculate(df).value
+      result shouldBe Success(2.9166666666666665)
+    }
+    "fail to compute variance for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(Variance("att1").calculate(df).value.isFailure)
+    }
+
     "compute minimum correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       val result = Minimum("att1").calculate(df)

@@ -830,6 +830,36 @@ object Constraint {
   }
 
   /**
+    * Runs variance analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def varianceConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val variance = Variance(column, where)
+
+    fromAnalyzer(variance, assertion, hint)
+  }
+
+  def fromAnalyzer(
+      variance: Variance,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[VarianceState, Double, Double](
+      variance, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"VarianceConstraint($variance)")
+  }
+
+  /**
     * Runs approximate count distinct analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on
