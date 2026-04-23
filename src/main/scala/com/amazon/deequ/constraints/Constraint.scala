@@ -729,6 +729,36 @@ object Constraint {
   }
 
   /**
+    * Runs range analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def rangeConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val range = Range(column, where)
+
+    fromAnalyzer(range, assertion, hint)
+  }
+
+  def fromAnalyzer(
+      range: Range,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[RangeState, Double, Double](
+      range, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"RangeConstraint($range)")
+  }
+
+  /**
     * Runs mean analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on
