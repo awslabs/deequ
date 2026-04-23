@@ -151,6 +151,7 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **Entropy**: `Entropy "column" > 2.0`
 - **Mean**: `Mean "column" between 10 and 50`
 - **StandardDeviation**: `StandardDeviation "column" < 5.0`
+- **Variance**: `Variance "column" < 25.0`
 - **Sum**: `Sum "column" = 100`
 - **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`
 - **CustomSql**: `CustomSql "SELECT COUNT(*) FROM primary" > 0`

@@ -128,6 +128,9 @@ case class HdfsStateProvider(
       case _ : StandardDeviation =>
         persistStandardDeviationState(state.asInstanceOf[StandardDeviationState], identifier)
 
+      case _ : Variance =>
+        persistVarianceState(state.asInstanceOf[VarianceState], identifier)
+
       case _: ApproxQuantile =>
         val percentileDigest = state.asInstanceOf[ApproxQuantileState].percentileDigest
         val serializedDigest = ApproximatePercentile.serializer.serialize(percentileDigest)
@@ -173,6 +176,8 @@ case class HdfsStateProvider(
       case _ : Correlation => loadCorrelationState(identifier)
 
       case _ : StandardDeviation => loadStandardDeviationState(identifier)
+
+      case _ : Variance => loadVarianceState(identifier)
 
        case _: ApproxQuantile =>
          val percentileDigest = ApproximatePercentile.serializer.deserialize(loadBytes(identifier))
@@ -264,6 +269,17 @@ case class HdfsStateProvider(
     }
   }
 
+  private[this] def persistVarianceState(
+      state: VarianceState,
+      identifier: String) {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.n)
+      out.writeDouble(state.avg)
+      out.writeDouble(state.m2)
+    }
+  }
+
   private[this] def loadLongState(identifier: String): Long = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { _.readLong() }
   }
@@ -310,6 +326,12 @@ case class HdfsStateProvider(
   private[this] def loadStandardDeviationState(identifier: String): StandardDeviationState = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
       StandardDeviationState(in.readDouble(), in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def loadVarianceState(identifier: String): VarianceState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      VarianceState(in.readDouble(), in.readDouble(), in.readDouble())
     }
   }
 }
