@@ -67,6 +67,7 @@ class NullHandlingTests extends AnyWordSpec
 
       Mean("numericCol").computeStateFrom(data) shouldBe None
       StandardDeviation("numericCol").computeStateFrom(data) shouldBe None
+      Variance("numericCol").computeStateFrom(data) shouldBe None
       Minimum("numericCol").computeStateFrom(data) shouldBe None
       Maximum("numericCol").computeStateFrom(data) shouldBe None
 
@@ -107,6 +108,7 @@ class NullHandlingTests extends AnyWordSpec
       assertFailedWithEmptyState(Mean("numericCol").calculate(data))
 
       assertFailedWithEmptyState(StandardDeviation("numericCol").calculate(data))
+      assertFailedWithEmptyState(Variance("numericCol").calculate(data))
       assertFailedWithEmptyState(Minimum("numericCol").calculate(data))
       assertFailedWithEmptyState(Maximum("numericCol").calculate(data))
 

@@ -31,6 +31,7 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnCountRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountRule
 import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
 import com.amazon.deequ.dqdl.translation.rules.SumRule
+import com.amazon.deequ.dqdl.translation.rules.VarianceRule
 import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
@@ -71,6 +72,7 @@ object DQDLRuleTranslator {
     "Entropy" -> new EntropyRule,
     "Mean" -> new MeanRule,
     "StandardDeviation" -> new StandardDeviationRule,
+    "Variance" -> new VarianceRule,
     "Sum" -> new SumRule,
     "UniqueValueRatio" -> new UniqueValueRatioRule,
     "CustomSql" -> new CustomSqlRule,

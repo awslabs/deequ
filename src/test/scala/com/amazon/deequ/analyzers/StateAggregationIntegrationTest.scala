@@ -107,6 +107,22 @@ class StateAggregationIntegrationTest extends AnyWordSpec with Matchers with Spa
 
       println()
 
+      val variance = Variance("sales")
+
+      val varianceStateNA = variance.computeStateFrom(partitionNA)
+      val varianceStateEU = variance.computeStateFrom(partitionEU)
+      val varianceStateIN = variance.computeStateFrom(partitionIN)
+
+      val varianceState = Analyzers.merge(varianceStateNA, varianceStateEU, varianceStateIN)
+
+      val overallVariance = variance.computeMetricFrom(varianceState)
+
+      val mergedValue = overallVariance.value.get
+      val directValue = variance.calculate(data).value.get
+      assert(math.abs(mergedValue - directValue) < 1e-6)
+
+      println()
+
       val distinctness = Distinctness("item")
 
       val distinctnessStateNA = distinctness.computeStateFrom(partitionNA)
