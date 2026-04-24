@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "RESPOND",
+        "ESCALATE",
+        "CLOSE"
+      ]
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "read_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "response": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "action",
+    "labels",
+    "read_files",
+    "response"
+  ],
+  "additionalProperties": false
+}
