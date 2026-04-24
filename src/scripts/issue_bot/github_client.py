@@ -20,10 +20,10 @@ class GitHubClient:
     def get_issue(self, number):
         return self._get(f"/repos/{self._repo}/issues/{number}")
 
-    def get_comments(self, number):
+    def get_comments(self, number, max_pages=10):
         comments = []
         page = 1
-        while True:
+        while page <= max_pages:
             batch = self._get(f"/repos/{self._repo}/issues/{number}/comments?per_page=100&page={page}")
             if not batch:
                 break
@@ -51,10 +51,10 @@ class GitHubClient:
     def get_pr_files(self, number):
         return self._get(f"/repos/{self._repo}/pulls/{number}/files") or []
 
-    def get_pr_review_comments(self, number):
+    def get_pr_review_comments(self, number, max_pages=10):
         comments = []
         page = 1
-        while True:
+        while page <= max_pages:
             batch = self._get(f"/repos/{self._repo}/pulls/{number}/comments?per_page=100&page={page}")
             if not batch:
                 break
@@ -64,36 +64,33 @@ class GitHubClient:
             page += 1
         return comments
 
-    def has_bot_commented(self, number):
-        for c in self.get_comments(number):
-            if c.get("user", {}).get("login") == "github-actions[bot]":
-                return True
-        return False
-
     def get_codebase_map(self, src_dir="src/main/scala"):
         """List all Python source files (excluding tests) as relative paths."""
-        import subprocess
         full_dir = os.path.join(self._repo_root, src_dir)
         prefix = self._repo_root.rstrip("/") + "/"
         try:
-            proc = subprocess.run(
-                ["find", full_dir, "-name", "*.scala", "-not", "-path", "*/examples/*"],
-                capture_output=True, text=True, timeout=10,
-            )
-            paths = sorted(
-                p[len(prefix):] if p.startswith(prefix) else p
-                for p in proc.stdout.strip().split("\n") if p
-            )
-            return "\n".join(paths)
+            paths = []
+            for root, dirs, files in os.walk(full_dir):
+                dirs[:] = [d for d in dirs if d not in ("examples", "__pycache__", ".git")]
+                for f in files:
+                    if f.endswith(".scala"):
+                        full = os.path.join(root, f)
+                        rel = full[len(prefix):] if full.startswith(prefix) else full
+                        paths.append(rel)
+            return "\n".join(sorted(paths))
         except Exception as e:
             logger.error(f"Codebase map failed: {e}")
             return ""
 
     def read_local_file(self, path):
-        if not path.startswith("src/") and not path.startswith("src/test/") and not path.startswith("docs/"):
-            logger.error(f"Blocked read outside allowed dirs: {path}")
+        repo_root = os.path.realpath(self._repo_root)
+        if repo_root == "/":
+            logger.error("Blocked: repo root is /")
             return ""
-        full_path = os.path.join(self._repo_root, path)
+        full_path = os.path.realpath(os.path.join(self._repo_root, path))
+        if not (full_path.startswith(repo_root + os.sep) or full_path == repo_root):
+            logger.error(f"Blocked path traversal: {path}")
+            return ""
         try:
             with open(full_path, "r", errors="replace") as f:
                 return f.read()
@@ -177,17 +174,20 @@ class GitHubClient:
             if not patch:
                 continue
             lines = set()
-            current_line = 0
+            current_line = None
             for line in patch.split("\n"):
                 hunk = re.match(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
                 if hunk:
                     current_line = int(hunk.group(1))
                     continue
+                if current_line is None:
+                    continue
                 if line.startswith("-"):
                     continue
-                if line.startswith("+") or not line.startswith("\\"):
-                    lines.add(current_line)
-                    current_line += 1
+                if line.startswith("\\"):
+                    continue
+                lines.add(current_line)
+                current_line += 1
             valid[path] = lines
         return valid
 

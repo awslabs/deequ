@@ -12,6 +12,9 @@ class Config:
         self.event_type = _require("EVENT_TYPE")
         self.event_action = os.getenv("EVENT_ACTION", "")
         self.issue_number = _require("ISSUE_NUMBER")
+        if not self.issue_number.isdigit():
+            logger.error(f"ISSUE_NUMBER must be numeric: {self.issue_number}")
+            sys.exit(1)
         self.repo = _require("GITHUB_REPOSITORY")
         self.actor = os.getenv("GITHUB_ACTOR", "")
 
@@ -22,6 +25,7 @@ class Config:
 
         self.slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
         self.guardrail_id = os.getenv("GUARDRAIL_ID", "")
+        self.guardrail_version = os.getenv("GUARDRAIL_VERSION") or "DRAFT"
 
         self.dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
         self.enable_slack = bool(self.slack_webhook_url)

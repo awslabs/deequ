@@ -1,8 +1,8 @@
-import json
 import logging
 
 import boto3
 from botocore.config import Config as BotoConfig
+from botocore.exceptions import ClientError, BotoCoreError
 
 logger = logging.getLogger("issue_bot")
 
@@ -17,28 +17,38 @@ class BedrockClient:
             config=BotoConfig(
                 read_timeout=cfg.bedrock_timeout,
                 connect_timeout=cfg.bedrock_timeout,
-                retries={"max_attempts": 1, "mode": "standard"},
+                retries={"max_attempts": 3, "mode": "adaptive"},
             ),
         )
         self._guardrail_id = cfg.guardrail_id
+        self._guardrail_version = cfg.guardrail_version
         self._failures = 0
-        self._circuit_open = False
+        self._circuit_open = False  # Resets per-process; GHA runs are ephemeral
 
     @property
     def available(self):
         return not self._circuit_open
 
-    def invoke(self, prompt, max_tokens=4096, temperature=0.3, json_schema=None):
-        """Invoke Bedrock using the Converse API.
+    def invoke(self, system_prompt, user_prompt, max_tokens=4096,
+               temperature=0.3, json_schema=None):
+        """Invoke Bedrock Converse API with guardrail on user message only.
 
-        Splits the prompt at <knowledge_base> to separate trusted instructions
-        (system prompt, cached) from untrusted user content (guarded).
+        Follows the GlueML pattern (BedrockModelHelper.java):
+        - system_prompt: Instructions + trusted context (KB, diffs, codebase).
+            Passed as plain text SystemContentBlock with cachePoint. The
+            guardrail does NOT assess system prompts without guardContent.
+        - user_prompt: Untrusted user input (issue title/body, PR title/body,
+            comments). When guardrail is configured, wrapped in guardContent
+            so the guardrail scans it for prompt injection.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock call")
             return None
         try:
-            system_prompt, user_content = self._split_prompt(prompt)
+            if self._guardrail_id:
+                user_content = [{"guardContent": {"text": {"text": user_prompt}}}]
+            else:
+                user_content = [{"text": user_prompt}]
 
             kwargs = {
                 "modelId": self._model_id,
@@ -66,7 +76,7 @@ class BedrockClient:
             if self._guardrail_id:
                 kwargs["guardrailConfig"] = {
                     "guardrailIdentifier": self._guardrail_id,
-                    "guardrailVersion": "1",
+                    "guardrailVersion": self._guardrail_version,
                     "trace": "enabled",
                 }
 
@@ -86,32 +96,10 @@ class BedrockClient:
                         usage.get("inputTokens"), usage.get("outputTokens"),
                         usage.get("cacheReadInputTokens"), usage.get("cacheWriteInputTokens"))
             return output[0]["text"].strip()
-        except Exception as e:
+        except (ClientError, BotoCoreError, ValueError, ConnectionError) as e:
             self._failures += 1
             logger.error(f"Bedrock failed ({self._failures}/{_CIRCUIT_BREAKER_THRESHOLD}): {e}")
             if self._failures >= _CIRCUIT_BREAKER_THRESHOLD:
                 self._circuit_open = True
                 logger.error("Circuit breaker OPEN")
             return None
-
-    def _split_prompt(self, prompt):
-        """Split rendered prompt into trusted system prompt and untrusted user content.
-
-        Everything before <knowledge_base> is trusted instructions (system prompt).
-        Everything from <knowledge_base> onward contains user data (guarded).
-        """
-        marker = "<knowledge_base>"
-        idx = prompt.find(marker)
-        if idx == -1:
-            # No marker — send everything as user content (unguarded)
-            return None, [{"text": prompt}]
-
-        system = prompt[:idx].strip()
-        user_data = prompt[idx:].strip()
-
-        if self._guardrail_id:
-            user_content = [{"guardContent": {"text": {"text": user_data}}}]
-        else:
-            user_content = [{"text": user_data}]
-
-        return system, user_content

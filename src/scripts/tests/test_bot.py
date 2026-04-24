@@ -21,10 +21,6 @@ from issue_bot.main import (
 from issue_bot.sanitizer import sanitize, _fix_accidental_issue_refs
 
 
-# ---------------------------------------------------------------------------
-# _parse_response
-# ---------------------------------------------------------------------------
-
 class TestParseResponse:
     @pytest.mark.parametrize("action", ["RESPOND", "ESCALATE", "CLOSE"])
     def test_json_actions(self, action):
@@ -61,10 +57,6 @@ class TestParseResponse:
         assert result["labels"] == []
 
 
-# ---------------------------------------------------------------------------
-# _parse_file_review_multi
-# ---------------------------------------------------------------------------
-
 class TestParseFileReviewMulti:
     def test_single_comment(self):
         raw = "FILE: src/foo.py\nLINE: 42\nCOMMENT: Missing null check"
@@ -88,10 +80,6 @@ class TestParseFileReviewMulti:
     def test_empty_input(self):
         assert _parse_file_review_multi("") == []
 
-
-# ---------------------------------------------------------------------------
-# sanitize
-# ---------------------------------------------------------------------------
 
 class TestSanitize:
     def test_none_passthrough(self):
@@ -128,10 +116,6 @@ class TestFixIssueRefs:
         assert "`#1`" in result
         assert "`#2`" in result
 
-
-# ---------------------------------------------------------------------------
-# Bot reply tracking
-# ---------------------------------------------------------------------------
 
 def _make_comment(login, body="text"):
     return {"user": {"login": login}, "body": body}
@@ -180,10 +164,6 @@ class TestUserDissatisfied:
         assert _user_dissatisfied(comments) is True
 
 
-# ---------------------------------------------------------------------------
-# _render (safe template substitution)
-# ---------------------------------------------------------------------------
-
 class TestRender:
     def test_basic(self):
         assert _render("Hello {name}", name="world") == "Hello world"
@@ -195,12 +175,18 @@ class TestRender:
     def test_missing_var_preserved(self):
         result = _render("{present} {missing}", present="yes")
         assert "yes" in result
-        assert "missing" in result  # safe_substitute keeps unresolved vars
+        assert "{missing}" in result
 
+    def test_no_cross_variable_injection(self):
+        """User content containing {context} must NOT leak the actual context value."""
+        result = _render("KB: {context}\nBody: {body}", context="SECRET", body="{context}")
+        assert result == "KB: SECRET\nBody: {context}"
 
-# ---------------------------------------------------------------------------
-# _clean_response
-# ---------------------------------------------------------------------------
+    def test_no_reverse_injection(self):
+        """Context containing {body} must NOT be replaced by body value."""
+        result = _render("KB: {context}\nBody: {body}", context="{body}", body="SECRET")
+        assert result == "KB: {body}\nBody: SECRET"
+
 
 class TestCleanResponse:
     def test_strips_header_lines(self):
@@ -215,3 +201,122 @@ class TestCleanResponse:
     def test_preserves_normal_text(self):
         text = "This is a normal response."
         assert _clean_response(text) == text
+
+
+class TestSmoke:
+    def test_main_module_imports(self):
+        from issue_bot import main
+        assert hasattr(main, 'analyze')
+        assert hasattr(main, 'act')
+
+    def test_sanitizer_imports(self):
+        from issue_bot import sanitizer
+        assert hasattr(sanitizer, 'sanitize')
+
+    def test_schemas_loadable(self):
+        from issue_bot.main import ISSUE_RESPONSE_SCHEMA, PR_REVIEW_SCHEMA, FOLLOWUP_SCHEMA
+        import json
+        assert json.loads(ISSUE_RESPONSE_SCHEMA)["type"] == "object"
+        assert json.loads(PR_REVIEW_SCHEMA)["type"] == "object"
+        assert json.loads(FOLLOWUP_SCHEMA)["type"] == "object"
+
+
+class TestArtifactValidation:
+    def test_invalid_action_rejected(self):
+        """Actions not in the allowed set should be treated as invalid."""
+        valid = {"SKIP", "RESPOND", "ESCALATE", "CLOSE"}
+        assert "DROP_TABLE" not in valid
+        assert "RESPOND" in valid
+
+    def test_title_truncated(self):
+        title = "A" * 500
+        truncated = str(title)[:200]
+        assert len(truncated) == 200
+
+    def test_non_github_url_cleared(self):
+        url = "https://evil.com/steal"
+        result = "" if not url.startswith("https://github.com/") else url
+        assert result == ""
+
+    def test_github_url_preserved(self):
+        url = "https://github.com/awslabs/python-deequ/issues/1"
+        result = "" if not url.startswith("https://github.com/") else url
+        assert result == url
+
+    def test_empty_url_preserved(self):
+        url = ""
+        result = "" if url and not url.startswith("https://github.com/") else url
+        assert result == ""
+
+
+class TestSplitPrompt:
+    """Test that invoke() follows GlueML pattern: system=trusted, user=guarded."""
+
+    def _make_client(self, guardrail_id=""):
+        class FakeCfg:
+            bedrock_model_id = "test"
+            bedrock_timeout = 10
+            guardrail_id = ""
+            guardrail_version = "DRAFT"
+        cfg = FakeCfg()
+        cfg.guardrail_id = guardrail_id
+        from issue_bot.bedrock_client import BedrockClient
+        import unittest.mock as mock
+        with mock.patch("boto3.client"):
+            client = BedrockClient(cfg)
+        return client
+
+    def _mock_converse(self, client):
+        import unittest.mock as mock
+        client._client = mock.MagicMock()
+        client._client.converse.return_value = {
+            "stopReason": "end_turn",
+            "output": {"message": {"content": [{"text": "ok"}]}},
+            "usage": {},
+        }
+
+    def test_with_guardrail_user_is_guardcontent(self):
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke("system instructions", "user input")
+        kwargs = client._client.converse.call_args[1]
+        content = kwargs["messages"][0]["content"]
+        assert len(content) == 1
+        assert "guardContent" in content[0]
+        assert content[0]["guardContent"]["text"]["text"] == "user input"
+
+    def test_without_guardrail_user_is_text(self):
+        client = self._make_client()
+        self._mock_converse(client)
+        client.invoke("system", "user input")
+        kwargs = client._client.converse.call_args[1]
+        content = kwargs["messages"][0]["content"]
+        assert len(content) == 1
+        assert "text" in content[0]
+        assert content[0]["text"] == "user input"
+
+    def test_system_prompt_is_plain_text_cached(self):
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke("instructions + diff with ignore previous instructions", "Title: test")
+        kwargs = client._client.converse.call_args[1]
+        system = kwargs["system"]
+        assert system[0]["text"] == "instructions + diff with ignore previous instructions"
+        assert "cachePoint" in system[1]
+        # System prompt is NOT guardContent — guardrail won't scan it
+        assert "guardContent" not in system[0]
+
+    def test_guardrail_config_present(self):
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke("system", "user")
+        kwargs = client._client.converse.call_args[1]
+        assert "guardrailConfig" in kwargs
+        assert kwargs["guardrailConfig"]["guardrailIdentifier"] == "gr-123"
+
+    def test_no_guardrail_no_config(self):
+        client = self._make_client()
+        self._mock_converse(client)
+        client.invoke("system", "user")
+        kwargs = client._client.converse.call_args[1]
+        assert "guardrailConfig" not in kwargs

@@ -10,7 +10,7 @@ import sys
 import os
 import datetime
 import logging
-from string import Template
+import uuid
 
 from .config import Config
 from .bedrock_client import BedrockClient
@@ -27,10 +27,18 @@ _MAX_BOT_REPLIES = 2
 
 
 def _render(template_str, **kwargs):
-    """Render a prompt template safely. Converts {var} to $var for Template.safe_substitute
-    so untrusted content like PR bodies containing {braces} won't crash or leak."""
-    converted = template_str.replace("{", "${")
-    return Template(converted).safe_substitute(**kwargs)
+    """Render a prompt template safely using unique tokens per invocation.
+    Prevents cross-variable injection (user body containing {context} won't leak KB)."""
+    token_id = uuid.uuid4().hex
+    tokens = {}
+    result = template_str
+    for key, value in kwargs.items():
+        token = f"__TMPL_{token_id}_{key}__"
+        result = result.replace("{" + key + "}", token)
+        tokens[token] = str(value)
+    for token, value in tokens.items():
+        result = result.replace(token, value)
+    return result
 
 
 def _load_schema(name):
@@ -55,16 +63,18 @@ def analyze():
     number = cfg.issue_number
     is_followup = cfg.event_type == "issue_comment" and cfg.event_action == "created"
 
+    item = None
     if cfg.event_type == "pull_request":
         is_pr = True
     elif cfg.event_type in ("issues", "issue_comment"):
         is_pr = False
     else:
         # workflow_dispatch or unknown — check via API
-        issue_data = gh.get_issue(number)
-        is_pr = bool(issue_data and issue_data.get("pull_request"))
+        item = gh.get_issue(number)
+        is_pr = bool(item and item.get("pull_request"))
 
-    item = gh.get_pr(number) if is_pr else gh.get_issue(number)
+    if item is None:
+        item = gh.get_pr(number) if is_pr else gh.get_issue(number)
     if not item:
         _write_artifact({"action": "SKIP", "reason": "fetch_failed"})
         return
@@ -96,7 +106,8 @@ def analyze():
         })
         return
 
-    if not is_followup and not is_pr_update and gh.has_bot_commented(number):
+    if not is_followup and not is_pr_update and any(
+            c.get("user", {}).get("login") == "github-actions[bot]" for c in comments_data):
         _write_artifact({"action": "SKIP", "reason": "already_commented"})
         return
 
@@ -138,15 +149,20 @@ def analyze():
         diff = gh.get_pr_diff(number)
         review_comments = gh.get_pr_review_comments(number)
         existing_feedback = _format_pr_feedback(comments_data, review_comments)
-        user_prompt = _render(tmpl,
-            context=context, codebase_map=codebase_map, title=title, body=body,
-            diff=diff, current_date=datetime.date.today().isoformat(),
-            existing_feedback=existing_feedback,
+        # System prompt: instructions + all trusted context (not scanned by guardrail)
+        system_prompt = _render(tmpl, current_date=datetime.date.today().isoformat()) + (
+            f"\n\n<knowledge_base>\n{context}\n</knowledge_base>\n"
+            f"<codebase_map>\n{codebase_map}\n</codebase_map>\n"
+            f"<diff>\n{diff}\n</diff>\n"
+            f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>"
         )
-        raw = bedrock.invoke(user_prompt, max_tokens=4000, json_schema=PR_REVIEW_SCHEMA)
-        if not raw:
+        # User prompt: only user-authored content (scanned by guardrail)
+        user_prompt = f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+        raw = bedrock.invoke(system_prompt, user_prompt,
+                             max_tokens=4000, json_schema=PR_REVIEW_SCHEMA)
+        if raw is None:
             _write_artifact({
-                "action": "SKIP", "reason": "no_issues_found", "title": title,
+                "action": "ESCALATE", "reason": "bedrock_unavailable", "title": title,
                 "html_url": html_url, "number": number, "is_pr": True,
                 "prompt_id": prompts.prompt_version(tmpl), "model_id": cfg.bedrock_model_id,
             })
@@ -174,7 +190,8 @@ def analyze():
                 "reason": "prompt_load_failed", "title": title, "html_url": html_url,
                 "number": number, "is_pr": is_pr, "prompt_id": "n/a", "model_id": cfg.bedrock_model_id})
             return
-        user_prompt = _render(tmpl, context=context, title=title, body=body, comments=comments_text)
+        system_prompt = tmpl + f"\n\n<knowledge_base>\n{context}\n</knowledge_base>"
+        user_prompt = f"<issue>\nTitle: {title}\nBody: {body}\n</issue>\n<conversation>\n{comments_text}\n</conversation>"
         prompt_id = prompts.prompt_version(tmpl)
     else:
         tmpl = prompts.get_issue_prompt()
@@ -183,12 +200,15 @@ def analyze():
                 "reason": "prompt_load_failed", "title": title, "html_url": html_url,
                 "number": number, "is_pr": is_pr, "prompt_id": "n/a", "model_id": cfg.bedrock_model_id})
             return
-        user_prompt = _render(tmpl, context=context, title=title, body=body,
-                             comments=comments_text, codebase_map=codebase_map)
+        system_prompt = tmpl + (
+            f"\n\n<knowledge_base>\n{context}\n</knowledge_base>\n"
+            f"<codebase_map>\n{codebase_map}\n</codebase_map>"
+        )
+        user_prompt = f"<issue>\nTitle: {title}\nBody: {body}\n</issue>\n<conversation>\n{comments_text}\n</conversation>"
         prompt_id = prompts.prompt_version(tmpl)
 
     schema = FOLLOWUP_SCHEMA if is_followup else ISSUE_RESPONSE_SCHEMA
-    raw = bedrock.invoke(user_prompt, json_schema=schema)
+    raw = bedrock.invoke(system_prompt, user_prompt, json_schema=schema)
 
     if raw is None:
         _write_artifact({
@@ -206,11 +226,13 @@ def analyze():
         if snippets:
             respond_tmpl = prompts.get_issue_respond_prompt()
             if respond_tmpl:
-                user_prompt2 = _render(respond_tmpl,
-                    context=context, source_code=snippets, title=title,
-                    body=body, comments=comments_text,
+                respond_system = respond_tmpl + (
+                    f"\n\n<knowledge_base>\n{context}\n</knowledge_base>\n"
+                    f"<source_code>\n{snippets}\n</source_code>"
                 )
-                raw2 = bedrock.invoke(user_prompt2, json_schema=ISSUE_RESPONSE_SCHEMA)
+                respond_user = f"<issue>\nTitle: {title}\nBody: {body}\n</issue>\n<conversation>\n{comments_text}\n</conversation>"
+                raw2 = bedrock.invoke(respond_system, respond_user,
+                                      json_schema=ISSUE_RESPONSE_SCHEMA)
                 if raw2:
                     parsed2 = _parse_response(raw2, is_pr)
                     parsed2["labels"] = parsed2.get("labels") or parsed.get("labels", [])
@@ -235,11 +257,18 @@ def act():
         logger.error("No artifact found")
         return
 
+    # Validate artifact has required fields
     action = result.get("action", "SKIP")
+    if action not in ("SKIP", "RESPOND", "ESCALATE", "CLOSE"):
+        logger.error(f"Invalid action in artifact: {action}")
+        return
+
     number = result.get("number", cfg.issue_number)
     is_pr = result.get("is_pr", False)
-    title = result.get("title", "")
+    title = str(result.get("title", ""))[:200]  # Truncate to prevent injection
     html_url = result.get("html_url", "")
+    if html_url and not html_url.startswith("https://github.com/"):
+        html_url = ""
     raw_labels = result.get("labels", [])
     if not isinstance(raw_labels, list):
         raw_labels = []
@@ -252,30 +281,44 @@ def act():
         logger.info(f"Skip #{number}: {result.get('reason')}")
         return
 
-    footer = "\n\n---\n*This response was generated using AI and may not be fully accurate. If this doesn't help, please reply and a maintainer will follow up.*"
+    footer = (
+        f"\n\n---\n*Generated by AI (model: {model_id}, prompt: {prompt_id}) "
+        f"— may not be fully accurate. Reply if this doesn't help.*"
+    )
 
+    # Pre-process: sanitize response before dispatch
     if action == "RESPOND":
         safe = sanitize(response)
         if safe is None:
             action = "ESCALATE"
             response = ""
+        elif not safe and not result.get("inline_comments"):
+            action = "ESCALATE"
+            response = ""
         else:
-            inline_comments = result.get("inline_comments", [])
-            if is_pr and inline_comments:
-                gh.post_pr_review(number, safe + footer, inline_comments)
-            else:
-                gh.post_comment(number, safe + footer)
-            gh.add_labels(number, labels)
-            if "bug" in labels:
-                slack.send_escalation(number, title, html_url, labels)
-            elif "enhancement" in labels:
-                gh.post_comment(number,
-                    "If you're interested in contributing this feature, "
-                    "PRs are welcome! The maintainer team has been notified." + footer)
-                slack.send_escalation(number, title, html_url, labels)
-            logger.info(f"Responded to #{number}")
+            response = safe or ""
 
-    if action == "ESCALATE":
+    if action == "RESPOND":
+        inline_comments = result.get("inline_comments", [])
+        # Sanitize inline comment text and keep the sanitized version
+        sanitized_comments = []
+        for ic in inline_comments:
+            safe_comment = sanitize(ic.get("comment", ""))
+            if safe_comment is not None:
+                sanitized_comments.append({**ic, "comment": safe_comment})
+        inline_comments = sanitized_comments
+        if is_pr and inline_comments:
+            gh.post_pr_review(number, response + footer, inline_comments)
+        else:
+            gh.post_comment(number, response + footer)
+        gh.add_labels(number, labels)
+        if "bug" in labels:
+            slack.send_escalation(number, title, html_url, labels)
+        elif "enhancement" in labels:
+            slack.send_escalation(number, title, html_url, labels)
+        logger.info(f"Responded to #{number}")
+
+    elif action == "ESCALATE":
         reason = result.get("reason", "")
         if reason == "user_dissatisfied":
             ack = (
@@ -309,7 +352,7 @@ def act():
         slack.send_escalation(number, title, html_url, labels)
         logger.info(f"Escalated #{number}")
 
-    if action == "CLOSE" and not is_pr:
+    elif action == "CLOSE" and not is_pr:
         msg = (
             "This issue may not be related to the Deequ data quality library. "
             "The maintainer team has been notified and will review." + footer
@@ -318,6 +361,11 @@ def act():
         gh.add_labels(number, labels)
         slack.send_escalation(number, title, html_url, labels)
         logger.info(f"Flagged #{number} as potentially off-topic")
+
+    else:
+        logger.warning(f"Unhandled action '{action}' for #{number}, escalating")
+        gh.post_comment(number, "This has been flagged for review by our maintainer team." + footer)
+        slack.send_escalation(number, title, html_url, labels)
 
 
 def _bot_reply_count(comments):
@@ -454,32 +502,6 @@ def _parse_file_review_multi(raw):
     return comments
 
 
-def _parse_file_review(raw, filename):
-    """Parse per-file review output into inline comments."""
-    comments = []
-    current_line = None
-    current_comment = []
-
-    for line in raw.strip().split("\n"):
-        stripped = line.strip()
-        upper = stripped.upper()
-        if upper.startswith("LINE:"):
-            if current_line and current_comment:
-                comments.append({"file": filename, "line": current_line, "comment": "\n".join(current_comment).strip()})
-            try:
-                current_line = int(stripped.split(":", 1)[1].strip())
-                current_comment = []
-            except ValueError:
-                current_line = None
-        elif upper.startswith("COMMENT:"):
-            current_comment = [stripped.split(":", 1)[1].strip()]
-        elif current_comment is not None:
-            current_comment.append(stripped)
-
-    if current_line and current_comment:
-        comments.append({"file": filename, "line": current_line, "comment": "\n".join(current_comment).strip()})
-
-    return comments
 
 
 def _parse_pr_review(text):
@@ -565,6 +587,8 @@ def _format_pr_feedback(issue_comments, review_comments):
 def _read_requested_files(gh, file_paths, cfg):
     snippets = []
     for path in file_paths[:cfg.max_github_search_results]:
+        if ".." in path or path.startswith("/"):
+            continue
         content = gh.read_local_file(path)
         if not content:
             content = gh.get_file_content(path, repo=cfg.upstream_repo)
