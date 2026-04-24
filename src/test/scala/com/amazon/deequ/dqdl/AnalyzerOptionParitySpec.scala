@@ -99,14 +99,17 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
     "compute over all rows ignoring where clause" in
       withSparkSession { sparkSession =>
         import sparkSession.implicits._
-        // ETL does not apply where clause for Entropy
+        // grp='a': val='x','x','x' -> entropy=0 (single distinct value)
+        // all rows: val='x','x','x','y','z' -> entropy > 0
+        // threshold > 0.0: passes only if entropy > 0 (i.e. all rows used)
+        // If WHERE were applied (only grp='a'), entropy=0, would fail
         val df = Seq(
-          (1, "a", "x"), (2, "a", "y"),
-          (3, "b", "x"), (4, "b", "y")
+          (1, "a", "x"), (2, "a", "x"), (3, "a", "x"),
+          (4, "b", "y"), (5, "b", "z")
         ).toDF("id", "grp", "val")
 
         outcomeOf(df,
-          """Rules=[Entropy "val" > 0.5 where "grp = 'a'"]"""
+          """Rules=[Entropy "val" > 0.0 where "grp = 'a'"]"""
         ) should be("Passed")
       }
   }
@@ -321,5 +324,196 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
           """with IGNORE_CASE = "true" with threshold > 0.5]"""
         ) should be("Passed")
       }
+  }
+
+  "IsPrimaryKey multi-column" should {
+
+    "scope composite key check to matching rows via where clause" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // (col1, col2) unique within grp='a' but duplicated across groups
+        val df = Seq(
+          (1, "a", "x", 1), (2, "a", "y", 2),
+          (3, "b", "x", 1)
+        ).toDF("id", "grp", "col1", "col2")
+
+        outcomeOf(df,
+          """Rules=[IsPrimaryKey "col1" "col2" where "grp = 'a'"]"""
+        ) should be("Passed")
+      }
+  }
+
+  "IGNORE_CASE with NOT_IN" should {
+
+    "match case-insensitively for negated set membership" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // "BANNED" matches "banned" with IGNORE_CASE -> not in set -> fails
+        val df = Seq(
+          (1, "ok"), (2, "BANNED"), (3, "fine")
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" not in ["banned"] """ +
+          """with IGNORE_CASE = "true"]"""
+        ) should be("Failed")
+      }
+  }
+
+  "IGNORE_CASE with EQUALS and NOT_EQUALS" should {
+
+    "match case-insensitively for string equality" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(
+          (1, "Hello"), (2, "HELLO"), (3, "hello")
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" = "hello" """ +
+          """with IGNORE_CASE = "true"]"""
+        ) should be("Passed")
+      }
+
+    "match case-insensitively for string not-equals" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // All values are case-variants of "hello" -> all equal -> not-equals fails
+        val df = Seq(
+          (1, "Hello"), (2, "HELLO"), (3, "hello")
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" != "hello" """ +
+          """with IGNORE_CASE = "true"]"""
+        ) should be("Failed")
+      }
+  }
+
+  "ColumnValues numeric EQUALS with WHERE and NULLs" should {
+
+    "fail when NULLs exist in filtered subset" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // grp='a': values 5, 5, NULL -> NULL triggers Fail behavior
+        val df = Seq(
+          (1, "a", Some(5)), (2, "a", Some(5)),
+          (3, "a", None), (4, "b", Some(9))
+        ).toDF("id", "grp", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" = 5 where "grp = 'a'"]"""
+        ) should be("Failed")
+      }
+  }
+
+  "All-NULL column" should {
+
+    "fail ColumnLength when entire column is NULL" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // All NULLs -> EmptyString makes all lengths 0 -> fails >= 1
+        val df = Seq(
+          (1, None: Option[String]), (2, None: Option[String])
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnLength "val" >= 1]""") should be("Failed")
+      }
+
+    "fail ColumnValues EQUALS when entire column is NULL" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // All NULLs -> NullBehavior.Fail -> fails
+        val df = Seq(
+          (1, None: Option[Int]), (2, None: Option[Int])
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" = 5]""") should be("Failed")
+      }
+  }
+
+  "Metric value assertion" should {
+
+    "return correct Completeness metric value" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 2 of 3 non-null -> completeness = 0.6667
+        val df = Seq(
+          (1, Some("a")), (2, Some("b")), (3, None)
+        ).toDF("id", "val")
+
+        val metrics = metricsOf(df,
+          """Rules=[Completeness "val" > 0.5]""")
+        val completeness = metrics.values.head
+        completeness should be(0.667 +- 0.01)
+      }
+  }
+
+  "IGNORE_CASE tag variants" should {
+
+    "accept uppercase TRUE value" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(
+          (1, "Hello"), (2, "HELLO"), (3, "hello")
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" in ["hello"] """ +
+          """with IGNORE_CASE = "TRUE"]"""
+        ) should be("Passed")
+      }
+  }
+
+  "Threshold edge case" should {
+
+    "pass with > 0.0 threshold when any row matches" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 1 of 3 matches -> 33% > 0.0 -> passes
+        val df = Seq(
+          (1, "yes"), (2, "no"), (3, "no")
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" in ["yes"] """ +
+          """with threshold > 0.0]"""
+        ) should be("Passed")
+      }
+  }
+
+  "Empty DataFrame" should {
+
+    "not throw for ColumnLength with zero rows" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq.empty[(Int, String)].toDF("id", "val")
+        // Empty DF: no rows to evaluate, outcome depends on analyzer defaults
+        noException should be thrownBy outcomeOf(df,
+          """Rules=[ColumnLength "val" >= 1]""")
+      }
+
+    "not throw for ColumnValues EQUALS with zero rows" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq.empty[(Int, Int)].toDF("id", "val")
+        noException should be thrownBy outcomeOf(df,
+          """Rules=[ColumnValues "val" = 5]""")
+      }
+
+    "not throw for IsPrimaryKey with zero rows" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq.empty[(Int, String)].toDF("id", "val")
+        noException should be thrownBy outcomeOf(df,
+          """Rules=[IsPrimaryKey "val"]""")
+      }
+  }
+
+  private def metricsOf(df: DataFrame, ruleset: String): Map[String, Double] = {
+    val results = EvaluateDataQuality.process(df, ruleset)
+    results.collect().head.getAs[Map[String, Double]]("EvaluatedMetrics")
   }
 }
