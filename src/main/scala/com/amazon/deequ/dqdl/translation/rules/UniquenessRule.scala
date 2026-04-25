@@ -36,13 +36,15 @@ case class UniquenessRule() extends DQDLRuleConverter {
 
       case Seq(singleCol) =>
         val singleColCheck = check
-          .hasUniqueness(singleCol, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
+          .hasUniqueness(singleCol, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]),
+            None, analyzerOptionsForWhereClause(rule))
         Right((addWhereClause(rule, singleColCheck),
           Seq(DeequMetricMapping("Column", singleCol, "Uniqueness", "Uniqueness", None, rule = rule))))
 
       case cols@(head +: tail) =>
         val multiColCheck = check
-          .hasUniqueness(columns, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
+          .hasUniqueness(columns, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]),
+            None, analyzerOptionsForWhereClause(rule))
         Right(
           addWhereClause(rule, multiColCheck),
           Seq(DeequMetricMapping("Multicolumn", columns.mkString(","), "Uniqueness", "Uniqueness", None, rule = rule)))
