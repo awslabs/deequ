@@ -147,7 +147,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         }
         val sql = s"$transformedCol IS NOT NULL AND " +
           s"($transformedCol <= ${numericOperands.head} OR $transformedCol >= ${numericOperands.last})"
-        Right((addWhereClause(rule, check.satisfies(sql, check.description, _ == 1.0,
+        Right((addWhereClause(rule, check.satisfies(sql, check.description, thresholdOrDefault(rule),
           columns = List(transformedCol), analyzerOptions = opts)),
           complianceMetric(targetColumn, check.description, rule)))
 
@@ -228,6 +228,9 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
     val shouldIgnoreCase = Option(rule.getTags)
       .flatMap(t => Option(t.get("IGNORE_CASE")))
       .exists(_.equalsIgnoreCase("true"))
+    // Note: IGNORE_CASE applies only to IN/NOT_IN/EQUALS/NOT_EQUALS (via constructComplianceCondition).
+    // MATCHES/NOT_MATCHES use regex patterns where case sensitivity is controlled via (?i) flag
+    // in the pattern itself, so IGNORE_CASE is intentionally not applied to them.
     condition.getOperator match {
       case StringBasedConditionOperator.MATCHES =>
         val pattern = extractPattern(condition)
@@ -335,7 +338,9 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
       } yield {
         val assertion = parseThresholdAssertion(rule).getOrElse(Check.IsOne)
         (addWhereClause(rule, check.satisfies(sql, check.description, assertion,
-          columns = List(transformedCol))), complianceMetric(targetColumn, check.description, rule))
+          columns = List(transformedCol),
+          analyzerOptions = analyzerOptionsForWhereClause(rule))),
+          complianceMetric(targetColumn, check.description, rule))
       }
     } catch {
       case e: java.time.DateTimeException =>

@@ -27,6 +27,10 @@ import scala.collection.JavaConverters._
 case class EntropyRule() extends DQDLRuleConverter {
   override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val col = rule.getParameters.asScala("TargetColumn")
+    // Entropy is a global metric over the entire column's value distribution.
+    // Applying a WHERE clause would change the distribution being measured,
+    // which is semantically incorrect. ETL does not apply WHERE for Entropy.
+    // The WHERE clause is intentionally ignored here to match ETL behavior.
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
       .hasEntropy(col, assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition]))
     Right(

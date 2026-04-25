@@ -59,6 +59,9 @@ case class ColumnLengthRule() extends DQDLRuleConverter {
     val operands = rawOperands.map(_.getOperand.toDouble)
     val transformedColForSparkSql = if (requiresToBeQuoted(targetColumn)) s"`$targetColumn`" else targetColumn
 
+    // Use DEFAULT_ANALYZER_OPTION unconditionally (not analyzerOptionsForWhereClause).
+    // ColumnLength always needs NullBehavior.EmptyString so NULLs are treated as length 0,
+    // regardless of whether a WHERE clause is present. This matches ETL behavior.
     val opts = DEFAULT_ANALYZER_OPTION
 
     def withMultipleConstraints(minAssertion: Double => Boolean,

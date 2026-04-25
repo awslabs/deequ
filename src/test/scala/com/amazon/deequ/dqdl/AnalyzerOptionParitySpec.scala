@@ -484,6 +484,57 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
       }
   }
 
+  "Numeric NOT_BETWEEN with threshold" should {
+
+    "respect threshold instead of requiring 100% compliance" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 3 of 4 rows are NOT between 10 and 20 -> 75% compliance
+        // threshold > 0.5 -> should pass (would fail with hardcoded _ == 1.0)
+        val df = Seq(
+          (1, 5), (2, 15), (3, 25), (4, 30)
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" not between 10 and 20 """ +
+          """with threshold > 0.5]"""
+        ) should be("Passed")
+      }
+
+    "fail when compliance below threshold" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // 1 of 4 rows is NOT between 0 and 25 -> 25% compliance
+        // threshold > 0.5 -> should fail
+        val df = Seq(
+          (1, 5), (2, 15), (3, 20), (4, 30)
+        ).toDF("id", "val")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "val" not between 0 and 25 """ +
+          """with threshold > 0.5]"""
+        ) should be("Failed")
+      }
+  }
+
+  "Date rules with WHERE clause" should {
+
+    "scope date comparison to matching rows" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        // grp='a': dates are 2024-01-15, 2024-01-20 -> both > 2024-01-01
+        // grp='b': date is 2023-06-01 -> would fail > 2024-01-01
+        val df = Seq(
+          (1, "a", "2024-01-15"), (2, "a", "2024-01-20"),
+          (3, "b", "2023-06-01")
+        ).toDF("id", "grp", "dt")
+
+        outcomeOf(df,
+          """Rules=[ColumnValues "dt" > "2024-01-01" where "grp = 'a'"]"""
+        ) should be("Passed")
+      }
+  }
+
   "Empty DataFrame" should {
 
     "not throw for ColumnLength with zero rows" in
