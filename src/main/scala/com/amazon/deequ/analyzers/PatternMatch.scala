@@ -58,6 +58,9 @@ case class PatternMatch(column: String, pattern: Regex, where: Option[String] = 
 
   override def filterCondition: Option[String] = where
 
+  override def columnsReferenced(): Option[Set[String]] =
+    if (where.isDefined) None else Some(Set(column))
+
   override protected def additionalPreconditions(): Seq[StructType => Unit] = {
     hasColumn(column) :: isString(column) :: Nil
   }

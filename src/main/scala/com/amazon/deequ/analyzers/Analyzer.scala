@@ -80,6 +80,14 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
   def computeMetricFrom(state: Option[S]): M
 
   /**
+    * Returns the columns this analyzer reads from the data, if known statically.
+    * Returns Some(columns) when all referenced columns can be determined,
+    * or None when the analyzer may reference arbitrary columns (e.g. free-form SQL predicates).
+    * Used by AnalysisRunner to enable column pruning for V2 DataSource connectors like Iceberg.
+    */
+  def columnsReferenced(): Option[Set[String]] = None
+
+  /**
     * A set of assertions that must hold on the schema of the data frame
     * @return
     */
