@@ -65,6 +65,7 @@ case class NumericColumnProfile(
     mean: Option[Double],
     maximum: Option[Double],
     minimum: Option[Double],
+    range: Option[Double],
     sum: Option[Double],
     stdDev: Option[Double],
     variance: Option[Double],
@@ -127,6 +128,9 @@ object ColumnProfiles {
           }
           numericColumnProfile.minimum.foreach { minimum =>
             columnProfileJson.addProperty("minimum", minimum)
+          }
+          numericColumnProfile.range.foreach { range =>
+            columnProfileJson.addProperty("range", range)
           }
           numericColumnProfile.sum.foreach { sum =>
             columnProfileJson.addProperty("sum", sum)

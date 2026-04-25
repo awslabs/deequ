@@ -104,6 +104,9 @@ case class HdfsStateProvider(
       case _: Maximum =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
 
+      case _ : Range =>
+        persistRangeState(state.asInstanceOf[RangeState], identifier)
+
       case _: MaxLength =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
 
@@ -161,6 +164,8 @@ case class HdfsStateProvider(
       case _ : Minimum => MinState(loadDoubleState(identifier))
 
       case _ : Maximum => MaxState(loadDoubleState(identifier))
+
+      case _ : Range => loadRangeState(identifier)
 
       case _ : MaxLength => MaxState(loadDoubleState(identifier))
 
@@ -332,6 +337,22 @@ case class HdfsStateProvider(
   private[this] def loadVarianceState(identifier: String): VarianceState = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
       VarianceState(in.readDouble(), in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistRangeState(
+      state: RangeState,
+      identifier: String) {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.minValue)
+      out.writeDouble(state.maxValue)
+    }
+  }
+
+  private[this] def loadRangeState(identifier: String): RangeState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      RangeState(in.readDouble(), in.readDouble())
     }
   }
 }

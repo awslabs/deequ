@@ -118,6 +118,7 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         .addAnalyzer(Variance("att1"))
         .addAnalyzer(Minimum("att1"))
         .addAnalyzer(Maximum("att1"))
+        .addAnalyzer(Range("att1"))
         .addAnalyzer(ApproxQuantile("att1", 0.5))
         .addAnalyzer(ApproxCountDistinct("att1"))
         .addAnalyzer(CountDistinct("att1"))
@@ -131,6 +132,8 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         Success(1.707825127659933)))
       resultMetrics should contain(DoubleMetric(Entity.Column, "Variance", "att1",
         Success(2.9166666666666665)))
+      resultMetrics should contain(DoubleMetric(Entity.Column, "Range", "att1",
+        Success(5.0)))
 
       val minimumMetric = resultMetrics.find(_.name == "Minimum").head
       inside(minimumMetric) { case DoubleMetric(entity, name, instance, value, fullColumn) =>

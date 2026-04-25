@@ -68,6 +68,7 @@ private[deequ] case class NumericColumnStatistics(
     variances: Map[String, Double],
     minima: Map[String, Double],
     maxima: Map[String, Double],
+    ranges: Map[String, Double],
     sums: Map[String, Double],
     kll: Map[String, BucketDistribution],
     approxPercentiles: Map[String, Seq[Double]]
@@ -292,7 +293,7 @@ object ColumnProfiler {
       kllProfiling: Boolean,
       kllParameters: Option[KLLParameters])
     : Seq[Analyzer[_, Metric[_]]] = {
-      val mandatoryAnalyzers = Seq(Minimum(column), Maximum(column), Mean(column),
+      val mandatoryAnalyzers = Seq(Minimum(column), Maximum(column), Range(column), Mean(column),
         StandardDeviation(column), Variance(column), Sum(column))
 
       val optionalAnalyzers = if (kllProfiling) {
@@ -550,6 +551,16 @@ object ColumnProfiler {
       .flatten
       .toMap
 
+    val ranges = results.metricMap
+      .collect { case (analyzer: Range, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
     val minima = results.metricMap
       .collect { case (analyzer: Minimum, metric: DoubleMetric) =>
         metric.value match {
@@ -597,7 +608,7 @@ object ColumnProfiler {
       .toMap
 
 
-    NumericColumnStatistics(means, stdDevs, variances, minima, maxima, sums, kll, approxPercentiles)
+    NumericColumnStatistics(means, stdDevs, variances, minima, maxima, ranges, sums, kll, approxPercentiles)
   }
 
   /* Identifies all columns, which:
@@ -762,6 +773,7 @@ object ColumnProfiler {
               numericStats.means.get(name),
               numericStats.maxima.get(name),
               numericStats.minima.get(name),
+              numericStats.ranges.get(name),
               numericStats.sums.get(name),
               numericStats.stdDevs.get(name),
               numericStats.variances.get(name),

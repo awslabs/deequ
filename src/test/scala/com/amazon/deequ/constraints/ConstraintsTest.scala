@@ -113,6 +113,11 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
       calculate(Constraint.maxConstraint("att1", _ == 6.0), df)
         .status shouldBe ConstraintStatus.Success
     }
+    "assert on range" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.rangeConstraint("att1", _ == 5.0), df)
+        .status shouldBe ConstraintStatus.Success
+    }
     "assert on mean" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       calculate(Constraint.meanConstraint("att1", _ == 3.5), df)
