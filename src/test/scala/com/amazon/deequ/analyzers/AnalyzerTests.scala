@@ -874,6 +874,57 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(testVal.value.isSuccess)
       assert(testVal.value.toOption.get.isInfinite)
     }
+
+    "return correct columnsReferenced for analyzers without where clauses" in {
+      assert(Completeness("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Mean("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Maximum("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Minimum("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Sum("col1").columnsReferenced() === Some(Set("col1")))
+      assert(StandardDeviation("col1").columnsReferenced() === Some(Set("col1")))
+      assert(ApproxCountDistinct("col1").columnsReferenced() === Some(Set("col1")))
+      assert(DataType("col1").columnsReferenced() === Some(Set("col1")))
+      assert(PatternMatch("col1", ".*".r).columnsReferenced() === Some(Set("col1")))
+      assert(MaxLength("col1").columnsReferenced() === Some(Set("col1")))
+      assert(MinLength("col1").columnsReferenced() === Some(Set("col1")))
+      assert(ExactQuantile("col1", 0.5).columnsReferenced() === Some(Set("col1")))
+      assert(ApproxQuantile("col1", 0.5).columnsReferenced() === Some(Set("col1")))
+      assert(ApproxQuantiles("col1", Seq(0.25, 0.75)).columnsReferenced() === Some(Set("col1")))
+      assert(Correlation("col1", "col2").columnsReferenced() === Some(Set("col1", "col2")))
+      assert(RatioOfSums("col1", "col2").columnsReferenced() === Some(Set("col1", "col2")))
+      assert(Size().columnsReferenced() === Some(Set.empty))
+      assert(ColumnCount().columnsReferenced() === Some(Set.empty))
+      assert(ColumnExists("col1").columnsReferenced() === Some(Set.empty))
+      assert(KLLSketch("col1").columnsReferenced() === Some(Set("col1")))
+    }
+
+    "return None for columnsReferenced when where clause is present" in {
+      assert(Completeness("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Mean("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Maximum("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Minimum("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Sum("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(StandardDeviation("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(ApproxCountDistinct("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(DataType("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(PatternMatch("col1", ".*".r, Some("col2 > 0")).columnsReferenced() === None)
+      assert(MaxLength("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(MinLength("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(ExactQuantile("col1", 0.5, Some("col2 > 0")).columnsReferenced() === None)
+      assert(ApproxQuantile("col1", 0.5, where = Some("col2 > 0")).columnsReferenced() === None)
+      assert(Correlation("col1", "col2", Some("col1 > 0")).columnsReferenced() === None)
+      assert(RatioOfSums("col1", "col2", Some("col1 > 0")).columnsReferenced() === None)
+      assert(Size(Some("col1 > 0")).columnsReferenced() === None)
+    }
+
+    "return None for columnsReferenced for Compliance (free-form SQL)" in {
+      assert(Compliance("test", "col1 > 0").columnsReferenced() === None)
+      assert(Compliance("test", "col1 > 0", columns = List("col1")).columnsReferenced() === None)
+    }
+
+    "return None for columnsReferenced for CustomSql" in {
+      assert(CustomSql("SELECT COUNT(*) FROM table").columnsReferenced() === None)
+    }
   }
 }
 

@@ -64,4 +64,6 @@ case class ColumnExists(column: String) extends Analyzer[ColumnExistsState, Doub
   override private[deequ] def toFailureMetric(failure: Exception): DoubleMetric = {
     Analyzers.metricFromFailure(failure, name, instance, entity)
   }
+
+  override def columnsReferenced(): Option[Set[String]] = Some(Set.empty)
 }

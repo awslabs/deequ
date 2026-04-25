@@ -78,6 +78,9 @@ case class Minimum(column: String, where: Option[String] = None, analyzerOptions
 
   override def filterCondition: Option[String] = where
 
+  override def columnsReferenced(): Option[Set[String]] =
+    if (where.isDefined) None else Some(Set(column))
+
   @VisibleForTesting
   private def criterion: Column = conditionalSelectionWithAugmentedOutcome(col(column), where)
 }

@@ -98,4 +98,6 @@ case class ApproxQuantiles(column: String, quantiles: Seq[Double], relativeError
   override def preconditions: Seq[StructType => Unit] = {
     PARAM_CHECKS :: hasColumn(column) :: isNumeric(column) :: Nil
   }
+
+  override def columnsReferenced(): Option[Set[String]] = Some(Set(column))
 }
