@@ -587,10 +587,32 @@ class ConstraintSuggestionResultTest extends WordSpec with Matchers with SparkCo
   }
 
   private[this] def assertJsonStringsAreEqual(jsonA: String, jsonB: String): Unit = {
-
     val parser = new JsonParser()
+    val a = parser.parse(jsonA)
+    val b = parser.parse(jsonB)
 
-    assert(parser.parse(jsonA) == parser.parse(jsonB))
+    assert(sortJsonArrays(a) == sortJsonArrays(b))
+  }
+
+  private[this] def sortJsonArrays(
+      element: com.google.gson.JsonElement): com.google.gson.JsonElement = {
+    import scala.collection.JavaConverters._
+    if (element.isJsonArray) {
+      val sorted = element.getAsJsonArray.asScala.toSeq
+        .map(sortJsonArrays)
+        .sortBy(_.toString)
+      val arr = new com.google.gson.JsonArray()
+      sorted.foreach(arr.add)
+      arr
+    } else if (element.isJsonObject) {
+      val obj = new com.google.gson.JsonObject()
+      element.getAsJsonObject.entrySet().asScala.foreach { entry =>
+        obj.add(entry.getKey, sortJsonArrays(entry.getValue))
+      }
+      obj
+    } else {
+      element
+    }
   }
 
 }
