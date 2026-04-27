@@ -562,6 +562,16 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Maximum("att1").calculate(df).value.isFailure)
     }
 
+    "compute range correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Range("att1").calculate(df).value
+      result shouldBe Success(5.0)
+    }
+    "fail to compute range for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(Range("att1").calculate(df).value.isFailure)
+    }
+
     "compute sum correctly for numeric data" in withSparkSession { session =>
       val df = getDfWithNumericValues(session)
       Sum("att1").calculate(df).value shouldBe Success(21)
@@ -879,8 +889,10 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Mean("col1").columnsReferenced() === Some(Set("col1")))
       assert(Maximum("col1").columnsReferenced() === Some(Set("col1")))
       assert(Minimum("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Range("col1").columnsReferenced() === Some(Set("col1")))
       assert(Sum("col1").columnsReferenced() === Some(Set("col1")))
       assert(StandardDeviation("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Variance("col1").columnsReferenced() === Some(Set("col1")))
       assert(ApproxCountDistinct("col1").columnsReferenced() === Some(Set("col1")))
       assert(DataType("col1").columnsReferenced() === Some(Set("col1")))
       assert(PatternMatch("col1", ".*".r).columnsReferenced() === Some(Set("col1")))
@@ -902,8 +914,10 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Mean("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Maximum("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Minimum("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Range("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Sum("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(StandardDeviation("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Variance("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(ApproxCountDistinct("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(DataType("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(PatternMatch("col1", ".*".r, Some("col2 > 0")).columnsReferenced() === None)

@@ -17,54 +17,37 @@
 package com.amazon.deequ.analyzers
 
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
-import org.apache.spark.sql.DeequFunctions.stateful_stddev_pop
+import com.amazon.deequ.analyzers.Analyzers._
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.types.StructType
-import Analyzers._
+import org.apache.spark.sql.functions.{min, max}
+import org.apache.spark.sql.types.{DoubleType, StructType}
 
-case class VarianceState(
-    n: Double,
-    avg: Double,
-    m2: Double)
-  extends DoubleValuedState[VarianceState] {
-
-  require(n > 0.0, "Variance is undefined for n = 0.")
+case class RangeState(
+    minValue: Double,
+    maxValue: Double)
+  extends DoubleValuedState[RangeState] {
 
   override def metricValue(): Double = {
-    m2 / n
+    maxValue - minValue
   }
 
-  override def sum(other: VarianceState): VarianceState = {
-    val newN = n + other.n
-    val delta = other.avg - avg
-    val deltaN = if (newN == 0.0) 0.0 else delta / newN
-
-    VarianceState(newN, avg + deltaN * other.n,
-      m2 + other.m2 + delta * deltaN * n * other.n)
+  override def sum(other: RangeState): RangeState = {
+    RangeState(math.min(minValue, other.minValue), math.max(maxValue, other.maxValue))
   }
 }
 
-case class Variance(column: String, where: Option[String] = None)
-  extends StandardScanShareableAnalyzer[VarianceState]("Variance", column)
+case class Range(column: String, where: Option[String] = None)
+  extends StandardScanShareableAnalyzer[RangeState]("Range", column)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(): Seq[Column] = {
-    stateful_stddev_pop(conditionalSelection(column, where)) :: Nil
+    min(conditionalSelection(column, where)).cast(DoubleType) ::
+      max(conditionalSelection(column, where)).cast(DoubleType) :: Nil
   }
 
-  override def fromAggregationResult(result: Row, offset: Int): Option[VarianceState] = {
-
-    if (result.isNullAt(offset)) {
-      None
-    } else {
-      val row = result.getAs[Row](offset)
-      val n = row.getDouble(0)
-
-      if (n == 0.0) {
-        None
-      } else {
-        Some(VarianceState(n, row.getDouble(1), row.getDouble(2)))
-      }
+  override def fromAggregationResult(result: Row, offset: Int): Option[RangeState] = {
+    ifNoNullsIn(result, offset, howMany = 2) { _ =>
+      RangeState(result.getDouble(offset), result.getDouble(offset + 1))
     }
   }
 
