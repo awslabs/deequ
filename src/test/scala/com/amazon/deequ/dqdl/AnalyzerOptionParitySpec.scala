@@ -305,7 +305,7 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
 
         outcomeOf(df,
           """Rules=[ColumnValues "status" in ["active"] """ +
-          """with IGNORE_CASE = "true" with threshold > 0.5]"""
+          """with ignoreCase = "true" with threshold > 0.5]"""
         ) should be("Passed")
       }
 
@@ -321,7 +321,7 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
         // in ["active", NULL] with IGNORE_CASE: rows 1,2,3 match -> 75%
         outcomeOf(df,
           """Rules=[ColumnValues "status" in ["active", NULL] """ +
-          """with IGNORE_CASE = "true" with threshold > 0.5]"""
+          """with ignoreCase = "true" with threshold > 0.5]"""
         ) should be("Passed")
       }
   }
@@ -355,7 +355,7 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
 
         outcomeOf(df,
           """Rules=[ColumnValues "val" not in ["banned"] """ +
-          """with IGNORE_CASE = "true"]"""
+          """with ignoreCase = "true"]"""
         ) should be("Failed")
       }
   }
@@ -371,7 +371,7 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
 
         outcomeOf(df,
           """Rules=[ColumnValues "val" = "hello" """ +
-          """with IGNORE_CASE = "true"]"""
+          """with ignoreCase = "true"]"""
         ) should be("Passed")
       }
 
@@ -385,7 +385,7 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
 
         outcomeOf(df,
           """Rules=[ColumnValues "val" != "hello" """ +
-          """with IGNORE_CASE = "true"]"""
+          """with ignoreCase = "true"]"""
         ) should be("Failed")
       }
   }
@@ -462,7 +462,7 @@ class AnalyzerOptionParitySpec extends AnyWordSpec
 
         outcomeOf(df,
           """Rules=[ColumnValues "val" in ["hello"] """ +
-          """with IGNORE_CASE = "TRUE"]"""
+          """with ignoreCase = "TRUE"]"""
         ) should be("Passed")
       }
   }

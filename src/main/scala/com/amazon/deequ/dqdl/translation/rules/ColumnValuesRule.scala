@@ -226,7 +226,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
                             condition: StringBasedCondition,
                             rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
     val shouldIgnoreCase = Option(rule.getTags)
-      .flatMap(t => Option(t.get("IGNORE_CASE")))
+      .flatMap(t => Option(t.get("ignoreCase")))
       .exists(_.equalsIgnoreCase("true"))
     // Note: IGNORE_CASE applies only to IN/NOT_IN/EQUALS/NOT_EQUALS (via constructComplianceCondition).
     // MATCHES/NOT_MATCHES use regex patterns where case sensitivity is controlled via (?i) flag
