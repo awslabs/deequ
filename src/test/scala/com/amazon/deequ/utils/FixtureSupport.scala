@@ -486,6 +486,7 @@ trait FixtureSupport {
       typeCounts = Map[String, Long](),
       histogram = None,
       kll = None,
+      zerosCount = None,
       mean = Some(mean),
       maximum = Some(maximum),
       minimum = Some(minimum),

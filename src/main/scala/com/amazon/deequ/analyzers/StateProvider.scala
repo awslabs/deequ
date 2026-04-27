@@ -89,6 +89,9 @@ case class HdfsStateProvider(
       case _: Size =>
         persistLongState(state.asInstanceOf[NumMatches].numMatches, identifier)
 
+      case _: ZerosCount =>
+        persistLongState(state.asInstanceOf[NumMatches].numMatches, identifier)
+
       case _ : Completeness | _ : Compliance | _ : PatternMatch =>
         persistLongLongState(state.asInstanceOf[NumMatchesAndCount], identifier)
 
@@ -154,6 +157,8 @@ case class HdfsStateProvider(
     val state: Any = analyzer match {
 
       case _ : Size => NumMatches(loadLongState(identifier))
+
+      case _ : ZerosCount => NumMatches(loadLongState(identifier))
 
       case _ : Completeness | _ : Compliance | _ : PatternMatch => loadLongLongState(identifier)
 

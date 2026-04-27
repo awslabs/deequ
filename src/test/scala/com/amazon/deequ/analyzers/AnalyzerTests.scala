@@ -50,6 +50,19 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
     }
   }
 
+  "ZerosCount analyzer" should {
+    "compute correct metrics for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      // att2 has values [0, 0, 0, 5, 6, 7] -> 3 zeros
+      val result = ZerosCount("att2").calculate(df).value
+      result shouldBe Success(3.0)
+    }
+    "fail for non-numeric data" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(ZerosCount("att1").calculate(df).value.isFailure)
+    }
+  }
+
   "Completeness analyzer" should {
 
     "compute correct metrics" in withSparkSession { sparkSession =>
@@ -905,6 +918,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Correlation("col1", "col2").columnsReferenced() === Some(Set("col1", "col2")))
       assert(RatioOfSums("col1", "col2").columnsReferenced() === Some(Set("col1", "col2")))
       assert(Size().columnsReferenced() === Some(Set.empty))
+      assert(ZerosCount("col1").columnsReferenced() === Some(Set("col1")))
       assert(ColumnCount().columnsReferenced() === Some(Set.empty))
       assert(ColumnExists("col1").columnsReferenced() === Some(Set.empty))
       assert(KLLSketch("col1").columnsReferenced() === Some(Set("col1")))
@@ -929,6 +943,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Correlation("col1", "col2", Some("col1 > 0")).columnsReferenced() === None)
       assert(RatioOfSums("col1", "col2", Some("col1 > 0")).columnsReferenced() === None)
       assert(Size(Some("col1 > 0")).columnsReferenced() === None)
+      assert(ZerosCount("col1", Some("col2 > 0")).columnsReferenced() === None)
     }
 
     "return None for columnsReferenced for Compliance (free-form SQL)" in {

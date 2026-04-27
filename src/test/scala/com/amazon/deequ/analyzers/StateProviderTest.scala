@@ -38,6 +38,7 @@ class StateProviderTest extends AnyWordSpec
       val data = someData(session)
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
+      assertCorrectlyRestoresState[NumMatches](provider, provider, ZerosCount("price"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
@@ -80,6 +81,7 @@ class StateProviderTest extends AnyWordSpec
       val data = someData(session)
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
+      assertCorrectlyRestoresState[NumMatches](provider, provider, ZerosCount("price"), data)
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,

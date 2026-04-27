@@ -757,7 +757,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
     "be applied correctly" in {
       def columnProfileWithMinimum(minimum: Double): NumericColumnProfile = {
         NumericColumnProfile("col1", 1.0, 100, Fractional, isDataTypeInferred = false,
-          Map.empty, None, None, Some(10), Some(100), Some(minimum), None, Some(10000), Some(1.0), None, None)
+          Map.empty, None, None, None, Some(10), Some(100), Some(minimum), None, Some(10000), Some(1.0), None, None)
       }
 
       val nRecords = 100

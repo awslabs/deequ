@@ -42,6 +42,15 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
     }
   }
 
+  "ZerosCount constraint" should {
+    "assert on zeros count" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      // att2 has values [0, 0, 0, 5, 6, 7] -> 3 zeros
+      calculate(Constraint.zerosCountConstraint("att2", _ == 3), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+  }
+
   "Histogram constraints" should {
     "assert on bin number" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)

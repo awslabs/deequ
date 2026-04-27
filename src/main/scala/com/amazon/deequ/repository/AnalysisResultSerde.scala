@@ -256,6 +256,10 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Size")
         result.addProperty(WHERE_FIELD, size.where.orNull)
 
+      case zerosCount: ZerosCount =>
+        result.addProperty(ANALYZER_NAME_FIELD, "ZerosCount")
+        result.addProperty(COLUMN_FIELD, zerosCount.column)
+        result.addProperty(WHERE_FIELD, zerosCount.where.orNull)
 
       case completeness: Completeness =>
         result.addProperty(ANALYZER_NAME_FIELD, "Completeness")
@@ -478,6 +482,11 @@ private[deequ] object AnalyzerDeserializer
 
       case "Size" =>
         Size(getOptionalWhereParam(json))
+
+      case "ZerosCount" =>
+        ZerosCount(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
 
       case "Completeness" =>
         Completeness(

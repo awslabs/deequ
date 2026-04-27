@@ -143,6 +143,27 @@ object Constraint {
   }
 
   /**
+    * Runs zeros count analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a long input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def zerosCountConstraint(
+      column: String,
+      assertion: Long => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val zerosCount = ZerosCount(column, where)
+    val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](
+      zerosCount, assertion, Some(_.toLong), hint)
+
+    new NamedConstraint(constraint, s"ZerosCountConstraint($zerosCount)")
+  }
+
+  /**
     * Runs Histogram analysis on the given column and executes the assertion
     *
     * @param column     Column to run the assertion on

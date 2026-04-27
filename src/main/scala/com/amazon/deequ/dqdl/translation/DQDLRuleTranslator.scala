@@ -35,6 +35,7 @@ import com.amazon.deequ.dqdl.translation.rules.SumRule
 import com.amazon.deequ.dqdl.translation.rules.VarianceRule
 import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
+import com.amazon.deequ.dqdl.translation.rules.ZerosCountRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnValuesRule
@@ -64,6 +65,7 @@ object DQDLRuleTranslator {
   private val converters = Map[String, DQDLRuleConverter](
     "RowCount" -> new RowCountRule,
     "ColumnCount" -> new ColumnCountRule,
+    "ZerosCount" -> new ZerosCountRule,
     "Completeness" -> new CompletenessRule,
     "IsComplete" -> new IsCompleteRule,
     "Uniqueness" -> new UniquenessRule,
