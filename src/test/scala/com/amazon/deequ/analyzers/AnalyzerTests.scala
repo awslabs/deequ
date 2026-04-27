@@ -563,6 +563,16 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Maximum("att1").calculate(df).value.isFailure)
     }
 
+    "compute range correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = Range("att1").calculate(df).value
+      result shouldBe Success(5.0)
+    }
+    "fail to compute range for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(Range("att1").calculate(df).value.isFailure)
+    }
+
     "compute sum correctly for numeric data" in withSparkSession { session =>
       val df = getDfWithNumericValues(session)
       Sum("att1").calculate(df).value shouldBe Success(21)
@@ -873,6 +883,16 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val testVal = RatioOfSums("att1", "att2", Some("item IN ('1', '2')")).calculate(df)
       assert(testVal.value.isSuccess)
       assert(testVal.value.toOption.get.isInfinite)
+    }
+
+    "return correct columnsReferenced for Range and Variance" in {
+      assert(Range("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Variance("col1").columnsReferenced() === Some(Set("col1")))
+    }
+
+    "return None for columnsReferenced when where clause is present" in {
+      assert(Range("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Variance("col1", Some("col2 > 0")).columnsReferenced() === None)
     }
   }
 }
