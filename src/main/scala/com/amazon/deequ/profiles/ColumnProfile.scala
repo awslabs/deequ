@@ -62,6 +62,7 @@ case class NumericColumnProfile(
     typeCounts: Map[String, Long],
     histogram: Option[Distribution],
     kll: Option[BucketDistribution],
+    zerosCount: Option[Long],
     mean: Option[Double],
     maximum: Option[Double],
     minimum: Option[Double],
@@ -120,6 +121,9 @@ object ColumnProfiles {
 
       profile match {
         case numericColumnProfile: NumericColumnProfile =>
+          numericColumnProfile.zerosCount.foreach { zerosCount =>
+            columnProfileJson.addProperty("zerosCount", zerosCount)
+          }
           numericColumnProfile.mean.foreach { mean =>
             columnProfileJson.addProperty("mean", mean)
           }

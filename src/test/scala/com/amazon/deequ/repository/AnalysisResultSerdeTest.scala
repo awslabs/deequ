@@ -36,6 +36,8 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
 
     val analyzerContextWithAllSuccValues = new AnalyzerContext(Map(
       Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
+      ZerosCount("ColumnA") ->
+        DoubleMetric(Entity.Column, "ZerosCount", "ColumnA", Success(0.0)),
       Completeness("ColumnA", analyzerOptions = Some(AnalyzerOptions(
         nullBehavior = NullBehavior.Ignore
       ))) ->
