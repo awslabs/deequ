@@ -82,6 +82,7 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
           Some(21.0),
           Some(1.707825127659933),
           Some(2.9166666666666665),
+          Some(0.0),
           Some(Seq(1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
             2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
             2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
@@ -126,6 +127,7 @@ class KLLProfileTest extends WordSpec with Matchers with SparkContextSpec
           Some(465.0),
           Some(8.65544144839919),
           Some(74.91666666666667),
+          Some(0.0),
           None)
 
         assertProfilesEqual(expectedColumnProfile,

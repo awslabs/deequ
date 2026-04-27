@@ -545,6 +545,17 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Variance("att1").calculate(df).value.isFailure)
     }
 
+    "compute skewness correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      // [1,2,3,4,5,6] is symmetric, skewness = 0
+      val result = Skewness("att1").calculate(df).value
+      result shouldBe Success(0.0)
+    }
+    "fail to compute skewness for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(Skewness("att1").calculate(df).value.isFailure)
+    }
+
     "compute minimum correctly for numeric data" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       val result = Minimum("att1").calculate(df)
@@ -907,6 +918,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Sum("col1").columnsReferenced() === Some(Set("col1")))
       assert(StandardDeviation("col1").columnsReferenced() === Some(Set("col1")))
       assert(Variance("col1").columnsReferenced() === Some(Set("col1")))
+      assert(Skewness("col1").columnsReferenced() === Some(Set("col1")))
       assert(ApproxCountDistinct("col1").columnsReferenced() === Some(Set("col1")))
       assert(DataType("col1").columnsReferenced() === Some(Set("col1")))
       assert(PatternMatch("col1", ".*".r).columnsReferenced() === Some(Set("col1")))
@@ -933,6 +945,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Sum("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(StandardDeviation("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Variance("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(Skewness("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(ApproxCountDistinct("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(DataType("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(PatternMatch("col1", ".*".r, Some("col2 > 0")).columnsReferenced() === None)

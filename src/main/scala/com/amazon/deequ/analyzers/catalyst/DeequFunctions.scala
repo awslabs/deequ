@@ -50,6 +50,16 @@ object DeequFunctions {
     StatefulStdDevPop(column.expr)
   }
 
+  /** Skewness with state */
+  def stateful_skewness(column: String): Column = {
+    stateful_skewness(Column(column))
+  }
+
+  /** Skewness with state */
+  def stateful_skewness(column: Column): Column = withAggregateFunction {
+    StatefulSkewness(column.expr)
+  }
+
   /** Approximate number of distinct values with state via HLL's */
   def stateful_approx_count_distinct(column: String): Column = {
     stateful_approx_count_distinct(Column(column))

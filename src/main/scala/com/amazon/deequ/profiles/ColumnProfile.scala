@@ -70,6 +70,7 @@ case class NumericColumnProfile(
     sum: Option[Double],
     stdDev: Option[Double],
     variance: Option[Double],
+    skewness: Option[Double],
     approxPercentiles: Option[Seq[Double]])
   extends ColumnProfile
 
@@ -144,6 +145,9 @@ object ColumnProfiles {
           }
           numericColumnProfile.variance.foreach { variance =>
             columnProfileJson.addProperty("variance", variance)
+          }
+          numericColumnProfile.skewness.foreach { skewness =>
+            columnProfileJson.addProperty("skewness", skewness)
           }
 
           // KLL Sketch

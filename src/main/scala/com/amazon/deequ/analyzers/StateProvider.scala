@@ -137,6 +137,9 @@ case class HdfsStateProvider(
       case _ : Variance =>
         persistVarianceState(state.asInstanceOf[VarianceState], identifier)
 
+      case _ : Skewness =>
+        persistSkewnessState(state.asInstanceOf[SkewnessState], identifier)
+
       case _: ApproxQuantile =>
         val percentileDigest = state.asInstanceOf[ApproxQuantileState].percentileDigest
         val serializedDigest = ApproximatePercentile.serializer.serialize(percentileDigest)
@@ -188,6 +191,8 @@ case class HdfsStateProvider(
       case _ : StandardDeviation => loadStandardDeviationState(identifier)
 
       case _ : Variance => loadVarianceState(identifier)
+
+      case _ : Skewness => loadSkewnessState(identifier)
 
        case _: ApproxQuantile =>
          val percentileDigest = ApproximatePercentile.serializer.deserialize(loadBytes(identifier))
@@ -342,6 +347,25 @@ case class HdfsStateProvider(
   private[this] def loadVarianceState(identifier: String): VarianceState = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
       VarianceState(in.readDouble(), in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistSkewnessState(
+      state: SkewnessState,
+      identifier: String) {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.n)
+      out.writeDouble(state.avg)
+      out.writeDouble(state.m2)
+      out.writeDouble(state.m3)
+    }
+  }
+
+  private[this] def loadSkewnessState(identifier: String): SkewnessState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      SkewnessState(in.readDouble(), in.readDouble(),
+        in.readDouble(), in.readDouble())
     }
   }
 

@@ -147,6 +147,11 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
       calculate(Constraint.varianceConstraint("att1", _ == 2.9166666666666665), df)
         .status shouldBe ConstraintStatus.Success
     }
+    "assert on skewness" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.skewnessConstraint("att1", _ == 0.0), df)
+        .status shouldBe ConstraintStatus.Success
+    }
     "assert on approximate count distinct" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       calculate(Constraint.approxCountDistinctConstraint("att1", _ == 6.0), df)
