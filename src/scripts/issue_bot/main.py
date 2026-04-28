@@ -64,7 +64,7 @@ def analyze():
     is_followup = cfg.event_type == "issue_comment" and cfg.event_action == "created"
 
     item = None
-    if cfg.event_type == "pull_request":
+    if cfg.event_type in ("pull_request", "pull_request_target"):
         is_pr = True
     elif cfg.event_type in ("issues", "issue_comment"):
         is_pr = False
