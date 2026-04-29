@@ -207,33 +207,33 @@ case class HdfsStateProvider(
     Option(state.asInstanceOf[S])
   }
 
-  private[this] def persistLongState(state: Long, identifier: String) {
+  private[this] def persistLongState(state: Long, identifier: String): Unit = {
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) {
       _.writeLong(state)
     }
   }
 
-  private[this] def persistDoubleState(state: Double, identifier: String) {
+  private[this] def persistDoubleState(state: Double, identifier: String): Unit = {
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) {
       _.writeDouble(state)
     }
   }
 
-  private[this] def persistLongLongState(state: NumMatchesAndCount, identifier: String) {
+  private[this] def persistLongLongState(state: NumMatchesAndCount, identifier: String): Unit = {
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeLong(state.numMatches)
       out.writeLong(state.count)
     }
   }
 
-  private[this] def persistDoubleLongState(state: MeanState, identifier: String) {
+  private[this] def persistDoubleLongState(state: MeanState, identifier: String): Unit = {
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeDouble(state.sum)
       out.writeLong(state.count)
     }
   }
 
-  private[this] def persistBytes(bytes: Array[Byte], identifier: String) {
+  private[this] def persistBytes(bytes: Array[Byte], identifier: String): Unit = {
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeInt(bytes.length)
       for (index <- bytes.indices) {
@@ -262,7 +262,7 @@ case class HdfsStateProvider(
     }
   }
 
-  private[this] def persistCorrelationState(state: CorrelationState, identifier: String) {
+  private[this] def persistCorrelationState(state: CorrelationState, identifier: String): Unit = {
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeDouble(state.n)
       out.writeDouble(state.xAvg)
@@ -275,7 +275,7 @@ case class HdfsStateProvider(
 
   private[this] def persistStandardDeviationState(
       state: StandardDeviationState,
-      identifier: String) {
+      identifier: String): Unit = {
 
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeDouble(state.n)
@@ -286,7 +286,7 @@ case class HdfsStateProvider(
 
   private[this] def persistVarianceState(
       state: VarianceState,
-      identifier: String) {
+      identifier: String): Unit = {
 
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeDouble(state.n)
@@ -352,7 +352,7 @@ case class HdfsStateProvider(
 
   private[this] def persistSkewnessState(
       state: SkewnessState,
-      identifier: String) {
+      identifier: String): Unit = {
 
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeDouble(state.n)
@@ -371,7 +371,7 @@ case class HdfsStateProvider(
 
   private[this] def persistRangeState(
       state: RangeState,
-      identifier: String) {
+      identifier: String): Unit = {
 
     writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
       out.writeDouble(state.minValue)
