@@ -136,7 +136,8 @@ object Constraint {
   }
 
 
-  private[deequ] def fromAnalyzer(colCount: ColumnCount, assertion: Long => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(colCount: ColumnCount, assertion: Long => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](colCount, assertion, Some(_.toLong), hint)
 
     new NamedConstraint(constraint, name = s"ColumnCountConstraint($colCount)")
@@ -333,7 +334,8 @@ object Constraint {
     fromAnalyzer(uniqueness, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(uniqueness: Uniqueness, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(uniqueness: Uniqueness, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       uniqueness, assertion, hint = hint)
 
@@ -363,7 +365,8 @@ object Constraint {
     fromAnalyzer(distinctness, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(distinctness: Distinctness, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(distinctness: Distinctness, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Double](
       distinctness, assertion, hint = hint)
 
@@ -567,7 +570,8 @@ object Constraint {
     fromAnalyzer(approxQuantile, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(approxQuantile: ApproxQuantile, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(approxQuantile: ApproxQuantile, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[ApproxQuantileState, Double, Double](
       approxQuantile, assertion, hint = hint)
 
@@ -597,7 +601,8 @@ object Constraint {
     fromAnalyzer(exactQuantile, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(exactQuantile: ExactQuantile, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(exactQuantile: ExactQuantile, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[ExactQuantileState, Double, Double](
       exactQuantile, assertion, hint = hint)
 
@@ -625,7 +630,8 @@ object Constraint {
     fromAnalyzer(maxLength, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(maxLength: MaxLength, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(maxLength: MaxLength, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val column: String = maxLength.column
     val constraint = AnalysisBasedConstraint[MaxState, Double, Double](maxLength, assertion,
       hint = hint)
@@ -661,7 +667,8 @@ object Constraint {
     fromAnalyzer(minLength, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(minLength: MinLength, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(minLength: MinLength, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val column: String = minLength.column
     val constraint = AnalysisBasedConstraint[MinState, Double, Double](minLength, assertion,
       hint = hint)
@@ -991,7 +998,8 @@ object Constraint {
     fromAnalyzer(correlation, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(correlation: Correlation, assertion: Double => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(correlation: Correlation, assertion: Double => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[CorrelationState, Double, Double](
       correlation, assertion, hint = hint)
 
@@ -1054,7 +1062,8 @@ object Constraint {
     fromAnalyzer(kllSketch, assertion, hint)
   }
 
-  private[deequ] def fromAnalyzer(kllSketch: KLLSketch, assertion: BucketDistribution => Boolean, hint: Option[String]): Constraint = {
+  private[deequ] def fromAnalyzer(kllSketch: KLLSketch, assertion: BucketDistribution => Boolean, hint: Option[String]):
+      Constraint = {
     val constraint = AnalysisBasedConstraint[KLLState, BucketDistribution, BucketDistribution](
       kllSketch, assertion, hint = hint)
 
