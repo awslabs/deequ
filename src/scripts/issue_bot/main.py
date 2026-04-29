@@ -173,8 +173,8 @@ def analyze():
         except json.JSONDecodeError:
             inline_comments = _parse_file_review_multi(raw)
         _write_artifact({
-            "action": "RESPOND" if inline_comments else "SKIP",
-            "labels": [], "response": "",
+            "action": "RESPOND",
+            "labels": [], "response": "No issues found." if not inline_comments else "",
             "inline_comments": inline_comments,
             "title": title, "html_url": html_url, "number": number,
             "is_pr": True, "prompt_id": prompts.prompt_version(tmpl),
