@@ -399,6 +399,11 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(COLUMN_FIELD, variance.column)
         result.addProperty(WHERE_FIELD, variance.where.orNull)
 
+      case skewness: Skewness =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Skewness")
+        result.addProperty(COLUMN_FIELD, skewness.column)
+        result.addProperty(WHERE_FIELD, skewness.where.orNull)
+
       case approxQuantile: ApproxQuantile =>
         result.addProperty(ANALYZER_NAME_FIELD, "ApproxQuantile")
         result.addProperty(COLUMN_FIELD, approxQuantile.column)
@@ -606,6 +611,11 @@ private[deequ] object AnalyzerDeserializer
 
       case "Variance" =>
         Variance(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "Skewness" =>
+        Skewness(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
