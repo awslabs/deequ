@@ -16,11 +16,15 @@
 
 package com.amazon.deequ.dqdl
 
+import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.dqdl.execution.{DQDLExecutor, RowLevelResultHelper}
 import com.amazon.deequ.dqdl.execution.executors.{CustomSqlRowLevelExecutor, DeequRulesExecutor}
-import com.amazon.deequ.dqdl.model.{CompositeExecutableRule, CustomSqlRowLevelExecutableRule, DeequExecutableRule, ExecutableRule, RuleOutcome}
+import com.amazon.deequ.dqdl.model.{CompositeExecutableRule,
+  CustomSqlRowLevelExecutableRule, DeequExecutableRule,
+  ExecutableRule, RuleOutcome}
 import com.amazon.deequ.dqdl.translation.{DQDLRuleTranslator, DeequOutcomeTranslator}
 import com.amazon.deequ.dqdl.util.DefaultDQDLParser
+import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 
@@ -34,7 +38,8 @@ import software.amazon.glue.dqdl.model.{DQRule, DQRuleset}
 case class ProcessRowsTypedResult(
   outcomes: Map[DQRule, RuleOutcome],
   rowLevelData: DataFrame,
-  rowLevelOutcomes: DataFrame
+  rowLevelOutcomes: DataFrame,
+  metrics: Map[Analyzer[_, Metric[_]], Metric[_]] = Map.empty
 )
 
 // Internal result from executeRuleset, used by both processRows and processRowsTyped
@@ -42,7 +47,8 @@ private[dqdl] case class RulesetExecutionResult(
   outcomes: Map[DQRule, RuleOutcome],
   rowLevelData: DataFrame,
   rowLevelOutcomes: DataFrame,
-  executableRules: Seq[ExecutableRule]
+  executableRules: Seq[ExecutableRule],
+  metrics: Map[Analyzer[_, Metric[_]], Metric[_]] = Map.empty
 )
 
 /**
@@ -141,22 +147,24 @@ object EvaluateDataQuality {
    */
   def processRowsTyped(df: DataFrame,
                        rulesetDefinition: String,
-                       additionalDataSources: Map[String, DataFrame] = Map.empty
+                       additionalDataSources: Map[String, DataFrame] = Map.empty,
+                       additionalAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
                       ): ProcessRowsTypedResult = {
-    val result = executeRuleset(df, rulesetDefinition, additionalDataSources)
-    ProcessRowsTypedResult(result.outcomes, result.rowLevelData, result.rowLevelOutcomes)
+    val result = executeRuleset(df, rulesetDefinition, additionalDataSources, additionalAnalyzers)
+    ProcessRowsTypedResult(result.outcomes, result.rowLevelData, result.rowLevelOutcomes, result.metrics)
   }
 
   private def executeRuleset(
       df: DataFrame,
       rulesetDefinition: String,
-      additionalDataSources: Map[String, DataFrame]
+      additionalDataSources: Map[String, DataFrame],
+      additionalAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty
   ): RulesetExecutionResult = {
     val ruleset: DQRuleset = DefaultDQDLParser.parse(rulesetDefinition)
     val executableRules: Seq[ExecutableRule] = DQDLRuleTranslator.toExecutableRules(ruleset)
 
     val allDeequRules = collectDeequRules(executableRules).distinct
-    val deequResult = DeequRulesExecutor.executeWithRowLevel(allDeequRules, df)
+    val deequResult = DeequRulesExecutor.executeWithRowLevel(allDeequRules, df, additionalAnalyzers)
 
     val (customSqlRules, remainingRules) = executableRules
       .filterNot(_.isInstanceOf[DeequExecutableRule])
@@ -176,7 +184,9 @@ object EvaluateDataQuality {
     val orderedOutcomes = executableRules.flatMap(r => allOutcomes.get(r.dqRule))
     val rowLevelOutcomes = RowLevelResultHelper.convert(customSqlResult.rowLevelData, orderedOutcomes)
 
-    RulesetExecutionResult(allOutcomes, customSqlResult.rowLevelData, rowLevelOutcomes, executableRules)
+    RulesetExecutionResult(allOutcomes,
+      customSqlResult.rowLevelData, rowLevelOutcomes,
+      executableRules, deequResult.metrics)
   }
 
   private def collectDeequRules(rules: Seq[ExecutableRule]): Seq[DeequExecutableRule] = {

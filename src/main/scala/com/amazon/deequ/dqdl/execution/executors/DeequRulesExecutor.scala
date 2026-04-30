@@ -17,14 +17,19 @@
 package com.amazon.deequ.dqdl.execution.executors
 
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
+import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.constraints.{RowLevelAssertedConstraint, RowLevelConstraint, RowLevelGroupedConstraint}
 import com.amazon.deequ.dqdl.execution.DQDLExecutor
-import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, Failed, NoColumn, RuleOutcome, SingularColumn}
+import com.amazon.deequ.dqdl.model.{DeequExecutableRule,
+  DeequMetricMapping, Failed, NoColumn,
+  RuleOutcome, SingularColumn}
+import com.amazon.deequ.metrics.Metric
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, concat, lit}
 import software.amazon.glue.dqdl.model.DQRule
 
-case class DeequExecutionResult(outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame)
+case class DeequExecutionResult(outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame,
+                                metrics: Map[Analyzer[_, Metric[_]], Metric[_]] = Map.empty)
 
 object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule] {
   private val delim = "."
@@ -35,14 +40,16 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
   }
 
   def executeWithRowLevel(rules: Seq[DeequExecutableRule],
-                          df: DataFrame): DeequExecutionResult = {
-    if (rules.isEmpty) {
+                          df: DataFrame,
+                          additionalAnalyzers: Seq[Analyzer[_, Metric[_]]] = Seq.empty): DeequExecutionResult = {
+    if (rules.isEmpty && additionalAnalyzers.isEmpty) {
       return DeequExecutionResult(Map.empty, df)
     }
 
     val verificationResult = VerificationSuite()
       .onData(df.toDF())
       .addChecks(rules.map(_.check))
+      .addRequiredAnalyzers(additionalAnalyzers)
       .run()
 
     val rowLevelData = VerificationResult.rowLevelResultsAsDataFrame(
@@ -88,7 +95,7 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
       r.dqRule -> outcome
     }.toMap
 
-    DeequExecutionResult(outcomes, rowLevelData)
+    DeequExecutionResult(outcomes, rowLevelData, verificationResult.metrics)
   }
 
   private[dqdl] def extractEvaluatedMetrics(deequMetricMap: Map[String, Double],

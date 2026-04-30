@@ -78,5 +78,24 @@ class ProcessRowsTypedSpec extends AnyWordSpec with Matchers with SparkContextSp
         EvaluateDataQuality.processRowsTyped(df, """Rules = [ ]""")
       }
     }
+
+    "return metrics for additional analyzers" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("Alice", 25), ("Bob", 30), (null, 35)).toDF("name", "age")
+      val result = EvaluateDataQuality.processRowsTyped(df,
+        """Rules = [ IsComplete "name" ]""",
+        additionalAnalyzers = Seq(com.amazon.deequ.analyzers.Completeness("name")))
+      result.metrics should not be empty
+    }
+
+    "handle additional analyzers with empty rules" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("Alice", 25), ("Bob", 30)).toDF("name", "age")
+      val result = EvaluateDataQuality.processRowsTyped(df,
+        """Rules = [ IsComplete "name" ]""",
+        additionalAnalyzers = Seq(com.amazon.deequ.analyzers.Completeness("name")))
+      result.outcomes should not be empty
+      result.metrics should not be empty
+    }
   }
 }
