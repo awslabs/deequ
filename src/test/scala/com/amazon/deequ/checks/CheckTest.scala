@@ -758,7 +758,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
 
       val numericAnalysis = AnalysisRunner.onData(dfNumeric).addAnalyzers(Seq(
         Minimum("att1"), Maximum("att1"), Range("att1"), Mean("att1"), Sum("att1"),
-        StandardDeviation("att1"), Variance("att1"), Skewness("att1"), ApproxCountDistinct("att1"),
+        StandardDeviation("att1"), Variance("att1"), Skewness("att1"),
+        Kurtosis("att1"), ApproxCountDistinct("att1"),
         ApproxQuantile("att1", quantile = 0.5), ExactQuantile("att1", quantile = 0.5)))
 
       val contextNumeric = numericAnalysis.run()
@@ -771,6 +772,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertSuccess(baseCheck.hasStandardDeviation("att1", _ == 1.707825127659933), contextNumeric)
       assertSuccess(baseCheck.hasVariance("att1", _ == 2.9166666666666665), contextNumeric)
       assertSuccess(baseCheck.hasSkewness("att1", _ == 0.0), contextNumeric)
+      assertSuccess(baseCheck.hasKurtosis("att1", _ < 0.0), contextNumeric)
       assertSuccess(baseCheck.hasApproxCountDistinct("att1", _ == 6.0), contextNumeric)
       assertSuccess(baseCheck.hasApproxQuantile("att1", quantile = 0.5, _ == 3.0), contextNumeric)
       assertSuccess(baseCheck.hasExactQuantile("att1", quantile = 0.5, _ == 3.5), contextNumeric)

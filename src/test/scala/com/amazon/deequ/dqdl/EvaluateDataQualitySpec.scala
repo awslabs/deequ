@@ -570,7 +570,7 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
       (row.getAs[Map[String, Double]]("EvaluatedMetrics").values.toSeq.head * 100).toInt should be(305)
     }
 
-    // TODO: Enable DQDL tests for Variance, Range, ZerosCount, Skewness once the parser supports them.
+    // TODO: Enable DQDL tests for Variance, Range, ZerosCount, Skewness, Kurtosis once the parser supports them.
 
     "support Sum rule" in withSparkSession { sparkSession =>
       // given

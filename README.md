@@ -153,6 +153,8 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **Mean**: `Mean "column" between 10 and 50`
 - **StandardDeviation**: `StandardDeviation "column" < 5.0`
 - **Variance**: `Variance "column" < 25.0`
+- **Skewness**: `Skewness "column" between -1 and 1`
+- **Kurtosis**: `Kurtosis "column" between -2 and 10`
 - **Range**: `Range "column" between 0 and 100`
 - **Sum**: `Sum "column" = 100`
 - **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`

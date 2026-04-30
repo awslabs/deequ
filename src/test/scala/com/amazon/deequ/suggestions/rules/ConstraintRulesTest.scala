@@ -755,9 +755,26 @@ class ConstraintRulesTest extends AnyWordSpec with FixtureSupport with SparkCont
   "NonNegativeNumbersRule and PositiveNumbersRule" should {
     "be applied correctly" in {
       def columnProfileWithMinimum(minimum: Double): NumericColumnProfile = {
-        NumericColumnProfile("col1", 1.0, 100, Fractional, isDataTypeInferred = false,
-          Map.empty, None, None, None, Some(10), Some(100), Some(minimum), None,
-          Some(10000), Some(1.0), None, None, None)
+        NumericColumnProfile(
+          column = "col1",
+          completeness = 1.0,
+          approximateNumDistinctValues = 100,
+          dataType = Fractional,
+          isDataTypeInferred = false,
+          typeCounts = Map.empty,
+          histogram = None,
+          kll = None,
+          zerosCount = None,
+          mean = Some(10),
+          maximum = Some(100),
+          minimum = Some(minimum),
+          range = None,
+          sum = Some(10000),
+          stdDev = Some(1.0),
+          variance = None,
+          skewness = None,
+          kurtosis = None,
+          approxPercentiles = None)
       }
 
       val nRecords = 100

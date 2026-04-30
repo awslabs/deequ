@@ -117,6 +117,7 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         .addAnalyzer(StandardDeviation("att1"))
         .addAnalyzer(Variance("att1"))
         .addAnalyzer(Skewness("att1"))
+        .addAnalyzer(Kurtosis("att1"))
         .addAnalyzer(Minimum("att1"))
         .addAnalyzer(Maximum("att1"))
         .addAnalyzer(Range("att1"))

@@ -140,6 +140,9 @@ case class HdfsStateProvider(
       case _ : Skewness =>
         persistSkewnessState(state.asInstanceOf[SkewnessState], identifier)
 
+      case _ : Kurtosis =>
+        persistKurtosisState(state.asInstanceOf[KurtosisState], identifier)
+
       case _: ApproxQuantile =>
         val percentileDigest = state.asInstanceOf[ApproxQuantileState].percentileDigest
         val serializedDigest = ApproximatePercentile.serializer.serialize(percentileDigest)
@@ -193,6 +196,8 @@ case class HdfsStateProvider(
       case _ : Variance => loadVarianceState(identifier)
 
       case _ : Skewness => loadSkewnessState(identifier)
+
+      case _ : Kurtosis => loadKurtosisState(identifier)
 
        case _: ApproxQuantile =>
          val percentileDigest = ApproximatePercentile.serializer.deserialize(loadBytes(identifier))
@@ -366,6 +371,26 @@ case class HdfsStateProvider(
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
       SkewnessState(in.readDouble(), in.readDouble(),
         in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistKurtosisState(
+      state: KurtosisState,
+      identifier: String): Unit = {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.n)
+      out.writeDouble(state.avg)
+      out.writeDouble(state.m2)
+      out.writeDouble(state.m3)
+      out.writeDouble(state.m4)
+    }
+  }
+
+  private[this] def loadKurtosisState(identifier: String): KurtosisState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      KurtosisState(in.readDouble(), in.readDouble(),
+        in.readDouble(), in.readDouble(), in.readDouble())
     }
   }
 

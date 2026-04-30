@@ -508,6 +508,7 @@ trait FixtureSupport {
       stdDev = Some(1.023),
       variance = None,
       skewness = None,
+      kurtosis = None,
       approxPercentiles = None
     )
   }

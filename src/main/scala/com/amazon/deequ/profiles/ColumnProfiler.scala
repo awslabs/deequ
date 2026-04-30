@@ -68,6 +68,7 @@ private[deequ] case class NumericColumnStatistics(
     stdDevs: Map[String, Double],
     variances: Map[String, Double],
     skewnesses: Map[String, Double],
+    kurtoses: Map[String, Double],
     minima: Map[String, Double],
     maxima: Map[String, Double],
     ranges: Map[String, Double],
@@ -296,7 +297,8 @@ object ColumnProfiler {
       kllParameters: Option[KLLParameters])
     : Seq[Analyzer[_, Metric[_]]] = {
       val mandatoryAnalyzers = Seq(Minimum(column), Maximum(column), Range(column), Mean(column),
-        StandardDeviation(column), Variance(column), Skewness(column), Sum(column),
+        StandardDeviation(column), Variance(column), Skewness(column),
+        Kurtosis(column), Sum(column),
         ZerosCount(column))
 
       val optionalAnalyzers = if (kllProfiling) {
@@ -556,6 +558,16 @@ object ColumnProfiler {
       .flatten
       .toMap
 
+    val kurtoses = results.metricMap
+      .collect { case (analyzer: Kurtosis, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
     val maxima = results.metricMap
       .collect { case (analyzer: Maximum, metric: DoubleMetric) =>
         metric.value match {
@@ -633,8 +645,9 @@ object ColumnProfiler {
       .toMap
 
 
-    NumericColumnStatistics(zerosCounts, means, stdDevs, variances, skewnesses,
-      minima, maxima, ranges, sums, kll, approxPercentiles)
+    NumericColumnStatistics(zerosCounts, means, stdDevs, variances,
+      skewnesses, kurtoses, minima, maxima, ranges, sums,
+      kll, approxPercentiles)
   }
 
   /* Identifies all columns, which:
@@ -805,6 +818,7 @@ object ColumnProfiler {
               numericStats.stdDevs.get(name),
               numericStats.variances.get(name),
               numericStats.skewnesses.get(name),
+              numericStats.kurtoses.get(name),
               numericStats.approxPercentiles.get(name))
 
           case String =>

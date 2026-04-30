@@ -941,6 +941,36 @@ object Constraint {
   }
 
   /**
+    * Runs kurtosis analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def kurtosisConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val kurtosis = Kurtosis(column, where)
+
+    fromAnalyzer(kurtosis, assertion, hint)
+  }
+
+  private[deequ] def fromAnalyzer(
+      kurtosis: Kurtosis,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[KurtosisState, Double, Double](
+      kurtosis, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"KurtosisConstraint($kurtosis)")
+  }
+
+  /**
     * Runs approximate count distinct analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on

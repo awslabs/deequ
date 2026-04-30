@@ -71,6 +71,7 @@ case class NumericColumnProfile(
     stdDev: Option[Double],
     variance: Option[Double],
     skewness: Option[Double],
+    kurtosis: Option[Double],
     approxPercentiles: Option[Seq[Double]])
   extends ColumnProfile
 
@@ -148,6 +149,9 @@ object ColumnProfiles {
           }
           numericColumnProfile.skewness.foreach { skewness =>
             columnProfileJson.addProperty("skewness", skewness)
+          }
+          numericColumnProfile.kurtosis.foreach { kurtosis =>
+            columnProfileJson.addProperty("kurtosis", kurtosis)
           }
 
           // KLL Sketch

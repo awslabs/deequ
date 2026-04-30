@@ -67,6 +67,16 @@ object DeequFunctions {
     StatefulSkewness(column.expr)
   }
 
+  /** Kurtosis with state */
+  def stateful_kurtosis(column: String): Column = {
+    stateful_kurtosis(Column(column))
+  }
+
+  /** Kurtosis with state */
+  def stateful_kurtosis(column: Column): Column = withAggregateFunction {
+    StatefulKurtosis(column.expr)
+  }
+
   /** Approximate number of distinct values with state via HLL's */
   def stateful_approx_count_distinct(column: String): Column = {
     stateful_approx_count_distinct(Column(column))

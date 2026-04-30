@@ -57,6 +57,8 @@ class StateProviderTest extends AnyWordSpec
         Variance("price"), data)
       assertCorrectlyRestoresState[SkewnessState](provider, provider,
         Skewness("price"), data)
+      assertCorrectlyRestoresState[KurtosisState](provider, provider,
+        Kurtosis("price"), data)
 
       assertCorrectlyRestoresState[MaxState](provider, provider, MaxLength("att1"), data)
       assertCorrectlyRestoresState[MinState](provider, provider, MinLength("att1"), data)
@@ -103,6 +105,8 @@ class StateProviderTest extends AnyWordSpec
         Variance("price"), data)
       assertCorrectlyRestoresState[SkewnessState](provider, provider,
         Skewness("price"), data)
+      assertCorrectlyRestoresState[KurtosisState](provider, provider,
+        Kurtosis("price"), data)
 
       assertCorrectlyRestoresMaxState(provider, provider, MaxLength("att1"), data)
       assertCorrectlyRestoresMinState(provider, provider, MinLength("att1"), data)

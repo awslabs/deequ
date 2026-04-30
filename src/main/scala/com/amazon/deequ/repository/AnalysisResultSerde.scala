@@ -404,6 +404,11 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(COLUMN_FIELD, skewness.column)
         result.addProperty(WHERE_FIELD, skewness.where.orNull)
 
+      case kurtosis: Kurtosis =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Kurtosis")
+        result.addProperty(COLUMN_FIELD, kurtosis.column)
+        result.addProperty(WHERE_FIELD, kurtosis.where.orNull)
+
       case approxQuantile: ApproxQuantile =>
         result.addProperty(ANALYZER_NAME_FIELD, "ApproxQuantile")
         result.addProperty(COLUMN_FIELD, approxQuantile.column)
@@ -616,6 +621,11 @@ private[deequ] object AnalyzerDeserializer
 
       case "Skewness" =>
         Skewness(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "Kurtosis" =>
+        Kurtosis(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 

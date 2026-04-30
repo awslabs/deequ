@@ -947,6 +947,24 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on the kurtosis of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasKurtosis(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      kurtosisConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
     * Creates a constraint that asserts on the approximate count distinct of the given column
     *
     * @param column Column to run the assertion on
