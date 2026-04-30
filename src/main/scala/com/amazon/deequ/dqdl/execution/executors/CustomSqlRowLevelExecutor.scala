@@ -135,8 +135,8 @@ object CustomSqlRowLevelExecutor extends DQDLExecutor.RuleExecutor[CustomSqlRowL
                 rowLevelOutcome = SingularColumn(cn))
             } else {
               RuleOutcome(rule.dqRule, Failed,
-                Some("Value: " + ratio +
-                  " does not meet the constraint requirement."),
+                Some("Custom SQL response failed to " +
+                  "satisfy the threshold"),
                 metrics, rowLevelOutcome = SingularColumn(cn))
             }
             rule.dqRule -> outcome
@@ -314,7 +314,7 @@ object CustomSqlRowLevelExecutor extends DQDLExecutor.RuleExecutor[CustomSqlRowL
         RuleOutcome(rule.dqRule, Passed, None, metrics, rowLevelOutcome = SingularColumn(colName))
       } else {
         RuleOutcome(rule.dqRule, Failed,
-          Some(s"Value: $ratio does not meet the constraint requirement."), metrics,
+          Some(s"Custom SQL response failed to satisfy the threshold"), metrics,
           rowLevelOutcome = SingularColumn(colName))
       }
 

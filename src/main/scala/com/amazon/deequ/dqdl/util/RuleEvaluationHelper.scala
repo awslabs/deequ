@@ -88,7 +88,7 @@ object RuleEvaluationHelper {
               RuleOutcome(rule, Passed, None, evaluatedMetrics)
             } else {
               RuleOutcome(rule, Failed,
-                Some(s"Value: $ratio does not meet the constraint requirement."), evaluatedMetrics)
+                Some(f"${ratio * 100}%.2f %% of rows passed the threshold"), evaluatedMetrics)
             }
           case None =>
             // No assertion provided, assume 1.0 threshold
