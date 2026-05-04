@@ -331,5 +331,50 @@ class CustomSqlRowLevelSpec extends AnyWordSpec with Matchers with SparkContextS
           "Dataset.*.CustomSQL.Compliance")
       compliance should be > 1.0 - 0.01
     }
+
+    "batch 2+ passing row-level CustomSql rules" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("1", "Alice"), ("2", "Bob"), ("3", "Carol")).toDF("id", "name")
+
+      val ruleset =
+        """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL",""" +
+        """ CustomSql "SELECT id, name FROM primary"]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val agg = results(EvaluateDataQuality.RULE_OUTCOMES_KEY).collect()
+      agg should have length 2
+      agg.foreach(_.getAs[String]("Outcome") should be("Passed"))
+    }
+
+    "batch 2+ failing row-level CustomSql rules" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("1", "Alice"), ("2", "Bob"), ("3", "Carol")).toDF("id", "name")
+
+      val ruleset =
+        """Rules=[CustomSql "SELECT id, name FROM primary WHERE name = 'Alice'" with threshold > 0.9,""" +
+        """ CustomSql "SELECT id, name FROM primary WHERE name = 'Bob'" with threshold > 0.9]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val agg = results(EvaluateDataQuality.RULE_OUTCOMES_KEY).collect()
+      agg should have length 2
+      agg.foreach(_.getAs[String]("Outcome") should be("Failed"))
+    }
+
+    "batch 2+ CustomSql rules on empty DataFrame" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq.empty[(String, String)].toDF("id", "name")
+
+      val ruleset =
+        """Rules=[CustomSql "SELECT id, name FROM primary WHERE name IS NOT NULL",""" +
+        """ CustomSql "SELECT id, name FROM primary"]"""
+      val results = EvaluateDataQuality.processRows(df, ruleset)
+
+      val agg = results(EvaluateDataQuality.RULE_OUTCOMES_KEY).collect()
+      agg should have length 2
+      agg.foreach(_.getAs[String]("Outcome") should be("Failed"))
+
+      val rowLevel = results(EvaluateDataQuality.ROW_LEVEL_OUTCOMES_KEY)
+      rowLevel.count() should be(0)
+    }
   }
 }

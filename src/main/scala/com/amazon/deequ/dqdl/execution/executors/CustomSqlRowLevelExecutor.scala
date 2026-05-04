@@ -22,12 +22,14 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{col, lit, when}
 import software.amazon.glue.dqdl.model.DQRule
 
+import org.slf4j.LoggerFactory
 import scala.util.{Failure, Success, Try}
 
 case class CustomSqlExecutionResult(outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame)
 
 object CustomSqlRowLevelExecutor extends DQDLExecutor.RuleExecutor[CustomSqlRowLevelExecutableRule] {
 
+  private val log = LoggerFactory.getLogger(getClass.getName)
   private val PrimaryAlias = "primary"
   private val MatchMarker = "__dq_match_marker"
 
@@ -83,19 +85,21 @@ object CustomSqlRowLevelExecutor extends DQDLExecutor.RuleExecutor[CustomSqlRowL
       val totalCount = startData.count().toDouble
 
       if (totalCount == 0) {
-        val outcomes = rules.map { rule =>
-          val cn = java.util.UUID.randomUUID().toString
+        val rulesWithCols = rules.map { rule =>
+          (rule, java.util.UUID.randomUUID().toString)
+        }
+        val outcomes = rulesWithCols.map { case (rule, cn) =>
           rule.dqRule -> RuleOutcome(rule.dqRule, Failed,
             Some("Custom SQL rule could not be evaluated " +
               "due to data frame being empty"),
             rowLevelOutcome = SingularColumn(cn))
         }.toMap
-        val resultDf = rules.foldLeft(startData) { (acc, _) =>
-          acc.withColumn(
-            java.util.UUID.randomUUID().toString, lit(false))
+        val resultDf = rulesWithCols.foldLeft(startData) {
+          case (acc, (_, cn)) =>
+            acc.withColumn(cn, lit(false))
         }
-        return CustomSqlExecutionResult(outcomes, resultDf)
-      }
+        CustomSqlExecutionResult(outcomes, resultDf)
+      } else {
 
       // Phase 1: join loop - accumulate boolean columns
       var currentData = startData
@@ -145,9 +149,11 @@ object CustomSqlRowLevelExecutor extends DQDLExecutor.RuleExecutor[CustomSqlRowL
 
       CustomSqlExecutionResult(
         failedOutcomes ++ metricsOutcomes, currentData)
+      }
     } match {
       case Success(r) => r
-      case Failure(_) =>
+      case Failure(e) =>
+        log.warn("Batched CustomSQL execution failed, falling back to per-rule execution", e)
         executePerRule(rules, df, baseRowLevelData)
     }
   }

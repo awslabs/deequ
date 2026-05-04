@@ -88,7 +88,7 @@ class ProcessRowsTypedSpec extends AnyWordSpec with Matchers with SparkContextSp
       result.metrics should not be empty
     }
 
-    "handle additional analyzers with empty rules" in withSparkSession { spark =>
+    "handle additional analyzers with existing rules" in withSparkSession { spark =>
       import spark.implicits._
       val df = Seq(("Alice", 25), ("Bob", 30)).toDF("name", "age")
       val result = EvaluateDataQuality.processRowsTyped(df,
