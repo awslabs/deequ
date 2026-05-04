@@ -491,6 +491,7 @@ trait FixtureSupport {
       maximum = Some(maximum),
       minimum = Some(minimum),
       range = None,
+      interquartileRange = None,
       sum = Some(1000.879),
       stdDev = Some(1.023),
       variance = None,

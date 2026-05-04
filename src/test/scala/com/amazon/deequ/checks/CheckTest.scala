@@ -757,7 +757,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       val dfUninformative = getDfWithConditionallyUninformativeColumns(sparkSession)
 
       val numericAnalysis = AnalysisRunner.onData(dfNumeric).addAnalyzers(Seq(
-        Minimum("att1"), Maximum("att1"), Range("att1"), Mean("att1"), Sum("att1"),
+        Minimum("att1"), Maximum("att1"), Range("att1"),
+        InterquartileRange("att1"), Mean("att1"), Sum("att1"),
         StandardDeviation("att1"), Variance("att1"), Skewness("att1"),
         Kurtosis("att1"), ApproxCountDistinct("att1"),
         ApproxQuantile("att1", quantile = 0.5), ExactQuantile("att1", quantile = 0.5)))
@@ -767,6 +768,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertSuccess(baseCheck.hasMin("att1", _ == 1.0), contextNumeric)
       assertSuccess(baseCheck.hasMax("att1", _ == 6.0), contextNumeric)
       assertSuccess(baseCheck.hasRange("att1", _ == 5.0), contextNumeric)
+      assertSuccess(baseCheck.hasInterquartileRange(
+        "att1", _ == 2.5), contextNumeric)
       assertSuccess(baseCheck.hasMean("att1", _ == 3.5), contextNumeric)
       assertSuccess(baseCheck.hasSum("att1", _ == 21.0), contextNumeric)
       assertSuccess(baseCheck.hasStandardDeviation("att1", _ == 1.707825127659933), contextNumeric)

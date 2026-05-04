@@ -770,6 +770,7 @@ class ConstraintRulesTest extends WordSpec with FixtureSupport with SparkContext
           maximum = Some(100),
           minimum = Some(minimum),
           range = None,
+          interquartileRange = None,
           sum = Some(10000),
           stdDev = Some(1.0),
           variance = None,

@@ -73,6 +73,7 @@ class NullHandlingTests extends AnyWordSpec
       Minimum("numericCol").computeStateFrom(data) shouldBe None
       Maximum("numericCol").computeStateFrom(data) shouldBe None
       Range("numericCol").computeStateFrom(data) shouldBe None
+      InterquartileRange("numericCol").computeStateFrom(data) shouldBe None
 
       MinLength("stringCol").computeStateFrom(data) shouldBe None
       MaxLength("stringCol").computeStateFrom(data) shouldBe None
@@ -117,6 +118,8 @@ class NullHandlingTests extends AnyWordSpec
       assertFailedWithEmptyState(Minimum("numericCol").calculate(data))
       assertFailedWithEmptyState(Maximum("numericCol").calculate(data))
       assertFailedWithEmptyState(Range("numericCol").calculate(data))
+      assertFailedWithEmptyState(
+        InterquartileRange("numericCol").calculate(data))
 
       assertFailedWithEmptyState(MinLength("stringCol").calculate(data))
       assertFailedWithEmptyState(MaxLength("stringCol").calculate(data))
