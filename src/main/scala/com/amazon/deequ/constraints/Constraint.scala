@@ -787,6 +787,38 @@ object Constraint {
   }
 
   /**
+    * Runs interquartile range analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def interquartileRangeConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val iqr = InterquartileRange(column, where)
+
+    fromAnalyzer(iqr, assertion, hint)
+  }
+
+  private[deequ] def fromAnalyzer(
+      iqr: InterquartileRange,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint =
+      AnalysisBasedConstraint[InterquartileRangeState, Double, Double](
+        iqr, assertion, hint = hint)
+
+    new NamedConstraint(constraint,
+      s"InterquartileRangeConstraint($iqr)")
+  }
+
+  /**
     * Runs mean analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on

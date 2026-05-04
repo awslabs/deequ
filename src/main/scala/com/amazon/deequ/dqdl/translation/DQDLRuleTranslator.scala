@@ -24,6 +24,7 @@ import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
 import com.amazon.deequ.dqdl.translation.rules.DistinctValuesCountRule
 import com.amazon.deequ.dqdl.translation.rules.EntropyRule
 import com.amazon.deequ.dqdl.translation.rules.IsCompleteRule
+import com.amazon.deequ.dqdl.translation.rules.InterquartileRangeRule
 import com.amazon.deequ.dqdl.translation.rules.IsPrimaryKeyRule
 import com.amazon.deequ.dqdl.translation.rules.IsUniqueRule
 import com.amazon.deequ.dqdl.translation.rules.KurtosisRule
@@ -77,6 +78,7 @@ object DQDLRuleTranslator {
     "Entropy" -> new EntropyRule,
     "Mean" -> new MeanRule,
     "Range" -> new RangeRule,
+    "InterquartileRange" -> new InterquartileRangeRule,
     "StandardDeviation" -> new StandardDeviationRule,
     "Variance" -> new VarianceRule,
     "Skewness" -> new SkewnessRule,

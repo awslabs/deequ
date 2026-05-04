@@ -127,6 +127,12 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
       calculate(Constraint.rangeConstraint("att1", _ == 5.0), df)
         .status shouldBe ConstraintStatus.Success
     }
+    "assert on interquartile range" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.interquartileRangeConstraint(
+        "att1", _ == 2.5), df)
+        .status shouldBe ConstraintStatus.Success
+    }
     "assert on mean" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       calculate(Constraint.meanConstraint("att1", _ == 3.5), df)

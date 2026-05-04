@@ -607,6 +607,16 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Range("att1").calculate(df).value.isFailure)
     }
 
+    "compute IQR correctly for numeric data" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      val result = InterquartileRange("att1").calculate(df).value
+      result shouldBe Success(2.5)
+    }
+    "fail to compute IQR for non numeric type" in withSparkSession { sparkSession =>
+      val df = getDfFull(sparkSession)
+      assert(InterquartileRange("att1").calculate(df).value.isFailure)
+    }
+
     "compute sum correctly for numeric data" in withSparkSession { session =>
       val df = getDfWithNumericValues(session)
       Sum("att1").calculate(df).value shouldBe Success(21)
@@ -925,6 +935,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Maximum("col1").columnsReferenced() === Some(Set("col1")))
       assert(Minimum("col1").columnsReferenced() === Some(Set("col1")))
       assert(Range("col1").columnsReferenced() === Some(Set("col1")))
+      assert(InterquartileRange("col1").columnsReferenced() === Some(Set("col1")))
       assert(Sum("col1").columnsReferenced() === Some(Set("col1")))
       assert(StandardDeviation("col1").columnsReferenced() === Some(Set("col1")))
       assert(Variance("col1").columnsReferenced() === Some(Set("col1")))
@@ -953,6 +964,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       assert(Maximum("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Minimum("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Range("col1", Some("col2 > 0")).columnsReferenced() === None)
+      assert(InterquartileRange("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Sum("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(StandardDeviation("col1", Some("col2 > 0")).columnsReferenced() === None)
       assert(Variance("col1", Some("col2 > 0")).columnsReferenced() === None)
