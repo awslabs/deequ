@@ -121,6 +121,7 @@ class AnalysisTest extends AnyWordSpec with Matchers with SparkContextSpec with 
         .addAnalyzer(Minimum("att1"))
         .addAnalyzer(Maximum("att1"))
         .addAnalyzer(Range("att1"))
+        .addAnalyzer(InterquartileRange("att1"))
         .addAnalyzer(ApproxQuantile("att1", 0.5))
         .addAnalyzer(ApproxCountDistinct("att1"))
         .addAnalyzer(CountDistinct("att1"))

@@ -110,6 +110,10 @@ case class HdfsStateProvider(
       case _ : Range =>
         persistRangeState(state.asInstanceOf[RangeState], identifier)
 
+      case _ : InterquartileRange =>
+        persistIQRState(
+          state.asInstanceOf[InterquartileRangeState], identifier)
+
       case _: MaxLength =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
 
@@ -177,6 +181,8 @@ case class HdfsStateProvider(
       case _ : Maximum => MaxState(loadDoubleState(identifier))
 
       case _ : Range => loadRangeState(identifier)
+
+      case _ : InterquartileRange => loadIQRState(identifier)
 
       case _ : MaxLength => MaxState(loadDoubleState(identifier))
 
@@ -407,6 +413,23 @@ case class HdfsStateProvider(
   private[this] def loadRangeState(identifier: String): RangeState = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
       RangeState(in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistIQRState(
+      state: InterquartileRangeState,
+      identifier: String): Unit = {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.q1)
+      out.writeDouble(state.q3)
+    }
+  }
+
+  private[this] def loadIQRState(
+      identifier: String): InterquartileRangeState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      InterquartileRangeState(in.readDouble(), in.readDouble())
     }
   }
 }

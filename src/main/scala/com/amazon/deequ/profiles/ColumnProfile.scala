@@ -67,6 +67,7 @@ case class NumericColumnProfile(
     maximum: Option[Double],
     minimum: Option[Double],
     range: Option[Double],
+    interquartileRange: Option[Double],
     sum: Option[Double],
     stdDev: Option[Double],
     variance: Option[Double],
@@ -137,6 +138,9 @@ object ColumnProfiles {
           }
           numericColumnProfile.range.foreach { range =>
             columnProfileJson.addProperty("range", range)
+          }
+          numericColumnProfile.interquartileRange.foreach { iqr =>
+            columnProfileJson.addProperty("interquartileRange", iqr)
           }
           numericColumnProfile.sum.foreach { sum =>
             columnProfileJson.addProperty("sum", sum)

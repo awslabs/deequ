@@ -769,6 +769,7 @@ class ConstraintRulesTest extends AnyWordSpec with FixtureSupport with SparkCont
           maximum = Some(100),
           minimum = Some(minimum),
           range = None,
+          interquartileRange = None,
           sum = Some(10000),
           stdDev = Some(1.0),
           variance = None,

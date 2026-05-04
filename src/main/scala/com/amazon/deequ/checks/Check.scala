@@ -859,6 +859,24 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on the interquartile range of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasInterquartileRange(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      interquartileRangeConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
     * Creates a constraint that asserts on the mean of the column
     *
     * @param column Column to run the assertion on

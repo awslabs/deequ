@@ -316,6 +316,11 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(COLUMN_FIELD, range.column)
         result.addProperty(WHERE_FIELD, range.where.orNull)
 
+      case iqr: InterquartileRange =>
+        result.addProperty(ANALYZER_NAME_FIELD, "InterquartileRange")
+        result.addProperty(COLUMN_FIELD, iqr.column)
+        result.addProperty(WHERE_FIELD, iqr.where.orNull)
+
       case countDistinct: CountDistinct =>
         result.addProperty(ANALYZER_NAME_FIELD, "CountDistinct")
         result.add(COLUMNS_FIELD, context.serialize(countDistinct.columns.asJava,
@@ -549,6 +554,11 @@ private[deequ] object AnalyzerDeserializer
 
       case "Range" =>
         Range(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "InterquartileRange" =>
+        InterquartileRange(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 

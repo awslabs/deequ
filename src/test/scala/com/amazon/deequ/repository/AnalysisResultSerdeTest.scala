@@ -90,6 +90,9 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       Range("ColumnA") ->
         DoubleMetric(Entity.Column, "Range", "ColumnA", Success(5.0)),
+      InterquartileRange("ColumnA") ->
+        DoubleMetric(Entity.Column, "InterquartileRange",
+          "ColumnA", Success(2.5)),
       Mean("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       Sum("ColumnA") ->
