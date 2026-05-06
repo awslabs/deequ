@@ -596,11 +596,12 @@ case class Check(
       column: String,
       assertion: DistributionBinned => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      histogramBinnedConstraint(column, assertion, binCount, filter, hint) }
+      histogramBinnedConstraint(column, assertion, binCount, customEdges, filter, hint) }
   }
 
   /**
@@ -619,11 +620,12 @@ case class Check(
       column: String,
       assertion: Long => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      histogramBinnedBinConstraint(column, assertion, binCount, filter, hint) }
+      histogramBinnedBinConstraint(column, assertion, binCount, customEdges, filter, hint) }
   }
 
   /**

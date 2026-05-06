@@ -95,6 +95,70 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
       calculate(Constraint.histogramBinnedConstraint("value",
         _.bins.map(_.frequency).sum > 5), df).status shouldBe ConstraintStatus.Failure
     }
+
+    "succeed for valid custom edges binned distribution assertions" in withSparkSession { sparkSession =>
+      val df = sparkSession.createDataFrame(Seq(
+        (1, 15000.0), (2, 25000.0), (3, 35000.0), (4, 45000.0), (5, 55000.0),
+        (6, 75000.0), (7, 85000.0), (8, 120000.0), (9, 180000.0)
+      )).toDF("id", "income")
+
+      val incomeEdges = Array(0.0, 40000.0, 100000.0, 200000.0)
+
+      // Test custom edges constraint - should have 3 bins
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.numberOfBins == 3, customEdges = Some(incomeEdges)), df).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedBinConstraint("income",
+        _ == 3, customEdges = Some(incomeEdges)), df).status shouldBe ConstraintStatus.Success
+
+      // Test specific bin frequencies with custom edges
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(0).frequency == 3,
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success  // Low bracket: 15k, 25k, 35k
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(1).frequency == 4,
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success  // Middle bracket: 45k, 55k, 75k, 85k
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(2).frequency == 2,
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success  // High bracket: 120k, 180k
+
+      // Test bin ranges with custom edges
+      calculate(Constraint.histogramBinnedConstraint("income",
+        (dist => dist.bins(0).binStart == 0.0 && dist.bins(0).binEnd == 40000.0),
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        (dist => dist.bins(1).binStart == 40000.0 && dist.bins(1).binEnd == 100000.0),
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        (dist => dist.bins(2).binStart == 100000.0 && dist.bins(2).binEnd == 200000.0),
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success
+    }
+
+    "fail for invalid custom edges binned distribution assertions" in withSparkSession { sparkSession =>
+      val df = sparkSession.createDataFrame(Seq(
+        (1, 25000.0), (2, 75000.0)
+      )).toDF("id", "income")
+
+      val customEdges = Array(0.0, 50000.0, 100000.0)
+
+      // Should fail - expecting 3 bins but assertion is wrong
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.numberOfBins == 5, customEdges = Some(customEdges)), df).status shouldBe ConstraintStatus.Failure
+
+      // Should fail - wrong frequency expectation
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(0).frequency == 5, customEdges = Some(customEdges)), df).status shouldBe ConstraintStatus.Failure
+    }
   }
 
   "Mutual information constraint" should {

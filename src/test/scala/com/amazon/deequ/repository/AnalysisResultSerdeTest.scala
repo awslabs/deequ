@@ -492,6 +492,90 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     assert(deserialize(histogramBinnedWithNullsJson) == List(expected))
   }
 
+  val histogramBinnedCustomEdgesJson =
+      """[
+        |  {
+        |    "resultKey": {
+        |      "dataSetDate": 0,
+        |      "tags": {}
+        |    },
+        |    "analyzerContext": {
+        |      "metricMap": [
+        |        {
+        |          "analyzer": {
+        |            "analyzerName": "HistogramBinned",
+        |            "column": "income",
+        |            "customEdges": [
+        |              0.0,
+        |              40000.0,
+        |              100000.0,
+        |              200000.0
+        |            ]
+        |          },
+        |          "metric": {
+        |            "metricName": "HistogramBinnedMetric",
+        |            "column": "income",
+        |            "numberOfBins": 3,
+        |            "value": {
+        |              "numberOfBins": 3,
+        |              "bins": [
+        |                {
+        |                  "binStart": 0.0,
+        |                  "binEnd": 40000.0,
+        |                  "frequency": 2,
+        |                  "ratio": 0.4
+        |                },
+        |                {
+        |                  "binStart": 40000.0,
+        |                  "binEnd": 100000.0,
+        |                  "frequency": 2,
+        |                  "ratio": 0.4
+        |                },
+        |                {
+        |                  "binStart": 100000.0,
+        |                  "binEnd": 200000.0,
+        |                  "frequency": 1,
+        |                  "ratio": 0.2
+        |                }
+        |              ]
+        |            }
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |]""".stripMargin
+
+  "HistogramBinned serialization" should "properly serialize custom edges binned distribution" in {
+    val expected = histogramBinnedCustomEdgesJson
+    val customEdges = Array(0.0, 40000.0, 100000.0, 200000.0)
+    val analyzer = HistogramBinned("income", customEdges = Some(customEdges))
+    val metric = HistogramBinnedMetric("income", Success(DistributionBinned(
+      Vector(
+        BinData(0.0, 40000.0, 2, 0.4),
+        BinData(40000.0, 100000.0, 2, 0.4),
+        BinData(100000.0, 200000.0, 1, 0.2)
+      ), 3)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    assert(serialize(List(result)) == expected)
+  }
+
+  "HistogramBinned deserialization" should "properly deserialize custom edges binned distribution" in {
+    val customEdges = Array(0.0, 40000.0, 100000.0, 200000.0)
+    val analyzer = HistogramBinned("income", customEdges = Some(customEdges))
+    val metric = HistogramBinnedMetric("income", Success(DistributionBinned(
+      Vector(
+        BinData(0.0, 40000.0, 2, 0.4),
+        BinData(40000.0, 100000.0, 2, 0.4),
+        BinData(100000.0, 200000.0, 1, 0.2)
+      ), 3)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val expected = new AnalysisResult(ResultKey(0), context)
+    assert(deserialize(histogramBinnedCustomEdgesJson) == List(expected))
+  }
+
   def assertCorrectlyConvertsAnalysisResults(
       analysisResults: Seq[AnalysisResult],
       shouldFail: Boolean = false)
