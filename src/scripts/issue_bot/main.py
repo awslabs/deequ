@@ -149,17 +149,30 @@ def analyze():
         diff = gh.get_pr_diff(number)
         review_comments = gh.get_pr_review_comments(number)
         existing_feedback = _format_pr_feedback(comments_data, review_comments)
+        # Fetch full source files modified in the PR for complete context
+        pr_files = gh.get_pr_files(number)
+        full_sources = ""
+        for pf in pr_files:
+            fname = pf.get("filename", "")
+            content = gh.get_file_content(fname)
+            if content:
+                entry = f"\n### `{fname}`\n```\n{content}\n```\n"
+                if len(full_sources) + len(entry) > 3_000_000:
+                    full_sources += f"\n### `{fname}` — SKIPPED (context budget)\n"
+                    break
+                full_sources += entry
         # System prompt: instructions + all trusted context (not scanned by guardrail)
         system_prompt = _render(tmpl, current_date=datetime.date.today().isoformat()) + (
             f"\n\n<knowledge_base>\n{context}\n</knowledge_base>\n"
             f"<codebase_map>\n{codebase_map}\n</codebase_map>\n"
+            f"<full_source_files>\n{full_sources}\n</full_source_files>\n"
             f"<diff>\n{diff}\n</diff>\n"
             f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>"
         )
         # User prompt: only user-authored content (scanned by guardrail)
         user_prompt = f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
         raw = bedrock.invoke(system_prompt, user_prompt,
-                             max_tokens=4000, json_schema=PR_REVIEW_SCHEMA)
+                             max_tokens=8000, json_schema=PR_REVIEW_SCHEMA)
         if raw is None:
             _write_artifact({
                 "action": "ESCALATE", "reason": "bedrock_unavailable", "title": title,

@@ -150,6 +150,7 @@ class GitHubClient:
                 if resp.status_code in (200, 201):
                     return True
                 logger.error(f"PR review API failed: {resp.status_code}, falling back to comment")
+                logger.error(f"Response: {resp.text[:500]}")
             except Exception as e:
                 logger.error(f"PR review API failed: {e}, falling back to comment")
 

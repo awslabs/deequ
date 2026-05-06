@@ -33,8 +33,8 @@ class Config:
 
         self.upstream_repo = os.getenv("UPSTREAM_REPO", "awslabs/deequ")
 
-        self.bedrock_timeout = 120
-        self.max_context_chars = 200000
+        self.bedrock_timeout = 240
+        self.max_context_chars = 800000
         self.max_github_search_results = 8
         self.github_api_timeout = 10
         self.allowed_labels = {
