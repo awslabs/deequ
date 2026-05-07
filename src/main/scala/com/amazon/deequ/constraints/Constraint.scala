@@ -228,11 +228,15 @@ object Constraint {
       column: String,
       assertion: DistributionBinned => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val histogramBinned = HistogramBinned(column, binCount, where = where)
+    // HistogramBinned requires exactly one of binCount or customEdges to be defined
+    // If customEdges is provided, we must set binCount to None
+    val actualBinCount = if (customEdges.isDefined) None else binCount
+    val histogramBinned = HistogramBinned(column, actualBinCount, customEdges, where = where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, DistributionBinned](
       histogramBinned, assertion, hint = hint)
@@ -247,11 +251,15 @@ object Constraint {
       column: String,
       assertion: Long => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val histogramBinned = HistogramBinned(column, binCount, where = where)
+    // HistogramBinned requires exactly one of binCount or customEdges to be defined
+    // If customEdges is provided, we must set binCount to None
+    val actualBinCount = if (customEdges.isDefined) None else binCount
+    val histogramBinned = HistogramBinned(column, actualBinCount, customEdges, where = where)
 
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, Long](
       histogramBinned, assertion, Some(_.numberOfBins), hint)

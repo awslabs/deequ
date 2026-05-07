@@ -23,6 +23,7 @@ import com.amazon.deequ.metrics.BinData
 import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.metrics.HistogramBinnedMetric
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.floor
@@ -48,7 +49,7 @@ import scala.util.Try
 case class HistogramBinned(
                             override val column: String,
                             binCount: Option[Int] = None,
-                            customEdges: Option[Array[Double]] = None, // TODO: implement
+                            customEdges: Option[Array[Double]] = None,
                             override val where: Option[String] = None,
                             override val computeFrequenciesAsRatio: Boolean = true,
                             // Reuse Histogram's AggregateFunction implementations since just grouping
@@ -60,11 +61,39 @@ case class HistogramBinned(
   require(binCount.isDefined ^ customEdges.isDefined,
     "Must specify either binCount (equal-width) or customEdges (custom)")
 
+  require(customEdges.forall(_.length >= 2),
+    "Custom edges must have at least 2 values")
+
+  // Array has reference equality in Scala; override so AnalyzerContext map
+  // lookups and serde round-trips compare contents, not references.
+  override def equals(obj: Any): Boolean = obj match {
+    case other: HistogramBinned =>
+      column == other.column &&
+        binCount == other.binCount &&
+        customEdges.map(_.toSeq) == other.customEdges.map(_.toSeq) &&
+        where == other.where &&
+        computeFrequenciesAsRatio == other.computeFrequenciesAsRatio &&
+        aggregateFunction == other.aggregateFunction
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    (column, binCount, customEdges.map(_.toSeq), where,
+      computeFrequenciesAsRatio, aggregateFunction).hashCode()
+  }
+
   private var storedEdges: Array[Double] = _
 
   protected[this] val PARAM_CHECK: StructType => Unit = { _ =>
     binCount.foreach { count =>
       if (count > HistogramBinned.MaximumAllowedDetailBins) {
+        throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
+          s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
+      }
+    }
+    customEdges.foreach { edges =>
+      val numBins = edges.length - 1
+      if (numBins > HistogramBinned.MaximumAllowedDetailBins) {
         throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
           s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
       }
@@ -99,6 +128,45 @@ case class HistogramBinned(
     // Create binned data using DataFrame operations
     val binnedData = if (storedEdges.isEmpty) {
       filteredData.withColumn(column, lit(Histogram.NullFieldReplacement))
+    } else if (customEdges.isDefined) {
+      val edges = storedEdges
+
+      // Builds a balanced binary decision tree of when/otherwise expressions,
+      // giving O(log n) comparisons per row instead of O(n) for a linear chain.
+      // This matches Spark's own Bucketizer.binarySearchForBuckets approach
+      // (see org.apache.spark.ml.feature.Bucketizer) and matters at scale:
+      // e.g. 100 bins x 1B rows = ~7 comparisons/row vs ~99 for linear scan.
+      def buildBinaryCondition(binIndices: Seq[Int]): Column = {
+        if (binIndices.isEmpty) {
+          lit(Histogram.NullFieldReplacement)
+        } else if (binIndices.size == 1) {
+          // Single bin, check if value falls in this bin
+          val i = binIndices.head
+          val condition = if (i == edges.length - 2) {
+            // Last bin includes upper bound [a, b]
+            numericCol >= edges(i) && numericCol <= edges(i + 1)
+          } else {
+            // All other bins exclude upper bound [a, b)
+            numericCol >= edges(i) && numericCol < edges(i + 1)
+          }
+          when(condition, lit(i.toString)).otherwise(lit(Histogram.NullFieldReplacement))
+        } else {
+          // Split bins in half and create decision tree
+          val mid = binIndices.size / 2
+          val (leftBins, rightBins) = binIndices.splitAt(mid)
+          val splitEdge = edges(rightBins.head)
+
+          when(numericCol < splitEdge, buildBinaryCondition(leftBins))
+            .otherwise(buildBinaryCondition(rightBins))
+        }
+      }
+
+      val allBinIndices = (0 until edges.length - 1)
+      val binCondition = buildBinaryCondition(allBinIndices)
+      val finalCondition = when(numericCol.isNull, lit(Histogram.NullFieldReplacement))
+        .otherwise(binCondition)
+
+      filteredData.withColumn(column, finalCondition)
     } else {
       val minVal = storedEdges.head
       val binWidth = (storedEdges.last - storedEdges.head) / (storedEdges.length - 1)
@@ -120,7 +188,7 @@ case class HistogramBinned(
   }
 
   private def computeCustomEdges(): Array[Double] = {
-    throw new UnsupportedOperationException("Custom edges not yet implemented")
+    customEdges.get.sorted
   }
 
   private def computeEqualWidthEdges(filteredData: DataFrame,
@@ -181,7 +249,8 @@ case class HistogramBinned(
             binDataSeq
           }
 
-          val totalBins = finalBins.size // Count null and empty bins
+          // Total bins including empty bins and null bin, not just non-empty row count
+          val totalBins = finalBins.size
           DistributionBinned(finalBins, totalBins)
         }
 
