@@ -355,6 +355,7 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
         result.addProperty(COLUMN_FIELD, histogram.column)
         result.addProperty("maxDetailBins", histogram.maxDetailBins)
+        result.addProperty(WHERE_FIELD, histogram.where.orNull)
         // Count is initial and default implementation for Histogram
         // We don't include fields below in json to preserve json backward compatibility.
         if (histogram.aggregateFunction != Histogram.Count) {
@@ -371,6 +372,7 @@ private[deequ] object AnalyzerSerializer
         if (histogramBinned.customEdges.isDefined) {
           result.add("customEdges", context.serialize(histogramBinned.customEdges.get))
         }
+        result.addProperty(WHERE_FIELD, histogramBinned.where.orNull)
 
       case _ : Histogram =>
         throw new IllegalArgumentException("Unable to serialize Histogram with binningUdf!")
@@ -589,6 +591,7 @@ private[deequ] object AnalyzerDeserializer
           json.get(COLUMN_FIELD).getAsString,
           None,
           json.get("maxDetailBins").getAsInt,
+          getOptionalWhereParam(json),
           aggregateFunction = createAggregateFunction(
             getOptionalStringParam(json, "aggregateFunction").getOrElse(Histogram.count_function),
             getOptionalStringParam(json, "aggregateColumn").getOrElse("")))
@@ -601,7 +604,8 @@ private[deequ] object AnalyzerDeserializer
         HistogramBinned(
           json.get(COLUMN_FIELD).getAsString,
           binCount,
-          customEdges)
+          customEdges,
+          getOptionalWhereParam(json))
 
       case "DataType" =>
         DataType(
