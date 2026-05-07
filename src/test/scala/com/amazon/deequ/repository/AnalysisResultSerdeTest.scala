@@ -73,6 +73,9 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
       Histogram("ColumnA", None, 5) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5)), 10))),
+      Histogram("ColumnA", None, Histogram.MaximumAllowedDetailBins, Some("id > 5")) ->
+        HistogramMetric("ColumnA", Success(Distribution(
+          Map("filtered" -> DistributionValue(3, 0.6)), 5))),
       HistogramBinned("ColumnA", Some(5)) ->
         HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
           Vector(BinData(0.0, 10.0, 5, 0.5), BinData(10.0, 20.0, 5, 0.5)), 2))),
@@ -80,6 +83,9 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
         HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
           Vector(BinData(Double.NegativeInfinity, Double.NegativeInfinity, 2, 0.2),
                  BinData(0.0, 15.0, 4, 0.4), BinData(15.0, 30.0, 4, 0.4)), 3))),
+      HistogramBinned("ColumnA", Some(5), None, Some("id > 3")) ->
+        HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
+          Vector(BinData(0.0, 10.0, 3, 0.6), BinData(10.0, 20.0, 2, 0.4)), 2))),
       Entropy("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       MutualInformation(Seq("ColumnA", "ColumnB")) ->
