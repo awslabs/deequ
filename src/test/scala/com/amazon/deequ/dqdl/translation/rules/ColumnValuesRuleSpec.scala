@@ -93,9 +93,10 @@ class ColumnValuesRuleSpec extends AnyWordSpec with Matchers {
 
       result.isRight shouldBe true
       val (check, _) = result.right.get
-      check.constraints.size shouldBe 2
-      check.constraints(0).toString should startWith("ComplianceConstraint(Compliance(age between 18.0 and 65.0")
-      check.constraints(1).toString shouldBe "CompletenessConstraint(Completeness(age,None,None))"
+      check.constraints.size shouldBe 3
+      check.constraints(0).toString should include("MinimumConstraint")
+      check.constraints(1).toString should include("MaximumConstraint")
+      check.constraints(2).toString shouldBe "CompletenessConstraint(Completeness(age,None,None))"
     }
 
     "convert numeric IN rule with NULLs failing" in {

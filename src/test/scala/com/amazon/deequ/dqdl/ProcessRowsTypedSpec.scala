@@ -97,5 +97,22 @@ class ProcessRowsTypedSpec extends AnyWordSpec with Matchers with SparkContextSp
       result.outcomes should not be empty
       result.metrics should not be empty
     }
+
+    "return Minimum and Maximum metrics for ColumnValues between rule" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("Alice", 25), ("Bob", 30), ("Charlie", 5), ("Dave", 50)).toDF("name", "age")
+      val result = EvaluateDataQuality.processRowsTyped(df,
+        """Rules = [ ColumnValues "age" between 10 and 40 ]""")
+
+      result.outcomes.values.head.outcome.asString shouldBe "Failed"
+
+      val metricKeys = result.metrics.keys.map(_.toString).toSet
+      metricKeys.exists(_.contains("Minimum")) shouldBe true
+      metricKeys.exists(_.contains("Maximum")) shouldBe true
+
+      val failureReason = result.outcomes.values.head.failureReason
+      failureReason shouldBe defined
+      failureReason.get should not include "% of rows"
+    }
   }
 }

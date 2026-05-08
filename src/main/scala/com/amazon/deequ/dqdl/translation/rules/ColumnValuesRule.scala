@@ -131,15 +131,17 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
           return Left("BETWEEN requires two operands.")
         }
         val resultCheck = if (isWhereClausePresent(rule)) {
-          check.isContainedIn(targetColumn, numericOperands.head, numericOperands.last,
-            includeLowerBound = false, includeUpperBound = false).where(rule.getWhereClause)
+          check
+            .hasMin(targetColumn, _ > numericOperands.head, analyzerOptions = opts).where(rule.getWhereClause)
+            .hasMax(targetColumn, _ < numericOperands.last, analyzerOptions = opts).where(rule.getWhereClause)
             .isComplete(targetColumn, None, opts).where(rule.getWhereClause)
         } else {
-          check.isContainedIn(targetColumn, numericOperands.head, numericOperands.last,
-            includeLowerBound = false, includeUpperBound = false)
+          check
+            .hasMin(targetColumn, _ > numericOperands.head)
+            .hasMax(targetColumn, _ < numericOperands.last)
             .isComplete(targetColumn)
         }
-        Right((resultCheck, complianceMetric(targetColumn, check.description, rule)))
+        Right((resultCheck, minMetric(targetColumn, rule) ++ maxMetric(targetColumn, rule)))
 
       case NOT_BETWEEN =>
         if (numericOperands.size < 2) {
