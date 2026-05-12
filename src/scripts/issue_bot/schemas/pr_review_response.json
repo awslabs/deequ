@@ -12,14 +12,23 @@
           "line": {
             "type": "integer"
           },
+          "severity": {
+            "type": "string",
+            "enum": ["BUG", "EDGE_CASE", "MISSING_TEST", "DESIGN", "NIT"]
+          },
           "comment": {
+            "type": "string"
+          },
+          "evidence": {
             "type": "string"
           }
         },
         "required": [
           "file",
           "line",
-          "comment"
+          "severity",
+          "comment",
+          "evidence"
         ],
         "additionalProperties": false
       }
