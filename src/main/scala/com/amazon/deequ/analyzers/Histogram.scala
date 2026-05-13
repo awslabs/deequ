@@ -24,7 +24,7 @@ import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.metrics.HistogramMetric
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, count, sum => spark_sum}
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.StructType
@@ -165,8 +165,7 @@ object Histogram {
         .select(col(column).cast(StringType))
         .na.fill(Histogram.NullFieldReplacement)
         .groupBy(column)
-        .count()
-        .withColumnRenamed("count", Analyzers.COUNT_COL)
+        .agg(count("*").as(Analyzers.COUNT_COL))
     }
 
     override def aggregateColumn(): Option[String] = None
@@ -184,8 +183,7 @@ object Histogram {
         .select(col(column).cast(StringType), col(aggColumn).cast(LongType))
         .na.fill(Histogram.NullFieldReplacement)
         .groupBy(column)
-        .sum(aggColumn)
-        .withColumnRenamed("count", Analyzers.COUNT_COL)
+        .agg(spark_sum(col(aggColumn)).as(Analyzers.COUNT_COL))
     }
 
     override def total(data: DataFrame): Long = {
