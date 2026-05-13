@@ -479,6 +479,39 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assertEvaluatesTo(isPositiveCheck, results, CheckStatus.Success)
     }
 
+    "handle column names with spaces in isNonNegative" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq((1L, "a"), (2L, "b"), (3L, "c"), (-1L, "d")).toDF("my column", "other")
+      val check = Check(CheckLevel.Error, "space check").isNonNegative("my column")
+      val result = VerificationSuite().onData(df).addCheck(check).run()
+      assert(result.checkResults(check).status == CheckStatus.Error)
+    }
+
+    "detect negative bigint values in isNonNegative" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(-99999999999L, 1L, 2L).toDF("val")
+      val check = Check(CheckLevel.Error, "bigint check").isNonNegative("val")
+      val result = VerificationSuite().onData(df).addCheck(check).run()
+      assert(result.checkResults(check).status == CheckStatus.Error)
+    }
+
+    "handle column names with spaces in isPositive" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq((1L, "a"), (2L, "b"), (0L, "c")).toDF("my column", "other")
+      val check = Check(CheckLevel.Error, "space check").isPositive("my column")
+      val result = VerificationSuite().onData(df).addCheck(check).run()
+      assert(result.checkResults(check).status == CheckStatus.Error)
+    }
+
+    "handle column names with spaces in comparison checks" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq((1, 2), (3, 4), (5, 0)).toDF("col a", "col b")
+      val check = Check(CheckLevel.Error, "comparison check")
+        .isLessThan("col a", "col b")
+      val result = VerificationSuite().onData(df).addCheck(check).run()
+      assert(result.checkResults(check).status == CheckStatus.Error)
+    }
+
     "correctly evaluate range constraints" in withSparkSession { sparkSession =>
       val rangeCheck = Check(CheckLevel.Error, "a")
         .isContainedIn("att1", Array("a", "b", "c"))

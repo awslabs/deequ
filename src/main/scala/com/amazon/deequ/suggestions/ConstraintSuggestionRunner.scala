@@ -23,7 +23,7 @@ import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.profiles.{ColumnProfile, ColumnProfilerRunner, ColumnProfiles}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
 import com.amazon.deequ.suggestions.rules._
-import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
+import com.amazon.deequ.utilities.ColumnUtil.{escapeColumn, removeEscapeColumn}
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -227,7 +227,7 @@ class ConstraintSuggestionRunner {
     columns
       .flatMap { column =>
 
-        val profile = profiles.profiles(column)
+        val profile = profiles.profiles(removeEscapeColumn(column))
 
         constraintRules
           .filter { _.shouldBeApplied(profile, profiles.numRecords) }
