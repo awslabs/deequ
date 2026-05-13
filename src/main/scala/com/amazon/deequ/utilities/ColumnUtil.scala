@@ -27,10 +27,12 @@ object ColumnUtil {
   }
 
   def escapeColumn(column: String): String = {
-    if (column.contains(".")) {
-      "`" + column + "`"
-    } else {
+    if (column.startsWith("`") && column.endsWith("`")) {
       column
+    } else if (column.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
+      column
+    } else {
+      "`" + column + "`"
     }
   }
 

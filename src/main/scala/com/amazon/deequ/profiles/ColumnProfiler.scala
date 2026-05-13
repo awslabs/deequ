@@ -404,19 +404,6 @@ object ColumnProfiler {
     }
   }
 
-  /* Cast string columns detected as numeric to their detected type */
-  private[profiles] def castColumn(
-      data: DataFrame,
-      name: String,
-      toType: SparkDataType)
-    : DataFrame = {
-
-    val originalName = removeEscapeColumn(name)
-
-    data.withColumn(s"${name}___CASTED", data(name).cast(toType))
-      .drop(originalName)
-      .withColumnRenamed(s"${name}___CASTED", originalName)
-  }
 
   private[this] def extractGenericStatistics(
       columns: Seq[String],
@@ -503,16 +490,21 @@ object ColumnProfiler {
       genericStatistics: GenericColumnStatistics)
     : DataFrame = {
 
-    var castedData = originalData
-
-    columns.foreach { name =>
-      castedData = genericStatistics.typeOf(name) match {
-        case Integral => castColumn(castedData, name, LongType)
-        case Fractional => castColumn(castedData, name, DoubleType)
-        case _ => castedData
-      }
-    }
-    castedData
+    val escapedToCast = columns.map(c => removeEscapeColumn(c) -> c).toMap
+    originalData.select(
+      originalData.columns.map { rawName =>
+        val escaped = escapeColumn(rawName)
+        escapedToCast.get(rawName) match {
+          case Some(escapedName) =>
+            genericStatistics.typeOf(escapedName) match {
+              case Integral => originalData(escaped).cast(LongType).as(rawName)
+              case Fractional => originalData(escaped).cast(DoubleType).as(rawName)
+              case _ => originalData(escaped)
+            }
+          case None => originalData(escaped)
+        }
+      }: _*
+    )
   }
 
 
@@ -858,7 +850,7 @@ object ColumnProfiler {
               histogram)
         }
 
-        name -> profile
+        removeEscapeColumn(name) -> profile
       }
       .toMap
 

@@ -37,6 +37,7 @@ import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.BucketDistribution
+import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
 import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.Metric
@@ -1182,8 +1183,7 @@ case class Check(
 
     satisfies(
       // coalescing column to not count NULL values as non-compliant
-      // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
-      s"COALESCE(CAST($column AS DECIMAL(20,10)), 0.0) >= 0",
+      s"COALESCE(CAST(${escapeColumn(column)} AS DOUBLE), 0.0) >= 0",
       s"$column is non-negative",
       assertion,
       hint = hint,
@@ -1205,9 +1205,8 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
     // coalescing column to not count NULL values as non-compliant
-    // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
     satisfies(
-      s"COALESCE(CAST($column AS DECIMAL(20,10)), 1.0) > 0",
+      s"COALESCE(CAST(${escapeColumn(column)} AS DOUBLE), 1.0) > 0",
       s"$column is positive",
       assertion,
       hint,
@@ -1232,7 +1231,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", assertion,
+    satisfies(s"${escapeColumn(columnA)} < ${escapeColumn(columnB)}", s"$columnA is less than $columnB", assertion,
       hint = hint, columns = List(columnA, columnB))
   }
 
@@ -1252,7 +1251,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
+    satisfies(s"${escapeColumn(columnA)} <= ${escapeColumn(columnB)}", s"$columnA is less than or equal to $columnB",
       assertion, hint = hint, columns = List(columnA, columnB))
   }
 
@@ -1272,7 +1271,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
+    satisfies(s"${escapeColumn(columnA)} > ${escapeColumn(columnB)}", s"$columnA is greater than $columnB",
       assertion, hint = hint, columns = List(columnA, columnB))
   }
 
@@ -1293,7 +1292,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
+    satisfies(s"${escapeColumn(columnA)} >= ${escapeColumn(columnB)}", s"$columnA is greater than or equal to $columnB",
       assertion, hint = hint, columns = List(columnA, columnB))
   }
 
