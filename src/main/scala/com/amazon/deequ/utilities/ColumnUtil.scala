@@ -32,7 +32,7 @@ object ColumnUtil {
     } else if (column.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
       column
     } else {
-      "`" + column + "`"
+      "`" + column.replace("`", "``") + "`"
     }
   }
 
