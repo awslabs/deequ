@@ -269,10 +269,9 @@ case class Check(
   }
 
   def customSql(expression: String, assertion: Double => Boolean,
-                hint: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None,
-                disambiguator: String = "*")
+                hint: Option[String] = None, analyzerOptions: Option[AnalyzerOptions] = None)
   : Check = {
-    val customSqlAnalyzer = CustomSql(expression, disambiguator)
+    val customSqlAnalyzer = CustomSql(expression)
     val constraint = AnalysisBasedConstraint[CustomSqlState, Double, Double](customSqlAnalyzer, assertion,
       hint = hint)
     addConstraint(constraint)
