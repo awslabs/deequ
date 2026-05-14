@@ -2,18 +2,18 @@
 """
 Generates a comprehensive Deequ knowledge base from the repository source.
 
-Reads every Scala source file verbatim, organized by package. No parsing,
-no regex extraction — the raw source is the most accurate reference.
+Two-tier strategy ensures all files are represented within budget:
+  Small files (<=100 lines): Full source verbatim
+  Larger files (>100 lines): Signatures + implementation-significant lines
+    (method/class/trait declarations, SQL patterns like CAST/COALESCE,
+     first line of each scaladoc block)
 
 Usage (from repo root):
     python3 src/scripts/generate_kb.py > /tmp/deequ-kb.md
-
-Then review and upload:
-    aws s3 cp /tmp/deequ-kb.md s3://deequ-knowledge-base/deequ-kb.md
 """
 
-import os
 import sys
+import re
 from pathlib import Path
 from collections import defaultdict
 
@@ -23,18 +23,70 @@ SRC_TEST = REPO_ROOT / "src" / "test" / "scala"
 README_PATH = REPO_ROOT / "README.md"
 POM_PATH = REPO_ROOT / "pom.xml"
 
-MAX_FILE_CHARS = 8000
 MAX_TOTAL_CHARS = 500000
+SMALL_FILE_THRESHOLD = 100
+
+_LICENSE_END_RE = re.compile(r'^\s*\*/\s*$')
+_SIGNIFICANT_LINE_RE = re.compile(
+    r'(def |val |var |class |trait |object |case class |override |extends |with |import )'
+)
+_IMPL_PATTERN_RE = re.compile(
+    r'(CAST|COALESCE|expr\(|col\(|lit\(|sql\(|COUNT_COL|NullFieldReplacement|escapeColumn|removeEscapeColumn)'
+)
 
 
-def read_safe(path, max_chars=None):
+def read_safe(path):
     try:
-        text = path.read_text(errors="replace")
-        if max_chars and len(text) > max_chars:
-            return text[:max_chars] + f"\n... (truncated at {max_chars} chars, full file: {len(text)} chars)"
-        return text
+        return path.read_text(errors="replace")
     except Exception as e:
         return f"(could not read: {e})"
+
+
+def strip_license(content):
+    lines = content.split("\n")
+    in_license = False
+    result = []
+    for i, line in enumerate(lines):
+        if not in_license and ("Copyright" in line or "Licensed under" in line) and ("/*" in line or " *" in line):
+            in_license = True
+            if result and result[-1].strip() in ("/**", "/*"):
+                result.pop()
+            continue
+        if in_license:
+            if _LICENSE_END_RE.match(line):
+                in_license = False
+            continue
+        result.append(line)
+    return "\n".join(result).lstrip("\n")
+
+
+def summarize_tier2(content):
+    lines = content.split("\n")
+    kept = []
+    in_doc = False
+    doc_first_line_seen = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("/**"):
+            in_doc = True
+            doc_first_line_seen = False
+            continue
+        if in_doc:
+            if stripped.startswith("*/"):
+                in_doc = False
+                continue
+            if not doc_first_line_seen and stripped.startswith("*") and len(stripped) > 2:
+                kept.append("  // " + stripped.lstrip("* ").rstrip())
+                doc_first_line_seen = True
+            continue
+        if _SIGNIFICANT_LINE_RE.search(line) or _IMPL_PATTERN_RE.search(line):
+            kept.append(line)
+        elif stripped == "}" or stripped == "{":
+            if kept and not kept[-1].strip() == stripped:
+                kept.append(line)
+    return "\n".join(kept)
+
+
 
 
 def collect_scala_files(root):
@@ -60,23 +112,20 @@ def main():
         out.append(text)
         total_chars[0] += len(text)
 
-    # Header
     main_files = list(SRC_MAIN.rglob("*.scala"))
     test_files = list(SRC_TEST.rglob("*.scala")) if SRC_TEST.exists() else []
 
     emit("# Deequ Knowledge Base")
-    emit(f"")
+    emit("")
     emit(f"Source: {len(main_files)} main files, {len(test_files)} test files")
     emit("")
 
-    # README
     if README_PATH.exists():
         emit("## README")
         emit("")
         emit(read_safe(README_PATH))
         emit("")
 
-    # pom.xml (just the key properties)
     if POM_PATH.exists():
         pom_text = read_safe(POM_PATH)
         emit("## Build Configuration (pom.xml excerpt)")
@@ -93,7 +142,6 @@ def main():
         emit("```")
         emit("")
 
-    # Main source — organized by package
     emit("## Source Code Reference")
     emit("")
 
@@ -101,14 +149,12 @@ def main():
 
     for package_dir, files in main_grouped.items():
         package_label = package_dir.replace("/", ".")
-        file_count = len(files)
-
-        emit(f"### {package_label} ({file_count} files)")
+        emit(f"## {package_label} ({len(files)} files)")
         emit("")
 
         for filepath in files:
             rel = filepath.relative_to(REPO_ROOT)
-            content = read_safe(filepath, max_chars=MAX_FILE_CHARS)
+            content = read_safe(filepath)
             file_lines = content.count("\n") + 1
 
             if total_chars[0] >= MAX_TOTAL_CHARS:
@@ -116,14 +162,20 @@ def main():
                 emit("")
                 continue
 
-            emit(f"#### `{rel}` ({file_lines} lines)")
+            if file_lines <= SMALL_FILE_THRESHOLD:
+                processed = strip_license(content)
+                tier_label = "full"
+            else:
+                processed = summarize_tier2(strip_license(content))
+                tier_label = "signatures"
+
+            emit(f"#### `{rel}` ({file_lines} lines, {tier_label})")
             emit("")
             emit("```scala")
-            emit(content)
+            emit(processed)
             emit("```")
             emit("")
 
-    # Test files — just list them with line counts, don't include source
     if test_files:
         emit("## Test Files")
         emit("")
@@ -136,7 +188,6 @@ def main():
                 emit(f"- `{rel}` ({lc} lines)")
             emit("")
 
-    # Common usage patterns (hardcoded — these don't change and are the most asked about)
     emit("## Common Usage Patterns")
     emit("")
     emit("### Basic Verification")
