@@ -90,8 +90,8 @@ object ColumnDataTypeRule {
       case "BOOLEAN" => Some(BooleanType)
       case "DATE" => Some(DateType)
       case "TIMESTAMP" => Some(TimestampType)
-      case "INTEGER" => Some(IntegerType)
-      case "DOUBLE" => Some(DoubleType)
+      case "INTEGER" | "INTEGRAL" => Some(IntegerType)
+      case "DOUBLE" | "FRACTIONAL" => Some(DoubleType)
       case "FLOAT" => Some(FloatType)
       case "LONG" => Some(LongType)
       case DecimalPattern(precision, scale) =>

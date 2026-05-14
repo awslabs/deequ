@@ -25,10 +25,22 @@ import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 import scala.collection.JavaConverters._
 
 case class CustomSqlRule() extends DQDLRuleConverter {
-  override def convert(rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
-    val fn = assertionAsScala(rule, rule.getCondition.asInstanceOf[NumberBasedCondition])
+  override def convert(
+      rule: DQRule): Either[String, (Check, Seq[DeequMetricMapping])] = {
+    val fn = assertionAsScala(
+      rule, rule.getCondition.asInstanceOf[NumberBasedCondition])
     val statement = rule.getParameters.asScala("CustomSqlStatement")
-    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString).customSql(statement, rc => fn(rc.toDouble))
-    Right(check, Seq(DeequMetricMapping("Dataset", "*", "CustomSQL", "CustomSQL", None, rule = rule)))
+    val disambiguator = sha256(statement)
+    val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
+      .customSql(statement, rc => fn(rc.toDouble),
+        disambiguator = disambiguator)
+    Right(check, Seq(
+      DeequMetricMapping("Dataset", "*", "CustomSQL", "CustomSQL",
+        Some(disambiguator), rule = rule)))
+  }
+
+  private def sha256(input: String): String = {
+    val md = java.security.MessageDigest.getInstance("SHA-256")
+    md.digest(input.getBytes("UTF-8")).map("%02x".format(_)).mkString
   }
 }

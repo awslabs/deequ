@@ -114,5 +114,55 @@ class ProcessRowsTypedSpec extends AnyWordSpec with Matchers with SparkContextSp
       failureReason shouldBe defined
       failureReason.get should not include "% of rows"
     }
+
+    "produce row-level results for ColumnDataType" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("123", 1), ("456", 2), ("abc", 3)).toDF("val", "id")
+      val result = EvaluateDataQuality.processRowsTyped(df,
+        """Rules = [ ColumnDataType "val" = "Integral" with threshold > 0.5 ]""")
+      result.outcomes should have size 1
+      result.outcomes.values.head.outcome.asString shouldBe "Passed"
+      result.rowLevelData.columns.length should be > df.columns.length
+    }
+
+    "produce FailureReason for failing ColumnDataType" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("abc", 1), ("def", 2), ("123", 3)).toDF("val", "id")
+      val result = EvaluateDataQuality.processRowsTyped(df,
+        """Rules = [ ColumnDataType "val" = "Integral" with threshold > 0.9 ]""")
+      result.outcomes.values.head.outcome.asString shouldBe "Failed"
+      val reason = result.outcomes.values.head.failureReason
+      reason shouldBe defined
+      reason.get should include("% of rows passed the threshold")
+    }
+
+    "produce distinct outcomes for multiple CustomSql rules" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("Alice", 25), ("Bob", 30), ("Carol", 35))
+        .toDF("name", "age")
+      val ruleset = """Rules = [
+        CustomSql "SELECT count(*) FROM primary WHERE age > 20" > 2,
+        CustomSql "SELECT count(*) FROM primary WHERE age > 30" > 0
+      ]"""
+      val result = EvaluateDataQuality.processRowsTyped(df, ruleset)
+      result.outcomes should have size 2
+      result.outcomes.values.forall(
+        _.outcome.asString == "Passed") shouldBe true
+    }
+
+    "handle mixed pass/fail in batched CustomSql" in withSparkSession { spark =>
+      import spark.implicits._
+      val df = Seq(("Alice", 25), ("Bob", 30)).toDF("name", "age")
+      val ruleset = """Rules = [
+        CustomSql "SELECT count(*) FROM primary WHERE age > 20" > 1,
+        CustomSql "SELECT count(*) FROM primary WHERE age > 50" > 0
+      ]"""
+      val result = EvaluateDataQuality.processRowsTyped(df, ruleset)
+      result.outcomes should have size 2
+      val statuses = result.outcomes.values.map(
+        _.outcome.asString).toSet
+      statuses should contain("Passed")
+      statuses should contain("Failed")
+    }
   }
 }

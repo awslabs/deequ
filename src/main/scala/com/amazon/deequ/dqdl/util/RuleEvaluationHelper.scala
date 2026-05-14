@@ -91,12 +91,12 @@ object RuleEvaluationHelper {
                 Some(f"${ratio * 100}%.2f %% of rows passed the threshold"), evaluatedMetrics)
             }
           case None =>
-            // No assertion provided, assume 1.0 threshold
             if (ratio == 1.0) {
               RuleOutcome(rule, Passed, None, evaluatedMetrics)
             } else {
               RuleOutcome(rule, Failed,
-                Some(s"${(ratio * 100).formatted("%.2f")}% of rows passed"), evaluatedMetrics)
+                Some(f"${ratio * 100}%.2f %% of rows passed the threshold"),
+                evaluatedMetrics)
             }
         }
       }

@@ -17,27 +17,60 @@
 package com.amazon.deequ.dqdl.execution.executors
 
 import com.amazon.deequ.dqdl.execution.DQDLExecutor
-import com.amazon.deequ.dqdl.model.{ColumnDataTypeExecutableRule, RuleOutcome}
+import com.amazon.deequ.dqdl.model.{ColumnDataTypeExecutableRule, RuleOutcome, SingularColumn}
 import com.amazon.deequ.dqdl.util.RuleEvaluationHelper
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions._
 import software.amazon.glue.dqdl.model.DQRule
 
-object ColumnDataTypeExecutor extends DQDLExecutor.RuleExecutor[ColumnDataTypeExecutableRule] {
+case class ColumnDataTypeExecutionResult(
+  outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame)
 
-  override def executeRules(rules: Seq[ColumnDataTypeExecutableRule], df: DataFrame,
-                            additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
-    rules.map { rule =>
-      val metricName = s"Column.${rule.column}.ColumnDataType.Compliance"
+object ColumnDataTypeExecutor
+    extends DQDLExecutor.RuleExecutor[ColumnDataTypeExecutableRule] {
+
+  override def executeRules(
+      rules: Seq[ColumnDataTypeExecutableRule],
+      df: DataFrame,
+      additionalDataSources: Map[String, DataFrame] = Map.empty
+  ): Map[DQRule, RuleOutcome] = {
+    executeWithRowLevel(rules, df).outcomes
+  }
+
+  def executeWithRowLevel(
+      rules: Seq[ColumnDataTypeExecutableRule],
+      df: DataFrame,
+      baseRowLevelData: Option[DataFrame] = None
+  ): ColumnDataTypeExecutionResult = {
+    if (rules.isEmpty) {
+      return ColumnDataTypeExecutionResult(
+        Map.empty, baseRowLevelData.getOrElse(df))
+    }
+
+    var currentData = baseRowLevelData.getOrElse(df)
+    val outcomes = rules.map { rule =>
+      val metricName =
+        s"Column.${rule.column}.ColumnDataType.Compliance"
+      val colName = java.util.UUID.randomUUID().toString
       val outcome = RuleEvaluationHelper.evaluateRuleAgainstColumn(
-        df,
-        rule.dqRule,
-        rule.column,
-        rule.filteredRow,
-        metricName,
-        rule.outcomeExpression,
-        Some(rule.assertion)
-      )
-      rule.dqRule -> outcome
-    }.toMap
+        df, rule.dqRule, rule.column, rule.filteredRow,
+        metricName, rule.outcomeExpression, Some(rule.assertion))
+      val hasMetrics = outcome.evaluatedMetrics.nonEmpty
+      currentData = if (hasMetrics) {
+        Option(rule.dqRule.getWhereClause) match {
+          case Some(where) =>
+            currentData.withColumn(colName,
+              when(not(expr(where)), null)
+                .otherwise(rule.outcomeExpression))
+          case None =>
+            currentData.withColumn(colName, rule.outcomeExpression)
+        }
+      } else {
+        currentData.withColumn(colName, lit(false))
+      }
+      rule.dqRule -> outcome.copy(
+        rowLevelOutcome = SingularColumn(colName))
+    }
+    ColumnDataTypeExecutionResult(outcomes.toMap, currentData)
   }
 }
