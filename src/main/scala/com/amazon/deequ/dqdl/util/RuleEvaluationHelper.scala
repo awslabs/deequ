@@ -24,7 +24,94 @@ import org.apache.spark.sql.functions._
 import software.amazon.glue.dqdl.model.DQRule
 import scala.util.{Try, Success, Failure}
 
+case class RuleOutcomeAndData(outcome: RuleOutcome, augmentedData: DataFrame)
+
 object RuleEvaluationHelper {
+
+  def evaluateRuleAgainstColumnWithRowLevel(
+    df: DataFrame,
+    rule: DQRule,
+    targetColumn: String,
+    filteredRowOutcome: FilteredRowOutcome,
+    metricName: String,
+    outcomeExpression: Column,
+    assertion: Option[Double => Boolean] = None
+  ): RuleOutcomeAndData = {
+    import com.amazon.deequ.dqdl.model.SingularColumn
+    val colName = java.util.UUID.randomUUID().toString
+    val whereClause = Option(rule.getWhereClause)
+
+    if (Try(df(targetColumn)).isFailure) {
+      return RuleOutcomeAndData(
+        RuleOutcome(rule, Failed, Some(s"Column $targetColumn does not exist in the dataset"),
+          rowLevelOutcome = SingularColumn(colName)),
+        df.withColumn(colName, lit(false)))
+    }
+
+    val validatedFilteredDf = whereClause match {
+      case Some(where) =>
+        Try(df.where(where)).toOption match {
+          case Some(filtered) => Some(filtered)
+          case None =>
+            return RuleOutcomeAndData(
+              RuleOutcome(rule, Failed, Some("The provided where clause is invalid"),
+                rowLevelOutcome = SingularColumn(colName)),
+              df.withColumn(colName, lit(false)))
+        }
+      case None => None
+    }
+
+    Try {
+      val filteredDf = validatedFilteredDf.getOrElse(df)
+      val totalCount = filteredDf.count()
+
+      if (totalCount == 0) {
+        RuleOutcomeAndData(
+          RuleOutcome(rule, Passed, Some("No rows matched the filter"),
+            rowLevelOutcome = SingularColumn(colName)),
+          df.withColumn(colName, lit(true)))
+      } else {
+        val augmented = whereClause match {
+          case Some(where) =>
+            df.withColumn(colName, when(not(expr(where)), null).otherwise(outcomeExpression))
+          case None =>
+            df.withColumn(colName, outcomeExpression)
+        }
+
+        val filteredCount = augmented.where(col(colName) === true).count()
+        val ratio = filteredCount.toDouble / totalCount
+        val evaluatedMetrics = Map(metricName -> ratio)
+
+        val rl = SingularColumn(colName)
+        val outcomeResult = assertion match {
+          case Some(assertFn) =>
+            if (assertFn(ratio)) {
+              RuleOutcome(rule, Passed, None, evaluatedMetrics, rowLevelOutcome = rl)
+            } else {
+              RuleOutcome(rule, Failed,
+                Some(f"${ratio * 100}%.2f %% of rows passed the threshold"),
+                evaluatedMetrics, rowLevelOutcome = rl)
+            }
+          case None =>
+            if (ratio == 1.0) {
+              RuleOutcome(rule, Passed, None, evaluatedMetrics, rowLevelOutcome = rl)
+            } else {
+              RuleOutcome(rule, Failed,
+                Some(s"${(ratio * 100).formatted("%.2f")}% of rows passed"),
+                evaluatedMetrics, rowLevelOutcome = rl)
+            }
+        }
+        RuleOutcomeAndData(outcomeResult, augmented)
+      }
+    } match {
+      case Success(result) => result
+      case Failure(ex) =>
+        RuleOutcomeAndData(
+          RuleOutcome(rule, Failed, Some(s"Exception thrown while evaluating rule: ${ex.getMessage}"),
+            rowLevelOutcome = SingularColumn(colName)),
+          df.withColumn(colName, lit(false)))
+    }
+  }
 
   def evaluateRuleAgainstColumn(
     df: DataFrame,

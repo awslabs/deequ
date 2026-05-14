@@ -18,8 +18,8 @@ package com.amazon.deequ.dqdl
 
 import com.amazon.deequ.analyzers.Analyzer
 import com.amazon.deequ.dqdl.execution.{DQDLExecutor, RowLevelResultHelper}
-import com.amazon.deequ.dqdl.execution.executors.{CustomSqlRowLevelExecutor, DeequRulesExecutor}
-import com.amazon.deequ.dqdl.model.{CompositeExecutableRule,
+import com.amazon.deequ.dqdl.execution.executors.{ColumnDataTypeExecutor, CustomSqlRowLevelExecutor, DeequRulesExecutor}
+import com.amazon.deequ.dqdl.model.{ColumnDataTypeExecutableRule, CompositeExecutableRule,
   CustomSqlRowLevelExecutableRule, DeequExecutableRule,
   ExecutableRule, RuleOutcome}
 import com.amazon.deequ.dqdl.translation.{DQDLRuleTranslator, DeequOutcomeTranslator}
@@ -166,13 +166,19 @@ object EvaluateDataQuality {
     val allDeequRules = collectDeequRules(executableRules).distinct
     val deequResult = DeequRulesExecutor.executeWithRowLevel(allDeequRules, df, additionalAnalyzers)
 
-    val (customSqlRules, remainingRules) = executableRules
-      .filterNot(_.isInstanceOf[DeequExecutableRule])
+    val nonDeequRules = executableRules.filterNot(_.isInstanceOf[DeequExecutableRule])
+    val (customSqlRules, afterCustomSql) = nonDeequRules
       .partition(_.isInstanceOf[CustomSqlRowLevelExecutableRule])
+    val (columnDataTypeRules, remainingRules) = afterCustomSql
+      .partition(_.isInstanceOf[ColumnDataTypeExecutableRule])
 
     val customSqlResult = CustomSqlRowLevelExecutor.executeWithRowLevel(
       customSqlRules.map(_.asInstanceOf[CustomSqlRowLevelExecutableRule]),
       df, additionalDataSources, Some(deequResult.rowLevelData))
+
+    val colDataTypeResult = ColumnDataTypeExecutor.executeWithRowLevel(
+      columnDataTypeRules.map(_.asInstanceOf[ColumnDataTypeExecutableRule]),
+      df, Some(customSqlResult.rowLevelData))
 
     val remainingOutcomes = if (remainingRules.nonEmpty) {
       DQDLExecutor.executeRules(remainingRules, df, additionalDataSources)
@@ -180,12 +186,13 @@ object EvaluateDataQuality {
       Map.empty[DQRule, RuleOutcome]
     }
 
-    val allOutcomes = deequResult.outcomes ++ customSqlResult.outcomes ++ remainingOutcomes
+    val allOutcomes = deequResult.outcomes ++ customSqlResult.outcomes ++
+      colDataTypeResult.outcomes ++ remainingOutcomes
     val orderedOutcomes = executableRules.flatMap(r => allOutcomes.get(r.dqRule))
-    val rowLevelOutcomes = RowLevelResultHelper.convert(customSqlResult.rowLevelData, orderedOutcomes)
+    val rowLevelOutcomes = RowLevelResultHelper.convert(colDataTypeResult.rowLevelData, orderedOutcomes)
 
     RulesetExecutionResult(allOutcomes,
-      customSqlResult.rowLevelData, rowLevelOutcomes,
+      colDataTypeResult.rowLevelData, rowLevelOutcomes,
       executableRules, deequResult.metrics)
   }
 

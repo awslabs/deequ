@@ -22,14 +22,26 @@ import com.amazon.deequ.dqdl.util.RuleEvaluationHelper
 import org.apache.spark.sql.DataFrame
 import software.amazon.glue.dqdl.model.DQRule
 
+case class ColumnDataTypeExecutionResult(outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame)
+
 object ColumnDataTypeExecutor extends DQDLExecutor.RuleExecutor[ColumnDataTypeExecutableRule] {
 
   override def executeRules(rules: Seq[ColumnDataTypeExecutableRule], df: DataFrame,
                             additionalDataSources: Map[String, DataFrame] = Map.empty): Map[DQRule, RuleOutcome] = {
-    rules.map { rule =>
+    executeWithRowLevel(rules, df).outcomes
+  }
+
+  def executeWithRowLevel(rules: Seq[ColumnDataTypeExecutableRule], df: DataFrame,
+                          baseRowLevelData: Option[DataFrame] = None): ColumnDataTypeExecutionResult = {
+    if (rules.isEmpty) {
+      return ColumnDataTypeExecutionResult(Map.empty, baseRowLevelData.getOrElse(df))
+    }
+
+    var currentData = baseRowLevelData.getOrElse(df)
+    val outcomes = rules.map { rule =>
       val metricName = s"Column.${rule.column}.ColumnDataType.Compliance"
-      val outcome = RuleEvaluationHelper.evaluateRuleAgainstColumn(
-        df,
+      val result = RuleEvaluationHelper.evaluateRuleAgainstColumnWithRowLevel(
+        currentData,
         rule.dqRule,
         rule.column,
         rule.filteredRow,
@@ -37,7 +49,9 @@ object ColumnDataTypeExecutor extends DQDLExecutor.RuleExecutor[ColumnDataTypeEx
         rule.outcomeExpression,
         Some(rule.assertion)
       )
-      rule.dqRule -> outcome
-    }.toMap
+      currentData = result.augmentedData
+      rule.dqRule -> result.outcome
+    }
+    ColumnDataTypeExecutionResult(outcomes.toMap, currentData)
   }
 }
