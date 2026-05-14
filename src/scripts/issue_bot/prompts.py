@@ -23,7 +23,7 @@ def _read_from_sm(secret_id):
         resp = _get_sm_client().get_secret_value(SecretId=secret_id)
         return resp["SecretString"]
     except Exception as e:
-        logger.error(f"SM read failed for {secret_id}: {e}")
+        logger.error("Failed to read prompt from Secrets Manager: %s", type(e).__name__)
         return ""
 
 
