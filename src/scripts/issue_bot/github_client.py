@@ -11,6 +11,7 @@ class GitHubClient:
         self._repo = cfg.repo
         self._timeout = cfg.github_api_timeout
         self._dry_run = cfg.dry_run
+        self._cfg = cfg
         self._repo_root = os.getenv("GITHUB_WORKSPACE", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
         self._headers = {
             "Authorization": f"token {self._token}",
@@ -48,6 +49,60 @@ class GitHubClient:
             logger.error(f"PR diff fetch failed: {e}")
             return ""
 
+    def get_compare_diff(self, base_sha, head_sha):
+        """Fetch the diff between two commits using the Compare API.
+        Returns the diff text, or empty string on failure (e.g. force-push
+        where base_sha no longer exists)."""
+        headers = {**self._headers, "Accept": "application/vnd.github.v3.diff"}
+        try:
+            resp = requests.get(
+                f"https://api.github.com/repos/{self._repo}/compare/{base_sha}...{head_sha}",
+                headers=headers, timeout=self._timeout,
+            )
+            if resp.status_code == 200:
+                return resp.text
+            logger.warning(f"Compare API {base_sha[:7]}...{head_sha[:7]}: {resp.status_code}")
+            return ""
+        except Exception as e:
+            logger.error(f"Compare diff failed: {e}")
+            return ""
+
+    def get_ci_status(self, sha):
+        """Check commit statuses and check runs. Returns (passed, summary).
+        passed: True (all green), False (something failed), None (pending/unknown)."""
+        status = self._get(f"/repos/{self._repo}/commits/{sha}/status")
+        if status is None:
+            return None, "CI status unavailable"
+        combined_state = status.get("state", "pending")
+
+        check_data = self._get(f"/repos/{self._repo}/commits/{sha}/check-runs")
+        runs = check_data.get("check_runs", []) if check_data else []
+
+        workflow_name = os.getenv("GITHUB_WORKFLOW", "")
+        bot_prefix = workflow_name.lower() + " / " if workflow_name else ""
+        external_runs = [
+            r for r in runs
+            if not (bot_prefix and r.get("name", "").lower().startswith(bot_prefix))
+        ]
+
+        failed = []
+        pending = []
+        for r in external_runs:
+            if r.get("status") != "completed":
+                pending.append(r["name"])
+            elif r.get("conclusion") not in ("success", "neutral", "skipped"):
+                failed.append(r["name"])
+
+        if failed:
+            return False, f"CI failing: {', '.join(failed)}"
+        if pending:
+            return None, f"CI pending: {', '.join(pending)}"
+        if combined_state == "failure":
+            return False, "CI failing (status checks)"
+        if combined_state == "pending":
+            return None, "CI pending (status checks)"
+        return True, "CI passed"
+
     def get_pr_files(self, number):
         return self._get(f"/repos/{self._repo}/pulls/{number}/files") or []
 
@@ -64,16 +119,18 @@ class GitHubClient:
             page += 1
         return comments
 
-    def get_codebase_map(self, src_dir="src/main/scala"):
-        """List all Python source files (excluding tests) as relative paths."""
+    def get_codebase_map(self):
+        """List source files (excluding tests) as relative paths."""
+        src_dir = self._cfg.codebase_src_dir
+        file_ext = self._cfg.codebase_file_ext
         full_dir = os.path.join(self._repo_root, src_dir)
         prefix = self._repo_root.rstrip("/") + "/"
         try:
             paths = []
             for root, dirs, files in os.walk(full_dir):
-                dirs[:] = [d for d in dirs if d not in ("examples", "__pycache__", ".git")]
+                dirs[:] = [d for d in dirs if d not in ("examples", "__pycache__", ".git", "tests", "test")]
                 for f in files:
-                    if f.endswith(".scala"):
+                    if f.endswith(file_ext):
                         full = os.path.join(root, f)
                         rel = full[len(prefix):] if full.startswith(prefix) else full
                         paths.append(rel)
@@ -116,9 +173,9 @@ class GitHubClient:
             return True
         return self._post(f"/repos/{self._repo}/issues/{number}/comments", {"body": body})
 
-    def post_pr_review(self, number, summary, inline_comments):
+    def post_pr_review(self, number, summary, inline_comments, event="COMMENT"):
         if self._dry_run:
-            logger.info(f"[DRY RUN] PR review on #{number}: {len(inline_comments)} inline comments")
+            logger.info(f"[DRY RUN] PR review on #{number}: {len(inline_comments)} inline comments, event={event}")
             return True
 
         # Get valid diff lines per file from the PR
@@ -134,32 +191,34 @@ class GitHubClient:
             else:
                 invalid_comments.append(ic)
 
-        if valid_comments:
-            body = summary
-            if invalid_comments:
-                body += "\n\n**Additional feedback:**\n"
-                for ic in invalid_comments:
-                    line_ref = f":{ic['line']}" if ic.get('line') else ""
-                    body += f"\n`{ic['file']}{line_ref}` — {ic['comment']}\n"
-            payload = {"body": body, "event": "REQUEST_CHANGES", "comments": valid_comments}
-            try:
-                resp = requests.post(
-                    f"https://api.github.com/repos/{self._repo}/pulls/{number}/reviews",
-                    headers=self._headers, json=payload, timeout=self._timeout,
-                )
-                if resp.status_code in (200, 201):
-                    return True
-                logger.error(f"PR review API failed: {resp.status_code}, falling back to comment")
-                logger.error(f"Response: {resp.text[:500]}")
-            except Exception as e:
-                logger.error(f"PR review API failed: {e}, falling back to comment")
-
-        # Fallback: post all as regular comment
-        all_comments = inline_comments
         body = summary
-        if all_comments:
+        if invalid_comments:
+            body += "\n\n**Additional feedback:**\n"
+            for ic in invalid_comments:
+                line_ref = f":{ic['line']}" if ic.get('line') else ""
+                body += f"\n`{ic['file']}{line_ref}` — {ic['comment']}\n"
+
+        payload = {"body": body, "event": event}
+        if valid_comments:
+            payload["comments"] = valid_comments
+
+        try:
+            resp = requests.post(
+                f"https://api.github.com/repos/{self._repo}/pulls/{number}/reviews",
+                headers=self._headers, json=payload, timeout=self._timeout,
+            )
+            if resp.status_code in (200, 201):
+                return True
+            logger.error(f"PR review API failed: {resp.status_code}, falling back to comment")
+            logger.error(f"Response: {resp.text[:500]}")
+        except Exception as e:
+            logger.error(f"PR review API failed: {e}, falling back to comment")
+
+        # Fallback: post as regular comment if review API fails
+        body = summary
+        if inline_comments:
             body += "\n\n**Inline feedback:**\n"
-            for ic in all_comments:
+            for ic in inline_comments:
                 line_ref = f":{ic['line']}" if ic.get('line') else ""
                 body += f"\n`{ic['file']}{line_ref}` — {ic['comment']}\n"
         return self._post(f"/repos/{self._repo}/issues/{number}/comments", {"body": body})

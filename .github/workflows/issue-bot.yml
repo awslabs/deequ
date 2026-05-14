@@ -61,16 +61,20 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
           EVENT_TYPE: ${{ github.event_name }}
           EVENT_ACTION: ${{ github.event.action }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_AFTER: ${{ github.event.pull_request.head.sha || github.event.after }}
           GITHUB_ACTOR: ${{ github.actor }}
           KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
           KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
           BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
           GUARDRAIL_ID: ${{ secrets.GUARDRAIL_ID }}
           GUARDRAIL_VERSION: ${{ secrets.GUARDRAIL_VERSION }}
-          ISSUE_CLASSIFY_PROMPT: ${{ secrets.ISSUE_CLASSIFY_PROMPT }}
-          ISSUE_RESPOND_PROMPT: ${{ secrets.ISSUE_RESPOND_PROMPT }}
-          PR_FILE_REVIEW_PROMPT: ${{ secrets.PR_FILE_REVIEW_PROMPT }}
-          FOLLOWUP_PROMPT: ${{ secrets.FOLLOWUP_PROMPT }}
+          SM_ISSUE_CLASSIFY_PROMPT: deequ-bot/issue-classify-prompt
+          SM_ISSUE_RESPOND_PROMPT: deequ-bot/issue-respond-prompt
+          SM_PR_FILE_REVIEW_PROMPT: deequ-bot/pr-file-review-prompt
+          SM_FOLLOWUP_PROMPT: deequ-bot/followup-prompt
+          CODEBASE_SRC_DIR: src/main/scala
+          CODEBASE_FILE_EXT: .scala
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           ARTIFACT_PATH: ${{ runner.temp }}/bot_result.json
         run: python -m issue_bot.main analyze
