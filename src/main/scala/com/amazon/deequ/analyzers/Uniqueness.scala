@@ -34,7 +34,7 @@ import org.apache.spark.sql.types.DoubleType
   * values that occur exactly once. */
 case class Uniqueness(columns: Seq[String], where: Option[String] = None,
                       analyzerOptions: Option[AnalyzerOptions] = None)
-  extends ScanShareableFrequencyBasedAnalyzer("Uniqueness", columns)
+  extends ScanShareableFrequencyBasedAnalyzer("Uniqueness", columns.toList)
   with FilterableAnalyzer {
 
   override def aggregationFunctions(numRows: Long): Seq[Column] = {

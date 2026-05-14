@@ -655,6 +655,27 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         assertEvaluatesTo(check8, context1, CheckStatus.Error)
       }
 
+    "handle DataFrame with column named 'count' in hasNumberOfDistinctValues" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        val df = Seq(("id_0", 1), ("id_1", 2), ("id_2", 3)).toDF("id", "count")
+        val check = Check(CheckLevel.Error, "count column check")
+          .hasNumberOfDistinctValues("count", _ == 3)
+        val result = VerificationSuite().onData(df).addCheck(check).run()
+        assert(result.checkResults(check).status == CheckStatus.Success)
+      }
+
+    "handle DataFrame with column named 'count' in Histogram with Sum aggregation" in
+      withSparkSession { sparkSession =>
+        import sparkSession.implicits._
+        import com.amazon.deequ.analyzers.runners.AnalysisRunner
+        val df = Seq(("a", 10, 1), ("a", 20, 2), ("b", 30, 3)).toDF("category", "value", "count")
+        val analyzer = Histogram("category", aggregateFunction = Histogram.Sum("value"))
+        val result = AnalysisRunner.onData(df).addAnalyzer(analyzer).run()
+        val metric = result.metricMap(analyzer)
+        assert(metric.value.isSuccess)
+      }
+
     "return the correct check status for histogram binned constraints" in
       withSparkSession { sparkSession =>
 
