@@ -24,7 +24,8 @@ case class BinData(binStart: Double, binEnd: Double, frequency: Long, ratio: Dou
 
 case class DistributionBinned(
   bins: Vector[BinData],
-  numberOfBins: Long
+  numberOfBins: Long,
+  nullCount: Long = 0
 ) {
 
   def apply(index: Int): BinData = bins(index)
