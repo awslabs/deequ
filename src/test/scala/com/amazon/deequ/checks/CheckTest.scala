@@ -695,10 +695,9 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
 
         // Null handling
         val check2 = Check(CheckLevel.Error, "null-handling-tests")
-          // Null bin exists and has one value
-          .hasHistogramBinnedValues("value", _.bins.exists(_.binStart == Double.NegativeInfinity), Some(5))
-          .hasHistogramBinnedValues("value",
-            _.bins.filter(_.binStart == Double.NegativeInfinity).head.frequency == 1, Some(5))
+          // Null count exists and has one value
+          .hasHistogramBinnedValues("value", _.nullCount > 0, Some(5))
+          .hasHistogramBinnedValues("value", _.nullCount == 1, Some(5))
 
         // Distribution shape tests
         val check3 = Check(CheckLevel.Error, "distribution-shape-tests")
@@ -731,8 +730,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val check6 = Check(CheckLevel.Error, "bin-structure-tests")
           .hasHistogramBinnedBins("value", _ >= 5, Some(5))                 // Expected number of bins
           .hasHistogramBinnedValues("value", _.numberOfBins >= 5, Some(5))  // numberOfBins matches
-          .hasHistogramBinnedValues("value", _.bins.filter(_.binStart != Double.NegativeInfinity)
-            .forall(b => b.binEnd > b.binStart), Some(5)) // Valid bin ranges
+          .hasHistogramBinnedValues("value", _.bins.forall(b => b.binEnd > b.binStart), Some(5)) // Valid bin ranges
 
         // Filtered constraint tests (WHERE clauses)
         val check7 = Check(CheckLevel.Error, "filtered-binned-tests")
@@ -799,12 +797,12 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
         val check2 = Check(CheckLevel.Error, "custom-edges-null-tests")
           .hasHistogramBinnedValues(
             "income",
-            _.bins.exists(_.binStart == Double.NegativeInfinity),
+            _.nullCount > 0,
             customEdges = Some(incomeEdges)
           )
           .hasHistogramBinnedValues(
             "income",
-            _.bins.filter(_.binStart == Double.NegativeInfinity).head.frequency == 1,
+            _.nullCount == 1,
             customEdges = Some(incomeEdges)
           )
 
@@ -844,7 +842,7 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
           ) // Peak in middle/high bracket
           .hasHistogramBinnedValues(
             "income",
-            _.bins.filter(_.binStart != Double.NegativeInfinity).forall(_.frequency >= 0),
+            _.bins.forall(_.frequency >= 0),
             customEdges = Some(incomeEdges)
           )
           .hasHistogramBinnedValues(
@@ -859,8 +857,8 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
           .hasHistogramBinnedValues(
             "income", _.numberOfBins >= 3, customEdges = Some(incomeEdges)
           ) // numberOfBins matches
-          .hasHistogramBinnedValues("income", _.bins.filter(_.binStart != Double.NegativeInfinity)
-            .forall(b => b.binEnd > b.binStart), customEdges = Some(incomeEdges)) // Valid bin ranges
+          .hasHistogramBinnedValues("income", _.bins.forall(b => b.binEnd > b.binStart),
+            customEdges = Some(incomeEdges)) // Valid bin ranges
 
         // Filtered constraint tests with custom edges
         val check7 = Check(CheckLevel.Error, "custom-edges-filtered-tests")

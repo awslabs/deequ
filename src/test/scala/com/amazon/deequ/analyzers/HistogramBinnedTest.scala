@@ -171,8 +171,8 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       result.value.isSuccess shouldBe true
       val distribution = result.value.get
 
-      distribution.numberOfBins shouldBe 4 // 3 numeric bins + 1 NullValue bin
-      distribution.bins.size shouldBe 4
+      distribution.numberOfBins shouldBe 3 // only data bins
+      distribution.bins.size shouldBe 3
 
       // Check numeric bins (non-null values: 1, 3, 5, 7, 9)
       distribution(0).binStart shouldBe 1.0
@@ -190,11 +190,8 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       distribution(2).frequency shouldBe 2 // values 7.0, 9.0
       distribution(2).ratio shouldBe 2.0 / 8.0 +- 0.001
 
-      // Check NullValue bin
-      distribution(3).binStart shouldBe Double.NegativeInfinity
-      distribution(3).binEnd shouldBe Double.PositiveInfinity
-      distribution(3).frequency shouldBe 3 // 3 null values
-      distribution(3).ratio shouldBe 3.0 / 8.0 +- 0.001
+      // Null count is separate
+      distribution.nullCount shouldBe 3
     }
 
     "aggregate sum works as expected" in withSparkSession { spark =>
@@ -253,20 +250,17 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       result.value.isSuccess shouldBe true
       val distribution = result.value.get
 
-      distribution.numberOfBins shouldBe 4 // 3 numeric bins + 1 NullValue bin
-      distribution.bins.size shouldBe 4
+      distribution.numberOfBins shouldBe 3 // only data bins
+      distribution.bins.size shouldBe 3
 
       // Verify sum aggregation with nulls handled
-      // Null prices go to NullValue bin
       // Null revenues are treated as 0 in the sum
       distribution(0).frequency shouldBe 125 // 50 + 75 (prices 100, 150)
       distribution(1).frequency shouldBe 125 // 0 + 125 (price 250 has null revenue, price 300 has 125)
       distribution(2).frequency shouldBe 200 // 200 (price 450)
 
-      // NullValue bin gets sum of revenues for null prices
-      distribution(3).frequency shouldBe 1887 // 999 + 888 (null prices)
-      distribution(3).binStart shouldBe Double.NegativeInfinity
-      distribution(3).binEnd shouldBe Double.PositiveInfinity
+      // NullValue tracked separately
+      distribution.nullCount shouldBe 1887 // 999 + 888 (null prices)
 
       // Verify bin ranges (based only on non-null prices: 100, 150, 250, 300, 450)
       distribution(0).binStart shouldBe 100.0
@@ -290,15 +284,12 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       result.value.isSuccess shouldBe true
       val distribution = result.value.get
 
-      // Should have 1 bin for the "NullValue" category (like Histogram does)
-      distribution.numberOfBins shouldBe 1
-      distribution.bins.size shouldBe 1
+      // No data bins when all values are null
+      distribution.numberOfBins shouldBe 0
+      distribution.bins.size shouldBe 0
 
-      // All nulls become "NullValue" bin - verify it's the special infinity-range bin
-      val nullBin = distribution.bins.head
-      nullBin.binStart shouldBe Double.NegativeInfinity
-      nullBin.binEnd shouldBe Double.PositiveInfinity
-      nullBin.frequency shouldBe 4
+      // All nulls tracked in nullCount
+      distribution.nullCount shouldBe 4
     }
 
     "numberOfBins should reflect total bins including empty ones for equal width" in withSparkSession { spark =>
@@ -310,26 +301,23 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       val histogram = HistogramBinned("values", binCount = Some(5)) // Creates 5 equal-width bins
       val result = histogram.calculate(data).value.get
 
-      // numberOfBins should include all bins (regular + null)
-      result.numberOfBins shouldBe 6
+      // numberOfBins is only data bins
+      result.numberOfBins shouldBe 5
 
-      // bins collection should include all bins (empty, non-empty, and null)
-      result.bins.length shouldBe 6
+      // bins collection has only data bins
+      result.bins.length shouldBe 5
 
       // Bin 0: [1.0, 2.6) contains 1.0
-      // Bins 1-3: empty.
+      // Bins 1-3: empty
       // Bin 4: [7.4, 9.0] contains 9.0
-      // Bin 5: null bin contains 2 null values
       result.bins(0).frequency shouldBe 1 // Contains 1.0
       result.bins(1).frequency shouldBe 0 // Empty
       result.bins(2).frequency shouldBe 0 // Empty
       result.bins(3).frequency shouldBe 0 // Empty
       result.bins(4).frequency shouldBe 1 // Contains 9.0
-      result.bins(5).frequency shouldBe 2 // Contains 2 null values
 
-      // Total values should include nulls for consistency with Histogram
-      val totalValues = result.bins.map(_.frequency).sum
-      totalValues shouldBe 4 // 2 non-null + 2 null values
+      // Nulls tracked separately
+      result.nullCount shouldBe 2
     }
   }
 
@@ -449,8 +437,8 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       result.value.isSuccess shouldBe true
       val distribution = result.value.get
 
-      distribution.numberOfBins shouldBe 4 // 3 numeric bins + 1 NullValue bin
-      distribution.bins.size shouldBe 4
+      distribution.numberOfBins shouldBe 3 // only data bins
+      distribution.bins.size shouldBe 3
 
       // Check numeric bins (non-null values: 1, 3, 5, 7, 9)
       distribution(0).binStart shouldBe 0.0
@@ -465,10 +453,8 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       distribution(2).binEnd shouldBe 10.0
       distribution(2).frequency shouldBe 1 // value 9.0
 
-      // Check NullValue bin
-      distribution(3).binStart shouldBe Double.NegativeInfinity
-      distribution(3).binEnd shouldBe Double.PositiveInfinity
-      distribution(3).frequency shouldBe 3 // 3 null values
+      // Null count is separate
+      distribution.nullCount shouldBe 3
     }
 
     "handle duplicate values at bin boundaries correctly" in withSparkSession { spark =>

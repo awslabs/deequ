@@ -940,6 +940,11 @@ private[deequ] object DistributionBinnedSerializer extends JsonSerializer[Distri
     }
 
     result.add("bins", bins)
+
+    if (distributionBinned.nullCount > 0) {
+      result.addProperty("nullCount", distributionBinned.nullCount)
+    }
+
     result
   }
 }
@@ -963,7 +968,11 @@ private[deequ] object DistributionBinnedDeserializer extends JsonDeserializer[Di
       }
       .toVector
 
-    DistributionBinned(bins, jsonObject.get("numberOfBins").getAsLong)
+    val nullCount = if (jsonObject.has("nullCount")) {
+      jsonObject.get("nullCount").getAsLong
+    } else 0L
+
+    DistributionBinned(bins, jsonObject.get("numberOfBins").getAsLong, nullCount)
   }
 }
 

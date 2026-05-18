@@ -387,16 +387,10 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
         |          "metric": {
         |            "metricName": "HistogramBinnedMetric",
         |            "column": "columnA",
-        |            "numberOfBins": 3,
+        |            "numberOfBins": 2,
         |            "value": {
-        |              "numberOfBins": 3,
+        |              "numberOfBins": 2,
         |              "bins": [
-        |                {
-        |                  "binStart": -Infinity,
-        |                  "binEnd": -Infinity,
-        |                  "frequency": 2,
-        |                  "ratio": 0.2
-        |                },
         |                {
         |                  "binStart": 0.0,
         |                  "binEnd": 15.0,
@@ -409,7 +403,8 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
         |                  "frequency": 4,
         |                  "ratio": 0.4
         |                }
-        |              ]
+        |              ],
+        |              "nullCount": 2
         |            }
         |          }
         |        }
@@ -476,10 +471,9 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     val analyzer = HistogramBinned("columnA", Some(3))
     val metric = HistogramBinnedMetric("columnA", Success(DistributionBinned(
       Vector(
-        BinData(Double.NegativeInfinity, Double.NegativeInfinity, 2, 0.2),
         BinData(0.0, 15.0, 4, 0.4),
         BinData(15.0, 30.0, 4, 0.4)
-      ), 3)))
+      ), 2, 2)))
     val context = AnalyzerContext(Map(analyzer -> metric))
     val result = new AnalysisResult(ResultKey(0), context)
     assert(serialize(Seq(result)) == expected)
@@ -489,10 +483,9 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     val analyzer = HistogramBinned("columnA", Some(3))
     val metric = HistogramBinnedMetric("columnA", Success(DistributionBinned(
       Vector(
-        BinData(Double.NegativeInfinity, Double.NegativeInfinity, 2, 0.2),
         BinData(0.0, 15.0, 4, 0.4),
         BinData(15.0, 30.0, 4, 0.4)
-      ), 3)))
+      ), 2, 2)))
     val context = AnalyzerContext(Map(analyzer -> metric))
     val expected = new AnalysisResult(ResultKey(0), context)
     assert(deserialize(histogramBinnedWithNullsJson) == List(expected))
