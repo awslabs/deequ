@@ -239,19 +239,10 @@ case class HistogramBinned(
             BinData(binStart, binEnd, distValue.absolute, distValue.ratio)
           }.toVector
 
-          // Add NullValue bin if it exists
-          val finalBins = if (histogramDetails.contains(Histogram.NullFieldReplacement)) {
-            val nullDistValue = histogramDetails(Histogram.NullFieldReplacement)
-            val nullBin = BinData(Double.NegativeInfinity, Double.PositiveInfinity,
-                                 nullDistValue.absolute, nullDistValue.ratio)
-            binDataSeq :+ nullBin
-          } else {
-            binDataSeq
-          }
+          val nullCount = histogramDetails.get(Histogram.NullFieldReplacement)
+            .map(_.absolute).getOrElse(0L)
 
-          // Total bins including empty bins and null bin, not just non-empty row count
-          val totalBins = finalBins.size
-          DistributionBinned(finalBins, totalBins)
+          DistributionBinned(binDataSeq, binDataSeq.size, nullCount)
         }
 
         HistogramBinnedMetric(column, value)
