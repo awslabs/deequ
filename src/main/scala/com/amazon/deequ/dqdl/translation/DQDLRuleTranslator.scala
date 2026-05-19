@@ -30,6 +30,7 @@ import com.amazon.deequ.dqdl.translation.rules.MeanRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnCountRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountRule
 import com.amazon.deequ.dqdl.translation.rules.RangeRule
+import com.amazon.deequ.dqdl.translation.rules.DuplicateRowCountRule
 import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
 import com.amazon.deequ.dqdl.translation.rules.SumRule
 import com.amazon.deequ.dqdl.translation.rules.VarianceRule
@@ -81,7 +82,8 @@ object DQDLRuleTranslator {
     "IsPrimaryKey" -> new IsPrimaryKeyRule,
     "ColumnLength" -> new ColumnLengthRule,
     "ColumnExists" -> new ColumnExistsRule,
-    "ColumnValues" -> new ColumnValuesRule
+    "ColumnValues" -> new ColumnValuesRule,
+    "DuplicateRowCount" -> new DuplicateRowCountRule
   )
 
   /**

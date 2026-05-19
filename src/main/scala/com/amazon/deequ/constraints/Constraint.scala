@@ -143,6 +143,28 @@ object Constraint {
   }
 
   /**
+    * Runs DuplicateRowCount analysis on the given columns and executes the assertion
+    *
+    * @param columns Columns to check for duplicates
+    * @param assertion Function that receives a long input parameter and returns a boolean
+    * @param where Additional filter to apply before the analyzer is run.
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def duplicateRowCountConstraint(
+      columns: Seq[String],
+      assertion: Long => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val duplicateRowCount = DuplicateRowCount(columns, where)
+    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Long](
+      duplicateRowCount, assertion, Some(_.toLong), hint)
+
+    new NamedConstraint(constraint, s"DuplicateRowCountConstraint($duplicateRowCount)")
+  }
+
+  /**
     * Runs Histogram analysis on the given column and executes the assertion
     *
     * @param column     Column to run the assertion on
