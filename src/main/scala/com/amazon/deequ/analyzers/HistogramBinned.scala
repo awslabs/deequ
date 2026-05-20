@@ -149,7 +149,7 @@ case class HistogramBinned(
       // e.g. 100 bins x 1B rows = ~7 comparisons/row vs ~99 for linear scan.
       def buildBinaryCondition(binIndices: Seq[Int]): Column = {
         if (binIndices.isEmpty) {
-          lit(Histogram.NullFieldReplacement)
+          lit(HistogramBinned.OutOfRangeReplacement)
         } else if (binIndices.size == 1) {
           // Single bin, check if value falls in this bin
           val i = binIndices.head
@@ -165,7 +165,7 @@ case class HistogramBinned(
             // All other bins exclude upper bound [a, b)
             numericCol >= edges(i) && numericCol < edges(i + 1)
           }
-          when(condition, lit(i.toString)).otherwise(lit(Histogram.NullFieldReplacement))
+          when(condition, lit(i.toString)).otherwise(lit(HistogramBinned.OutOfRangeReplacement))
         } else {
           // Split bins in half and create decision tree
           val mid = binIndices.size / 2
@@ -299,6 +299,8 @@ case class HistogramBinned(
 object HistogramBinned {
   val DefaultBinCount = 10
   val MaximumAllowedDetailBins = 1000
+  // Out-of-range values get this label; ignored in computeMetricFrom (effectively dropped)
+  val OutOfRangeReplacement = "OutOfRange"
 
   // Note: Reuse Histogram.Count and Histogram.Sum for aggregation
   // since after binning, it is working with categorical bin indices
