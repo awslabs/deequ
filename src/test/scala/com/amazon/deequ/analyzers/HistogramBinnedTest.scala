@@ -943,10 +943,34 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       val histogram = HistogramBinned("values", customEdges = Some(customEdges))
       val result = histogram.calculate(data).value.get
 
-      // Only 2 data bins, out-of-range goes to nullCount
+      // Only 2 data bins, out-of-range values are dropped
       result.numberOfBins shouldBe 2
-      // -5.0 and 25.0 are out of range, counted as nullCount
-      result.nullCount shouldBe 2
+      result.bins(0).frequency shouldBe 1  // 5.0 in [0, 10)
+      result.bins(1).frequency shouldBe 0  // [10, 20] empty (25.0 dropped)
+      result.nullCount shouldBe 0  // no actual nulls
+    }
+
+    "drop out-of-range values separately from nulls when overflow disabled" in withSparkSession { spark =>
+      import spark.implicits._
+
+      // Mix of: in-range, out-of-range, and null values
+      val data = Seq(Some(-10.0), Some(5.0), None, Some(15.0), Some(50.0), None).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges))
+      val result = histogram.calculate(data).value.get
+
+      // Only data bins
+      result.numberOfBins shouldBe 2
+      result.bins(0).frequency shouldBe 1  // 5.0 in [0, 10)
+      result.bins(1).frequency shouldBe 1  // 15.0 in [10, 20]
+
+      // Only actual nulls in nullCount, not out-of-range
+      result.nullCount shouldBe 2  // two None values
+
+      // -10.0 and 50.0 are dropped (not counted anywhere)
+      val totalCounted = result.bins.map(_.frequency).sum + result.nullCount
+      totalCounted shouldBe 4  // 6 total rows - 2 dropped = 4
     }
 
     "throw when binCount < 3 with overflow enabled" in withSparkSession { spark =>
