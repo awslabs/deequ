@@ -72,6 +72,7 @@ jobs:
           SM_ISSUE_CLASSIFY_PROMPT: deequ-bot/issue-classify-prompt
           SM_ISSUE_RESPOND_PROMPT: deequ-bot/issue-respond-prompt
           SM_PR_FILE_REVIEW_PROMPT: deequ-bot/pr-file-review-prompt
+          SM_PR_FILE_REVIEW_REPORT_PROMPT: deequ-bot/pr-file-review-report-prompt
           SM_FOLLOWUP_PROMPT: deequ-bot/followup-prompt
           CODEBASE_SRC_DIR: src/main/scala
           CODEBASE_FILE_EXT: .scala

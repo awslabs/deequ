@@ -188,8 +188,8 @@ def analyze():
                 f"<incremental_diff>\n{incremental_diff}\n</incremental_diff>\n"
             )
 
-        # System prompt: instructions + all trusted context (not scanned by guardrail)
-        system_prompt = _render(tmpl, current_date=datetime.date.today().isoformat()) + (
+        # Build context for Phase 1 (full context including source files)
+        phase1_context = (
             f"\n\n<knowledge_base>\n{context}\n</knowledge_base>\n"
             f"<codebase_map>\n{codebase_map}\n</codebase_map>\n"
             f"<full_source_files>\n{full_sources}\n</full_source_files>\n"
@@ -197,9 +197,40 @@ def analyze():
             f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
             f"{incremental_section}"
         )
-        # User prompt: only user-authored content (scanned by guardrail)
         user_prompt = f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
-        raw = bedrock.invoke(system_prompt, user_prompt,
+
+        # PHASE 1: Investigation (free-form, no schema)
+        phase1_prompt = _render(tmpl, current_date=datetime.date.today().isoformat()) + phase1_context
+        investigation = bedrock.invoke(phase1_prompt, user_prompt, max_tokens=8000)
+        if investigation is None:
+            _write_artifact({
+                "action": "ESCALATE", "reason": "bedrock_unavailable", "title": title,
+                "html_url": html_url, "number": number, "is_pr": True,
+                "prompt_id": prompts.prompt_version(tmpl), "model_id": cfg.bedrock_model_id,
+            })
+            return
+
+        # PHASE 2: Always run — structured reporting (schema-enforced falsification)
+        # Phase 2 gets diff + investigation notes but NOT full_source_files (already analyzed in Phase 1)
+        report_tmpl = prompts.get_pr_file_review_report_prompt()
+        if not report_tmpl:
+            _write_artifact({
+                "action": "ESCALATE", "reason": "prompt_load_failed", "title": title,
+                "html_url": html_url, "number": number, "is_pr": True,
+                "prompt_id": "n/a", "model_id": cfg.bedrock_model_id,
+            })
+            return
+        report_system = (
+            _render(report_tmpl, current_date=datetime.date.today().isoformat())
+            + f"\n<diff>\n{diff}\n</diff>\n"
+        )
+        # Investigation notes go in user message (scanned by guardrail)
+        report_user = (
+            f"<investigation_notes>\n{investigation}\n</investigation_notes>\n\n"
+            f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+        )
+
+        raw = bedrock.invoke(report_system, report_user,
                              max_tokens=8000, json_schema=PR_REVIEW_SCHEMA)
         if raw is None:
             _write_artifact({
@@ -210,9 +241,35 @@ def analyze():
             return
         try:
             pr_result = json.loads(raw)
-            inline_comments = pr_result.get("comments", [])
-        except json.JSONDecodeError:
-            inline_comments = _parse_file_review_multi(raw)
+            if not isinstance(pr_result, dict):
+                raise TypeError("Phase 2 root is not an object")
+            analysis = pr_result.get("analysis", [])
+            if not isinstance(analysis, list):
+                raise TypeError("Phase 2 analysis is not a list")
+            confirmed = []
+            for a in analysis:
+                if not isinstance(a, dict):
+                    continue
+                if a.get("disproved") is True:
+                    continue
+                finding = a.get("finding")
+                if not isinstance(finding, dict):
+                    continue
+                confirmed.append(a)
+            inline_comments = [
+                {
+                    "file": c.get("file") or "",
+                    "line": c.get("line") or 0,
+                    "severity": c["finding"].get("severity") or "",
+                    "comment": c["finding"].get("comment") or "",
+                    "evidence": c["finding"].get("evidence") or "",
+                }
+                for c in confirmed
+            ]
+        except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
+            logger.error("Phase 2 returned unexpected format (%s): %s",
+                         type(e).__name__, (raw or "")[:500])
+            inline_comments = []
 
         # Hard filter: on incremental review, drop comments on files not in the incremental diff
         if incremental_files and inline_comments:
@@ -377,9 +434,13 @@ def act():
 
     if action == "RESPOND":
         inline_comments = result.get("inline_comments", [])
+        if not isinstance(inline_comments, list):
+            inline_comments = []
         # Sanitize inline comment text and keep the sanitized version
         sanitized_comments = []
         for ic in inline_comments:
+            if not isinstance(ic, dict):
+                continue
             safe_comment = sanitize(ic.get("comment", ""))
             if safe_comment is not None:
                 sanitized_comments.append({**ic, "comment": safe_comment})
