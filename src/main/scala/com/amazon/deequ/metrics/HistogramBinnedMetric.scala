@@ -32,11 +32,15 @@ case class DistributionBinned(
 
   def getInterval(index: Int): String = {
     val bin = bins(index)
-    if (index == bins.length - 1) {
-      f"[${bin.binStart}%.2f, ${bin.binEnd}%.2f]"
-    } else {
-      f"[${bin.binStart}%.2f, ${bin.binEnd}%.2f)"
+    val leftBracket = if (bin.binStart.isNegInfinity) "(" else "["
+    val isLastInterior = index < bins.length - 1 &&
+      bins(index + 1).binEnd.isPosInfinity
+    val rightBracket = if (bin.binEnd.isPosInfinity) ")" else {
+      if (index == bins.length - 1 || isLastInterior) "]" else ")"
     }
+    val startStr = if (bin.binStart.isNegInfinity) "-Inf" else f"${bin.binStart}%.2f"
+    val endStr = if (bin.binEnd.isPosInfinity) "Inf" else f"${bin.binEnd}%.2f"
+    s"$leftBracket$startStr, $endStr$rightBracket"
   }
 }
 

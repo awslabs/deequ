@@ -50,6 +50,7 @@ case class HistogramBinned(
                             override val column: String,
                             binCount: Option[Int] = None,
                             customEdges: Option[Array[Double]] = None,
+                            includeOverflowBins: Boolean = false,
                             override val where: Option[String] = None,
                             override val computeFrequenciesAsRatio: Boolean = true,
                             // Reuse Histogram's AggregateFunction implementations since just grouping
@@ -71,6 +72,7 @@ case class HistogramBinned(
       column == other.column &&
         binCount == other.binCount &&
         customEdges.map(_.toSeq) == other.customEdges.map(_.toSeq) &&
+        includeOverflowBins == other.includeOverflowBins &&
         where == other.where &&
         computeFrequenciesAsRatio == other.computeFrequenciesAsRatio &&
         aggregateFunction == other.aggregateFunction
@@ -78,21 +80,30 @@ case class HistogramBinned(
   }
 
   override def hashCode(): Int = {
-    (column, binCount, customEdges.map(_.toSeq), where,
-      computeFrequenciesAsRatio, aggregateFunction).hashCode()
+    (column, binCount, customEdges.map(_.toSeq), includeOverflowBins,
+      where, computeFrequenciesAsRatio, aggregateFunction).hashCode()
   }
 
   private var storedEdges: Array[Double] = _
 
   protected[this] val PARAM_CHECK: StructType => Unit = { _ =>
     binCount.foreach { count =>
+      if (includeOverflowBins && count < 3) {
+        throw new IllegalAnalyzerParameterException(
+          "binCount must be at least 3 when includeOverflowBins is true (2 overflow + 1 interior)")
+      }
       if (count > HistogramBinned.MaximumAllowedDetailBins) {
         throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
           s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
       }
     }
     customEdges.foreach { edges =>
-      val numBins = edges.length - 1
+      // Count overflow bins that will actually be added (only if not already present)
+      val overflowExtra = if (includeOverflowBins) {
+        (if (edges.sorted.head != Double.NegativeInfinity) 1 else 0) +
+        (if (edges.sorted.last != Double.PositiveInfinity) 1 else 0)
+      } else 0
+      val numBins = edges.length - 1 + overflowExtra
       if (numBins > HistogramBinned.MaximumAllowedDetailBins) {
         throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
           s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
@@ -128,7 +139,7 @@ case class HistogramBinned(
     // Create binned data using DataFrame operations
     val binnedData = if (storedEdges.isEmpty) {
       filteredData.withColumn(column, lit(Histogram.NullFieldReplacement))
-    } else if (customEdges.isDefined) {
+    } else if (customEdges.isDefined || includeOverflowBins) {
       val edges = storedEdges
 
       // Builds a balanced binary decision tree of when/otherwise expressions,
@@ -142,8 +153,13 @@ case class HistogramBinned(
         } else if (binIndices.size == 1) {
           // Single bin, check if value falls in this bin
           val i = binIndices.head
-          val condition = if (i == edges.length - 2) {
-            // Last bin includes upper bound [a, b]
+          val isLastBin = i == edges.length - 2
+          // Last interior bin is inclusive [a, b] when overflow is enabled,
+          // so data max stays in interior. Identified by: next bin ends at +Inf.
+          val isLastInterior = includeOverflowBins && i < edges.length - 2 &&
+            edges(i + 2) == Double.PositiveInfinity
+          val condition = if (isLastBin || isLastInterior) {
+            // Last bin and last interior bin are inclusive [a, b]
             numericCol >= edges(i) && numericCol <= edges(i + 1)
           } else {
             // All other bins exclude upper bound [a, b)
@@ -156,8 +172,17 @@ case class HistogramBinned(
           val (leftBins, rightBins) = binIndices.splitAt(mid)
           val splitEdge = edges(rightBins.head)
 
-          when(numericCol < splitEdge, buildBinaryCondition(leftBins))
-            .otherwise(buildBinaryCondition(rightBins))
+          // When the right branch starts with the overflow bin, use <= so that
+          // values on the boundary stay in the last interior bin (left side)
+          val isOverflowSplit = includeOverflowBins &&
+            edges(rightBins.head + 1) == Double.PositiveInfinity
+          if (isOverflowSplit) {
+            when(numericCol <= splitEdge, buildBinaryCondition(leftBins))
+              .otherwise(buildBinaryCondition(rightBins))
+          } else {
+            when(numericCol < splitEdge, buildBinaryCondition(leftBins))
+              .otherwise(buildBinaryCondition(rightBins))
+          }
         }
       }
 
@@ -188,7 +213,15 @@ case class HistogramBinned(
   }
 
   private def computeCustomEdges(): Array[Double] = {
-    customEdges.get.sorted
+    val sorted = customEdges.get.sorted
+    addOverflowEdges(sorted)
+  }
+
+  private def addOverflowEdges(edges: Array[Double]): Array[Double] = {
+    if (!includeOverflowBins) return edges
+    val withLeft = if (edges.head != Double.NegativeInfinity) Double.NegativeInfinity +: edges else edges
+    val withBoth = if (withLeft.last != Double.PositiveInfinity) withLeft :+ Double.PositiveInfinity else withLeft
+    withBoth.toArray
   }
 
   private def computeEqualWidthEdges(filteredData: DataFrame,
@@ -207,9 +240,11 @@ case class HistogramBinned(
 
     val minDouble = minVal.doubleValue()
     val maxDouble = maxVal.doubleValue()
-    val binWidth = (maxDouble - minDouble) / binCount.get
+    val interiorBins = if (includeOverflowBins) binCount.get - 2 else binCount.get
+    val binWidth = (maxDouble - minDouble) / interiorBins
 
-    Array.tabulate(binCount.get + 1)(i => minDouble + i * binWidth)
+    val edges = Array.tabulate(interiorBins + 1)(i => minDouble + i * binWidth)
+    addOverflowEdges(edges)
   }
 
   override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramBinnedMetric = {

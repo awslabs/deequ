@@ -372,6 +372,9 @@ private[deequ] object AnalyzerSerializer
         if (histogramBinned.customEdges.isDefined) {
           result.add("customEdges", context.serialize(histogramBinned.customEdges.get))
         }
+        if (histogramBinned.includeOverflowBins) {
+          result.addProperty("includeOverflowBins", true)
+        }
         result.addProperty(WHERE_FIELD, histogramBinned.where.orNull)
 
       case _ : Histogram =>
@@ -601,10 +604,14 @@ private[deequ] object AnalyzerDeserializer
         val customEdges = if (json.has("customEdges")) {
           Some(context.deserialize(json.get("customEdges"), classOf[Array[Double]]))
         } else None
+        val includeOverflowBins = if (json.has("includeOverflowBins")) {
+          json.get("includeOverflowBins").getAsBoolean
+        } else false
         HistogramBinned(
           json.get(COLUMN_FIELD).getAsString,
           binCount,
           customEdges,
+          includeOverflowBins,
           getOptionalWhereParam(json))
 
       case "DataType" =>
