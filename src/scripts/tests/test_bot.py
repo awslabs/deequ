@@ -679,8 +679,9 @@ class TestPrReviewReportDefensiveParsing:
              "falsification_attempt": "fa", "disproved": False,
              "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
         ]}))
-        # file:None coalesces to "" — comment is kept (no incremental filter on first review)
+        # file:None coalesces to "" → dropped by the file/line hard filter
         assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
 
     def test_non_dict_analysis_returns_no_findings(self, tmp_path, monkeypatch):
         result = self._run_with_report_phase(tmp_path, monkeypatch,
@@ -714,6 +715,30 @@ class TestPrReviewReportDefensiveParsing:
     def test_root_not_object_handled(self, tmp_path, monkeypatch):
         result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps([1, 2, 3]))
         assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_zero_line_dropped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": 0, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        assert result["inline_comments"] == []
+
+    def test_negative_line_dropped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": -3, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        assert result["inline_comments"] == []
+
+    def test_empty_file_dropped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "", "line": 5, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
         assert result["inline_comments"] == []
 
 

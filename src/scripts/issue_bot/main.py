@@ -223,6 +223,7 @@ def analyze():
         report_system = (
             _render(report_tmpl, current_date=datetime.date.today().isoformat())
             + f"\n<diff>\n{diff}\n</diff>\n"
+            + f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
         )
         # Investigation notes go in user message (scanned by guardrail)
         report_user = (
@@ -270,6 +271,12 @@ def analyze():
             logger.error("Phase 2 returned unexpected format (%s): %s",
                          type(e).__name__, (raw or "")[:500])
             inline_comments = []
+
+        # Hard filter: drop comments without a usable file path or positive line number
+        inline_comments = [
+            c for c in inline_comments
+            if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
+        ]
 
         # Hard filter: on incremental review, drop comments on files not in the incremental diff
         if incremental_files and inline_comments:
