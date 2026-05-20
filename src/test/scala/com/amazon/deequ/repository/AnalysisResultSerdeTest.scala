@@ -81,7 +81,7 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
       HistogramBinned("ColumnA", Some(3)) ->
         HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
           Vector(BinData(0.0, 15.0, 4, 0.4), BinData(15.0, 30.0, 4, 0.4)), 2, 2))),
-      HistogramBinned("ColumnA", Some(5), None, Some("id > 3")) ->
+      HistogramBinned("ColumnA", Some(5), None, includeOverflowBins = false, where = Some("id > 3")) ->
         HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
           Vector(BinData(0.0, 10.0, 3, 0.6), BinData(10.0, 20.0, 2, 0.4)), 2))),
       Entropy("ColumnA") ->
@@ -572,6 +572,24 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     val context = AnalyzerContext(Map(analyzer -> metric))
     val expected = new AnalysisResult(ResultKey(0), context)
     assert(deserialize(histogramBinnedCustomEdgesJson) == List(expected))
+  }
+
+  "HistogramBinned with overflow" should "round-trip serialize and deserialize" in {
+    val customEdges = Array(0.0, 10.0, 20.0)
+    val analyzer = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+    val metric = HistogramBinnedMetric("values", Success(DistributionBinned(
+      Vector(
+        BinData(Double.NegativeInfinity, 0.0, 1, 0.25),
+        BinData(0.0, 10.0, 1, 0.25),
+        BinData(10.0, 20.0, 1, 0.25),
+        BinData(20.0, Double.PositiveInfinity, 1, 0.25)
+      ), 4)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    val serialized = serialize(List(result))
+    val deserialized = deserialize(serialized)
+    assert(deserialized == List(result))
   }
 
   def assertCorrectlyConvertsAnalysisResults(

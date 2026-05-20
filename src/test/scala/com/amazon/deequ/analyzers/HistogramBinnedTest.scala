@@ -648,6 +648,343 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
     }
   }
 
+  "HistogramBinned (overflow bins)" should {
+    "add overflow bins to custom edges" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(1.0, 5.0, 15.0, 25.0).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 4
+
+      distribution(0).binStart shouldBe Double.NegativeInfinity
+      distribution(0).binEnd shouldBe 0.0
+      distribution(0).frequency shouldBe 0
+
+      distribution(1).binStart shouldBe 0.0
+      distribution(1).binEnd shouldBe 10.0
+      distribution(1).frequency shouldBe 2
+
+      distribution(2).binStart shouldBe 10.0
+      distribution(2).binEnd shouldBe 20.0
+      distribution(2).frequency shouldBe 1
+
+      distribution(3).binStart shouldBe 20.0
+      distribution(3).binEnd shouldBe Double.PositiveInfinity
+      distribution(3).frequency shouldBe 1
+    }
+
+    "add overflow bins to auto-computed edges" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(1.0, 2.0, 3.0, 4.0, 5.0).toDF("values")
+
+      // binCount = 5 with overflow: 3 interior + 2 overflow = 5 total
+      val histogram = HistogramBinned("values", binCount = Some(5), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 5
+      distribution(0).binStart shouldBe Double.NegativeInfinity
+      distribution(0).binEnd shouldBe 1.0
+      distribution(0).frequency shouldBe 0  // nothing below min
+
+      // Max value (5.0) stays in last interior bin (inclusive)
+      // Right overflow is empty on first run
+      distribution(4).binStart shouldBe 5.0
+      distribution(4).binEnd shouldBe Double.PositiveInfinity
+      distribution(4).frequency shouldBe 0
+    }
+
+    "not duplicate infinity edges if already present" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(1.0, 5.0, 20.0, 25.0).toDF("values")
+      val customEdges = Array(Double.NegativeInfinity, 0.0, 10.0, 20.0, Double.PositiveInfinity)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 4
+      distribution(0).binStart shouldBe Double.NegativeInfinity
+      distribution(3).binEnd shouldBe Double.PositiveInfinity
+
+      // 20.0 stays in last interior bin [10, 20] not overflow [20, Inf)
+      distribution(2).frequency shouldBe 1  // 20.0
+      distribution(3).frequency shouldBe 1  // 25.0 in overflow
+    }
+
+    "separate nulls from overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Some(-5.0), None, Some(5.0), Some(25.0), None).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // 4 data/overflow bins, nulls separate
+      distribution.numberOfBins shouldBe 4
+
+      distribution(0).binStart shouldBe Double.NegativeInfinity
+      distribution(0).binEnd shouldBe 0.0
+      distribution(0).frequency shouldBe 1
+
+      distribution(3).binStart shouldBe 20.0
+      distribution(3).binEnd shouldBe Double.PositiveInfinity
+      distribution(3).frequency shouldBe 1
+
+      // Nulls in separate field
+      distribution.nullCount shouldBe 2
+    }
+
+    "handle unsorted custom edges with overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(-1.0, 5.0, 15.0).toDF("values")
+      val customEdges = Array(10.0, 0.0) // unsorted
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Sorted to [0.0, 10.0], then overflow added: [-Inf, 0.0, 10.0, Inf]
+      distribution.numberOfBins shouldBe 3
+      distribution(0).binStart shouldBe Double.NegativeInfinity
+      distribution(0).binEnd shouldBe 0.0
+      distribution(0).frequency shouldBe 1  // -1.0
+
+      distribution(1).binStart shouldBe 0.0
+      distribution(1).binEnd shouldBe 10.0
+      distribution(1).frequency shouldBe 1  // 5.0
+
+      distribution(2).binStart shouldBe 10.0
+      distribution(2).binEnd shouldBe Double.PositiveInfinity
+      distribution(2).frequency shouldBe 1  // 15.0
+    }
+
+    "format overflow intervals correctly" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(5.0).toDF("values")
+      val customEdges = Array(0.0, 10.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      result.getInterval(0) shouldBe "(-Inf, 0.00)"
+      result.getInterval(1) shouldBe "[0.00, 10.00]"
+      result.getInterval(2) shouldBe "[10.00, Inf)"
+    }
+
+    "put all data in overflow bins when outside custom range" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(-100.0, -50.0, 200.0, 300.0).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      result.bins(0).frequency shouldBe 2  // -100, -50 in left overflow
+      result.bins(1).frequency shouldBe 0  // [0, 10) empty
+      result.bins(2).frequency shouldBe 0  // [10, 20) empty
+      result.bins(3).frequency shouldBe 2  // 200, 300 in right overflow
+    }
+
+    "route values exactly on first/last custom edge correctly with overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(0.0, 10.0, 20.0).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      // Edges after overflow: [-Inf, 0.0, 10.0, 20.0, Inf]
+      // Bin 0: (-Inf, 0.0) - empty (0.0 excluded)
+      // Bin 1: [0.0, 10.0) - contains 0.0
+      // Bin 2: [10.0, 20.0] - contains 10.0, 20.0 (last interior bin inclusive)
+      // Bin 3: [20.0, Inf] - empty (20.0 captured by last interior)
+      result.bins(0).frequency shouldBe 0
+      result.bins(1).frequency shouldBe 1  // 0.0
+      result.bins(2).frequency shouldBe 2  // 10.0, 20.0
+      result.bins(3).frequency shouldBe 0
+    }
+
+    "work with single custom edge pair and overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(-1.0, 5.0, 15.0).toDF("values")
+      val customEdges = Array(0.0, 10.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      result.numberOfBins shouldBe 3
+      result.bins(0).frequency shouldBe 1  // -1.0 in left overflow
+      result.bins(1).frequency shouldBe 1  // 5.0 in [0, 10]
+      result.bins(2).frequency shouldBe 1  // 15.0 in right overflow
+    }
+
+    "work with Sum aggregation and overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        (-5.0, 100), (5.0, 200), (15.0, 300), (25.0, 400)
+      ).toDF("values", "amount")
+
+      val customEdges = Array(0.0, 10.0, 20.0)
+      val histogram = HistogramBinned(
+        "values",
+        customEdges = Some(customEdges),
+        includeOverflowBins = true,
+        aggregateFunction = Histogram.Sum("amount")
+      )
+      val result = histogram.calculate(data).value.get
+
+      result.bins(0).frequency shouldBe 100  // left overflow sum
+      result.bins(1).frequency shouldBe 200  // [0, 10) sum
+      result.bins(2).frequency shouldBe 300  // [10, 20) sum
+      result.bins(3).frequency shouldBe 400  // right overflow sum
+    }
+
+    "work with where filter and overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        (1, -5.0), (2, 5.0), (3, 15.0), (4, 25.0)
+      ).toDF("id", "values")
+
+      val customEdges = Array(0.0, 10.0, 20.0)
+      val histogram = HistogramBinned(
+        "values",
+        customEdges = Some(customEdges),
+        includeOverflowBins = true,
+        where = Some("id <= 2")
+      )
+      val result = histogram.calculate(data).value.get
+
+      result.bins(0).frequency shouldBe 1  // -5.0 (id=1)
+      result.bins(1).frequency shouldBe 1  // 5.0 (id=2)
+      result.bins(2).frequency shouldBe 0  // filtered out
+      result.bins(3).frequency shouldBe 0  // filtered out
+    }
+
+    "handle empty data with overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq.empty[Double].toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+      distribution.numberOfBins shouldBe 4
+      distribution.bins.foreach(_.frequency shouldBe 0)
+    }
+
+    "handle all nulls with overflow" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Option.empty[Double], None, None).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      // 4 data/overflow bins all empty, nulls separate
+      result.numberOfBins shouldBe 4
+      result.bins(0).frequency shouldBe 0
+      result.bins(1).frequency shouldBe 0
+      result.bins(2).frequency shouldBe 0
+      result.bins(3).frequency shouldBe 0
+      result.nullCount shouldBe 3
+    }
+
+    "handle extreme values in overflow bins" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Double.MinValue, -1e308, 5.0, 1e308, Double.MaxValue).toDF("values")
+      val customEdges = Array(0.0, 10.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      result.bins(0).frequency shouldBe 2  // MinValue, -1e308 in left overflow
+      result.bins(1).frequency shouldBe 1  // 5.0 in [0, 10]
+      result.bins(2).frequency shouldBe 2  // 1e308, MaxValue in right overflow
+    }
+
+    "not add overflow bins when includeOverflowBins is false (default)" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(-5.0, 5.0, 25.0).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges))
+      val result = histogram.calculate(data).value.get
+
+      // Only 2 data bins, out-of-range goes to nullCount
+      result.numberOfBins shouldBe 2
+      // -5.0 and 25.0 are out of range, counted as nullCount
+      result.nullCount shouldBe 2
+    }
+
+    "throw when binCount < 3 with overflow enabled" in withSparkSession { spark =>
+      import spark.implicits._
+      import com.amazon.deequ.analyzers.runners.AnalysisRunner
+
+      val data = Seq(1.0, 2.0, 3.0).toDF("values")
+      val histogram = HistogramBinned("values", binCount = Some(2), includeOverflowBins = true)
+
+      val analysis = AnalysisRunner.onData(data).addAnalyzer(histogram)
+      val result = analysis.run()
+
+      val metric = result.metricMap(histogram)
+      metric.value.isFailure shouldBe true
+    }
+
+    "handle values exactly on overflow boundary edges" in withSparkSession { spark =>
+      import spark.implicits._
+
+      // Values exactly on the min and max (which become interior/overflow boundaries)
+      val data = Seq(0.0, 5.0, 10.0, 15.0, 20.0).toDF("values")
+      val customEdges = Array(0.0, 10.0, 20.0)
+
+      val histogram = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+      val result = histogram.calculate(data).value.get
+
+      // Edges after overflow: [-Inf, 0.0, 10.0, 20.0, Inf]
+      // Bin 0: (-Inf, 0.0) - empty (0.0 excluded from left overflow)
+      // Bin 1: [0.0, 10.0) - contains 0.0, 5.0
+      // Bin 2: [10.0, 20.0] - contains 10.0, 15.0, 20.0 (last interior inclusive)
+      // Bin 3: (20.0, Inf] - empty
+      result.bins(0).frequency shouldBe 0
+      result.bins(1).frequency shouldBe 2  // 0.0, 5.0
+      result.bins(2).frequency shouldBe 3  // 10.0, 15.0, 20.0
+      result.bins(3).frequency shouldBe 0
+    }
+  }
+
   "HistogramBinned parameter validation" should {
     "throw IllegalArgumentException when neither binCount nor customEdges is provided" in {
       val exception = intercept[IllegalArgumentException] {
