@@ -572,6 +572,86 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
 
     // TODO: Enable Variance DQDL rule test once the external DQDL parser supports the Variance rule type.
 
+    "support DuplicateRowCount rule with explicit columns" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount "item" "att1" "att2" = 2]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DuplicateRowCount rule failure with explicit columns" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount "item" "att1" "att2" = 0]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support DuplicateRowCount rule without columns (all columns)" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount = 2]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DuplicateRowCount with less-than operator" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount < 10]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DuplicateRowCount with between operator" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount between 0 and 10]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
     "support Sum rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfWithNumericValues(sparkSession)

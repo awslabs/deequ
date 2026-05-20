@@ -139,6 +139,25 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on the number of duplicate rows.
+    *
+    * @param columns Columns to check for duplicates
+    * @param assertion Function that receives a long input parameter (duplicate row count)
+    *                  and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasDuplicateRowCount(
+      columns: Seq[String],
+      assertion: Long => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      duplicateRowCountConstraint(columns, assertion, filter, hint) }
+  }
+
+  /**
     * Creates a constraint that asserts on a column completion.
     *
     * @param column Column to run the assertion on

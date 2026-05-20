@@ -35,6 +35,8 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
 
     val analyzerContextWithAllSuccValues = new AnalyzerContext(Map(
       Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
+      DuplicateRowCount(Seq("ColumnA", "ColumnB")) ->
+        DoubleMetric(Entity.Multicolumn, "DuplicateRowCount", "ColumnA,ColumnB", Success(5.0)),
       Completeness("ColumnA", analyzerOptions = Some(AnalyzerOptions(
         nullBehavior = NullBehavior.Ignore
       ))) ->

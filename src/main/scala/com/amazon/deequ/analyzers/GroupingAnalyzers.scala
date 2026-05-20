@@ -67,10 +67,11 @@ object FrequencyBasedAnalyzer {
       where: Option[String] = None)
     : FrequenciesAndNumRows = {
 
-    val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
+    val resolvedColumns = if (groupingColumns.isEmpty) data.columns.toSeq else groupingColumns
+    val columnsToGroupBy = resolvedColumns.map { name => col(name) }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
 
-    val atLeastOneNonNullGroupingColumn = groupingColumns
+    val atLeastOneNonNullGroupingColumn = resolvedColumns
       .foldLeft(expr(false.toString)) { case (condition, name) =>
         condition.or(col(name).isNotNull)
       }
