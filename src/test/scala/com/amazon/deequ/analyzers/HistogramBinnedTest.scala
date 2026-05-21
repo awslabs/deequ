@@ -194,6 +194,28 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
       distribution.nullCount shouldBe 3
     }
 
+    "emit nullCount in flatten() when nulls exist" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Some(1.0), None, Some(5.0), None).toDF("values")
+      val histogram = HistogramBinned("values", binCount = Some(3))
+      val metric = histogram.calculate(data)
+
+      val flattened = metric.flatten()
+      flattened.exists(m => m.name == "HistogramBinned.nullCount" && m.value.get == 2.0) shouldBe true
+    }
+
+    "not emit nullCount in flatten() when no nulls" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(1.0, 2.0, 3.0).toDF("values")
+      val histogram = HistogramBinned("values", binCount = Some(3))
+      val metric = histogram.calculate(data)
+
+      val flattened = metric.flatten()
+      flattened.exists(_.name == "HistogramBinned.nullCount") shouldBe false
+    }
+
     "aggregate sum works as expected" in withSparkSession { spark =>
       import spark.implicits._
 
