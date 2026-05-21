@@ -375,6 +375,7 @@ class TestAutoApproveSignal:
 class TestPrompts:
     def test_env_var_takes_precedence(self, monkeypatch):
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "from env")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         monkeypatch.setenv("SM_PR_FILE_REVIEW_PROMPT", "deequ-bot/pr-file-review-prompt")
         from issue_bot.prompts import get_pr_file_review_prompt
         assert get_pr_file_review_prompt() == "from env"
@@ -382,6 +383,7 @@ class TestPrompts:
     def test_empty_env_var_falls_through_to_sm(self, monkeypatch):
         import unittest.mock as mock
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         monkeypatch.setenv("SM_PR_FILE_REVIEW_PROMPT", "deequ-bot/pr-file-review-prompt")
         with mock.patch("issue_bot.prompts._read_from_sm", return_value="from sm") as m:
             from issue_bot.prompts import get_pr_file_review_prompt
@@ -391,6 +393,7 @@ class TestPrompts:
 
     def test_no_sm_env_var_returns_empty(self, monkeypatch):
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         monkeypatch.setenv("SM_PR_FILE_REVIEW_PROMPT", "")
         from issue_bot.prompts import get_pr_file_review_prompt
         # No env var, no SM secret name → empty string
@@ -601,6 +604,144 @@ class TestIncrementalFiltering:
         assert filtered == []
 
 
+class TestPrReviewReportDefensiveParsing:
+    """Phase 2 must not crash on malformed Bedrock output."""
+
+    def _setup_env(self, tmp_path, monkeypatch, event_action="opened"):
+        monkeypatch.setenv("GITHUB_TOKEN", "fake")
+        monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+        monkeypatch.setenv("ISSUE_NUMBER", "42")
+        monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+        monkeypatch.setenv("EVENT_ACTION", event_action)
+        monkeypatch.setenv("EVENT_BEFORE", "")
+        monkeypatch.setenv("EVENT_AFTER", "")
+        monkeypatch.setenv("GITHUB_ACTOR", "contributor")
+        monkeypatch.setenv("KB_S3_BUCKET", "")
+        monkeypatch.setenv("KB_S3_KEY", "")
+        monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
+        import issue_bot.main as bot_main
+        monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
+
+    def _run_with_report_phase(self, tmp_path, monkeypatch, report_phase_json, event_action="opened"):
+        import unittest.mock as mock
+        self._setup_env(tmp_path, monkeypatch, event_action=event_action)
+        with mock.patch("issue_bot.github_client.GitHubClient.get_pr") as mock_pr, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_comments") as mock_comments, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_pr_diff") as mock_diff, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_pr_review_comments") as mock_rc, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
+             mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
+             mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
+             mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
+             mock.patch("issue_bot.bedrock_client.BedrockClient.invoke") as mock_bedrock:
+            mock_pr.return_value = {"user": {"login": "contributor"}, "title": "Fix",
+                                    "body": "", "state": "open",
+                                    "html_url": "https://github.com/x"}
+            mock_comments.return_value = []
+            mock_diff.return_value = "diff"
+            mock_rc.return_value = []
+            mock_files.return_value = [{"filename": "f.py"}]
+            mock_content.return_value = "content"
+            mock_map.return_value = ""
+            mock_kb.return_value = ""
+            mock_ci.return_value = (True, "")
+            mock_bedrock.side_effect = ["investigation text", report_phase_json]
+            from issue_bot.main import analyze
+            analyze()
+            with open(str(tmp_path / "result.json")) as f:
+                return json.load(f)
+
+    def test_severity_null_does_not_crash(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": 1, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": None, "comment": "c", "evidence": "e"}},
+        ]}), event_action="synchronize")
+        assert result["action"] == "RESPOND"
+        assert len(result["inline_comments"]) == 1
+
+    def test_comment_null_does_not_crash(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": 1, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": None, "evidence": "e"}},
+        ]}))
+        assert result["action"] == "RESPOND"
+        assert len(result["inline_comments"]) == 1
+
+    def test_file_null_drops_comment_safely(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": None, "line": 1, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        # file:None coalesces to "" → dropped by the file/line hard filter
+        assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_non_dict_analysis_returns_no_findings(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch,
+                                        json.dumps({"analysis": "not-a-list"}))
+        assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_non_dict_analysis_item_skipped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch,
+                                        json.dumps({"analysis": [123, "abc", None]}))
+        assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_disproved_true_excluded_even_with_finding(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": 1, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": True,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_finding_missing_excluded(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": 1, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False},
+        ]}))
+        assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_root_not_object_handled(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps([1, 2, 3]))
+        assert result["action"] == "RESPOND"
+        assert result["inline_comments"] == []
+
+    def test_zero_line_dropped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": 0, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        assert result["inline_comments"] == []
+
+    def test_negative_line_dropped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "f.py", "line": -3, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        assert result["inline_comments"] == []
+
+    def test_empty_file_dropped(self, tmp_path, monkeypatch):
+        result = self._run_with_report_phase(tmp_path, monkeypatch, json.dumps({"analysis": [
+            {"file": "", "line": 5, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}))
+        assert result["inline_comments"] == []
+
+
 class TestNitFilterAndFormatting:
     """Tests for hard NIT filter on re-reviews and evidence formatting."""
 
@@ -616,6 +757,7 @@ class TestNitFilterAndFormatting:
         monkeypatch.setenv("KB_S3_BUCKET", "")
         monkeypatch.setenv("KB_S3_KEY", "")
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         import issue_bot.main as bot_main
         monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
 
@@ -646,12 +788,22 @@ class TestNitFilterAndFormatting:
             mock_files.return_value = [{"filename": "f.py"}]
             mock_content.return_value = "content"
             mock_ci.return_value = (True, "CI passed")
-            mock_bedrock.return_value = json.dumps({"comments": [
-                {"file": "f.py", "line": 1, "severity": "BUG", "comment": "real bug",
-                 "evidence": "line 1 divides by zero"},
-                {"file": "f.py", "line": 1, "severity": "NIT", "comment": "rename var",
-                 "evidence": "x is not descriptive"},
-            ]})
+            # Phase 1 returns investigation text, Phase 2 returns structured JSON
+            mock_bedrock.side_effect = [
+                "CONFIRMED: f.py line 1 - real bug\nDISPROVED: f.py line 1 - rename var",
+                json.dumps({"analysis": [
+                    {"file": "f.py", "line": 1, "hypothesis": "real bug",
+                     "falsification_attempt": "checked, no guard exists",
+                     "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "real bug",
+                                 "evidence": "line 1 divides by zero", "trigger": "count=0"}},
+                    {"file": "f.py", "line": 1, "hypothesis": "rename var",
+                     "falsification_attempt": "this is just style",
+                     "disproved": False,
+                     "finding": {"severity": "NIT", "comment": "rename var",
+                                 "evidence": "x is not descriptive", "trigger": ""}},
+                ]})
+            ]
 
             bot_main.analyze()
 
@@ -675,6 +827,7 @@ class TestNitFilterAndFormatting:
         monkeypatch.setenv("KB_S3_BUCKET", "")
         monkeypatch.setenv("KB_S3_KEY", "")
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         import issue_bot.main as bot_main
         monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
 
@@ -701,12 +854,17 @@ class TestNitFilterAndFormatting:
             mock_files.return_value = [{"filename": "f.py"}]
             mock_content.return_value = "content"
             mock_ci.return_value = (True, "CI passed")
-            mock_bedrock.return_value = json.dumps({"comments": [
-                {"file": "f.py", "line": 1, "severity": "BUG", "comment": "bug",
-                 "evidence": "evidence1"},
-                {"file": "f.py", "line": 2, "severity": "NIT", "comment": "nit",
-                 "evidence": "evidence2"},
-            ]})
+            mock_bedrock.side_effect = [
+                "CONFIRMED: f.py line 1 - bug\nCONFIRMED: f.py line 2 - nit",
+                json.dumps({"analysis": [
+                    {"file": "f.py", "line": 1, "hypothesis": "bug",
+                     "falsification_attempt": "no guard", "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "bug", "evidence": "evidence1", "trigger": "x=0"}},
+                    {"file": "f.py", "line": 2, "hypothesis": "nit",
+                     "falsification_attempt": "style only", "disproved": False,
+                     "finding": {"severity": "NIT", "comment": "nit", "evidence": "evidence2", "trigger": ""}},
+                ]})
+            ]
 
             bot_main.analyze()
 
@@ -728,6 +886,7 @@ class TestNitFilterAndFormatting:
         monkeypatch.setenv("KB_S3_BUCKET", "")
         monkeypatch.setenv("KB_S3_KEY", "")
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         import issue_bot.main as bot_main
         monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
 
@@ -754,11 +913,17 @@ class TestNitFilterAndFormatting:
             mock_files.return_value = [{"filename": "f.py"}]
             mock_content.return_value = "content"
             mock_ci.return_value = (True, "CI passed")
-            mock_bedrock.return_value = json.dumps({"comments": [
-                {"file": "f.py", "line": 5, "severity": "BUG",
-                 "comment": "division by zero",
-                 "evidence": "line 3 sets count=0, line 5 divides by count"},
-            ]})
+            mock_bedrock.side_effect = [
+                "CONFIRMED: f.py line 5 - division by zero",
+                json.dumps({"analysis": [
+                    {"file": "f.py", "line": 5, "hypothesis": "division by zero",
+                     "falsification_attempt": "no zero check found",
+                     "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "division by zero",
+                                 "evidence": "line 3 sets count=0, line 5 divides by count",
+                                 "trigger": "count=0"}},
+                ]})
+            ]
 
             bot_main.analyze()
 
@@ -786,6 +951,7 @@ class TestIncrementalReviewIntegration:
         monkeypatch.setenv("KB_S3_BUCKET", "")
         monkeypatch.setenv("KB_S3_KEY", "")
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review this PR. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         import issue_bot.main as bot_main
         monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
 
@@ -807,13 +973,15 @@ class TestIncrementalReviewIntegration:
              mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
              mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
              mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
              mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
              mock.patch("issue_bot.bedrock_client.BedrockClient.invoke") as mock_bedrock:
 
             mock_pr.return_value = {"user": {"login": "contributor"}, "title": "Fix bug",
-                                    "body": "Fixes the thing", "state": "open", "html_url": "https://github.com/x"}
+                                    "body": "Fixes the thing", "state": "open",
+                                    "html_url": "https://github.com/x", "head": {"sha": "def456"}}
             mock_comments.return_value = [{"user": {"login": "github-actions[bot]"}, "body": "prior review"}]
             mock_diff.return_value = "full diff here"
             mock_rc.return_value = []
@@ -822,12 +990,20 @@ class TestIncrementalReviewIntegration:
             mock_content.return_value = "file content"
             mock_map.return_value = ""
             mock_kb.return_value = ""
-            mock_bedrock.return_value = json.dumps({
-                "comments": [
-                    {"file": "src/fixed.py", "line": 1, "comment": "new issue in changed file"},
-                    {"file": "src/untouched.py", "line": 5, "comment": "stale comment on unchanged file"},
-                ]
-            })
+            mock_ci.return_value = (True, "")
+            mock_bedrock.side_effect = [
+                "CONFIRMED: src/fixed.py line 1 - new issue\nCONFIRMED: src/untouched.py line 5 - stale",
+                json.dumps({"analysis": [
+                    {"file": "src/fixed.py", "line": 1, "hypothesis": "new issue",
+                     "falsification_attempt": "checked", "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "new issue in changed file",
+                                 "evidence": "proof", "trigger": "x"}},
+                    {"file": "src/untouched.py", "line": 5, "hypothesis": "stale",
+                     "falsification_attempt": "checked", "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "stale comment on unchanged file",
+                                 "evidence": "proof", "trigger": "y"}},
+                ]})
+            ]
 
             from issue_bot.main import analyze
             analyze()
@@ -852,13 +1028,15 @@ class TestIncrementalReviewIntegration:
              mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
              mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
              mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
              mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
              mock.patch("issue_bot.bedrock_client.BedrockClient.invoke") as mock_bedrock:
 
             mock_pr.return_value = {"user": {"login": "contributor"}, "title": "Fix bug",
-                                    "body": "Fixes the thing", "state": "open", "html_url": "https://github.com/x"}
+                                    "body": "Fixes the thing", "state": "open",
+                                    "html_url": "https://github.com/x", "head": {"sha": "def456"}}
             mock_comments.return_value = [{"user": {"login": "github-actions[bot]"}, "body": "prior review"}]
             mock_diff.return_value = "full diff here"
             mock_rc.return_value = []
@@ -867,11 +1045,16 @@ class TestIncrementalReviewIntegration:
             mock_content.return_value = "content"
             mock_map.return_value = ""
             mock_kb.return_value = ""
-            mock_bedrock.return_value = json.dumps({
-                "comments": [
-                    {"file": "src/a.py", "line": 1, "comment": "issue found"},
-                ]
-            })
+            mock_ci.return_value = (True, "")
+            mock_bedrock.side_effect = [
+                "CONFIRMED: src/a.py line 1 - issue found",
+                json.dumps({"analysis": [
+                    {"file": "src/a.py", "line": 1, "hypothesis": "issue",
+                     "falsification_attempt": "checked", "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "issue found",
+                                 "evidence": "proof", "trigger": "x"}},
+                ]})
+            ]
 
             from issue_bot.main import analyze
             analyze()
@@ -896,6 +1079,7 @@ class TestIncrementalReviewIntegration:
              mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
              mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
              mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
              mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
@@ -911,9 +1095,16 @@ class TestIncrementalReviewIntegration:
             mock_content.return_value = "content"
             mock_map.return_value = ""
             mock_kb.return_value = ""
-            mock_bedrock.return_value = json.dumps({"comments": [
-                {"file": "src/a.py", "line": 1, "comment": "issue"},
-            ]})
+            mock_ci.return_value = (True, "")
+            mock_bedrock.side_effect = [
+                "CONFIRMED: src/a.py line 1 - issue found",
+                json.dumps({"analysis": [
+                    {"file": "src/a.py", "line": 1, "hypothesis": "issue",
+                     "falsification_attempt": "no guard", "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "issue",
+                                 "evidence": "evidence", "trigger": "trigger"}},
+                ]})
+            ]
 
             from issue_bot.main import analyze
             analyze()
@@ -941,6 +1132,7 @@ class TestFileContentUsesHeadSha:
         monkeypatch.setenv("KB_S3_BUCKET", "")
         monkeypatch.setenv("KB_S3_KEY", "")
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review this PR. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         import issue_bot.main as bot_main
         monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
 
@@ -955,6 +1147,7 @@ class TestFileContentUsesHeadSha:
              mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
              mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
              mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
              mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
@@ -976,7 +1169,11 @@ class TestFileContentUsesHeadSha:
             mock_content.return_value = "file content"
             mock_map.return_value = ""
             mock_kb.return_value = ""
-            mock_bedrock.return_value = json.dumps({"comments": []})
+            mock_ci.return_value = (True, "")
+            mock_bedrock.side_effect = [
+                "No confirmed issues found.",
+                json.dumps({"analysis": []})
+            ]
 
             from issue_bot.main import analyze
             analyze()
@@ -999,6 +1196,7 @@ class TestFileContentUsesHeadSha:
              mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
              mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
              mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
              mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
@@ -1017,7 +1215,11 @@ class TestFileContentUsesHeadSha:
             mock_content.return_value = "content"
             mock_map.return_value = ""
             mock_kb.return_value = ""
-            mock_bedrock.return_value = json.dumps({"comments": []})
+            mock_ci.return_value = (None, "")
+            mock_bedrock.side_effect = [
+                "No confirmed issues found.",
+                json.dumps({"analysis": []})
+            ]
 
             from issue_bot.main import analyze
             analyze()
@@ -1045,6 +1247,7 @@ class TestReviewEventType:
         monkeypatch.setenv("KB_S3_BUCKET", "")
         monkeypatch.setenv("KB_S3_KEY", "")
         monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Review. Date: {current_date}")
+        monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Phase 2: emit findings. Date: {current_date}")
         import issue_bot.main as bot_main
         monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
 
@@ -1059,6 +1262,7 @@ class TestReviewEventType:
              mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
              mock.patch("issue_bot.github_client.GitHubClient.get_file_content") as mock_content, \
              mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+             mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
              mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
              mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
@@ -1085,9 +1289,16 @@ class TestReviewEventType:
             mock_content.return_value = "content"
             mock_map.return_value = ""
             mock_kb.return_value = ""
-            mock_bedrock.return_value = json.dumps({
-                "comments": [{"file": "f.py", "line": 1, "comment": "issue"}]
-            })
+            mock_ci.return_value = (True, "")
+            mock_bedrock.side_effect = [
+                "CONFIRMED: f.py line 1 - issue",
+                json.dumps({"analysis": [
+                    {"file": "f.py", "line": 1, "hypothesis": "issue",
+                     "falsification_attempt": "checked", "disproved": False,
+                     "finding": {"severity": "BUG", "comment": "issue",
+                                 "evidence": "proof", "trigger": "x"}},
+                ]})
+            ]
             mock_post.return_value = True
 
             from issue_bot.main import analyze, act

@@ -50,5 +50,9 @@ def get_followup_prompt():
     return _get_prompt("FOLLOWUP_PROMPT", "SM_FOLLOWUP_PROMPT")
 
 
+def get_pr_file_review_report_prompt():
+    return _get_prompt("PR_FILE_REVIEW_REPORT_PROMPT", "SM_PR_FILE_REVIEW_REPORT_PROMPT")
+
+
 def prompt_version(template):
     return hashlib.sha256(template.encode()).hexdigest()[:8]

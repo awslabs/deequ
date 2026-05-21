@@ -1,10 +1,12 @@
 {
   "type": "object",
+  "additionalProperties": false,
   "properties": {
-    "comments": {
+    "analysis": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "file": {
             "type": "string"
@@ -12,30 +14,47 @@
           "line": {
             "type": "integer"
           },
-          "severity": {
-            "type": "string",
-            "enum": ["BUG", "EDGE_CASE", "MISSING_TEST", "DESIGN", "NIT"]
-          },
-          "comment": {
+          "hypothesis": {
             "type": "string"
           },
-          "evidence": {
+          "falsification_attempt": {
             "type": "string"
+          },
+          "disproved": {
+            "type": "boolean"
+          },
+          "finding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "severity": {
+                "type": "string",
+                "enum": ["BUG", "EDGE_CASE", "MISSING_TEST", "DESIGN", "NIT"]
+              },
+              "comment": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string"
+              }
+            },
+            "required": ["severity", "comment", "evidence"]
           }
         },
         "required": [
           "file",
           "line",
-          "severity",
-          "comment",
-          "evidence"
-        ],
-        "additionalProperties": false
+          "hypothesis",
+          "falsification_attempt",
+          "disproved"
+        ]
       }
     }
   },
   "required": [
-    "comments"
-  ],
-  "additionalProperties": false
+    "analysis"
+  ]
 }
