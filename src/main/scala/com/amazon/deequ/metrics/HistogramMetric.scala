@@ -20,7 +20,8 @@ import scala.util.{Failure, Success, Try}
 
 case class DistributionValue(absolute: Long, ratio: Double)
 
-case class Distribution(values: Map[String, DistributionValue], numberOfBins: Long) {
+case class Distribution(values: Map[String, DistributionValue], numberOfBins: Long,
+                        tailCount: Long = 0) {
 
   def apply(key: String): DistributionValue = {
     values(key)
@@ -50,7 +51,13 @@ case class HistogramMetric(column: String, value: Try[Distribution]) extends Met
             DoubleMetric(entity, s"$name.abs.$key", instance, Success(distValue.absolute)) ::
               DoubleMetric(entity, s"$name.ratio.$key", instance, Success(distValue.ratio)) :: Nil
           }
-        numberOfBins ++ details
+
+        val tail = if (distribution.tailCount > 0) {
+          Seq(DoubleMetric(entity, s"$name.tailCount", instance,
+            Success(distribution.tailCount.toDouble)))
+        } else Seq.empty
+
+        numberOfBins ++ details ++ tail
       }
       .recover {
         case e: Exception => Seq(DoubleMetric(entity, s"$name.bins", instance, Failure(e)))

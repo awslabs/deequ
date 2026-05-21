@@ -592,6 +592,37 @@ class AnalysisResultSerdeTest extends FlatSpec with Matchers {
     assert(deserialized == List(result))
   }
 
+  "Distribution with tailCount" should "round-trip serialize and deserialize" in {
+    val analyzer = Histogram("category", maxDetailBins = 3)
+    val metric = HistogramMetric("category", Success(Distribution(
+      Map("A" -> DistributionValue(5, 0.5), "B" -> DistributionValue(3, 0.3)),
+      5, 2)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    val serialized = serialize(List(result))
+    val deserialized = deserialize(serialized)
+    assert(deserialized == List(result))
+
+    // Verify tailCount is in the JSON
+    serialized should include("tailCount")
+  }
+
+  "Distribution without tail" should "not include tailCount in JSON" in {
+    val analyzer = Histogram("category")
+    val metric = HistogramMetric("category", Success(Distribution(
+      Map("A" -> DistributionValue(5, 0.5), "B" -> DistributionValue(5, 0.5)),
+      2, 0)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    val serialized = serialize(List(result))
+    serialized should not include("tailCount")
+
+    val deserialized = deserialize(serialized)
+    assert(deserialized == List(result))
+  }
+
   def assertCorrectlyConvertsAnalysisResults(
       analysisResults: Seq[AnalysisResult],
       shouldFail: Boolean = false)
