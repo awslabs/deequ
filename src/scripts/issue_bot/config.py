@@ -46,6 +46,33 @@ class Config:
             "help-wanted", "dqdl", "analyzer", "spark-compatibility",
         }
 
+        # Agentic pipeline (Investigator/Critic/Reporter). Enabled only when
+        # BOT_AGENT_PIPELINE is set to one of: 1, true, yes, on (case-insensitive,
+        # whitespace-stripped). Any other value (including no/off/empty) keeps
+        # the legacy two-phase flow active. Conservative: default off.
+        self.agent_pipeline = os.getenv("BOT_AGENT_PIPELINE", "").strip().lower() in ("1", "true", "yes", "on")
+        self.agent_max_review_cost_usd = float(os.getenv("BOT_AGENT_COST_CAP_USD", "1.00"))
+
+        # Investigator caps (adapted to PR size at runtime; these are upper bounds).
+        self.investigator_max_turns = int(os.getenv("BOT_INVESTIGATOR_MAX_TURNS", "15"))
+        self.investigator_max_tool_calls = int(os.getenv("BOT_INVESTIGATOR_MAX_TOOL_CALLS", "50"))
+        self.investigator_max_tool_output_chars = int(os.getenv("BOT_INVESTIGATOR_MAX_TOOL_OUTPUT", "400000"))
+
+        # Critic caps (smaller — verification is narrower than discovery).
+        self.critic_max_turns = int(os.getenv("BOT_CRITIC_MAX_TURNS", "10"))
+        self.critic_max_tool_calls = int(os.getenv("BOT_CRITIC_MAX_TOOL_CALLS", "30"))
+        self.critic_max_tool_output_chars = int(os.getenv("BOT_CRITIC_MAX_TOOL_OUTPUT", "200000"))
+        self.critic_top_n_findings = int(os.getenv("BOT_CRITIC_TOP_N", "10"))
+
+        # Bedrock pricing (per million tokens) for cost estimation. Update when prices change.
+        # Defaults are for Claude Opus 4.6 on Bedrock as of plan-write date.
+        self.bedrock_pricing = {
+            "input_per_million": float(os.getenv("BEDROCK_INPUT_PER_MILLION", "15.00")),
+            "output_per_million": float(os.getenv("BEDROCK_OUTPUT_PER_MILLION", "75.00")),
+            "cache_read_per_million": float(os.getenv("BEDROCK_CACHE_READ_PER_MILLION", "1.50")),
+            "cache_write_per_million": float(os.getenv("BEDROCK_CACHE_WRITE_PER_MILLION", "18.75")),
+        }
+
 
 def _require(name):
     val = os.getenv(name)

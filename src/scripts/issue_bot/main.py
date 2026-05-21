@@ -20,6 +20,8 @@ from .knowledge_base import KnowledgeBase
 from .slack_client import SlackClient
 from .sanitizer import sanitize
 from . import prompts
+from . import agent_loop
+from .tools import TOOL_SPECS, ToolRunner
 
 logger = logging.getLogger("issue_bot")
 
@@ -139,6 +141,15 @@ def analyze():
     issue_text = f"{title} {body}"
     context = kb.build_context(issue_text)
     codebase_map = gh.get_codebase_map() if not is_followup else ""
+
+    if is_pr and cfg.agent_pipeline:
+        _run_agent_pipeline(
+            cfg=cfg, gh=gh, bedrock=bedrock,
+            number=number, title=title, body=body, html_url=html_url, item=item,
+            context=context, codebase_map=codebase_map,
+            comments_data=comments_data, is_pr_update=is_pr_update,
+        )
+        return
 
     if is_pr:
         tmpl = prompts.get_pr_file_review_prompt()
@@ -770,6 +781,419 @@ def _read_artifact():
     except Exception as e:
         logger.error(f"Artifact read failed: {e}")
         return None
+
+
+def _clamp(value, lo, hi):
+    return max(lo, min(hi, value))
+
+
+_STATUS_CONFIRMED_RE = re.compile(
+    r"^\s*STATUS\s*:\s*CONFIRMED\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _has_confirmed_findings(notes):
+    """Check for any line matching exactly 'STATUS: CONFIRMED' in investigator notes.
+
+    Anchored at line start/end with optional surrounding whitespace. Avoids
+    false positives where 'CONFIRMED' appears in a COMMENT or rationale.
+    """
+    if not notes:
+        return False
+    return _STATUS_CONFIRMED_RE.search(notes) is not None
+
+
+def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item,
+                        context, codebase_map, comments_data, is_pr_update):
+    """Investigator + Critic + Reporter pipeline. Replaces the legacy two-phase
+    flow when cfg.agent_pipeline is True. Writes the analyze artifact and returns.
+    """
+    investigator_tmpl = prompts.get_pr_investigator_prompt()
+    critic_tmpl = prompts.get_pr_critic_prompt()
+    reporter_tmpl = prompts.get_pr_file_review_report_prompt()
+    missing = []
+    if not investigator_tmpl:
+        missing.append("investigator")
+    if not critic_tmpl:
+        missing.append("critic")
+    if not reporter_tmpl:
+        missing.append("reporter")
+    if missing:
+        _write_artifact({
+            "action": "ESCALATE", "labels": [], "response": "",
+            "reason": f"prompt_load_failed: {','.join(missing)}",
+            "title": title, "html_url": html_url, "number": number, "is_pr": True,
+            "prompt_id": "n/a", "model_id": cfg.bedrock_model_id,
+        })
+        return
+
+    diff = gh.get_pr_diff(number)
+    review_comments = gh.get_pr_review_comments(number)
+    existing_feedback = _format_pr_feedback(comments_data, review_comments)
+
+    incremental_diff = ""
+    incremental_files = set()
+    if is_pr_update and cfg.event_before and cfg.event_after:
+        incremental_diff = gh.get_compare_diff(cfg.event_before, cfg.event_after)
+        if incremental_diff:
+            incremental_files = _extract_diff_files(incremental_diff)
+
+    head_sha = cfg.event_after or item.get("head", {}).get("sha", "")
+    pr_files = gh.get_pr_files(number)
+    diff_lines = sum(int(pf.get("changes", 0) or 0) for pf in pr_files)
+
+    # Adaptive caps (PR-size proportional within configured upper bounds).
+    # Floor is min(5, ceiling) so users can throttle below the default floor by
+    # setting BOT_INVESTIGATOR_MAX_TURNS=3 etc.
+    inv_ceiling = max(1, cfg.investigator_max_turns)
+    inv_floor = min(5, inv_ceiling)
+    investigator_caps = agent_loop.AgentCaps(
+        max_turns=_clamp(diff_lines // 30, inv_floor, inv_ceiling),
+        max_tool_calls=cfg.investigator_max_tool_calls,
+        max_tool_output_chars=cfg.investigator_max_tool_output_chars,
+    )
+    crit_ceiling = max(1, cfg.critic_max_turns)
+    crit_floor = min(3, crit_ceiling)
+    critic_caps = agent_loop.AgentCaps(
+        max_turns=_clamp(investigator_caps.max_turns // 2, crit_floor, crit_ceiling),
+        max_tool_calls=cfg.critic_max_tool_calls,
+        max_tool_output_chars=cfg.critic_max_tool_output_chars,
+    )
+
+    incremental_section = ""
+    if incremental_diff:
+        incremental_section = (
+            "\n<incremental_review_instructions>\n"
+            "This is a RE-REVIEW after the author pushed new commits. "
+            "Limit findings to lines/files in the incremental diff below. "
+            "Do not re-raise issues on unchanged code.\n"
+            "</incremental_review_instructions>\n"
+            f"<incremental_diff>\n{incremental_diff}\n</incremental_diff>\n"
+        )
+
+    # Static priming context (reused across Investigator and Critic for cache hit).
+    static_context = (
+        f"\n<knowledge_base>\n{context}\n</knowledge_base>\n"
+        f"<codebase_map>\n{codebase_map}\n</codebase_map>\n"
+        f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
+        f"{incremental_section}"
+    )
+
+    investigator_system = _render(
+        investigator_tmpl, current_date=datetime.date.today().isoformat()
+    ) + static_context
+    critic_system = _render(
+        critic_tmpl, current_date=datetime.date.today().isoformat()
+    ) + static_context
+    reporter_system = (
+        _render(reporter_tmpl, current_date=datetime.date.today().isoformat())
+        + f"\n<diff>\n{diff}\n</diff>\n"
+        + f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
+    )
+
+    investigator_user = (
+        f"<diff>\n{diff}\n</diff>\n"
+        f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+    )
+
+    tool_runner = ToolRunner(cfg, gh._repo_root)
+    cost_tracker = {
+        "cost_usd": 0.0,
+        "cap_usd": cfg.agent_max_review_cost_usd,
+        "cap_hit": False,
+    }
+    pricing = cfg.bedrock_pricing
+
+    inv_result = agent_loop.run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt=investigator_system, user_prompt=investigator_user,
+        tool_specs=TOOL_SPECS, tool_runner=tool_runner,
+        caps=investigator_caps, cost_tracker=cost_tracker, pricing=pricing,
+    )
+
+    metrics = {
+        "investigator": _agent_metrics(inv_result),
+        "critic": {"skipped": True, "skip_reason": None},
+        "reporter": {"input_tokens": 0, "output_tokens": 0, "skipped": True},
+        "totals": {},
+        "cost_cap_hit": cost_tracker["cap_hit"],
+        "max_turns_reached": inv_result.max_turns_reached,
+        "critic_overturn_rate": None,
+    }
+
+    if not inv_result.text:
+        _write_artifact_pipeline(
+            cfg=cfg, action="ESCALATE", reason="investigator_empty",
+            title=title, html_url=html_url, number=number,
+            inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
+            inline_comments=[], response="", is_incremental=bool(incremental_diff),
+            metrics=_finalize_metrics(metrics, inv_result, None, None, cost_tracker),
+            tool_trace=inv_result.tool_trace,
+        )
+        return
+
+    confirmed_present = _has_confirmed_findings(inv_result.text)
+
+    crit_result = None
+    rep_inline_comments = []
+    rep_input_tokens = 0
+    rep_output_tokens = 0
+
+    if not confirmed_present:
+        # FAST PATH: no confirmed findings → skip Critic and Reporter
+        metrics["critic"]["skip_reason"] = "no_confirmed_findings"
+        metrics["reporter"]["skipped"] = True
+    elif cost_tracker["cap_hit"]:
+        metrics["critic"]["skip_reason"] = "cost_cap_hit_after_investigator"
+        metrics["reporter"]["skipped"] = True
+    else:
+        # Cap Critic's first-turn input. Investigator notes are bounded by
+        # max_tokens_per_call; the diff is unbounded and dominates large PRs.
+        # Truncate the diff so combined input stays well under Bedrock's 200K
+        # token window. Critic can fetch full files via read_file as needed.
+        max_critic_diff_chars = 200_000
+        critic_diff = diff
+        if len(critic_diff) > max_critic_diff_chars:
+            critic_diff = (
+                critic_diff[:max_critic_diff_chars]
+                + f"\n... [diff truncated at {max_critic_diff_chars} chars; "
+                "use read_file to fetch specific files referenced in investigator notes]"
+            )
+        critic_user = (
+            f"<investigator_notes>\n{inv_result.text}\n</investigator_notes>\n"
+            f"<diff>\n{critic_diff}\n</diff>\n"
+            f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+        )
+        crit_result = agent_loop.run(
+            bedrock_client=bedrock, agent_name="critic",
+            system_prompt=critic_system, user_prompt=critic_user,
+            tool_specs=TOOL_SPECS, tool_runner=tool_runner,
+            caps=critic_caps, cost_tracker=cost_tracker, pricing=pricing,
+        )
+        metrics["critic"] = _agent_metrics(crit_result)
+
+        if cost_tracker["cap_hit"]:
+            metrics["reporter"]["skipped"] = True
+            metrics["reporter"]["skip_reason"] = "cost_cap_hit_after_critic"
+        else:
+            reporter_user = (
+                f"<investigator_notes>\n{inv_result.text}\n</investigator_notes>\n\n"
+                f"<critic_verdicts>\n{crit_result.text or 'ALL_DISPROVED: critic produced no verdicts'}\n</critic_verdicts>\n\n"
+                f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+            )
+            raw, rep_input_tokens, rep_output_tokens = _invoke_reporter_tracked(
+                bedrock, reporter_system, reporter_user, cost_tracker, pricing,
+            )
+            metrics["reporter"]["skipped"] = False
+            metrics["reporter"]["input_tokens"] = rep_input_tokens
+            metrics["reporter"]["output_tokens"] = rep_output_tokens
+            if raw is None:
+                metrics["reporter"]["skip_reason"] = "bedrock_unavailable"
+            else:
+                rep_inline_comments = _parse_reporter_output(raw)
+
+    # Apply post-processing filters (same as legacy path)
+    rep_inline_comments = [
+        c for c in rep_inline_comments
+        if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
+    ]
+    if incremental_files and rep_inline_comments:
+        rep_inline_comments = [
+            c for c in rep_inline_comments if c.get("file", "") in incremental_files
+        ]
+    if is_pr_update and rep_inline_comments:
+        rep_inline_comments = [
+            c for c in rep_inline_comments
+            if c.get("severity", "").upper() != "NIT"
+        ]
+    for c in rep_inline_comments:
+        severity = c.get("severity", "")
+        evidence = c.get("evidence", "")
+        prefix = f"**{severity}**: " if severity else ""
+        suffix = "\n\n> " + evidence.replace("\n", "\n> ") if evidence else ""
+        c["comment"] = prefix + c.get("comment", "") + suffix
+
+    ci_passed, ci_summary = gh.get_ci_status(head_sha) if head_sha else (None, "")
+    if not rep_inline_comments:
+        if ci_passed is True:
+            response = "No issues found. CI is passing.\n<!-- deequ-bot:clean -->"
+        elif ci_passed is False:
+            response = f"No code issues found, but {ci_summary}."
+        else:
+            response = "No issues found.\n<!-- deequ-bot:clean -->"
+    else:
+        response = ""
+
+    _write_artifact_pipeline(
+        cfg=cfg, action="RESPOND", reason=None,
+        title=title, html_url=html_url, number=number,
+        inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
+        inline_comments=rep_inline_comments, response=response,
+        is_incremental=bool(incremental_diff),
+        metrics=_finalize_metrics(metrics, inv_result, crit_result, None, cost_tracker),
+        tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+    )
+
+
+def _invoke_reporter_tracked(bedrock, system, user_msg, cost_tracker, pricing):
+    """Invoke Reporter (single-shot, schema-enforced) while updating cost_tracker.
+    Returns (raw_text, input_tokens, output_tokens). On failure: (None, 0, 0)."""
+    raw, usage = bedrock.invoke_with_usage(
+        system, user_msg, max_tokens=8000, json_schema=PR_REVIEW_SCHEMA,
+    )
+    in_t = (usage.get("inputTokens") or 0) if usage else 0
+    out_t = (usage.get("outputTokens") or 0) if usage else 0
+    cr_t = (usage.get("cacheReadInputTokens") or 0) if usage else 0
+    cw_t = (usage.get("cacheWriteInputTokens") or 0) if usage else 0
+    delta = (
+        (in_t / 1_000_000) * pricing["input_per_million"]
+        + (out_t / 1_000_000) * pricing["output_per_million"]
+        + (cr_t / 1_000_000) * pricing["cache_read_per_million"]
+        + (cw_t / 1_000_000) * pricing["cache_write_per_million"]
+    )
+    cost_tracker["cost_usd"] = cost_tracker.get("cost_usd", 0.0) + delta
+    if cost_tracker["cost_usd"] >= cost_tracker.get("cap_usd", float("inf")):
+        cost_tracker["cap_hit"] = True
+    return raw, in_t, out_t
+
+
+def _agent_metrics(r):
+    return {
+        "skipped": False,
+        "skip_reason": None,
+        "turns": r.turns,
+        "tool_calls": r.tool_calls,
+        "tool_output_chars": r.tool_output_chars,
+        "input_tokens": r.input_tokens,
+        "output_tokens": r.output_tokens,
+        "cache_read_tokens": r.cache_read_tokens,
+        "cache_write_tokens": r.cache_write_tokens,
+        "max_turns_reached": r.max_turns_reached,
+        "error": r.error,
+    }
+
+
+def _finalize_metrics(metrics, inv, crit, _rep, cost_tracker):
+    overturn = _critic_overturn_rate(crit.text if (crit and crit.text) else "")
+    metrics["critic_overturn_rate"] = overturn
+    rep_in = metrics.get("reporter", {}).get("input_tokens", 0) or 0
+    rep_out = metrics.get("reporter", {}).get("output_tokens", 0) or 0
+    metrics["totals"] = {
+        "input_tokens": (inv.input_tokens if inv else 0) + (crit.input_tokens if crit else 0) + rep_in,
+        "output_tokens": (inv.output_tokens if inv else 0) + (crit.output_tokens if crit else 0) + rep_out,
+        "cost_usd": round(cost_tracker.get("cost_usd", 0.0), 4),
+    }
+    metrics["cost_cap_hit"] = cost_tracker.get("cap_hit", False)
+    return metrics
+
+
+_VERDICT_RE = re.compile(
+    r"^\s*VERDICT\s*:\s*\S+\s*\|\s*(UPHELD|OVERTURNED)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _critic_overturn_rate(critic_text):
+    """Compute overturn rate by parsing VERDICT lines anchored at line start.
+
+    Avoids substring false-positives where 'UPHELD' or 'OVERTURNED' appears
+    in rationale text. Returns None if no verdicts parsed.
+    """
+    if not critic_text:
+        return None
+    upheld = 0
+    overturned = 0
+    for m in _VERDICT_RE.finditer(critic_text):
+        verdict = m.group(1).upper()
+        if verdict == "UPHELD":
+            upheld += 1
+        elif verdict == "OVERTURNED":
+            overturned += 1
+    total = upheld + overturned
+    if total == 0:
+        return None
+    return round(overturned / total, 3)
+
+
+def _parse_reporter_output(raw):
+    """Parse the Reporter's JSON output and return inline_comments list.
+    Same defensive parsing as the legacy path; never raises."""
+    try:
+        result = json.loads(raw)
+        if not isinstance(result, dict):
+            raise TypeError("reporter root is not an object")
+        analysis = result.get("analysis", [])
+        if not isinstance(analysis, list):
+            raise TypeError("reporter analysis is not a list")
+        out = []
+        for a in analysis:
+            if not isinstance(a, dict):
+                continue
+            if a.get("disproved") is True:
+                continue
+            finding = a.get("finding")
+            if not isinstance(finding, dict):
+                continue
+            out.append({
+                "file": a.get("file") or "",
+                "line": a.get("line") or 0,
+                "severity": finding.get("severity") or "",
+                "comment": finding.get("comment") or "",
+                "evidence": finding.get("evidence") or "",
+            })
+        return out
+    except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
+        logger.error("Reporter output parse failed (%s): %s",
+                     type(e).__name__, (raw or "")[:500])
+        return []
+
+
+def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
+                              inv_tmpl, critic_tmpl, reporter_tmpl,
+                              inline_comments, response, is_incremental,
+                              metrics, tool_trace):
+    """Artifact writer for pipeline runs. Includes metrics and trace."""
+    artifact = {
+        "action": action,
+        "labels": [],
+        "response": response,
+        "inline_comments": inline_comments,
+        "title": title, "html_url": html_url, "number": number,
+        "is_pr": True, "is_incremental": is_incremental,
+        "prompt_id": prompts.prompt_version(inv_tmpl) if inv_tmpl else "n/a",
+        "prompt_ids": {
+            "investigator": prompts.prompt_version(inv_tmpl) if inv_tmpl else "n/a",
+            "critic": prompts.prompt_version(critic_tmpl) if critic_tmpl else "n/a",
+            "reporter": prompts.prompt_version(reporter_tmpl) if reporter_tmpl else "n/a",
+        },
+        "model_id": cfg.bedrock_model_id,
+        "metrics": metrics,
+        "tool_trace": _truncate_trace(tool_trace),
+        "pipeline": "agentic",
+    }
+    if reason:
+        artifact["reason"] = reason
+    _write_artifact(artifact)
+
+
+def _truncate_trace(trace, max_chars=100_000):
+    """Cap trace size in the artifact to avoid huge JSON blobs."""
+    if not trace:
+        return []
+    serialized = json.dumps(trace)
+    if len(serialized) <= max_chars:
+        return trace
+    out = []
+    running = 2  # for the brackets
+    for entry in trace:
+        s = json.dumps(entry)
+        if running + len(s) + 2 > max_chars:
+            out.append({"truncated": True, "remaining_entries": len(trace) - len(out)})
+            break
+        out.append(entry)
+        running += len(s) + 1
+    return out
 
 
 def main():

@@ -14,7 +14,12 @@ def isolate_sm_env(monkeypatch):
         "SM_ISSUE_RESPOND_PROMPT",
         "SM_PR_FILE_REVIEW_PROMPT",
         "SM_PR_FILE_REVIEW_REPORT_PROMPT",
+        "SM_PR_INVESTIGATOR_PROMPT",
+        "SM_PR_CRITIC_PROMPT",
         "SM_FOLLOWUP_PROMPT",
         "PR_FILE_REVIEW_REPORT_PROMPT",
+        "PR_INVESTIGATOR_PROMPT",
+        "PR_CRITIC_PROMPT",
+        "BOT_AGENT_PIPELINE",
     ):
         monkeypatch.delenv(var, raising=False)
