@@ -904,6 +904,10 @@ private[deequ] object DistributionSerializer extends JsonSerializer[Distribution
 
     result.add("values", values)
 
+    if (distribution.tailCount > 0) {
+      result.addProperty("tailCount", distribution.tailCount)
+    }
+
     result
   }
 }
@@ -924,7 +928,8 @@ private[deequ] object DistributionDeserializer extends JsonDeserializer[Distribu
       }
       .toMap
 
-    Distribution(values, jsonObject.get("numberOfBins").getAsLong)
+    Distribution(values, jsonObject.get("numberOfBins").getAsLong,
+      if (jsonObject.has("tailCount")) jsonObject.get("tailCount").getAsLong else 0L)
   }
 }
 
