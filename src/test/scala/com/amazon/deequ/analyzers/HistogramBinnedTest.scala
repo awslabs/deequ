@@ -1031,6 +1031,29 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
     }
   }
 
+  "HistogramBinned state" should {
+    "compute metric from state without calling computeStateFrom (no NPE)" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val edges = Array(0.0, 10.0, 20.0)
+      val data = Seq("0" -> 3L, "1" -> 5L).toDF("values", "count")
+      val frequencies = data.withColumnRenamed("count", Analyzers.COUNT_COL)
+
+      val state = BinnedFrequencies(frequencies, 8L, edges)
+      val analyzer = HistogramBinned("values", customEdges = Some(edges))
+      val metric = analyzer.computeMetricFrom(Some(state))
+
+      metric.value.isSuccess shouldBe true
+      val dist = metric.value.get
+      dist.bins(0).binStart shouldBe 0.0
+      dist.bins(0).binEnd shouldBe 10.0
+      dist.bins(0).frequency shouldBe 3
+      dist.bins(1).binStart shouldBe 10.0
+      dist.bins(1).binEnd shouldBe 20.0
+      dist.bins(1).frequency shouldBe 5
+    }
+  }
+
   "HistogramBinned parameter validation" should {
     "throw IllegalArgumentException when neither binCount nor customEdges is provided" in {
       val exception = intercept[IllegalArgumentException] {
