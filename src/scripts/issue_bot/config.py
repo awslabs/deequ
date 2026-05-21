@@ -71,6 +71,10 @@ class Config:
         )
         self.critic_max_diff_chars = _int_env("BOT_CRITIC_MAX_DIFF_CHARS", 200_000, minimum=1024)
         self.critic_wall_clock_seconds = _int_env("BOT_CRITIC_WALL_CLOCK_S", 240, minimum=10)
+        # Pipeline-wide wall-clock cap shared across Investigator + Critic.
+        # The workflow itself is bounded at 10 minutes; this leaves room for
+        # the Reporter call and artifact upload.
+        self.pipeline_wall_clock_seconds = _int_env("BOT_PIPELINE_WALL_CLOCK_S", 480, minimum=30)
 
 
 def _require(name):

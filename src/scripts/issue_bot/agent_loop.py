@@ -43,7 +43,13 @@ class AgentCaps:
 
 @dataclass
 class AgentResult:
-    """Outcome of an agent loop run."""
+    """Outcome of an agent loop run.
+
+    `error` is set on any non-clean exit (Bedrock failure, structural cap,
+    wall-clock cap, max_turns, protocol violation). Callers must check
+    `fatal` to decide whether `text` is usable: structural exits often
+    produce partial-but-valid output, fatal exits do not.
+    """
     text: str = ""
     turns: int = 0
     tool_calls: int = 0
@@ -54,6 +60,7 @@ class AgentResult:
     cache_write_tokens: int = 0
     max_turns_reached: bool = False
     error: Optional[str] = None
+    fatal: bool = False
     tool_trace: List[Dict[str, Any]] = field(default_factory=list)
 
 
@@ -65,6 +72,7 @@ def run(
     tool_specs: List[Dict[str, Any]],
     tool_runner,
     caps: AgentCaps,
+    pipeline_deadline: Optional[float] = None,
 ):
     """Execute an agent's tool-use loop. Returns an AgentResult.
 
@@ -73,18 +81,23 @@ def run(
       - caps.max_tool_calls total tool executions
       - caps.max_tool_output_chars cumulative tool output size
       - caps.per_tool_max_calls per-tool budget
-    Wall-clock is bounded by the workflow timeout.
+      - caps.wall_clock_seconds elapsed time for THIS agent
+      - pipeline_deadline (optional) absolute monotonic deadline shared
+        across all stages of the pipeline; whichever is sooner wins
     """
     result = AgentResult()
     messages = [{"role": "user", "content": [{"text": user_prompt}]}]
     per_tool_calls = defaultdict(int)
-    deadline = time.monotonic() + max(1, caps.wall_clock_seconds)
+    own_deadline = time.monotonic() + max(1, caps.wall_clock_seconds)
+    deadline = own_deadline if pipeline_deadline is None else min(own_deadline, pipeline_deadline)
 
     for turn in range(max(0, caps.max_turns)):
         result.turns = turn + 1
 
         if time.monotonic() >= deadline:
             result.error = f"wall-clock cap ({caps.wall_clock_seconds}s) reached"
+            # Bounded exit; any text recovered from prior turns is usable.
+            result.text = result.text or _recover_last_assistant_text(messages)
             logger.warning(
                 "[%s turn=%d] wall-clock cap reached, terminating",
                 agent_name, turn + 1,
@@ -97,6 +110,7 @@ def run(
                 messages=messages,
                 tool_specs=tool_specs,
                 max_tokens=caps.max_tokens_per_call,
+                timeout_seconds=max(1, deadline - time.monotonic()),
             )
         except Exception as e:
             logger.error("[%s turn=%d] bedrock error: %s", agent_name, turn + 1, type(e).__name__)
@@ -105,10 +119,12 @@ def run(
             # chars that could mangle JSON-serialized artifacts.
             msg_str = "".join(c for c in str(e)[:200] if c.isprintable() or c in " \t")
             result.error = f"bedrock error: {type(e).__name__}: {msg_str}"
+            result.fatal = True
             return result
 
         if resp is None:
             result.error = "bedrock returned None (circuit-breaker or transient failure)"
+            result.fatal = True
             return result
 
         usage = resp.get("usage") or {}
@@ -125,6 +141,7 @@ def run(
         msg = resp.get("output", {}).get("message", {})
         if not msg:
             result.error = "empty bedrock message"
+            result.fatal = True
             return result
         messages.append(msg)
 
@@ -138,6 +155,7 @@ def run(
         if not tool_results:
             result.text = _extract_text(msg)
             result.error = "stopReason was tool_use but no toolUse blocks emitted"
+            result.fatal = True
             return result
 
         # If structural caps were hit during tool execution, terminate now

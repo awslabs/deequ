@@ -5,12 +5,13 @@ Deequ Bot — two-phase orchestration.
   act:     write-only phase, reads artifact and posts to GitHub/Slack
 """
 
+import datetime
 import json
+import logging
+import os
 import re
 import sys
-import os
-import datetime
-import logging
+import time
 import uuid
 
 from .config import Config
@@ -804,12 +805,22 @@ def _filter_and_format_inline_comments(comments, *, incremental_files, is_pr_upd
 
     Mutates and returns the kept list.
     """
-    kept = [
-        dict(c) for c in comments
-        if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
-    ]
+    # Canonicalize file paths once up front so the incremental-files filter
+    # and the eventual GitHub POST agree on the spelling. Without this, a
+    # model emitting "./src/foo.py" would pass the filter (we canonicalize
+    # there) but reach post_pr_review with the raw path and 422.
+    kept = []
+    for c in comments:
+        if not (c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0):
+            continue
+        canon = _canonicalize_path(c["file"])
+        if not canon:
+            continue
+        new_c = dict(c)
+        new_c["file"] = canon
+        kept.append(new_c)
     if incremental_files and kept:
-        kept = [c for c in kept if _canonicalize_path(c.get("file", "")) in incremental_files]
+        kept = [c for c in kept if c["file"] in incremental_files]
     if is_pr_update and kept:
         kept = [c for c in kept if c.get("severity", "").upper() != "NIT"]
     for c in kept:
@@ -859,12 +870,14 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
     )
 
     tool_runner = ToolRunner(cfg, gh.repo_root)
+    pipeline_deadline = time.monotonic() + cfg.pipeline_wall_clock_seconds
 
     inv_result = agent_loop.run(
         bedrock_client=bedrock, agent_name="investigator",
         system_prompt=investigator_system, user_prompt=investigator_user,
         tool_specs=TOOL_SPECS, tool_runner=tool_runner,
         caps=investigator_caps,
+        pipeline_deadline=pipeline_deadline,
     )
 
     metrics = _initial_metrics(inv_result)
@@ -890,6 +903,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
             reporter_system=reporter_system,
             diff=diff, title=title, body=body,
             investigator_text=inv_result.text,
+            pipeline_deadline=pipeline_deadline,
         )
     )
     if crit_result is not None:
@@ -899,12 +913,15 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
     metrics["reporter"] = reporter_metrics
 
     # If the Critic crashed mid-run, do not post anything as clean — escalate.
+    # Preserve the Investigator's narrative so an operator triaging the
+    # escalation can see what was suspected.
     if critic_skip_reason == "critic_failed":
         _write_artifact_pipeline(
             **artifact_kwargs, action="ESCALATE", reason="critic_failed",
             inline_comments=[], response="",
             metrics=_finalize_metrics(metrics, inv_result, crit_result),
             tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+            investigator_summary=inv_result.text,
         )
         return
 
@@ -1016,12 +1033,16 @@ def _initial_metrics(inv_result):
 
 
 def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic_caps,
-                              reporter_system, diff, title, body, investigator_text):
+                              reporter_system, diff, title, body, investigator_text,
+                              pipeline_deadline=None):
     """Run the Critic (if any CONFIRMED concerns) and then the Reporter.
 
     Returns (crit_result_or_None, critic_skip_reason_or_None, inline_comments,
     reporter_metrics). When the Critic is skipped, crit_result is None,
     critic_skip_reason explains why, and the Reporter is skipped too.
+
+    pipeline_deadline (optional) is a shared monotonic time budget across
+    all pipeline stages, threaded into the Critic loop.
     """
     skipped_metrics = _empty_stage_metrics()
 
@@ -1043,12 +1064,15 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         system_prompt=critic_system, user_prompt=critic_user,
         tool_specs=TOOL_SPECS, tool_runner=tool_runner,
         caps=critic_caps,
+        pipeline_deadline=pipeline_deadline,
     )
 
-    # If the Critic failed to run (Bedrock error, circuit breaker, empty
-    # response), DO NOT synthesize a "ALL_DISPROVED" verdict — that would
-    # silently drop real findings. Skip the Reporter and ESCALATE upstream.
-    if crit_result.error or not crit_result.text:
+    # Distinguish fatal Critic failures (no usable output: Bedrock error,
+    # empty response, protocol violation) from bounded-completion exits
+    # (max_turns, structural cap, wall-clock) which may have produced valid
+    # partial verdicts. Only fatal failures escalate; bounded exits flow
+    # through to the Reporter, which applies its own UPHELD filter.
+    if crit_result.fatal or not crit_result.text:
         skipped_metrics = _empty_stage_metrics()
         skipped_metrics["skip_reason"] = "critic_failed"
         return crit_result, "critic_failed", [], skipped_metrics
@@ -1221,8 +1245,13 @@ def _parse_reporter_output(raw):
 def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
                               inv_tmpl, critic_tmpl, reporter_tmpl,
                               inline_comments, response, is_incremental,
-                              metrics, tool_trace):
-    """Artifact writer for pipeline runs. Includes metrics and trace."""
+                              metrics, tool_trace, investigator_summary=None):
+    """Artifact writer for pipeline runs. Includes metrics and trace.
+
+    investigator_summary (optional) preserves the Investigator's narrative on
+    ESCALATE artifacts so an operator can see what was suspected when the
+    Critic or Reporter failed and the findings never reached the PR.
+    """
     artifact = {
         "action": action,
         "labels": [],
@@ -1243,6 +1272,8 @@ def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
     }
     if reason:
         artifact["reason"] = reason
+    if investigator_summary:
+        artifact["investigator_summary"] = investigator_summary[:5000]
     _write_artifact(artifact)
 
 

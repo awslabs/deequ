@@ -24,18 +24,32 @@ def _extract_first_text(content_blocks):
 class BedrockClient:
     def __init__(self, cfg):
         self._model_id = cfg.bedrock_model_id
-        self._client = boto3.client(
-            "bedrock-runtime",
-            config=BotoConfig(
-                read_timeout=cfg.bedrock_timeout,
-                connect_timeout=cfg.bedrock_timeout,
-                retries={"max_attempts": 3, "mode": "adaptive"},
-            ),
-        )
+        self._default_timeout = cfg.bedrock_timeout
+        self._client = self._build_client(self._default_timeout)
         self._guardrail_id = cfg.guardrail_id
         self._guardrail_version = cfg.guardrail_version
         self._failures = 0
         self._circuit_open = False  # Resets per-process; GHA runs are ephemeral
+
+    @staticmethod
+    def _build_client(timeout):
+        return boto3.client(
+            "bedrock-runtime",
+            config=BotoConfig(
+                read_timeout=timeout,
+                connect_timeout=timeout,
+                retries={"max_attempts": 3, "mode": "adaptive"},
+            ),
+        )
+
+    def _client_with_timeout(self, timeout_seconds):
+        """Return a Bedrock client whose read_timeout is the smaller of the
+        default and `timeout_seconds`. Avoids reuse of clients with
+        too-permissive timeouts when the caller is racing a deadline."""
+        if timeout_seconds is None or timeout_seconds >= self._default_timeout:
+            return self._client
+        # Floor at 5s so a near-zero remaining deadline still attempts the call.
+        return self._build_client(max(5, int(timeout_seconds)))
 
     @property
     def available(self):
@@ -183,7 +197,8 @@ class BedrockClient:
             return None, {}
 
     def converse_with_tools(self, system_prompt, messages, tool_specs,
-                             max_tokens=8000, temperature=0.3):
+                             max_tokens=8000, temperature=0.3,
+                             timeout_seconds=None):
         """Multi-turn Converse with toolConfig.
 
         Used by the agentic pipeline (Investigator and Critic). Caller owns
@@ -218,7 +233,8 @@ class BedrockClient:
                     "guardrailVersion": self._guardrail_version,
                     "trace": "enabled",
                 }
-            resp = self._client.converse(**kwargs)
+            client = self._client_with_timeout(timeout_seconds)
+            resp = client.converse(**kwargs)
             if resp.get("stopReason") == "guardrail_intervened":
                 logger.warning("Guardrail intervened on tool-use turn: %s", resp.get("trace", ""))
                 return None

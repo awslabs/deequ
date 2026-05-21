@@ -83,7 +83,9 @@ def _run_pipeline(tmp_path, monkeypatch, mock,
         # Investigator: one tool_use turn, then final text
         # Critic: one tool_use turn, then final text
         # The fast path skips critic entirely if no CONFIRMED findings.
-        def converse_side_effect(system_prompt, messages, tool_specs, max_tokens=8000, temperature=0.3):
+        def converse_side_effect(system_prompt, messages, tool_specs,
+                                 max_tokens=8000, temperature=0.3,
+                                 timeout_seconds=None):
             # Identify which agent by scanning the system prompt
             if "Investigate" in system_prompt:
                 return _bedrock_text_resp(investigator_text)
@@ -417,7 +419,8 @@ def test_critic_diff_truncation_on_large_diff(tmp_path, monkeypatch):
         mock_ci.return_value = (True, "")
         mock_invoke.return_value = (json.dumps({"analysis": []}), {"inputTokens": 1, "outputTokens": 1, "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0})
 
-        def converse(system_prompt, messages, tool_specs, max_tokens=8000, temperature=0.3):
+        def converse(system_prompt, messages, tool_specs, max_tokens=8000,
+                     temperature=0.3, timeout_seconds=None):
             captured_messages.append({"system": system_prompt[:200], "messages": messages})
             text = (
                 "ID: C1\nSTATUS: CONFIRMED\nSEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\n"
@@ -514,6 +517,7 @@ def test_critic_overturn_rate_calculated(tmp_path, monkeypatch):
 def test_critic_failure_escalates_does_not_post_clean(tmp_path, monkeypatch):
     """If the Critic returns empty/error, the pipeline must ESCALATE rather
     than synthesize a fake 'all disproved' verdict and silently drop findings.
+    Reporter must NOT be invoked. Investigator narrative is preserved.
     """
     import unittest.mock as mock
     investigator_notes = (
@@ -521,7 +525,7 @@ def test_critic_failure_escalates_does_not_post_clean(tmp_path, monkeypatch):
         "FALSIFICATION_ATTEMPT: searched\nSTATUS: CONFIRMED\n"
         "SEVERITY: BUG\nCOMMENT: real bug\nEVIDENCE: line 1\nTRIGGER: x\n"
     )
-    artifact, _, _ = _run_pipeline(
+    artifact, mock_invoke, _ = _run_pipeline(
         tmp_path, monkeypatch, mock,
         investigator_text=investigator_notes,
         critic_text="",  # critic returned empty (e.g. crashed)
@@ -530,6 +534,11 @@ def test_critic_failure_escalates_does_not_post_clean(tmp_path, monkeypatch):
     assert artifact["action"] == "ESCALATE"
     assert artifact["reason"] == "critic_failed"
     assert artifact["inline_comments"] == []
+    # Reporter must NOT have been invoked: posting empty reporter output
+    # would have lost the investigator's findings silently.
+    assert mock_invoke.call_count == 0
+    # Investigator narrative is preserved so an operator can triage.
+    assert artifact.get("investigator_summary", "").startswith("ID: C1")
 
 
 def test_metrics_totals_equal_sum_of_stages(tmp_path, monkeypatch):
