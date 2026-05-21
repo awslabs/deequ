@@ -78,6 +78,9 @@ jobs:
           SM_FOLLOWUP_PROMPT: deequ-bot/followup-prompt
           # Flip BOT_AGENT_PIPELINE to "1" to enable the 3-agent (Investigator+Critic+Reporter) pipeline.
           # When unset/empty, the legacy two-phase flow runs unchanged.
+          # NOTE: Set as a REPOSITORY VARIABLE (Settings → Secrets and variables → Actions → Variables tab),
+          # NOT a secret. Misplacing it under "Secrets" leaves vars.BOT_AGENT_PIPELINE empty → legacy flow
+          # runs silently. To verify: `gh api repos/awslabs/deequ/actions/variables` should list it.
           BOT_AGENT_PIPELINE: ${{ vars.BOT_AGENT_PIPELINE || '' }}
           CODEBASE_SRC_DIR: src/main/scala
           CODEBASE_FILE_EXT: .scala

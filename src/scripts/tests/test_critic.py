@@ -285,7 +285,6 @@ def test_pipeline_metrics_record_token_usage(tmp_path, monkeypatch):
     assert metrics["investigator"]["output_tokens"] == 50
     assert "totals" in metrics
     assert metrics["totals"]["input_tokens"] == 100
-    assert metrics["totals"]["cost_usd"] >= 0
 
 
 def test_pipeline_handles_missing_prompts(tmp_path, monkeypatch):

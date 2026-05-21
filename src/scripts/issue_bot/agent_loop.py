@@ -1,16 +1,14 @@
-"""
-Multi-turn tool-use loop for Bedrock Converse.
+"""Multi-turn tool-use loop for Bedrock Converse.
 
-Runs an agent (Investigator or Critic) through repeated rounds of:
-  1. Bedrock Converse call with toolConfig
-  2. If stopReason == "tool_use", execute the requested tools
-  3. Append tool results, continue
-  4. Otherwise, terminate with the final text
+Used by both the Investigator and the Critic. Each turn:
+  1. Call Bedrock with toolConfig.
+  2. If stopReason is "tool_use", execute the requested tools and append
+     the toolResults; loop.
+  3. Otherwise, return the final text.
 
-Owns budget enforcement (turns, tool calls, tool output chars, cost),
-provenance tracking (tool trace), and graceful termination on caps.
-Both Investigator and Critic use the same loop with different caps and
-prompts.
+Owns budget enforcement (turns, tool calls, tool output chars) and
+tool-call provenance recording. Token usage is reported in the result
+for downstream observability; this module does NOT enforce cost limits.
 """
 import logging
 import time
@@ -18,22 +16,21 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
+from .tools import DEFAULT_PER_TOOL_CALL_CAPS
+
 logger = logging.getLogger("issue_bot")
 
 
 @dataclass
 class AgentCaps:
-    """Per-agent budgets enforced by the loop."""
+    """Per-agent budgets enforced by the loop. Defaults match the registered
+    tool set in tools.py; pass per_tool_max_calls explicitly to override."""
     max_turns: int = 15
     max_tool_calls: int = 50
     max_tool_output_chars: int = 400_000
-    per_tool_max_calls: Dict[str, int] = field(default_factory=lambda: {
-        "grep_codebase": 50,
-        "read_file": 30,
-        "list_dir": 20,
-        "find_callers": 20,
-        "find_tests_for": 10,
-    })
+    per_tool_max_calls: Dict[str, int] = field(
+        default_factory=lambda: dict(DEFAULT_PER_TOOL_CALL_CAPS)
+    )
     max_tokens_per_call: int = 8000
 
 
@@ -49,28 +46,8 @@ class AgentResult:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     max_turns_reached: bool = False
-    cost_cap_hit: bool = False
     error: Optional[str] = None
     tool_trace: List[Dict[str, Any]] = field(default_factory=list)
-
-
-def estimate_cost_usd(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, pricing):
-    """Convert token counts to USD using the provided per-million rates.
-
-    pricing is a dict with keys: input_per_million, output_per_million,
-    cache_read_per_million, cache_write_per_million.
-    """
-    return (
-        (input_tokens / 1_000_000) * pricing["input_per_million"]
-        + (output_tokens / 1_000_000) * pricing["output_per_million"]
-        + (cache_read_tokens / 1_000_000) * pricing["cache_read_per_million"]
-        + (cache_write_tokens / 1_000_000) * pricing["cache_write_per_million"]
-    )
-
-
-# Backward-compatible alias for internal callers that already use the
-# private name. New code should call estimate_cost_usd().
-_estimate_cost_usd = estimate_cost_usd
 
 
 def run(
@@ -81,18 +58,15 @@ def run(
     tool_specs: List[Dict[str, Any]],
     tool_runner,
     caps: AgentCaps,
-    cost_tracker,
-    pricing: Dict[str, float],
 ):
-    """Execute an agent's tool-use loop.
+    """Execute an agent's tool-use loop. Returns an AgentResult.
 
-    bedrock_client: instance of BedrockClient (must support converse_with_tools).
-    tool_runner: callable (name, args_dict) -> str. Implements actual tool dispatch.
-    cost_tracker: shared mutable dict {"cost_usd": float, "cap_hit": bool}.
-        The loop enforces the cap by reading/writing cost_tracker before each turn.
-    pricing: per-million-token rates for the model in use.
-
-    Returns an AgentResult.
+    Termination is bounded structurally:
+      - caps.max_turns total Bedrock turns
+      - caps.max_tool_calls total tool executions
+      - caps.max_tool_output_chars cumulative tool output size
+      - caps.per_tool_max_calls per-tool budget
+    Wall-clock is bounded by the workflow timeout.
     """
     result = AgentResult()
     messages = [{"role": "user", "content": [{"text": user_prompt}]}]
@@ -100,13 +74,6 @@ def run(
 
     for turn in range(caps.max_turns):
         result.turns = turn + 1
-
-        # Pre-turn cost cap check
-        if cost_tracker.get("cap_hit"):
-            result.cost_cap_hit = True
-            result.error = "cost cap hit before turn"
-            logger.warning("[%s turn=%d] cost cap hit, terminating", agent_name, turn + 1)
-            break
 
         try:
             resp = bedrock_client.converse_with_tools(
@@ -118,173 +85,144 @@ def run(
         except Exception as e:
             logger.error("[%s turn=%d] bedrock error: %s", agent_name, turn + 1, type(e).__name__)
             result.error = f"bedrock error: {type(e).__name__}: {e}"
-            break
+            return result
 
         if resp is None:
             result.error = "bedrock returned None (circuit-breaker or transient failure)"
-            break
+            return result
 
-        usage = resp.get("usage", {}) or {}
-        in_t = usage.get("inputTokens", 0) or 0
-        out_t = usage.get("outputTokens", 0) or 0
-        cr_t = usage.get("cacheReadInputTokens", 0) or 0
-        cw_t = usage.get("cacheWriteInputTokens", 0) or 0
-        result.input_tokens += in_t
-        result.output_tokens += out_t
-        result.cache_read_tokens += cr_t
-        result.cache_write_tokens += cw_t
-        delta_cost = _estimate_cost_usd(in_t, out_t, cr_t, cw_t, pricing)
-        cost_tracker["cost_usd"] = cost_tracker.get("cost_usd", 0.0) + delta_cost
-        # Per-turn overshoot bound: a single turn's tokens are already paid for
-        # by the time we observe the usage field. Worst-case overshoot of the
-        # cap is therefore one turn's cost, bounded by max_tokens_per_call ×
-        # the model's input rate × ~1 (output tokens are dwarfed by typical
-        # input). At default $1.00 cap and 8000 max output, plus typical 50K
-        # input, overshoot is bounded at ~$0.75 (Opus rates).
-        if cost_tracker["cost_usd"] >= cost_tracker.get("cap_usd", float("inf")):
-            cost_tracker["cap_hit"] = True
-            result.cost_cap_hit = True
+        usage = resp.get("usage") or {}
+        result.input_tokens += usage.get("inputTokens") or 0
+        result.output_tokens += usage.get("outputTokens") or 0
+        result.cache_read_tokens += usage.get("cacheReadInputTokens") or 0
+        result.cache_write_tokens += usage.get("cacheWriteInputTokens") or 0
         logger.debug(
-            "[%s turn=%d] in=%d out=%d cacheR=%d cacheW=%d cost_so_far=$%.4f",
-            agent_name, turn + 1, in_t, out_t, cr_t, cw_t,
-            cost_tracker.get("cost_usd", 0.0),
+            "[%s turn=%d] in=%d out=%d cacheR=%d cacheW=%d",
+            agent_name, turn + 1, result.input_tokens, result.output_tokens,
+            result.cache_read_tokens, result.cache_write_tokens,
         )
 
         msg = resp.get("output", {}).get("message", {})
         if not msg:
             result.error = "empty bedrock message"
-            break
+            return result
         messages.append(msg)
 
-        stop = resp.get("stopReason")
-        if stop != "tool_use":
-            # Final text emitted; collect and exit
-            result.text = "\n".join(
-                b.get("text", "") for b in msg.get("content", []) if "text" in b
-            ).strip()
+        if resp.get("stopReason") != "tool_use":
+            result.text = _extract_text(msg)
             return result
 
-        # Cost cap hit on this turn: skip tool execution to bound overshoot.
-        # The model's tool_use response is preserved in messages so callers can
-        # see what it was about to do. Try to recover any text it emitted
-        # alongside the tool calls.
-        if cost_tracker.get("cap_hit"):
-            text_blocks = [b.get("text", "") for b in msg.get("content", []) if "text" in b]
-            recovered = "\n".join(text_blocks).strip()
-            if recovered:
-                result.text = recovered
-            else:
-                result.text = (
-                    f"Cost cap hit on turn {turn + 1}; tool execution skipped to "
-                    "bound overshoot. Conclude investigation with information "
-                    "gathered so far."
-                )
-            logger.warning(
-                "[%s turn=%d] cost cap hit mid-turn; skipping tool execution",
-                agent_name, turn + 1,
-            )
-            return result
-
-        # Execute tool calls in this turn
-        tool_results_content = []
-        for block in msg.get("content", []):
-            if "toolUse" not in block:
-                continue
-            tu = block["toolUse"]
-            tool_name = tu.get("name", "")
-            tool_args = tu.get("input", {}) or {}
-            tool_use_id = tu.get("toolUseId", "")
-
-            # Enforce per-tool budget
-            per_tool_cap = caps.per_tool_max_calls.get(tool_name, 9999)
-            if per_tool_calls[tool_name] >= per_tool_cap:
-                tool_text = (
-                    f"BUDGET EXHAUSTED: tool '{tool_name}' has been called "
-                    f"{per_tool_cap} times. Investigate with information already "
-                    "gathered, or use a different tool."
-                )
-                logger.info("[%s turn=%d] %s budget exhausted", agent_name, turn + 1, tool_name)
-            elif result.tool_calls >= caps.max_tool_calls:
-                tool_text = (
-                    f"BUDGET EXHAUSTED: total tool calls reached {caps.max_tool_calls}. "
-                    "Conclude investigation with information already gathered."
-                )
-                logger.info("[%s turn=%d] total tool budget exhausted", agent_name, turn + 1)
-            elif result.tool_output_chars >= caps.max_tool_output_chars:
-                tool_text = (
-                    f"BUDGET EXHAUSTED: total tool output {result.tool_output_chars} chars "
-                    f"reached cap {caps.max_tool_output_chars}. Conclude investigation."
-                )
-                logger.info("[%s turn=%d] tool output budget exhausted", agent_name, turn + 1)
-            else:
-                t0 = time.monotonic()
-                tool_text = tool_runner.run(tool_name, tool_args)
-                if not isinstance(tool_text, str):
-                    tool_text = str(tool_text)
-                latency_ms = int((time.monotonic() - t0) * 1000)
-                per_tool_calls[tool_name] += 1
-                result.tool_calls += 1
-                result.tool_output_chars += len(tool_text)
-                logger.info(
-                    "[%s turn=%d] %s(%s) → %d chars in %dms",
-                    agent_name, turn + 1, tool_name,
-                    _summarize_args(tool_args), len(tool_text), latency_ms,
-                )
-                result.tool_trace.append({
-                    "agent": agent_name,
-                    "turn": turn + 1,
-                    "tool": tool_name,
-                    "args": tool_args,
-                    "result_summary": tool_text[:200] + ("..." if len(tool_text) > 200 else ""),
-                    "result_chars": len(tool_text),
-                    "latency_ms": latency_ms,
-                })
-
-            tool_results_content.append({
-                "toolResult": {
-                    "toolUseId": tool_use_id,
-                    "content": [{"text": tool_text}],
-                },
-            })
-
-        if not tool_results_content:
-            # stopReason said tool_use but no toolUse blocks present → bail
-            result.text = "\n".join(
-                b.get("text", "") for b in msg.get("content", []) if "text" in b
-            ).strip()
+        tool_results = _run_tool_calls(
+            msg, agent_name, turn + 1, tool_runner, caps, result, per_tool_calls,
+        )
+        if not tool_results:
+            result.text = _extract_text(msg)
             result.error = "stopReason was tool_use but no toolUse blocks emitted"
             return result
+        messages.append({"role": "user", "content": tool_results})
 
-        messages.append({"role": "user", "content": tool_results_content})
-
-    # Loop exited via max_turns. The last appended message is typically a user
-    # toolResult (we appended it after the last bedrock call), so walk backward
-    # to find the most recent assistant message and extract any text it carried
-    # alongside its tool_use blocks.
     result.max_turns_reached = True
-    for msg in reversed(messages):
-        if msg.get("role") != "assistant":
-            continue
-        text_blocks = [
-            b.get("text", "")
-            for b in msg.get("content", [])
-            if "text" in b and isinstance(b.get("text"), str)
-        ]
-        recovered = "\n".join(text_blocks).strip()
-        if recovered:
-            result.text = recovered
-        break
-    if not result.text:
-        result.text = (
-            f"Investigation hit max_turns ({caps.max_turns}) without conclusion. "
-            f"Made {result.tool_calls} tool call(s)."
-        )
+    result.text = _recover_last_assistant_text(messages) or (
+        f"Investigation hit max_turns ({caps.max_turns}) without conclusion. "
+        f"Made {result.tool_calls} tool call(s)."
+    )
     logger.warning("[%s] max_turns (%d) reached", agent_name, caps.max_turns)
     return result
 
 
+def _run_tool_calls(msg, agent_name, turn, tool_runner, caps, result, per_tool_calls):
+    """Execute every toolUse block in `msg`. Returns the list of toolResult blocks
+    to append to the conversation. Updates `result` in place (tool_calls,
+    tool_output_chars, tool_trace) and `per_tool_calls`."""
+    tool_results = []
+    for block in msg.get("content", []):
+        if "toolUse" not in block:
+            continue
+        tu = block["toolUse"]
+        tool_name = tu.get("name", "")
+        tool_args = tu.get("input") or {}
+        tool_use_id = tu.get("toolUseId", "")
+        tool_text = _execute_or_budget(
+            tool_name, tool_args, agent_name, turn, tool_runner,
+            caps, result, per_tool_calls,
+        )
+        tool_results.append({
+            "toolResult": {
+                "toolUseId": tool_use_id,
+                "content": [{"text": tool_text}],
+            },
+        })
+    return tool_results
+
+
+def _execute_or_budget(tool_name, tool_args, agent_name, turn, tool_runner,
+                       caps, result, per_tool_calls):
+    """Execute a tool call or return a budget-exhausted message. Records
+    successful runs in result.tool_trace and increments counters."""
+    per_tool_cap = caps.per_tool_max_calls.get(tool_name)
+    if per_tool_cap is not None and per_tool_calls[tool_name] >= per_tool_cap:
+        logger.info("[%s turn=%d] %s budget exhausted", agent_name, turn, tool_name)
+        return (
+            f"BUDGET EXHAUSTED: tool '{tool_name}' has been called {per_tool_cap} "
+            "times. Investigate with information already gathered, or use a "
+            "different tool."
+        )
+    if result.tool_calls >= caps.max_tool_calls:
+        logger.info("[%s turn=%d] total tool budget exhausted", agent_name, turn)
+        return (
+            f"BUDGET EXHAUSTED: total tool calls reached {caps.max_tool_calls}. "
+            "Conclude investigation with information already gathered."
+        )
+    if result.tool_output_chars >= caps.max_tool_output_chars:
+        logger.info("[%s turn=%d] tool output budget exhausted", agent_name, turn)
+        return (
+            f"BUDGET EXHAUSTED: total tool output {result.tool_output_chars} chars "
+            f"reached cap {caps.max_tool_output_chars}. Conclude investigation."
+        )
+
+    t0 = time.monotonic()
+    text = tool_runner.run(tool_name, tool_args)
+    if not isinstance(text, str):
+        text = str(text)
+    latency_ms = int((time.monotonic() - t0) * 1000)
+    per_tool_calls[tool_name] += 1
+    result.tool_calls += 1
+    result.tool_output_chars += len(text)
+    logger.info(
+        "[%s turn=%d] %s(%s) → %d chars in %dms",
+        agent_name, turn, tool_name, _summarize_args(tool_args), len(text), latency_ms,
+    )
+    result.tool_trace.append({
+        "agent": agent_name,
+        "turn": turn,
+        "tool": tool_name,
+        "args": tool_args,
+        "result_summary": text[:200] + ("..." if len(text) > 200 else ""),
+        "result_chars": len(text),
+        "latency_ms": latency_ms,
+    })
+    return text
+
+
+def _extract_text(msg):
+    """Concatenate text blocks from an assistant message. Returns "" if none."""
+    return "\n".join(
+        b.get("text", "") for b in msg.get("content", []) if "text" in b
+    ).strip()
+
+
+def _recover_last_assistant_text(messages):
+    """Walk back through the conversation to the most recent assistant message
+    and extract any text it carried (possibly alongside tool_use blocks).
+    Used on max_turns exit so partial findings aren't dropped."""
+    for msg in reversed(messages):
+        if msg.get("role") == "assistant":
+            return _extract_text(msg)
+    return ""
+
+
 def _summarize_args(args):
-    """One-line summary of tool args for logging."""
+    """One-line representation of tool args for log output."""
     if not isinstance(args, dict):
         return repr(args)[:80]
     parts = []

@@ -283,33 +283,11 @@ def analyze():
                          type(e).__name__, (raw or "")[:500])
             inline_comments = []
 
-        # Hard filter: drop comments without a usable file path or positive line number
-        inline_comments = [
-            c for c in inline_comments
-            if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
-        ]
-
-        # Hard filter: on incremental review, drop comments on files not in the incremental diff
-        if incremental_files and inline_comments:
-            inline_comments = [
-                c for c in inline_comments
-                if c.get("file", "") in incremental_files
-            ]
-
-        # Hard filter: drop NITs on re-reviews (code-enforced, not prompt-dependent)
-        if is_pr_update and inline_comments:
-            inline_comments = [
-                c for c in inline_comments
-                if c.get("severity", "").upper() != "NIT"
-            ]
-
-        # Format comments: prepend severity, append evidence as context
-        for c in inline_comments:
-            severity = c.get("severity", "")
-            evidence = c.get("evidence", "")
-            prefix = f"**{severity}**: " if severity else ""
-            suffix = "\n\n> " + evidence.replace("\n", "\n> ") if evidence else ""
-            c["comment"] = prefix + c.get("comment", "") + suffix
+        inline_comments = _filter_and_format_inline_comments(
+            inline_comments,
+            incremental_files=incremental_files,
+            is_pr_update=is_pr_update,
+        )
 
         # Check CI status to give accurate signal to human reviewers
         ci_passed, ci_summary = gh.get_ci_status(head_sha) if head_sha else (None, "")
@@ -804,68 +782,183 @@ def _has_confirmed_findings(notes):
     return _STATUS_CONFIRMED_RE.search(notes) is not None
 
 
+def _filter_and_format_inline_comments(comments, *, incremental_files, is_pr_update):
+    """Apply the standard post-Reporter hardening to inline comments:
+      - drop entries without a usable file path or positive line number
+      - on incremental re-review, restrict to files in the incremental diff
+      - on re-review, drop NIT severity (the author already saw them once)
+      - prepend severity bold, append evidence as a blockquote
+
+    Mutates and returns the kept list.
+    """
+    kept = [
+        c for c in comments
+        if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
+    ]
+    if incremental_files and kept:
+        kept = [c for c in kept if c.get("file", "") in incremental_files]
+    if is_pr_update and kept:
+        kept = [c for c in kept if c.get("severity", "").upper() != "NIT"]
+    for c in kept:
+        severity = c.get("severity", "")
+        evidence = c.get("evidence", "")
+        prefix = f"**{severity}**: " if severity else ""
+        suffix = "\n\n> " + evidence.replace("\n", "\n> ") if evidence else ""
+        c["comment"] = prefix + c.get("comment", "") + suffix
+    return kept
+
+
 def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item,
                         context, codebase_map, comments_data, is_pr_update):
     """Investigator + Critic + Reporter pipeline. Replaces the legacy two-phase
     flow when cfg.agent_pipeline is True. Writes the analyze artifact and returns.
     """
-    investigator_tmpl = prompts.get_pr_investigator_prompt()
-    critic_tmpl = prompts.get_pr_critic_prompt()
-    reporter_tmpl = prompts.get_pr_file_review_report_prompt()
-    missing = []
-    if not investigator_tmpl:
-        missing.append("investigator")
-    if not critic_tmpl:
-        missing.append("critic")
-    if not reporter_tmpl:
-        missing.append("reporter")
-    if missing:
-        logger.error(
-            "Pipeline enabled but required prompt(s) missing: %s. Failing closed "
-            "(escalating). Set the corresponding SM_* env var or PR_*_PROMPT.",
-            ", ".join(missing),
-        )
-        _write_artifact({
-            "action": "ESCALATE", "labels": [], "response": "",
-            "reason": f"prompt_load_failed: {','.join(missing)}",
-            "title": title, "html_url": html_url, "number": number, "is_pr": True,
-            "prompt_id": "n/a", "model_id": cfg.bedrock_model_id,
-        })
+    prompts_or_none = _load_pipeline_prompts(cfg, title, html_url, number)
+    if prompts_or_none is None:
         return
+    investigator_tmpl, critic_tmpl, reporter_tmpl = prompts_or_none
 
     diff = gh.get_pr_diff(number)
     review_comments = gh.get_pr_review_comments(number)
     existing_feedback = _format_pr_feedback(comments_data, review_comments)
-
-    incremental_diff = ""
-    incremental_files = set()
-    if is_pr_update and cfg.event_before and cfg.event_after:
-        incremental_diff = gh.get_compare_diff(cfg.event_before, cfg.event_after)
-        if incremental_diff:
-            incremental_files = _extract_diff_files(incremental_diff)
-
     head_sha = cfg.event_after or item.get("head", {}).get("sha", "")
     pr_files = gh.get_pr_files(number)
-    diff_lines = sum(int(pf.get("changes", 0) or 0) for pf in pr_files)
+    incremental_diff, incremental_files = _maybe_compute_incremental(
+        gh, cfg, is_pr_update,
+    )
 
-    # Adaptive caps (PR-size proportional within configured upper bounds).
-    # Floor is min(5, ceiling) so users can throttle below the default floor by
-    # setting BOT_INVESTIGATOR_MAX_TURNS=3 etc.
+    investigator_caps, critic_caps = _build_caps(cfg, pr_files)
+    today = datetime.date.today().isoformat()
+    static_context = _build_static_context(
+        context, codebase_map, existing_feedback, incremental_diff,
+    )
+    investigator_system = _render(investigator_tmpl, current_date=today) + static_context
+    critic_system = _render(critic_tmpl, current_date=today) + static_context
+    reporter_system = (
+        _render(reporter_tmpl, current_date=today)
+        + f"\n<diff>\n{diff}\n</diff>\n"
+        + f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
+    )
+    investigator_user = (
+        f"<diff>\n{diff}\n</diff>\n<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+    )
+
+    tool_runner = ToolRunner(cfg, gh.repo_root)
+
+    inv_result = agent_loop.run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt=investigator_system, user_prompt=investigator_user,
+        tool_specs=TOOL_SPECS, tool_runner=tool_runner,
+        caps=investigator_caps,
+    )
+
+    metrics = _initial_metrics(inv_result)
+    artifact_kwargs = dict(
+        cfg=cfg, title=title, html_url=html_url, number=number,
+        inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
+        is_incremental=bool(incremental_diff),
+    )
+
+    if not inv_result.text:
+        _write_artifact_pipeline(
+            **artifact_kwargs, action="ESCALATE", reason="investigator_empty",
+            inline_comments=[], response="",
+            metrics=_finalize_metrics(metrics, inv_result, None),
+            tool_trace=inv_result.tool_trace,
+        )
+        return
+
+    crit_result, critic_skip_reason, rep_inline_comments, reporter_metrics = (
+        _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=tool_runner,
+            critic_system=critic_system, critic_caps=critic_caps,
+            reporter_system=reporter_system,
+            diff=diff, title=title, body=body,
+            investigator_text=inv_result.text,
+        )
+    )
+    if crit_result is not None:
+        metrics["critic"] = _agent_metrics(crit_result)
+    else:
+        metrics["critic"]["skip_reason"] = critic_skip_reason
+    metrics["reporter"] = reporter_metrics
+
+    rep_inline_comments = _filter_and_format_inline_comments(
+        rep_inline_comments,
+        incremental_files=incremental_files,
+        is_pr_update=is_pr_update,
+    )
+    response = _build_clean_response(gh, head_sha, rep_inline_comments)
+
+    _write_artifact_pipeline(
+        **artifact_kwargs, action="RESPOND", reason=None,
+        inline_comments=rep_inline_comments, response=response,
+        metrics=_finalize_metrics(metrics, inv_result, crit_result),
+        tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+    )
+
+
+def _load_pipeline_prompts(cfg, title, html_url, number):
+    """Load the three prompts. Returns the tuple, or None after writing an
+    ESCALATE artifact if any are missing (fail closed)."""
+    investigator = prompts.get_pr_investigator_prompt()
+    critic = prompts.get_pr_critic_prompt()
+    reporter = prompts.get_pr_file_review_report_prompt()
+    missing = [name for name, val in (
+        ("investigator", investigator),
+        ("critic", critic),
+        ("reporter", reporter),
+    ) if not val]
+    if not missing:
+        return investigator, critic, reporter
+    logger.error(
+        "Pipeline enabled but required prompt(s) missing: %s. Failing closed.",
+        ", ".join(missing),
+    )
+    _write_artifact({
+        "action": "ESCALATE", "labels": [], "response": "",
+        "reason": f"prompt_load_failed: {','.join(missing)}",
+        "title": title, "html_url": html_url, "number": number, "is_pr": True,
+        "prompt_id": "n/a", "model_id": cfg.bedrock_model_id,
+    })
+    return None
+
+
+def _maybe_compute_incremental(gh, cfg, is_pr_update):
+    """Return (incremental_diff, incremental_files) or ("", set()) when N/A."""
+    if not (is_pr_update and cfg.event_before and cfg.event_after):
+        return "", set()
+    diff = gh.get_compare_diff(cfg.event_before, cfg.event_after)
+    files = _extract_diff_files(diff) if diff else set()
+    return diff, files
+
+
+def _build_caps(cfg, pr_files):
+    """Return (investigator_caps, critic_caps), sized to PR length within
+    user-configured ceilings. The Investigator floor is min(5, ceiling) and the
+    Critic floor is min(3, ceiling) so a user lowering the ceiling below the
+    default floor is still respected."""
+    diff_lines = sum(int(pf.get("changes", 0) or 0) for pf in pr_files)
     inv_ceiling = max(1, cfg.investigator_max_turns)
     inv_floor = min(5, inv_ceiling)
-    investigator_caps = agent_loop.AgentCaps(
+    investigator = agent_loop.AgentCaps(
         max_turns=_clamp(diff_lines // 30, inv_floor, inv_ceiling),
         max_tool_calls=cfg.investigator_max_tool_calls,
         max_tool_output_chars=cfg.investigator_max_tool_output_chars,
     )
     crit_ceiling = max(1, cfg.critic_max_turns)
     crit_floor = min(3, crit_ceiling)
-    critic_caps = agent_loop.AgentCaps(
-        max_turns=_clamp(investigator_caps.max_turns // 2, crit_floor, crit_ceiling),
+    critic = agent_loop.AgentCaps(
+        max_turns=_clamp(investigator.max_turns // 2, crit_floor, crit_ceiling),
         max_tool_calls=cfg.critic_max_tool_calls,
         max_tool_output_chars=cfg.critic_max_tool_output_chars,
     )
+    return investigator, critic
 
+
+def _build_static_context(kb_context, codebase_map, existing_feedback, incremental_diff):
+    """Assemble the system-prompt suffix shared between Investigator and Critic.
+    Same prefix → cache hit on Critic's first turn."""
     incremental_section = ""
     if incremental_diff:
         incremental_section = (
@@ -876,186 +969,93 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
             "</incremental_review_instructions>\n"
             f"<incremental_diff>\n{incremental_diff}\n</incremental_diff>\n"
         )
-
-    # Static priming context (reused across Investigator and Critic for cache hit).
-    static_context = (
-        f"\n<knowledge_base>\n{context}\n</knowledge_base>\n"
+    return (
+        f"\n<knowledge_base>\n{kb_context}\n</knowledge_base>\n"
         f"<codebase_map>\n{codebase_map}\n</codebase_map>\n"
         f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
         f"{incremental_section}"
     )
 
-    investigator_system = _render(
-        investigator_tmpl, current_date=datetime.date.today().isoformat()
-    ) + static_context
-    critic_system = _render(
-        critic_tmpl, current_date=datetime.date.today().isoformat()
-    ) + static_context
-    reporter_system = (
-        _render(reporter_tmpl, current_date=datetime.date.today().isoformat())
-        + f"\n<diff>\n{diff}\n</diff>\n"
-        + f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
-    )
 
-    investigator_user = (
-        f"<diff>\n{diff}\n</diff>\n"
-        f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
-    )
-
-    tool_runner = ToolRunner(cfg, gh.repo_root)
-    cost_tracker = {
-        "cost_usd": 0.0,
-        "cap_usd": cfg.agent_max_review_cost_usd,
-        "cap_hit": False,
-    }
-    pricing = cfg.bedrock_pricing
-
-    inv_result = agent_loop.run(
-        bedrock_client=bedrock, agent_name="investigator",
-        system_prompt=investigator_system, user_prompt=investigator_user,
-        tool_specs=TOOL_SPECS, tool_runner=tool_runner,
-        caps=investigator_caps, cost_tracker=cost_tracker, pricing=pricing,
-    )
-
-    metrics = {
+def _initial_metrics(inv_result):
+    return {
         "investigator": _agent_metrics(inv_result),
         "critic": {"skipped": True, "skip_reason": None},
         "reporter": {"input_tokens": 0, "output_tokens": 0, "skipped": True},
         "totals": {},
-        "cost_cap_hit": cost_tracker["cap_hit"],
         "max_turns_reached": inv_result.max_turns_reached,
         "critic_overturn_rate": None,
     }
 
-    if not inv_result.text:
-        _write_artifact_pipeline(
-            cfg=cfg, action="ESCALATE", reason="investigator_empty",
-            title=title, html_url=html_url, number=number,
-            inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
-            inline_comments=[], response="", is_incremental=bool(incremental_diff),
-            metrics=_finalize_metrics(metrics, inv_result, None, None, cost_tracker),
-            tool_trace=inv_result.tool_trace,
-        )
-        return
 
-    confirmed_present = _has_confirmed_findings(inv_result.text)
+def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic_caps,
+                              reporter_system, diff, title, body, investigator_text):
+    """Run the Critic (if any CONFIRMED concerns) and then the Reporter.
 
-    crit_result = None
-    rep_inline_comments = []
-    rep_input_tokens = 0
-    rep_output_tokens = 0
+    Returns (crit_result_or_None, critic_skip_reason_or_None, inline_comments,
+    reporter_metrics). When the Critic is skipped, crit_result is None,
+    critic_skip_reason explains why, and the Reporter is skipped too.
+    """
+    skipped_metrics = {"input_tokens": 0, "output_tokens": 0, "skipped": True, "skip_reason": None}
 
-    if not confirmed_present:
-        # FAST PATH: no confirmed findings → skip Critic and Reporter
-        metrics["critic"]["skip_reason"] = "no_confirmed_findings"
-        metrics["reporter"]["skipped"] = True
-    elif cost_tracker["cap_hit"]:
-        metrics["critic"]["skip_reason"] = "cost_cap_hit_after_investigator"
-        metrics["reporter"]["skipped"] = True
-    else:
-        # Cap Critic's first-turn input. Investigator notes are bounded by
-        # max_tokens_per_call; the diff is unbounded and dominates large PRs.
-        # Truncate the diff so combined input stays well under Bedrock's 200K
-        # token window. Critic can fetch full files via read_file as needed.
-        max_critic_diff_chars = 200_000
-        critic_diff = diff
-        if len(critic_diff) > max_critic_diff_chars:
-            critic_diff = (
-                critic_diff[:max_critic_diff_chars]
-                + f"\n... [diff truncated at {max_critic_diff_chars} chars; "
-                "use read_file to fetch specific files referenced in investigator notes]"
-            )
-        critic_user = (
-            f"<investigator_notes>\n{inv_result.text}\n</investigator_notes>\n"
-            f"<diff>\n{critic_diff}\n</diff>\n"
-            f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
-        )
-        crit_result = agent_loop.run(
-            bedrock_client=bedrock, agent_name="critic",
-            system_prompt=critic_system, user_prompt=critic_user,
-            tool_specs=TOOL_SPECS, tool_runner=tool_runner,
-            caps=critic_caps, cost_tracker=cost_tracker, pricing=pricing,
-        )
-        metrics["critic"] = _agent_metrics(crit_result)
+    if not _has_confirmed_findings(investigator_text):
+        return None, "no_confirmed_findings", [], skipped_metrics
 
-        if cost_tracker["cap_hit"]:
-            metrics["reporter"]["skipped"] = True
-            metrics["reporter"]["skip_reason"] = "cost_cap_hit_after_critic"
-        else:
-            reporter_user = (
-                f"<investigator_notes>\n{inv_result.text}\n</investigator_notes>\n\n"
-                f"<critic_verdicts>\n{crit_result.text or 'ALL_DISPROVED: critic produced no verdicts'}\n</critic_verdicts>\n\n"
-                f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
-            )
-            raw, rep_input_tokens, rep_output_tokens = _invoke_reporter_tracked(
-                bedrock, reporter_system, reporter_user, cost_tracker, pricing,
-            )
-            metrics["reporter"]["skipped"] = False
-            metrics["reporter"]["input_tokens"] = rep_input_tokens
-            metrics["reporter"]["output_tokens"] = rep_output_tokens
-            if raw is None:
-                metrics["reporter"]["skip_reason"] = "bedrock_unavailable"
-            else:
-                rep_inline_comments = _parse_reporter_output(raw)
-
-    # Apply post-processing filters (same as legacy path)
-    rep_inline_comments = [
-        c for c in rep_inline_comments
-        if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
-    ]
-    if incremental_files and rep_inline_comments:
-        rep_inline_comments = [
-            c for c in rep_inline_comments if c.get("file", "") in incremental_files
-        ]
-    if is_pr_update and rep_inline_comments:
-        rep_inline_comments = [
-            c for c in rep_inline_comments
-            if c.get("severity", "").upper() != "NIT"
-        ]
-    for c in rep_inline_comments:
-        severity = c.get("severity", "")
-        evidence = c.get("evidence", "")
-        prefix = f"**{severity}**: " if severity else ""
-        suffix = "\n\n> " + evidence.replace("\n", "\n> ") if evidence else ""
-        c["comment"] = prefix + c.get("comment", "") + suffix
-
-    ci_passed, ci_summary = gh.get_ci_status(head_sha) if head_sha else (None, "")
-    if not rep_inline_comments:
-        if ci_passed is True:
-            response = "No issues found. CI is passing.\n<!-- deequ-bot:clean -->"
-        elif ci_passed is False:
-            response = f"No code issues found, but {ci_summary}."
-        else:
-            response = "No issues found.\n<!-- deequ-bot:clean -->"
-    else:
-        response = ""
-
-    _write_artifact_pipeline(
-        cfg=cfg, action="RESPOND", reason=None,
-        title=title, html_url=html_url, number=number,
-        inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
-        inline_comments=rep_inline_comments, response=response,
-        is_incremental=bool(incremental_diff),
-        metrics=_finalize_metrics(metrics, inv_result, crit_result, None, cost_tracker),
-        tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+    critic_diff = _truncate_for_critic(diff, cfg.critic_max_diff_chars)
+    critic_user = (
+        f"<investigator_notes>\n{investigator_text}\n</investigator_notes>\n"
+        f"<diff>\n{critic_diff}\n</diff>\n"
+        f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+    )
+    crit_result = agent_loop.run(
+        bedrock_client=bedrock, agent_name="critic",
+        system_prompt=critic_system, user_prompt=critic_user,
+        tool_specs=TOOL_SPECS, tool_runner=tool_runner,
+        caps=critic_caps,
     )
 
-
-def _invoke_reporter_tracked(bedrock, system, user_msg, cost_tracker, pricing):
-    """Invoke Reporter (single-shot, schema-enforced) while updating cost_tracker.
-    Returns (raw_text, input_tokens, output_tokens). On failure: (None, 0, 0)."""
+    reporter_user = (
+        f"<investigator_notes>\n{investigator_text}\n</investigator_notes>\n\n"
+        f"<critic_verdicts>\n"
+        f"{crit_result.text or 'ALL_DISPROVED: critic produced no verdicts'}"
+        f"\n</critic_verdicts>\n\n"
+        f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+    )
     raw, usage = bedrock.invoke_with_usage(
-        system, user_msg, max_tokens=8000, json_schema=PR_REVIEW_SCHEMA,
+        reporter_system, reporter_user, max_tokens=8000, json_schema=PR_REVIEW_SCHEMA,
     )
-    in_t = (usage.get("inputTokens") or 0) if usage else 0
-    out_t = (usage.get("outputTokens") or 0) if usage else 0
-    cr_t = (usage.get("cacheReadInputTokens") or 0) if usage else 0
-    cw_t = (usage.get("cacheWriteInputTokens") or 0) if usage else 0
-    delta = agent_loop.estimate_cost_usd(in_t, out_t, cr_t, cw_t, pricing)
-    cost_tracker["cost_usd"] = cost_tracker.get("cost_usd", 0.0) + delta
-    if cost_tracker["cost_usd"] >= cost_tracker.get("cap_usd", float("inf")):
-        cost_tracker["cap_hit"] = True
-    return raw, in_t, out_t
+    reporter_metrics = {
+        "skipped": False,
+        "skip_reason": None if raw is not None else "bedrock_unavailable",
+        "input_tokens": (usage.get("inputTokens") if usage else 0) or 0,
+        "output_tokens": (usage.get("outputTokens") if usage else 0) or 0,
+    }
+    inline_comments = _parse_reporter_output(raw) if raw is not None else []
+    return crit_result, None, inline_comments, reporter_metrics
+
+
+def _truncate_for_critic(diff, max_chars):
+    """Cap diff size for the Critic's first turn. Critic uses read_file to
+    fetch full files when needed, so the diff is just a pointer."""
+    if len(diff) <= max_chars:
+        return diff
+    return (
+        diff[:max_chars]
+        + f"\n... [diff truncated at {max_chars} chars; "
+        "use read_file to fetch specific files referenced in investigator notes]"
+    )
+
+
+def _build_clean_response(gh, head_sha, inline_comments):
+    """Compose the top-level review body when no inline comments were emitted."""
+    if inline_comments:
+        return ""
+    ci_passed, ci_summary = gh.get_ci_status(head_sha) if head_sha else (None, "")
+    if ci_passed is True:
+        return "No issues found. CI is passing.\n<!-- deequ-bot:clean -->"
+    if ci_passed is False:
+        return f"No code issues found, but {ci_summary}."
+    return "No issues found.\n<!-- deequ-bot:clean -->"
 
 
 def _agent_metrics(r):
@@ -1074,17 +1074,16 @@ def _agent_metrics(r):
     }
 
 
-def _finalize_metrics(metrics, inv, crit, _rep, cost_tracker):
-    overturn = _critic_overturn_rate(crit.text if (crit and crit.text) else "")
-    metrics["critic_overturn_rate"] = overturn
+def _finalize_metrics(metrics, inv, crit):
+    metrics["critic_overturn_rate"] = _critic_overturn_rate(
+        crit.text if (crit and crit.text) else ""
+    )
     rep_in = metrics.get("reporter", {}).get("input_tokens", 0) or 0
     rep_out = metrics.get("reporter", {}).get("output_tokens", 0) or 0
     metrics["totals"] = {
         "input_tokens": (inv.input_tokens if inv else 0) + (crit.input_tokens if crit else 0) + rep_in,
         "output_tokens": (inv.output_tokens if inv else 0) + (crit.output_tokens if crit else 0) + rep_out,
-        "cost_usd": round(cost_tracker.get("cost_usd", 0.0), 4),
     }
-    metrics["cost_cap_hit"] = cost_tracker.get("cap_hit", False)
     return metrics
 
 

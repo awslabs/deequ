@@ -14,9 +14,22 @@ import re
 
 logger = logging.getLogger("issue_bot")
 
+# Per-tool output caps. These bound a single tool call's response size; the
+# loop separately bounds total tool output across the agent run.
 _MAX_RESULT_CHARS = 50_000
 _MAX_FILE_LINES_PER_CALL = 200
 _MAX_GREP_RESULTS = 50
+
+# Default per-tool call budgets, co-located with TOOL_SPECS so a tool rename
+# requires updating both in one place. Tools omitted from this dict have no
+# per-tool cap and are bounded only by AgentCaps.max_tool_calls.
+DEFAULT_PER_TOOL_CALL_CAPS = {
+    "grep_codebase": 50,
+    "read_file": 30,
+    "list_dir": 20,
+    "find_callers": 20,
+    "find_tests_for": 10,
+}
 
 # JSON Schema definitions for Bedrock toolConfig. These describe each tool
 # in the format Bedrock Converse expects.
@@ -170,7 +183,12 @@ def _safe_repo_path(repo_root, rel_path):
 
 
 def grep_codebase(pattern, path_glob, repo_root, src_dir, default_ext):
-    """Search for a regex across the codebase. Returns 'path:line:text' lines."""
+    """Search for a regex across the codebase. Returns 'path:line:text' lines.
+
+    The pattern is model-supplied; pathological patterns can ReDoS-pin a
+    worker. Acceptable today (we own the model and the diffs it sees);
+    revisit when this runs in less-trusted contexts.
+    """
     if not pattern or not isinstance(pattern, str):
         return "ERROR: pattern must be a non-empty string"
     try:
@@ -178,12 +196,20 @@ def grep_codebase(pattern, path_glob, repo_root, src_dir, default_ext):
     except re.error as e:
         return f"ERROR: invalid regex: {e}"
     ext = path_glob if (path_glob and path_glob.startswith(".")) else default_ext
-    if not ext:
-        ext = default_ext
     search_root = os.path.join(repo_root, src_dir)
     if not os.path.isdir(search_root):
         return f"ERROR: search root '{src_dir}' does not exist in repo"
-    matches = []
+
+    matches = list(_iter_matches(regex, search_root, repo_root, ext, _MAX_GREP_RESULTS))
+    if not matches:
+        return f"No matches for pattern '{pattern}' in {src_dir}/**/*{ext}"
+    header = f"Found {len(matches)} match(es) (capped at {_MAX_GREP_RESULTS}):\n"
+    return _truncate(header + "\n".join(matches))
+
+
+def _iter_matches(regex, search_root, repo_root, ext, limit):
+    """Yield up to `limit` regex matches as 'path:line:text' strings."""
+    count = 0
     for dirpath, _, files in os.walk(search_root):
         for fn in files:
             if not fn.endswith(ext):
@@ -191,22 +217,15 @@ def grep_codebase(pattern, path_glob, repo_root, src_dir, default_ext):
             full = os.path.join(dirpath, fn)
             try:
                 with open(full, encoding="utf-8", errors="ignore") as f:
+                    rel = os.path.relpath(full, repo_root)
                     for lineno, line in enumerate(f, 1):
                         if regex.search(line):
-                            rel = os.path.relpath(full, repo_root)
-                            matches.append(f"{rel}:{lineno}:{line.rstrip()}")
-                            if len(matches) >= _MAX_GREP_RESULTS:
-                                break
+                            yield f"{rel}:{lineno}:{line.rstrip()}"
+                            count += 1
+                            if count >= limit:
+                                return
             except OSError:
                 continue
-            if len(matches) >= _MAX_GREP_RESULTS:
-                break
-        if len(matches) >= _MAX_GREP_RESULTS:
-            break
-    if not matches:
-        return f"No matches for pattern '{pattern}' in {src_dir}/**/*{ext}"
-    header = f"Found {len(matches)} match(es) (capped at {_MAX_GREP_RESULTS}):\n"
-    return _truncate(header + "\n".join(matches))
 
 
 def read_file(path, start_line, end_line, repo_root):
@@ -229,13 +248,13 @@ def read_file(path, start_line, end_line, repo_root):
     except OSError as e:
         return f"ERROR: cannot read '{path}': {e}"
     total = len(lines)
-    start = max(1, start_line if isinstance(start_line, int) and start_line >= 1 else 1)
+    start = start_line if isinstance(start_line, int) and start_line >= 1 else 1
     if isinstance(end_line, int) and end_line == -1:
         end = total
-    elif end_line is None or not isinstance(end_line, int) or end_line < 0:
-        end = min(start + _MAX_FILE_LINES_PER_CALL - 1, total)
-    else:
+    elif isinstance(end_line, int) and end_line >= 1:
         end = min(end_line, total)
+    else:
+        end = min(start + _MAX_FILE_LINES_PER_CALL - 1, total)
     if start > total:
         return f"ERROR: start_line {start} exceeds file length {total}"
     if end - start + 1 > _MAX_FILE_LINES_PER_CALL:
@@ -308,55 +327,59 @@ def find_callers(symbol, repo_root, src_dir, default_ext):
 
 
 def find_tests_for(target, repo_root, src_dir, default_ext):
-    """Find test files for a source file or symbol."""
+    """Find test files for a source file or symbol.
+
+    First looks for naming-convention matches (X.scala → XTest.scala /
+    XSpec.scala) under the test directory mirroring src_dir, then grep-matches
+    the symbol name in remaining test files. Returns up to 20 candidates.
+    """
     if not target or not isinstance(target, str):
         return "ERROR: target must be a non-empty string"
     test_root = os.path.join(repo_root, src_dir.replace("src/main", "src/test", 1))
     if not os.path.isdir(test_root):
-        # Fall back to the conventional test directory under repo_root
         test_root = os.path.join(repo_root, "src", "test")
         if not os.path.isdir(test_root):
-            return f"ERROR: no test directory found at src/test"
-    candidates = []
-    if "/" in target and target.endswith(default_ext):
-        # Target is a source path. Map to conventional test path: X.scala → XTest.scala / XSpec.scala
-        base = os.path.basename(target)
-        stem = base[:-len(default_ext)]
-        for suffix in ("Test", "Spec", ""):
-            for dirpath, _, files in os.walk(test_root):
-                for fn in files:
-                    if fn == f"{stem}{suffix}{default_ext}":
-                        rel = os.path.relpath(os.path.join(dirpath, fn), repo_root)
-                        if rel not in candidates:
-                            candidates.append(rel)
-    # Also grep for the target name in test files (covers symbol case and additional matches)
+            return "ERROR: no test directory found at src/test"
+
     name = os.path.basename(target)
     if name.endswith(default_ext):
         name = name[:-len(default_ext)]
-    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
-        pattern = re.compile(rf"\b{re.escape(name)}\b")
-        for dirpath, _, files in os.walk(test_root):
-            for fn in files:
-                if not fn.endswith(default_ext):
-                    continue
-                full = os.path.join(dirpath, fn)
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
+        return f"ERROR: target '{target}' did not yield a valid identifier"
+
+    convention_names = {f"{name}{suffix}{default_ext}" for suffix in ("Test", "Spec")}
+    grep_pattern = re.compile(rf"\b{re.escape(name)}\b")
+    candidates = []
+    seen = set()
+    limit = 20
+
+    for dirpath, _, files in os.walk(test_root):
+        for fn in files:
+            if not fn.endswith(default_ext):
+                continue
+            full = os.path.join(dirpath, fn)
+            rel = os.path.relpath(full, repo_root)
+            if rel in seen:
+                continue
+            if fn in convention_names:
+                candidates.append(rel)
+                seen.add(rel)
+            else:
                 try:
                     with open(full, encoding="utf-8", errors="ignore") as f:
-                        if pattern.search(f.read()):
-                            rel = os.path.relpath(full, repo_root)
-                            if rel not in candidates:
-                                candidates.append(rel)
+                        if grep_pattern.search(f.read()):
+                            candidates.append(rel)
+                            seen.add(rel)
                 except OSError:
                     continue
-                if len(candidates) >= 20:
-                    break
-            if len(candidates) >= 20:
+            if len(candidates) >= limit:
                 break
+        if len(candidates) >= limit:
+            break
+
     if not candidates:
         return f"No tests found for '{target}' under {os.path.relpath(test_root, repo_root)}"
-    out = [f"Tests for '{target}':"]
-    for rel in candidates[:20]:
-        out.append(f"  {rel}")
+    out = [f"Tests for '{target}':"] + [f"  {rel}" for rel in candidates]
     return _truncate("\n".join(out))
 
 

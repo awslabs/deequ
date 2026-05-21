@@ -107,7 +107,8 @@ class BedrockClient:
 
     def invoke_with_usage(self, system_prompt, user_prompt, max_tokens=4096,
                            temperature=0.3, json_schema=None):
-        """Like invoke() but also returns token usage so the caller can update a cost tracker.
+        """Like invoke() but also returns the token usage so the caller can
+        report it in artifacts or metrics.
 
         Returns (text, usage_dict) where usage_dict has inputTokens/outputTokens/
         cacheReadInputTokens/cacheWriteInputTokens. On failure, returns (None, {}).
