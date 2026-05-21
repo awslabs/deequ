@@ -59,7 +59,13 @@ case class HistogramBinnedMetric(column: String, value: Try[DistributionBinned])
         val details = distribution.bins.zipWithIndex.map { case (binData, index) =>
           DoubleMetric(entity, s"$name.abs.bin$index", instance, Success(binData.frequency))
         }
-        numberOfBins +: details
+
+        val nulls = if (distribution.nullCount > 0) {
+          Seq(DoubleMetric(entity, s"$name.nullCount", instance,
+            Success(distribution.nullCount.toDouble)))
+        } else Seq.empty
+
+        numberOfBins +: (details ++ nulls)
       }
       .recover {
         case e: Exception => Seq(DoubleMetric(entity, s"$name.bins", instance, Failure(e)))
