@@ -9,47 +9,21 @@ logger = logging.getLogger("issue_bot")
 _CIRCUIT_BREAKER_THRESHOLD = 3
 
 
-def _extract_first_text(content_blocks):
-    """Return the first text block in a Converse response, stripped.
-
-    Tolerates blocks that don't carry text (e.g., toolUse-only responses)
-    and missing keys; returns "" rather than raising.
-    """
-    for block in content_blocks or []:
-        if isinstance(block, dict) and isinstance(block.get("text"), str):
-            return block["text"].strip()
-    return ""
-
-
 class BedrockClient:
     def __init__(self, cfg):
         self._model_id = cfg.bedrock_model_id
-        self._default_timeout = cfg.bedrock_timeout
-        self._client = self._build_client(self._default_timeout)
+        self._client = boto3.client(
+            "bedrock-runtime",
+            config=BotoConfig(
+                read_timeout=cfg.bedrock_timeout,
+                connect_timeout=cfg.bedrock_timeout,
+                retries={"max_attempts": 3, "mode": "adaptive"},
+            ),
+        )
         self._guardrail_id = cfg.guardrail_id
         self._guardrail_version = cfg.guardrail_version
         self._failures = 0
         self._circuit_open = False  # Resets per-process; GHA runs are ephemeral
-
-    @staticmethod
-    def _build_client(timeout):
-        return boto3.client(
-            "bedrock-runtime",
-            config=BotoConfig(
-                read_timeout=timeout,
-                connect_timeout=timeout,
-                retries={"max_attempts": 3, "mode": "adaptive"},
-            ),
-        )
-
-    def _client_with_timeout(self, timeout_seconds):
-        """Return a Bedrock client whose read_timeout is the smaller of the
-        default and `timeout_seconds`. Avoids reuse of clients with
-        too-permissive timeouts when the caller is racing a deadline."""
-        if timeout_seconds is None or timeout_seconds >= self._default_timeout:
-            return self._client
-        # Floor at 5s so a near-zero remaining deadline still attempts the call.
-        return self._build_client(max(5, int(timeout_seconds)))
 
     @property
     def available(self):
@@ -122,7 +96,7 @@ class BedrockClient:
             logger.info("Bedrock: input=%s, output=%s, cacheRead=%s, cacheWrite=%s",
                         usage.get("inputTokens"), usage.get("outputTokens"),
                         usage.get("cacheReadInputTokens"), usage.get("cacheWriteInputTokens"))
-            return _extract_first_text(output)
+            return (output[0].get("text") or "").strip()
         except (ClientError, BotoCoreError, ValueError, KeyError, ConnectionError) as e:
             self._failures += 1
             logger.error(f"Bedrock failed ({self._failures}/{_CIRCUIT_BREAKER_THRESHOLD}): {e}")
@@ -133,12 +107,8 @@ class BedrockClient:
 
     def invoke_with_usage(self, system_prompt, user_prompt, max_tokens=4096,
                            temperature=0.3, json_schema=None):
-        """Like invoke() but also returns the token usage so the caller can
-        report it in artifacts or metrics.
-
-        Returns (text, usage_dict) where usage_dict has inputTokens/outputTokens/
-        cacheReadInputTokens/cacheWriteInputTokens. On failure, returns (None, {}).
-        """
+        """Like invoke() but also returns the response's token usage dict so
+        the caller can record it. Returns (None, {}) on failure."""
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock call")
             return None, {}
@@ -187,7 +157,7 @@ class BedrockClient:
                 usage.get("inputTokens"), usage.get("outputTokens"),
                 usage.get("cacheReadInputTokens"), usage.get("cacheWriteInputTokens"),
             )
-            return _extract_first_text(output), usage
+            return (output[0].get("text") or "").strip(), usage
         except (ClientError, BotoCoreError, ValueError, KeyError, ConnectionError) as e:
             self._failures += 1
             logger.error(f"Bedrock failed ({self._failures}/{_CIRCUIT_BREAKER_THRESHOLD}): {e}")
@@ -197,19 +167,13 @@ class BedrockClient:
             return None, {}
 
     def converse_with_tools(self, system_prompt, messages, tool_specs,
-                             max_tokens=8000, temperature=0.3,
-                             timeout_seconds=None):
-        """Multi-turn Converse with toolConfig.
+                             max_tokens=8000, temperature=0.3):
+        """One turn of Converse with toolConfig. The caller owns the messages
+        list and appends tool results between turns. Returns the raw response
+        dict (or None on failure / guardrail intervention / circuit open).
 
-        Used by the agentic pipeline (Investigator and Critic). Caller owns
-        the messages list and appends tool results between turns. Returns the
-        raw response dict so the caller can inspect stopReason, content blocks,
-        and usage.
-
-        The first user message in `messages` is wrapped in guardContent when a
-        guardrail is configured. Subsequent messages (toolResult content from
-        the loop) are NOT wrapped — they originate from the bot's own
-        filesystem reads, not user input.
+        Only the first user message is wrapped in guardContent — subsequent
+        toolResult messages come from our own filesystem and aren't user input.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock tool-use call")
@@ -233,8 +197,7 @@ class BedrockClient:
                     "guardrailVersion": self._guardrail_version,
                     "trace": "enabled",
                 }
-            client = self._client_with_timeout(timeout_seconds)
-            resp = client.converse(**kwargs)
+            resp = self._client.converse(**kwargs)
             if resp.get("stopReason") == "guardrail_intervened":
                 logger.warning("Guardrail intervened on tool-use turn: %s", resp.get("trace", ""))
                 return None
@@ -249,10 +212,8 @@ class BedrockClient:
             return None
 
     def _wrap_first_user_for_guardrail(self, messages):
-        """Wrap the FIRST user message's text content in guardContent for prompt-injection scanning.
-
-        Subsequent user messages (toolResult blocks) are passthrough.
-        """
+        """Wrap the first user message's text in guardContent so the
+        guardrail scans it; pass subsequent user messages through unchanged."""
         if not self._guardrail_id or not messages:
             return messages
         out = []

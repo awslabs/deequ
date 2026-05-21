@@ -1,14 +1,9 @@
 """Multi-turn tool-use loop for Bedrock Converse.
 
-Used by both the Investigator and the Critic. Each turn:
-  1. Call Bedrock with toolConfig.
-  2. If stopReason is "tool_use", execute the requested tools and append
-     the toolResults; loop.
-  3. Otherwise, return the final text.
-
-Owns budget enforcement (turns, tool calls, tool output chars) and
-tool-call provenance recording. Token usage is reported in the result
-for downstream observability; this module does NOT enforce cost limits.
+Each turn calls Bedrock with toolConfig; if stopReason is "tool_use" the
+loop executes the requested tools and continues, otherwise it returns the
+final text. Owns budget enforcement (turns, tool calls, tool output chars)
+and records each tool call in the result's tool_trace.
 """
 import logging
 import time
@@ -24,13 +19,7 @@ logger = logging.getLogger("issue_bot")
 @dataclass
 class AgentCaps:
     """Per-agent budgets enforced by the loop. Defaults match the registered
-    tool set in tools.py; pass per_tool_max_calls explicitly to override.
-
-    The wall-clock cap is the ultimate runaway protection: structural budgets
-    bound *steady-state* cost but a stuck loop can still pay the per-turn
-    Bedrock cost up to max_turns. wall_clock_seconds bounds total elapsed
-    time end-to-end.
-    """
+    tool set in tools.py; pass per_tool_max_calls explicitly to override."""
     max_turns: int = 15
     max_tool_calls: int = 50
     max_tool_output_chars: int = 400_000
@@ -38,18 +27,13 @@ class AgentCaps:
         default_factory=lambda: dict(DEFAULT_PER_TOOL_CALL_CAPS)
     )
     max_tokens_per_call: int = 8000
-    wall_clock_seconds: int = 300
 
 
 @dataclass
 class AgentResult:
-    """Outcome of an agent loop run.
-
-    `error` is set on any non-clean exit (Bedrock failure, structural cap,
-    wall-clock cap, max_turns, protocol violation). Callers must check
-    `fatal` to decide whether `text` is usable: structural exits often
-    produce partial-but-valid output, fatal exits do not.
-    """
+    """Outcome of an agent loop run. Empty `text` means the agent had no
+    usable output and downstream stages should skip; `error` is a one-line
+    label for logs."""
     text: str = ""
     turns: int = 0
     tool_calls: int = 0
@@ -60,7 +44,6 @@ class AgentResult:
     cache_write_tokens: int = 0
     max_turns_reached: bool = False
     error: Optional[str] = None
-    fatal: bool = False
     tool_trace: List[Dict[str, Any]] = field(default_factory=list)
 
 
@@ -76,30 +59,22 @@ def run(
 ):
     """Execute an agent's tool-use loop. Returns an AgentResult.
 
-    Termination is bounded structurally:
-      - caps.max_turns total Bedrock turns
-      - caps.max_tool_calls total tool executions
-      - caps.max_tool_output_chars cumulative tool output size
-      - caps.per_tool_max_calls per-tool budget
-      - caps.wall_clock_seconds elapsed time for THIS agent
-      - pipeline_deadline (optional) absolute monotonic deadline shared
-        across all stages of the pipeline; whichever is sooner wins
+    Termination: caps.max_turns, caps.max_tool_calls, caps.max_tool_output_chars,
+    caps.per_tool_max_calls, or pipeline_deadline (a shared monotonic deadline
+    threaded across pipeline stages) — whichever fires first.
     """
     result = AgentResult()
     messages = [{"role": "user", "content": [{"text": user_prompt}]}]
     per_tool_calls = defaultdict(int)
-    own_deadline = time.monotonic() + max(1, caps.wall_clock_seconds)
-    deadline = own_deadline if pipeline_deadline is None else min(own_deadline, pipeline_deadline)
 
     for turn in range(max(0, caps.max_turns)):
         result.turns = turn + 1
 
-        if time.monotonic() >= deadline:
-            result.error = f"wall-clock cap ({caps.wall_clock_seconds}s) reached"
-            # Bounded exit; any text recovered from prior turns is usable.
+        if pipeline_deadline is not None and time.monotonic() >= pipeline_deadline:
+            result.error = "pipeline wall-clock deadline reached"
             result.text = result.text or _recover_last_assistant_text(messages)
             logger.warning(
-                "[%s turn=%d] wall-clock cap reached, terminating",
+                "[%s turn=%d] pipeline wall-clock reached, terminating",
                 agent_name, turn + 1,
             )
             return result
@@ -110,21 +85,14 @@ def run(
                 messages=messages,
                 tool_specs=tool_specs,
                 max_tokens=caps.max_tokens_per_call,
-                timeout_seconds=max(1, deadline - time.monotonic()),
             )
         except Exception as e:
             logger.error("[%s turn=%d] bedrock error: %s", agent_name, turn + 1, type(e).__name__)
-            # Truncate exception message: Bedrock validation errors can echo
-            # prompt fragments which may include PR-content. Strip control
-            # chars that could mangle JSON-serialized artifacts.
-            msg_str = "".join(c for c in str(e)[:200] if c.isprintable() or c in " \t")
-            result.error = f"bedrock error: {type(e).__name__}: {msg_str}"
-            result.fatal = True
+            result.error = f"bedrock error: {type(e).__name__}"
             return result
 
         if resp is None:
             result.error = "bedrock returned None (circuit-breaker or transient failure)"
-            result.fatal = True
             return result
 
         usage = resp.get("usage") or {}
@@ -141,7 +109,6 @@ def run(
         msg = resp.get("output", {}).get("message", {})
         if not msg:
             result.error = "empty bedrock message"
-            result.fatal = True
             return result
         messages.append(msg)
 
@@ -153,20 +120,19 @@ def run(
             msg, agent_name, turn + 1, tool_runner, caps, result, per_tool_calls,
         )
         if not tool_results:
+            # Bedrock protocol violation: stopReason=tool_use with no toolUse
+            # blocks. We capture any accompanying text and exit; if the text
+            # happens to be parseable downstream the caller can use it.
             result.text = _extract_text(msg)
             result.error = "stopReason was tool_use but no toolUse blocks emitted"
-            result.fatal = True
             return result
 
-        # If structural caps were hit during tool execution, terminate now
-        # rather than paying another Bedrock turn that will only emit more
-        # tool_use blocks against exhausted budgets.
+        # Stop before paying another Bedrock turn against exhausted budgets.
         if (result.tool_calls >= caps.max_tool_calls
                 or result.tool_output_chars >= caps.max_tool_output_chars):
             result.error = "structural cap hit; terminating before next turn"
             result.text = _extract_text(msg) or (
-                f"Investigation terminated on turn {turn + 1}: structural cap "
-                "reached (max_tool_calls or max_tool_output_chars)."
+                f"Investigation terminated on turn {turn + 1}: structural cap reached."
             )
             return result
 
@@ -182,9 +148,8 @@ def run(
 
 
 def _run_tool_calls(msg, agent_name, turn, tool_runner, caps, result, per_tool_calls):
-    """Execute every toolUse block in `msg`. Returns the list of toolResult blocks
-    to append to the conversation. Updates `result` in place (tool_calls,
-    tool_output_chars, tool_trace) and `per_tool_calls`."""
+    """Execute every toolUse block in `msg` and return the toolResult blocks
+    to append to the conversation. Mutates `result` and `per_tool_calls`."""
     tool_results = []
     for block in msg.get("content", []):
         if "toolUse" not in block:
@@ -208,8 +173,7 @@ def _run_tool_calls(msg, agent_name, turn, tool_runner, caps, result, per_tool_c
 
 def _execute_or_budget(tool_name, tool_args, agent_name, turn, tool_runner,
                        caps, result, per_tool_calls):
-    """Execute a tool call or return a budget-exhausted message. Records
-    successful runs in result.tool_trace and increments counters."""
+    """Run the tool, or return a budget-exhausted text the model will read."""
     per_tool_cap = caps.per_tool_max_calls.get(tool_name)
     if per_tool_cap is not None and per_tool_calls[tool_name] >= per_tool_cap:
         logger.info("[%s turn=%d] %s budget exhausted", agent_name, turn, tool_name)
@@ -259,8 +223,8 @@ _MAX_TRACE_ARG_CHARS = 500
 
 
 def _capped_args(args):
-    """Cap each arg value to avoid a single huge model-supplied value
-    swamping the artifact's tool trace."""
+    """Cap each arg value so a single huge model-supplied string can't
+    swamp the artifact's tool trace."""
     if not isinstance(args, dict):
         return repr(args)[:_MAX_TRACE_ARG_CHARS]
     out = {}
@@ -273,16 +237,16 @@ def _capped_args(args):
 
 
 def _extract_text(msg):
-    """Concatenate text blocks from an assistant message. Returns "" if none."""
+    """Join text blocks from an assistant message; "" if none."""
     return "\n".join(
         b.get("text", "") for b in msg.get("content", []) if "text" in b
     ).strip()
 
 
 def _recover_last_assistant_text(messages):
-    """Walk back through the conversation to the most recent assistant message
-    and extract any text it carried (possibly alongside tool_use blocks).
-    Used on max_turns exit so partial findings aren't dropped."""
+    """Walk back to the most recent assistant message and extract its text.
+    Used on max_turns / wall-clock exits so partial findings aren't dropped
+    when the trailing message is the user-side toolResult."""
     for msg in reversed(messages):
         if msg.get("role") == "assistant":
             return _extract_text(msg)
@@ -290,7 +254,7 @@ def _recover_last_assistant_text(messages):
 
 
 def _summarize_args(args):
-    """One-line representation of tool args for log output."""
+    """One-line repr of tool args, truncated for log output."""
     if not isinstance(args, dict):
         return repr(args)[:80]
     parts = []

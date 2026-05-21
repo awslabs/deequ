@@ -9,6 +9,7 @@ import datetime
 import json
 import logging
 import os
+import posixpath
 import re
 import sys
 import time
@@ -736,13 +737,12 @@ def _extract_diff_files(diff_text):
 
 
 def _canonicalize_path(path):
-    """Normalize a repo-relative path: strip leading './', collapse '//',
-    fold redundant '.' segments. Always uses POSIX separators."""
+    """Normalize a repo-relative path so the diff-extracted set and the
+    Reporter's emitted path compare equal. Returns "" for falsy input."""
     if not isinstance(path, str) or not path:
         return ""
-    path = path.replace("\\", "/")
-    parts = [p for p in path.split("/") if p not in ("", ".")]
-    return "/".join(parts)
+    p = posixpath.normpath(path.replace("\\", "/"))
+    return "" if p == "." else p
 
 
 def _read_requested_files(gh, file_paths, cfg):
@@ -796,19 +796,12 @@ def _has_confirmed_findings(notes):
 
 
 def _filter_and_format_inline_comments(comments, *, incremental_files, is_pr_update):
-    """Apply the standard post-Reporter hardening to inline comments:
-      - drop entries without a usable file path or positive line number
-      - on incremental re-review, restrict to files in the incremental diff
-        (paths canonicalized on both sides for reliable comparison)
-      - on re-review, drop NIT severity (the author already saw them once)
-      - prepend severity bold, append evidence as a blockquote
+    """Filter and decorate inline comments before they reach GitHub.
 
-    Mutates and returns the kept list.
-    """
-    # Canonicalize file paths once up front so the incremental-files filter
-    # and the eventual GitHub POST agree on the spelling. Without this, a
-    # model emitting "./src/foo.py" would pass the filter (we canonicalize
-    # there) but reach post_pr_review with the raw path and 422.
+    Drops entries without a positive line number; restricts to files in the
+    incremental diff on re-review; drops NIT severity on re-review (the
+    author saw them on the first pass); prepends severity, appends evidence
+    as a blockquote. Returns the kept list (does not mutate the input)."""
     kept = []
     for c in comments:
         if not (c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0):
@@ -912,9 +905,8 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         metrics["critic"]["skip_reason"] = critic_skip_reason
     metrics["reporter"] = reporter_metrics
 
-    # If the Critic crashed mid-run, do not post anything as clean — escalate.
-    # Preserve the Investigator's narrative so an operator triaging the
-    # escalation can see what was suspected.
+    # Critic produced no usable text → escalate, do not post a clean review.
+    # Carry the investigator's narrative for triage.
     if critic_skip_reason == "critic_failed":
         _write_artifact_pipeline(
             **artifact_kwargs, action="ESCALATE", reason="critic_failed",
@@ -987,7 +979,6 @@ def _build_caps(cfg, pr_files):
         max_turns=_clamp(diff_lines // 30, inv_floor, inv_ceiling),
         max_tool_calls=cfg.investigator_max_tool_calls,
         max_tool_output_chars=cfg.investigator_max_tool_output_chars,
-        wall_clock_seconds=cfg.investigator_wall_clock_seconds,
     )
     crit_ceiling = max(1, cfg.critic_max_turns)
     crit_floor = min(3, crit_ceiling)
@@ -995,7 +986,6 @@ def _build_caps(cfg, pr_files):
         max_turns=_clamp(investigator.max_turns // 2, crit_floor, crit_ceiling),
         max_tool_calls=cfg.critic_max_tool_calls,
         max_tool_output_chars=cfg.critic_max_tool_output_chars,
-        wall_clock_seconds=cfg.critic_wall_clock_seconds,
     )
     return investigator, critic
 
@@ -1049,11 +1039,10 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
     if not _has_confirmed_findings(investigator_text):
         return None, "no_confirmed_findings", [], skipped_metrics
 
-    critic_diff = _truncate_for_critic(diff, cfg.critic_max_diff_chars)
-    # Guard against an Investigator that emits literal </investigator_notes>:
-    # neutralize close-tag occurrences in the body so the Critic can't be
-    # tricked into reading a follow-on injection as a top-level instruction.
+    # Neutralize close-tags so a model that emits "</investigator_notes>" or
+    # "</critic_verdicts>" in its body can't escape the wrapping tag.
     safe_notes = investigator_text.replace("</investigator_notes>", "</investigator_notes_>")
+    critic_diff = _truncate_for_critic(diff, cfg.critic_max_diff_chars)
     critic_user = (
         f"<investigator_notes>\n{safe_notes}\n</investigator_notes>\n"
         f"<diff>\n{critic_diff}\n</diff>\n"
@@ -1067,17 +1056,10 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         pipeline_deadline=pipeline_deadline,
     )
 
-    # Distinguish fatal Critic failures (no usable output: Bedrock error,
-    # empty response, protocol violation) from bounded-completion exits
-    # (max_turns, structural cap, wall-clock) which may have produced valid
-    # partial verdicts. Only fatal failures escalate; bounded exits flow
-    # through to the Reporter, which applies its own UPHELD filter.
-    if crit_result.fatal or not crit_result.text:
-        skipped_metrics = _empty_stage_metrics()
+    if not crit_result.text:
         skipped_metrics["skip_reason"] = "critic_failed"
         return crit_result, "critic_failed", [], skipped_metrics
 
-    safe_notes = investigator_text.replace("</investigator_notes>", "</investigator_notes_>")
     safe_verdicts = crit_result.text.replace("</critic_verdicts>", "</critic_verdicts_>")
     reporter_user = (
         f"<investigator_notes>\n{safe_notes}\n</investigator_notes>\n\n"
@@ -1185,11 +1167,9 @@ _VERDICT_RE = re.compile(
 
 
 def _critic_overturn_rate(critic_text):
-    """Compute overturn rate by parsing VERDICT lines anchored at line start.
-
-    Avoids substring false-positives where 'UPHELD' or 'OVERTURNED' appears
-    in rationale text. Returns None if no verdicts parsed.
-    """
+    """Fraction of OVERTURNED verdicts among VERDICT lines, or None if there
+    are no parseable verdicts. Anchored regex prevents substring matches in
+    rationale text from skewing the count."""
     if not critic_text:
         return None
     upheld = 0
@@ -1246,12 +1226,8 @@ def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
                               inv_tmpl, critic_tmpl, reporter_tmpl,
                               inline_comments, response, is_incremental,
                               metrics, tool_trace, investigator_summary=None):
-    """Artifact writer for pipeline runs. Includes metrics and trace.
-
-    investigator_summary (optional) preserves the Investigator's narrative on
-    ESCALATE artifacts so an operator can see what was suspected when the
-    Critic or Reporter failed and the findings never reached the PR.
-    """
+    """Write the analyze artifact for a pipeline run, including per-stage
+    metrics, tool trace, and (on escalate) the investigator's narrative."""
     artifact = {
         "action": action,
         "labels": [],
@@ -1278,13 +1254,8 @@ def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
 
 
 def _truncate_trace(trace, max_chars=100_000):
-    """Cap trace size in the artifact to avoid huge JSON blobs.
-
-    On truncation, appends a sentinel entry recording how many entries were
-    dropped. The arithmetic `len(trace) - len(out)` is computed BEFORE
-    `out.append(marker)` (Python evaluates the dict literal first), so it
-    correctly reports entries-not-kept (excluding the sentinel itself).
-    """
+    """Cap trace size in the artifact and append a sentinel describing how
+    many entries were dropped."""
     if not trace:
         return []
     serialized = json.dumps(trace)

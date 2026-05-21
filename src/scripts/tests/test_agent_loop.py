@@ -237,35 +237,9 @@ def test_max_turns_falls_back_to_boilerplate_if_no_text():
     assert "max_turns" in result.text
 
 
-def test_fatal_flag_only_set_on_fatal_errors():
-    """Bedrock errors / empty responses are fatal; structural caps are not.
-    The pipeline relies on this distinction to decide between escalating
-    and accepting partial output.
-    """
-    # Fatal: bedrock returns None
-    bedrock_none = FakeBedrockClient([None])
-    r1 = _run(bedrock_none, FakeToolRunner())
-    assert r1.error is not None
-    assert r1.fatal is True
-
-    # Non-fatal: hits max_turns with valid text
-    tu_with_text = _resp(
-        [
-            {"text": "VERDICT: C1 | UPHELD | ok"},
-            {"toolUse": {"toolUseId": "t", "name": "grep_codebase", "input": {"pattern": "x"}}},
-        ],
-        stop_reason="tool_use",
-    )
-    bedrock_loop = FakeBedrockClient([tu_with_text] * 5)
-    r2 = _run(bedrock_loop, FakeToolRunner(), caps=AgentCaps(max_turns=2))
-    assert r2.max_turns_reached is True
-    assert r2.fatal is False
-    assert "VERDICT" in r2.text
-
-
 def test_wall_clock_cap_terminates_loop():
-    """A pipeline_deadline that has already passed terminates immediately
-    and is NOT marked fatal — partial findings should still flow downstream.
+    """A pipeline_deadline already in the past terminates the loop and
+    leaves an error label so callers can see why it stopped.
     """
     import time as _time
     tu = _resp(
@@ -281,4 +255,3 @@ def test_wall_clock_cap_terminates_loop():
         pipeline_deadline=_time.monotonic() - 1,  # already in the past
     )
     assert result.error and "wall-clock" in result.error
-    assert result.fatal is False

@@ -541,6 +541,41 @@ def test_critic_failure_escalates_does_not_post_clean(tmp_path, monkeypatch):
     assert artifact.get("investigator_summary", "").startswith("ID: C1")
 
 
+def test_critic_with_structural_cap_text_reaches_reporter(tmp_path, monkeypatch):
+    """A Critic that hits a structural cap (max_tool_calls etc.) produces an
+    error string AND valid partial verdicts. The pipeline must NOT escalate
+    on that — the Reporter should receive the partial text and apply its
+    normal UPHELD filter. Regression guard for the bug-class this PR targets.
+    """
+    import unittest.mock as mock
+    investigator_notes = (
+        "ID: C1\nFILE: f.py\nLINE: 1\nHYPOTHESIS: real bug\n"
+        "FALSIFICATION_ATTEMPT: searched\nSTATUS: CONFIRMED\n"
+        "SEVERITY: BUG\nCOMMENT: real bug\nEVIDENCE: line 1\nTRIGGER: x\n"
+    )
+    # Critic emits a valid VERDICT line before cap-terminating; the loop
+    # would surface this as result.text + result.error="structural cap hit".
+    critic_text = "VERDICT: C1 | UPHELD | verified line 1 (structural cap hit)"
+    reporter_json = json.dumps({"analysis": [
+        {"file": "f.py", "line": 1, "hypothesis": "real bug",
+         "falsification_attempt": "searched", "disproved": False,
+         "finding": {"severity": "BUG", "comment": "real bug",
+                     "evidence": "line 1", "trigger": "x"}},
+    ]})
+    artifact, mock_invoke, _ = _run_pipeline(
+        tmp_path, monkeypatch, mock,
+        investigator_text=investigator_notes,
+        critic_text=critic_text,
+        reporter_json=reporter_json,
+    )
+    # Pipeline RESPONDS, not ESCALATES — partial verdict text is enough to
+    # drive the Reporter and post valid findings.
+    assert artifact["action"] == "RESPOND"
+    assert mock_invoke.call_count == 1
+    assert len(artifact["inline_comments"]) == 1
+    assert artifact["inline_comments"][0]["file"] == "f.py"
+
+
 def test_metrics_totals_equal_sum_of_stages(tmp_path, monkeypatch):
     """metrics.totals.input_tokens must equal the sum of per-stage tokens
     so dashboards reading totals don't drift from per-stage views.

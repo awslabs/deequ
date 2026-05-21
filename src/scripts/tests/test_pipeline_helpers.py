@@ -137,23 +137,13 @@ def test_agent_pipeline_flag_on_for_positive_values(monkeypatch, value):
     assert cfg.agent_pipeline is True, f"Expected ON for value={value!r}"
 
 
-def test_int_env_falls_back_on_garbage(monkeypatch, caplog):
-    """Garbage env input must NOT crash module import; falls back to default
-    with a warning."""
+def test_int_env_falls_back_on_garbage(monkeypatch):
+    """Garbage env input must NOT crash module import; falls back to default."""
     monkeypatch.setenv("BOT_INVESTIGATOR_MAX_TURNS", "15m")
     _setup_minimal_env(monkeypatch)
     from issue_bot.config import Config
     cfg = Config()
     assert cfg.investigator_max_turns == 15  # default
-
-
-def test_int_env_clamps_below_minimum(monkeypatch):
-    """Negative or absurdly low values clamp to the configured minimum."""
-    monkeypatch.setenv("BOT_INVESTIGATOR_MAX_TURNS", "-5")
-    _setup_minimal_env(monkeypatch)
-    from issue_bot.config import Config
-    cfg = Config()
-    assert cfg.investigator_max_turns >= 1
 
 
 from issue_bot.main import _canonicalize_path, _extract_diff_files
@@ -180,6 +170,14 @@ def test_canonicalize_path_idempotent():
 def test_canonicalize_path_handles_empty():
     assert _canonicalize_path("") == ""
     assert _canonicalize_path(None) == ""
+
+
+def test_canonicalize_path_dot_paths_become_empty():
+    # posixpath.normpath collapses these to "." which must NOT pass through
+    # as a member of incremental_files or a c["file"] value.
+    assert _canonicalize_path(".") == ""
+    assert _canonicalize_path("./") == ""
+    assert _canonicalize_path(".//") == ""
 
 
 def test_extract_diff_files_returns_canonical_paths():

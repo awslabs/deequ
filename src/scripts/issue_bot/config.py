@@ -52,29 +52,23 @@ class Config:
         # the legacy two-phase flow active. Conservative: default off.
         self.agent_pipeline = os.getenv("BOT_AGENT_PIPELINE", "").strip().lower() in ("1", "true", "yes", "on")
 
-        # Structural caps for runaway protection. Token usage is reported in
-        # artifacts but is not used to enforce a budget — operators monitor
-        # cost via the artifact metrics, not via this code.
-        self.investigator_max_turns = _int_env("BOT_INVESTIGATOR_MAX_TURNS", 15, minimum=1)
-        self.investigator_max_tool_calls = _int_env("BOT_INVESTIGATOR_MAX_TOOL_CALLS", 50, minimum=1)
+        # Structural caps for runaway protection.
+        self.investigator_max_turns = _int_env("BOT_INVESTIGATOR_MAX_TURNS", 15)
+        self.investigator_max_tool_calls = _int_env("BOT_INVESTIGATOR_MAX_TOOL_CALLS", 50)
         self.investigator_max_tool_output_chars = _int_env(
-            "BOT_INVESTIGATOR_MAX_TOOL_OUTPUT", 400_000, minimum=1024,
-        )
-        self.investigator_wall_clock_seconds = _int_env(
-            "BOT_INVESTIGATOR_WALL_CLOCK_S", 300, minimum=10,
+            "BOT_INVESTIGATOR_MAX_TOOL_OUTPUT", 400_000,
         )
 
-        self.critic_max_turns = _int_env("BOT_CRITIC_MAX_TURNS", 10, minimum=1)
-        self.critic_max_tool_calls = _int_env("BOT_CRITIC_MAX_TOOL_CALLS", 30, minimum=1)
+        self.critic_max_turns = _int_env("BOT_CRITIC_MAX_TURNS", 10)
+        self.critic_max_tool_calls = _int_env("BOT_CRITIC_MAX_TOOL_CALLS", 30)
         self.critic_max_tool_output_chars = _int_env(
-            "BOT_CRITIC_MAX_TOOL_OUTPUT", 200_000, minimum=1024,
+            "BOT_CRITIC_MAX_TOOL_OUTPUT", 200_000,
         )
-        self.critic_max_diff_chars = _int_env("BOT_CRITIC_MAX_DIFF_CHARS", 200_000, minimum=1024)
-        self.critic_wall_clock_seconds = _int_env("BOT_CRITIC_WALL_CLOCK_S", 240, minimum=10)
+        self.critic_max_diff_chars = _int_env("BOT_CRITIC_MAX_DIFF_CHARS", 200_000)
         # Pipeline-wide wall-clock cap shared across Investigator + Critic.
         # The workflow itself is bounded at 10 minutes; this leaves room for
         # the Reporter call and artifact upload.
-        self.pipeline_wall_clock_seconds = _int_env("BOT_PIPELINE_WALL_CLOCK_S", 480, minimum=30)
+        self.pipeline_wall_clock_seconds = _int_env("BOT_PIPELINE_WALL_CLOCK_S", 480)
 
 
 def _require(name):
@@ -85,30 +79,13 @@ def _require(name):
     return val
 
 
-def _int_env(name, default, minimum=None):
+def _int_env(name, default):
     """Parse an integer env var, falling back to `default` on garbage input.
-
-    Logs a warning rather than crashing when the value is non-numeric so a
-    typo in workflow vars (e.g., "15m") doesn't kill analyze() before any
-    artifact can be written. `minimum` clamps absurdly low values to a safe
-    floor.
+    A typo in workflow vars (e.g., "15m") shouldn't kill analyze() before
+    any artifact can be written.
     """
-    raw = os.getenv(name)
-    if raw is None or raw.strip() == "":
-        value = default
-    else:
-        try:
-            value = int(raw.strip())
-        except (TypeError, ValueError):
-            logger.warning(
-                "Env var %s=%r is not an integer; using default %d",
-                name, raw, default,
-            )
-            value = default
-    if minimum is not None and value < minimum:
-        logger.warning(
-            "Env var %s=%d below minimum %d; clamping to minimum",
-            name, value, minimum,
-        )
-        value = minimum
-    return value
+    try:
+        return int(os.getenv(name) or default)
+    except (TypeError, ValueError):
+        logger.warning("Env var %s is not an integer; using default %d", name, default)
+        return default
