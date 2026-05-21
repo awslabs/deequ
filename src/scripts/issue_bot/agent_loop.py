@@ -24,7 +24,13 @@ logger = logging.getLogger("issue_bot")
 @dataclass
 class AgentCaps:
     """Per-agent budgets enforced by the loop. Defaults match the registered
-    tool set in tools.py; pass per_tool_max_calls explicitly to override."""
+    tool set in tools.py; pass per_tool_max_calls explicitly to override.
+
+    The wall-clock cap is the ultimate runaway protection: structural budgets
+    bound *steady-state* cost but a stuck loop can still pay the per-turn
+    Bedrock cost up to max_turns. wall_clock_seconds bounds total elapsed
+    time end-to-end.
+    """
     max_turns: int = 15
     max_tool_calls: int = 50
     max_tool_output_chars: int = 400_000
@@ -32,6 +38,7 @@ class AgentCaps:
         default_factory=lambda: dict(DEFAULT_PER_TOOL_CALL_CAPS)
     )
     max_tokens_per_call: int = 8000
+    wall_clock_seconds: int = 300
 
 
 @dataclass
@@ -71,9 +78,18 @@ def run(
     result = AgentResult()
     messages = [{"role": "user", "content": [{"text": user_prompt}]}]
     per_tool_calls = defaultdict(int)
+    deadline = time.monotonic() + max(1, caps.wall_clock_seconds)
 
-    for turn in range(caps.max_turns):
+    for turn in range(max(0, caps.max_turns)):
         result.turns = turn + 1
+
+        if time.monotonic() >= deadline:
+            result.error = f"wall-clock cap ({caps.wall_clock_seconds}s) reached"
+            logger.warning(
+                "[%s turn=%d] wall-clock cap reached, terminating",
+                agent_name, turn + 1,
+            )
+            return result
 
         try:
             resp = bedrock_client.converse_with_tools(
@@ -84,7 +100,11 @@ def run(
             )
         except Exception as e:
             logger.error("[%s turn=%d] bedrock error: %s", agent_name, turn + 1, type(e).__name__)
-            result.error = f"bedrock error: {type(e).__name__}: {e}"
+            # Truncate exception message: Bedrock validation errors can echo
+            # prompt fragments which may include PR-content. Strip control
+            # chars that could mangle JSON-serialized artifacts.
+            msg_str = "".join(c for c in str(e)[:200] if c.isprintable() or c in " \t")
+            result.error = f"bedrock error: {type(e).__name__}: {msg_str}"
             return result
 
         if resp is None:
@@ -119,6 +139,19 @@ def run(
             result.text = _extract_text(msg)
             result.error = "stopReason was tool_use but no toolUse blocks emitted"
             return result
+
+        # If structural caps were hit during tool execution, terminate now
+        # rather than paying another Bedrock turn that will only emit more
+        # tool_use blocks against exhausted budgets.
+        if (result.tool_calls >= caps.max_tool_calls
+                or result.tool_output_chars >= caps.max_tool_output_chars):
+            result.error = "structural cap hit; terminating before next turn"
+            result.text = _extract_text(msg) or (
+                f"Investigation terminated on turn {turn + 1}: structural cap "
+                "reached (max_tool_calls or max_tool_output_chars)."
+            )
+            return result
+
         messages.append({"role": "user", "content": tool_results})
 
     result.max_turns_reached = True
@@ -196,12 +229,29 @@ def _execute_or_budget(tool_name, tool_args, agent_name, turn, tool_runner,
         "agent": agent_name,
         "turn": turn,
         "tool": tool_name,
-        "args": tool_args,
+        "args": _capped_args(tool_args),
         "result_summary": text[:200] + ("..." if len(text) > 200 else ""),
         "result_chars": len(text),
         "latency_ms": latency_ms,
     })
     return text
+
+
+_MAX_TRACE_ARG_CHARS = 500
+
+
+def _capped_args(args):
+    """Cap each arg value to avoid a single huge model-supplied value
+    swamping the artifact's tool trace."""
+    if not isinstance(args, dict):
+        return repr(args)[:_MAX_TRACE_ARG_CHARS]
+    out = {}
+    for k, v in args.items():
+        if isinstance(v, str) and len(v) > _MAX_TRACE_ARG_CHARS:
+            out[k] = v[:_MAX_TRACE_ARG_CHARS] + "...[truncated]"
+        else:
+            out[k] = v
+    return out
 
 
 def _extract_text(msg):

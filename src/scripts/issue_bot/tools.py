@@ -173,6 +173,8 @@ def _safe_repo_path(repo_root, rel_path):
     """
     if not rel_path or not isinstance(rel_path, str):
         return None, "ERROR: path must be a non-empty string"
+    if "\x00" in rel_path:
+        return None, "ERROR: path contains NUL byte"
     if rel_path.startswith("/") or ".." in rel_path.split("/"):
         return None, f"ERROR: path '{rel_path}' must be repo-relative without '..' segments"
     real_root = os.path.realpath(repo_root)

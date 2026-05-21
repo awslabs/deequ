@@ -9,6 +9,18 @@ logger = logging.getLogger("issue_bot")
 _CIRCUIT_BREAKER_THRESHOLD = 3
 
 
+def _extract_first_text(content_blocks):
+    """Return the first text block in a Converse response, stripped.
+
+    Tolerates blocks that don't carry text (e.g., toolUse-only responses)
+    and missing keys; returns "" rather than raising.
+    """
+    for block in content_blocks or []:
+        if isinstance(block, dict) and isinstance(block.get("text"), str):
+            return block["text"].strip()
+    return ""
+
+
 class BedrockClient:
     def __init__(self, cfg):
         self._model_id = cfg.bedrock_model_id
@@ -96,8 +108,8 @@ class BedrockClient:
             logger.info("Bedrock: input=%s, output=%s, cacheRead=%s, cacheWrite=%s",
                         usage.get("inputTokens"), usage.get("outputTokens"),
                         usage.get("cacheReadInputTokens"), usage.get("cacheWriteInputTokens"))
-            return output[0]["text"].strip()
-        except (ClientError, BotoCoreError, ValueError, ConnectionError) as e:
+            return _extract_first_text(output)
+        except (ClientError, BotoCoreError, ValueError, KeyError, ConnectionError) as e:
             self._failures += 1
             logger.error(f"Bedrock failed ({self._failures}/{_CIRCUIT_BREAKER_THRESHOLD}): {e}")
             if self._failures >= _CIRCUIT_BREAKER_THRESHOLD:
@@ -161,8 +173,8 @@ class BedrockClient:
                 usage.get("inputTokens"), usage.get("outputTokens"),
                 usage.get("cacheReadInputTokens"), usage.get("cacheWriteInputTokens"),
             )
-            return output[0]["text"].strip(), usage
-        except (ClientError, BotoCoreError, ValueError, ConnectionError) as e:
+            return _extract_first_text(output), usage
+        except (ClientError, BotoCoreError, ValueError, KeyError, ConnectionError) as e:
             self._failures += 1
             logger.error(f"Bedrock failed ({self._failures}/{_CIRCUIT_BREAKER_THRESHOLD}): {e}")
             if self._failures >= _CIRCUIT_BREAKER_THRESHOLD:

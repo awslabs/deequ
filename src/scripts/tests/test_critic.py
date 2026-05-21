@@ -510,3 +510,73 @@ def test_critic_overturn_rate_calculated(tmp_path, monkeypatch):
         reporter_json=reporter_json,
     )
     assert artifact["metrics"]["critic_overturn_rate"] == pytest.approx(2 / 3, abs=0.01)
+
+def test_critic_failure_escalates_does_not_post_clean(tmp_path, monkeypatch):
+    """If the Critic returns empty/error, the pipeline must ESCALATE rather
+    than synthesize a fake 'all disproved' verdict and silently drop findings.
+    """
+    import unittest.mock as mock
+    investigator_notes = (
+        "ID: C1\nFILE: f.py\nLINE: 1\nHYPOTHESIS: real bug\n"
+        "FALSIFICATION_ATTEMPT: searched\nSTATUS: CONFIRMED\n"
+        "SEVERITY: BUG\nCOMMENT: real bug\nEVIDENCE: line 1\nTRIGGER: x\n"
+    )
+    artifact, _, _ = _run_pipeline(
+        tmp_path, monkeypatch, mock,
+        investigator_text=investigator_notes,
+        critic_text="",  # critic returned empty (e.g. crashed)
+        reporter_json="",
+    )
+    assert artifact["action"] == "ESCALATE"
+    assert artifact["reason"] == "critic_failed"
+    assert artifact["inline_comments"] == []
+
+
+def test_metrics_totals_equal_sum_of_stages(tmp_path, monkeypatch):
+    """metrics.totals.input_tokens must equal the sum of per-stage tokens
+    so dashboards reading totals don't drift from per-stage views.
+    """
+    import unittest.mock as mock
+    investigator_notes = (
+        "ID: C1\nFILE: f.py\nLINE: 1\nHYPOTHESIS: h\n"
+        "FALSIFICATION_ATTEMPT: fa\nSTATUS: CONFIRMED\n"
+        "SEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\nTRIGGER: t\n"
+    )
+    artifact, _, _ = _run_pipeline(
+        tmp_path, monkeypatch, mock,
+        investigator_text=investigator_notes,
+        critic_text="VERDICT: C1 | UPHELD | ok",
+        reporter_json=json.dumps({"analysis": [
+            {"file": "f.py", "line": 1, "hypothesis": "h",
+             "falsification_attempt": "fa", "disproved": False,
+             "finding": {"severity": "BUG", "comment": "c", "evidence": "e"}},
+        ]}),
+    )
+    m = artifact["metrics"]
+    expected_in = m["investigator"]["input_tokens"] + m["critic"]["input_tokens"] + m["reporter"]["input_tokens"]
+    expected_out = m["investigator"]["output_tokens"] + m["critic"]["output_tokens"] + m["reporter"]["output_tokens"]
+    assert m["totals"]["input_tokens"] == expected_in
+    assert m["totals"]["output_tokens"] == expected_out
+
+
+def test_metrics_schema_uniform_across_stages(tmp_path, monkeypatch):
+    """Every stage's metrics dict carries the same canonical key set so
+    dashboards iterating stages don't KeyError."""
+    import unittest.mock as mock
+    investigator_notes = "No confirmed issues found."
+    artifact, _, _ = _run_pipeline(
+        tmp_path, monkeypatch, mock,
+        investigator_text=investigator_notes,
+        critic_text="",
+        reporter_json="",
+    )
+    canonical_keys = {
+        "skipped", "skip_reason", "turns", "tool_calls", "tool_output_chars",
+        "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens",
+        "max_turns_reached", "error", "parse_failed",
+    }
+    for stage in ("investigator", "critic", "reporter"):
+        assert set(artifact["metrics"][stage].keys()) >= canonical_keys, (
+            f"stage {stage} missing keys: {canonical_keys - set(artifact['metrics'][stage].keys())}"
+        )
+

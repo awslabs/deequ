@@ -137,6 +137,59 @@ def test_agent_pipeline_flag_on_for_positive_values(monkeypatch, value):
     assert cfg.agent_pipeline is True, f"Expected ON for value={value!r}"
 
 
+def test_int_env_falls_back_on_garbage(monkeypatch, caplog):
+    """Garbage env input must NOT crash module import; falls back to default
+    with a warning."""
+    monkeypatch.setenv("BOT_INVESTIGATOR_MAX_TURNS", "15m")
+    _setup_minimal_env(monkeypatch)
+    from issue_bot.config import Config
+    cfg = Config()
+    assert cfg.investigator_max_turns == 15  # default
+
+
+def test_int_env_clamps_below_minimum(monkeypatch):
+    """Negative or absurdly low values clamp to the configured minimum."""
+    monkeypatch.setenv("BOT_INVESTIGATOR_MAX_TURNS", "-5")
+    _setup_minimal_env(monkeypatch)
+    from issue_bot.config import Config
+    cfg = Config()
+    assert cfg.investigator_max_turns >= 1
+
+
+from issue_bot.main import _canonicalize_path, _extract_diff_files
+
+
+def test_canonicalize_path_strips_leading_dot_slash():
+    assert _canonicalize_path("./src/foo.py") == "src/foo.py"
+
+
+def test_canonicalize_path_collapses_double_slash():
+    assert _canonicalize_path("src//foo.py") == "src/foo.py"
+
+
+def test_canonicalize_path_handles_backslashes():
+    assert _canonicalize_path("src\\foo.py") == "src/foo.py"
+
+
+def test_canonicalize_path_idempotent():
+    p = "src/main/scala/X.scala"
+    assert _canonicalize_path(p) == p
+    assert _canonicalize_path(_canonicalize_path(p)) == p
+
+
+def test_canonicalize_path_handles_empty():
+    assert _canonicalize_path("") == ""
+    assert _canonicalize_path(None) == ""
+
+
+def test_extract_diff_files_returns_canonical_paths():
+    diff = "diff --git a/./src/foo.py b/./src/foo.py\n@@ ...\n+x\n"
+    files = _extract_diff_files(diff)
+    # Stored canonically (no './' prefix) so Reporter c["file"] comparisons work
+    assert "src/foo.py" in files
+    assert "./src/foo.py" not in files
+
+
 def _setup_minimal_env(monkeypatch):
     """Set env vars Config requires (avoids sys.exit during construction)."""
     monkeypatch.setenv("GITHUB_TOKEN", "fake")
