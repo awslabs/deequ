@@ -62,6 +62,9 @@ case class Histogram(
     with Analyzer[FrequenciesAndNumRows, HistogramMetric] {
 
   protected[this] val PARAM_CHECK: StructType => Unit = { _ =>
+    if (maxDetailBins < 1) {
+      throw new IllegalAnalyzerParameterException("maxDetailBins must be at least 1")
+    }
     if (maxDetailBins > Histogram.MaximumAllowedDetailBins) {
       throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
         s"than ${Histogram.MaximumAllowedDetailBins} values")
@@ -104,19 +107,19 @@ case class Histogram(
             .map(_.name)
             .getOrElse(throw new IllegalStateException(s"Count column not found in the frequencies DataFrame"))
 
+          val binCount = theState.frequencies.count()
+
           // sort in descending frequency
-          val topNRowsDF = theState.frequencies
+          val topNRows = theState.frequencies
             .orderBy(col(countColumnName).desc, col(column).asc)
             .limit(maxDetailBins)
             .collect()
-
-          val binCount = theState.frequencies.count()
 
           val columnName = theState.frequencies.columns
             .find(_ == column)
             .getOrElse(throw new IllegalStateException(s"Column $column not found"))
 
-          val histogramDetails: ListMap[String, DistributionValue] = ListMap(topNRowsDF
+          val histogramDetails = topNRows
             .map { row =>
               val discreteValue = row.getAs[String](columnName)
               val absolute = row.getAs[Long](countColumnName)
@@ -124,7 +127,14 @@ case class Histogram(
               discreteValue -> DistributionValue(absolute, ratio)
             }.toSeq: _*)
 
-          Distribution(histogramDetails, binCount)
+          val tailCount = if (binCount > maxDetailBins) {
+            val topNSum = histogramDetails.values.map(_.absolute).sum
+            val totalSum = theState.frequencies.agg(
+              spark_sum(countColumnName)).collect()(0).getAs[Long](0)
+            totalSum - topNSum
+          } else 0L
+
+          Distribution(histogramDetails, binCount, tailCount)
         }
 
         HistogramMetric(column, value)
