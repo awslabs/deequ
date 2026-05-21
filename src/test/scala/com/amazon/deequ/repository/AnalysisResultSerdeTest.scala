@@ -38,6 +38,8 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
       Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
       ZerosCount("ColumnA") ->
         DoubleMetric(Entity.Column, "ZerosCount", "ColumnA", Success(0.0)),
+      DuplicateRowCount(Seq("ColumnA", "ColumnB")) ->
+        DoubleMetric(Entity.Multicolumn, "DuplicateRowCount", "ColumnA,ColumnB", Success(5.0)),
       Completeness("ColumnA", analyzerOptions = Some(AnalyzerOptions(
         nullBehavior = NullBehavior.Ignore
       ))) ->
