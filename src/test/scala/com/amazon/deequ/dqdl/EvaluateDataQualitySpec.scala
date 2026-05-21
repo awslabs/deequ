@@ -572,6 +572,14 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
 
     // TODO: Enable DQDL tests for Variance, Range, InterquartileRange, ZerosCount, Skewness, Kurtosis
 
+    // DuplicateRowCount DQDL tests require dqdl >= 1.0.7 (Java 11).
+    // Tested on release/3.0.3-spark-3.5 branch. Ignored here due to Java 8 / dqdl version constraint.
+    "support DuplicateRowCount rule with explicit columns" ignore {}
+    "support DuplicateRowCount rule failure with explicit columns" ignore {}
+    "support DuplicateRowCount rule without columns (all columns)" ignore {}
+    "support DuplicateRowCount with less-than operator" ignore {}
+    "support DuplicateRowCount with between operator" ignore {}
+
     "support Sum rule" in withSparkSession { sparkSession =>
       // given
       val df = getDfWithNumericValues(sparkSession)
