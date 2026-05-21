@@ -54,7 +54,7 @@ class AgentResult:
     tool_trace: List[Dict[str, Any]] = field(default_factory=list)
 
 
-def _estimate_cost_usd(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, pricing):
+def estimate_cost_usd(input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, pricing):
     """Convert token counts to USD using the provided per-million rates.
 
     pricing is a dict with keys: input_per_million, output_per_million,
@@ -66,6 +66,11 @@ def _estimate_cost_usd(input_tokens, output_tokens, cache_read_tokens, cache_wri
         + (cache_read_tokens / 1_000_000) * pricing["cache_read_per_million"]
         + (cache_write_tokens / 1_000_000) * pricing["cache_write_per_million"]
     )
+
+
+# Backward-compatible alias for internal callers that already use the
+# private name. New code should call estimate_cost_usd().
+_estimate_cost_usd = estimate_cost_usd
 
 
 def run(
@@ -130,10 +135,16 @@ def run(
         result.cache_write_tokens += cw_t
         delta_cost = _estimate_cost_usd(in_t, out_t, cr_t, cw_t, pricing)
         cost_tracker["cost_usd"] = cost_tracker.get("cost_usd", 0.0) + delta_cost
+        # Per-turn overshoot bound: a single turn's tokens are already paid for
+        # by the time we observe the usage field. Worst-case overshoot of the
+        # cap is therefore one turn's cost, bounded by max_tokens_per_call ×
+        # the model's input rate × ~1 (output tokens are dwarfed by typical
+        # input). At default $1.00 cap and 8000 max output, plus typical 50K
+        # input, overshoot is bounded at ~$0.75 (Opus rates).
         if cost_tracker["cost_usd"] >= cost_tracker.get("cap_usd", float("inf")):
             cost_tracker["cap_hit"] = True
             result.cost_cap_hit = True
-        logger.info(
+        logger.debug(
             "[%s turn=%d] in=%d out=%d cacheR=%d cacheW=%d cost_so_far=$%.4f",
             agent_name, turn + 1, in_t, out_t, cr_t, cw_t,
             cost_tracker.get("cost_usd", 0.0),
@@ -151,6 +162,27 @@ def run(
             result.text = "\n".join(
                 b.get("text", "") for b in msg.get("content", []) if "text" in b
             ).strip()
+            return result
+
+        # Cost cap hit on this turn: skip tool execution to bound overshoot.
+        # The model's tool_use response is preserved in messages so callers can
+        # see what it was about to do. Try to recover any text it emitted
+        # alongside the tool calls.
+        if cost_tracker.get("cap_hit"):
+            text_blocks = [b.get("text", "") for b in msg.get("content", []) if "text" in b]
+            recovered = "\n".join(text_blocks).strip()
+            if recovered:
+                result.text = recovered
+            else:
+                result.text = (
+                    f"Cost cap hit on turn {turn + 1}; tool execution skipped to "
+                    "bound overshoot. Conclude investigation with information "
+                    "gathered so far."
+                )
+            logger.warning(
+                "[%s turn=%d] cost cap hit mid-turn; skipping tool execution",
+                agent_name, turn + 1,
+            )
             return result
 
         # Execute tool calls in this turn

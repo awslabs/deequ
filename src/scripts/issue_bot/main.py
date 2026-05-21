@@ -820,6 +820,11 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
     if not reporter_tmpl:
         missing.append("reporter")
     if missing:
+        logger.error(
+            "Pipeline enabled but required prompt(s) missing: %s. Failing closed "
+            "(escalating). Set the corresponding SM_* env var or PR_*_PROMPT.",
+            ", ".join(missing),
+        )
         _write_artifact({
             "action": "ESCALATE", "labels": [], "response": "",
             "reason": f"prompt_load_failed: {','.join(missing)}",
@@ -897,7 +902,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
     )
 
-    tool_runner = ToolRunner(cfg, gh._repo_root)
+    tool_runner = ToolRunner(cfg, gh.repo_root)
     cost_tracker = {
         "cost_usd": 0.0,
         "cap_usd": cfg.agent_max_review_cost_usd,
@@ -1046,12 +1051,7 @@ def _invoke_reporter_tracked(bedrock, system, user_msg, cost_tracker, pricing):
     out_t = (usage.get("outputTokens") or 0) if usage else 0
     cr_t = (usage.get("cacheReadInputTokens") or 0) if usage else 0
     cw_t = (usage.get("cacheWriteInputTokens") or 0) if usage else 0
-    delta = (
-        (in_t / 1_000_000) * pricing["input_per_million"]
-        + (out_t / 1_000_000) * pricing["output_per_million"]
-        + (cr_t / 1_000_000) * pricing["cache_read_per_million"]
-        + (cw_t / 1_000_000) * pricing["cache_write_per_million"]
-    )
+    delta = agent_loop.estimate_cost_usd(in_t, out_t, cr_t, cw_t, pricing)
     cost_tracker["cost_usd"] = cost_tracker.get("cost_usd", 0.0) + delta
     if cost_tracker["cost_usd"] >= cost_tracker.get("cap_usd", float("inf")):
         cost_tracker["cap_hit"] = True
@@ -1178,7 +1178,13 @@ def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
 
 
 def _truncate_trace(trace, max_chars=100_000):
-    """Cap trace size in the artifact to avoid huge JSON blobs."""
+    """Cap trace size in the artifact to avoid huge JSON blobs.
+
+    On truncation, appends a sentinel entry recording how many entries were
+    dropped. The arithmetic `len(trace) - len(out)` is computed BEFORE
+    `out.append(marker)` (Python evaluates the dict literal first), so it
+    correctly reports entries-not-kept (excluding the sentinel itself).
+    """
     if not trace:
         return []
     serialized = json.dumps(trace)

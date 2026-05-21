@@ -210,7 +210,14 @@ def grep_codebase(pattern, path_glob, repo_root, src_dir, default_ext):
 
 
 def read_file(path, start_line, end_line, repo_root):
-    """Read a file slice from the repo with line numbers."""
+    """Read a file slice from the repo with line numbers.
+
+    end_line semantics:
+      None or omitted: read up to start_line + MAX_FILE_LINES_PER_CALL - 1
+      -1: read to end of file (still capped at MAX_FILE_LINES_PER_CALL)
+      any other negative or non-int: same as None (use default range)
+      positive int: read up to that line (capped at total)
+    """
     abs_path, err = _safe_repo_path(repo_root, path)
     if err:
         return err
@@ -223,13 +230,9 @@ def read_file(path, start_line, end_line, repo_root):
         return f"ERROR: cannot read '{path}': {e}"
     total = len(lines)
     start = max(1, start_line if isinstance(start_line, int) and start_line >= 1 else 1)
-    # Three end_line modes:
-    #   -1: read to end of file (capped at MAX_FILE_LINES_PER_CALL below)
-    #   any other negative or non-int: use default of start + 199
-    #   positive: read up to that line (capped at total)
     if isinstance(end_line, int) and end_line == -1:
         end = total
-    elif not isinstance(end_line, int) or end_line < 0:
+    elif end_line is None or not isinstance(end_line, int) or end_line < 0:
         end = min(start + _MAX_FILE_LINES_PER_CALL - 1, total)
     else:
         end = min(end_line, total)
@@ -381,7 +384,7 @@ class ToolRunner:
                 return read_file(
                     path=args.get("path", ""),
                     start_line=args.get("start_line", 1),
-                    end_line=args.get("end_line", -2),
+                    end_line=args.get("end_line", None),
                     repo_root=self._repo_root,
                 )
             if name == "list_dir":

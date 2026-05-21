@@ -245,23 +245,28 @@ def test_grep_truncation_marker_on_huge_match(repo):
         assert "truncated" in out.lower()
 
 
-def test_read_file_end_line_negative_one_yields_full_file(repo):
-    """end_line=-1 should yield to-end-of-file (capped at 200 lines/call)."""
-    # Create a 250-line file
+def test_read_file_end_line_negative_one_caps_at_200_lines_for_large_files(repo):
+    """end_line=-1 on a >200-line file: the per-call cap (200) wins."""
     big = repo / "src" / "main" / "scala" / "Mid.scala"
     big.write_text("\n".join(f"line {i}" for i in range(1, 251)) + "\n")
     out = read_file("src/main/scala/Mid.scala", 1, -1, str(repo))
-    # With 250 total lines, the cap of 200 lines/call should apply, but the
-    # reported `end` should be 200 (not the default of start+199 which is
-    # also 200, so check the visible end line is 200).
     line_count = sum(1 for ln in out.splitlines() if "│" in ln)
     assert line_count == 200
     assert "lines 1-200 of 250" in out
 
-    # When end_line=-1 and start is past the cap, slice should still work
-    out2 = read_file("src/main/scala/Mid.scala", 100, -1, str(repo))
-    assert "lines 100-250 of 250" in out2 or "lines 100-299" in out2  # depending on cap interaction
-    # Actually, end_line=-1 on small remainder should reach EOF
-    # 250 - 100 + 1 = 151 lines, under the 200-line cap, so we get full remainder
-    line_count2 = sum(1 for ln in out2.splitlines() if "│" in ln)
-    assert line_count2 == 151
+
+def test_read_file_end_line_negative_one_reaches_eof_when_remainder_fits(repo):
+    """end_line=-1 with start past the cap: remainder is < 200 lines, so EOF wins."""
+    big = repo / "src" / "main" / "scala" / "Mid.scala"
+    big.write_text("\n".join(f"line {i}" for i in range(1, 251)) + "\n")
+    out = read_file("src/main/scala/Mid.scala", 100, -1, str(repo))
+    line_count = sum(1 for ln in out.splitlines() if "│" in ln)
+    assert line_count == 151  # 250 - 100 + 1
+    assert "lines 100-250 of 250" in out
+
+
+def test_read_file_end_line_none_uses_default(repo):
+    """end_line=None should behave the same as omitting the arg."""
+    out = read_file("src/main/scala/Foo.scala", 1, None, str(repo))
+    assert "case class Foo" in out
+    assert "lines 1-" in out

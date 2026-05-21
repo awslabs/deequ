@@ -59,12 +59,14 @@ def get_pr_critic_prompt():
 
 
 def get_pr_investigator_prompt():
-    """Investigator prompt for the agentic pipeline. Falls back to the
-    existing PR file review prompt if the investigator-specific one is unset."""
-    val = _get_prompt("PR_INVESTIGATOR_PROMPT", "SM_PR_INVESTIGATOR_PROMPT")
-    if val:
-        return val
-    return get_pr_file_review_prompt()
+    """Investigator prompt for the agentic pipeline.
+
+    Returns empty string if neither the env override nor the SM secret is set.
+    Callers MUST fail closed: the legacy PR file review prompt does not produce
+    the HYPOTHESIS / STATUS:CONFIRMED markers the pipeline relies on. A silent
+    fallback would mask a misconfiguration as a clean-PR result.
+    """
+    return _get_prompt("PR_INVESTIGATOR_PROMPT", "SM_PR_INVESTIGATOR_PROMPT")
 
 
 def prompt_version(template):

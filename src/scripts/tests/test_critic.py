@@ -379,6 +379,112 @@ def test_reporter_cost_in_totals(tmp_path, monkeypatch):
     assert metrics["totals"]["output_tokens"] == 120
 
 
+def test_critic_diff_truncation_on_large_diff(tmp_path, monkeypatch):
+    """When the diff > 200K chars, Critic's user message must contain the
+    truncation marker, not the full diff."""
+    import unittest.mock as mock
+    _setup_pipeline_env(tmp_path, monkeypatch, event_action="opened")
+    huge_diff = "diff --git a/f.py b/f.py\n" + ("+ x\n" * 60000)  # ~240K chars
+    investigator_notes = (
+        "ID: C1\nFILE: f.py\nLINE: 1\nHYPOTHESIS: h\n"
+        "FALSIFICATION_ATTEMPT: fa\nSTATUS: CONFIRMED\n"
+        "SEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\nTRIGGER: t\n"
+    )
+    captured_messages = []
+
+    with mock.patch("issue_bot.github_client.GitHubClient.get_pr") as mock_pr, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_comments") as mock_comments, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_diff") as mock_diff, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_review_comments") as mock_rc, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.converse_with_tools") as mock_ctools, \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.invoke_with_usage") as mock_invoke:
+
+        mock_pr.return_value = {
+            "user": {"login": "contributor"}, "title": "T", "body": "B",
+            "state": "open", "html_url": "https://github.com/x", "head": {"sha": "abc"},
+        }
+        mock_comments.return_value = []
+        mock_diff.return_value = huge_diff
+        mock_rc.return_value = []
+        mock_files.return_value = [{"filename": "f.py", "changes": 10}]
+        mock_map.return_value = ""
+        mock_kb.return_value = ""
+        mock_ci.return_value = (True, "")
+        mock_invoke.return_value = (json.dumps({"analysis": []}), {"inputTokens": 1, "outputTokens": 1, "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0})
+
+        def converse(system_prompt, messages, tool_specs, max_tokens=8000, temperature=0.3):
+            captured_messages.append({"system": system_prompt[:200], "messages": messages})
+            text = (
+                "ID: C1\nSTATUS: CONFIRMED\nSEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\n"
+                if "Investigate" in system_prompt
+                else "VERDICT: C1 | UPHELD | ok"
+            )
+            return _bedrock_text_resp(text)
+
+        mock_ctools.side_effect = converse
+        from issue_bot.main import analyze
+        analyze()
+
+    # Find the Critic's call (second converse) and verify its first user message
+    # contains the truncation marker, not the full huge diff
+    critic_call = captured_messages[1]
+    user_msg_text = critic_call["messages"][0]["content"][0]
+    if isinstance(user_msg_text, dict):
+        text = user_msg_text.get("text", "") or user_msg_text.get("guardContent", {}).get("text", {}).get("text", "")
+    else:
+        text = str(user_msg_text)
+    assert "diff truncated at 200000 chars" in text
+    assert len(text) < 220_000  # should be truncated, not 240K
+
+
+def test_pipeline_fails_closed_on_missing_investigator_prompt(tmp_path, monkeypatch):
+    """If PR_INVESTIGATOR_PROMPT and SM are unset, escalate (do not silently
+    fall back to the legacy review prompt)."""
+    import unittest.mock as mock
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    monkeypatch.setenv("ISSUE_NUMBER", "100")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("EVENT_ACTION", "opened")
+    monkeypatch.setenv("EVENT_BEFORE", "")
+    monkeypatch.setenv("EVENT_AFTER", "")
+    monkeypatch.setenv("GITHUB_ACTOR", "contributor")
+    monkeypatch.setenv("KB_S3_BUCKET", "")
+    monkeypatch.setenv("KB_S3_KEY", "")
+    monkeypatch.setenv("BOT_AGENT_PIPELINE", "1")
+    monkeypatch.setenv("PR_CRITIC_PROMPT", "Critique. {current_date}")
+    monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Report. {current_date}")
+    # Set the LEGACY prompt to ensure the silent-fallback path is NOT taken
+    monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Legacy review. {current_date}")
+    # Investigator prompt deliberately NOT set
+    import issue_bot.main as bot_main
+    monkeypatch.setattr(bot_main, "ARTIFACT_PATH", str(tmp_path / "result.json"))
+
+    with mock.patch("issue_bot.github_client.GitHubClient.get_pr") as mock_pr, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_comments") as mock_comments, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map"), \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context", return_value=""), \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None):
+
+        mock_pr.return_value = {
+            "user": {"login": "contributor"}, "title": "T", "body": "B",
+            "state": "open", "html_url": "https://github.com/x", "head": {"sha": "abc"},
+        }
+        mock_comments.return_value = []
+        bot_main.analyze()
+        with open(str(tmp_path / "result.json")) as f:
+            artifact = json.load(f)
+        assert artifact["action"] == "ESCALATE"
+        assert "investigator" in artifact["reason"]
+
+
 def test_critic_overturn_rate_calculated(tmp_path, monkeypatch):
     import unittest.mock as mock
     # Three findings, one upheld, two overturned → rate = 2/3
