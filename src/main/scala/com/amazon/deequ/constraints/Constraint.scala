@@ -145,10 +145,6 @@ object Constraint {
 
   /**
     * Runs zeros count analysis on the given column and executes the assertion
-    *
-    * @param column Column to run the assertion on
-    * @param assertion Function that receives a long input parameter and returns a boolean
-    * @param hint    A hint to provide additional context why a constraint could have failed
     */
   def zerosCountConstraint(
       column: String,
@@ -162,6 +158,23 @@ object Constraint {
       zerosCount, assertion, Some(_.toLong), hint)
 
     new NamedConstraint(constraint, s"ZerosCountConstraint($zerosCount)")
+  }
+
+  /**
+    * Runs DuplicateRowCount analysis on the given columns and executes the assertion
+    */
+  def duplicateRowCountConstraint(
+      columns: Seq[String],
+      assertion: Long => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val duplicateRowCount = DuplicateRowCount(columns, where)
+    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Long](
+      duplicateRowCount, assertion, Some(_.toLong), hint)
+
+    new NamedConstraint(constraint, s"DuplicateRowCountConstraint($duplicateRowCount)")
   }
 
   /**
