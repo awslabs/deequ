@@ -237,7 +237,7 @@ object Constraint {
     val actualBinCount = if (customEdges.isDefined) None else binCount
     val histogramBinned = HistogramBinned(column, actualBinCount, customEdges, where = where)
 
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, DistributionBinned](
+    val constraint = AnalysisBasedConstraint[BinnedFrequencies, DistributionBinned, DistributionBinned](
       histogramBinned, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"HistogramBinnedConstraint($histogramBinned)")
@@ -260,7 +260,7 @@ object Constraint {
     val actualBinCount = if (customEdges.isDefined) None else binCount
     val histogramBinned = HistogramBinned(column, actualBinCount, customEdges, where = where)
 
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, Long](
+    val constraint = AnalysisBasedConstraint[BinnedFrequencies, DistributionBinned, Long](
       histogramBinned, assertion, Some(_.numberOfBins), hint)
 
     new NamedConstraint(constraint, s"HistogramBinnedBinConstraint($histogramBinned)")
