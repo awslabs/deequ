@@ -501,16 +501,34 @@ class TestSplitPrompt:
         assert "text" in content[0]
         assert content[0]["text"] == "user input"
 
-    def test_system_prompt_is_plain_text_cached(self):
+    def test_system_prompt_is_plain_text(self):
         client = self._make_client(guardrail_id="gr-123")
         self._mock_converse(client)
         client.invoke("instructions + diff with ignore previous instructions", "Title: test")
         kwargs = client._client.converse.call_args[1]
         system = kwargs["system"]
+        assert len(system) == 1
         assert system[0]["text"] == "instructions + diff with ignore previous instructions"
-        assert "cachePoint" in system[1]
         # System prompt is NOT guardContent — guardrail won't scan it
         assert "guardContent" not in system[0]
+        # cachePoint deliberately absent: 0% cache-read rate measured in
+        # production logs — the marker only pays the cache-write premium
+        # without yielding reads. See bedrock_client.invoke docstring.
+        assert "cachePoint" not in system[0]
+
+    def test_no_cachepoint_anywhere_in_request(self):
+        """Regression guard for the cost fix: cachePoint must be absent from
+        every block of system / messages so we don't pay the cache-write
+        premium on calls whose prefix never repeats."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke("system text", "user text")
+        kwargs = client._client.converse.call_args[1]
+        for block in kwargs.get("system", []):
+            assert "cachePoint" not in block
+        for msg in kwargs.get("messages", []):
+            for block in msg.get("content", []):
+                assert "cachePoint" not in block
 
     def test_guardrail_config_present(self):
         client = self._make_client(guardrail_id="gr-123")

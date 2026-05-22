@@ -33,13 +33,17 @@ class BedrockClient:
                temperature=0.3, json_schema=None):
         """Invoke Bedrock Converse API with guardrail on user message only.
 
-        Follows the GlueML pattern (BedrockModelHelper.java):
         - system_prompt: Instructions + trusted context (KB, diffs, codebase).
-            Passed as plain text SystemContentBlock with cachePoint. The
-            guardrail does NOT assess system prompts without guardContent.
+            Passed as a plain SystemContentBlock. The guardrail does not assess
+            system prompts without guardContent.
         - user_prompt: Untrusted user input (issue title/body, PR title/body,
             comments). When guardrail is configured, wrapped in guardContent
             so the guardrail scans it for prompt injection.
+
+        No cachePoint is set: production logs (last 30 runs / 44 calls) show
+        the cache read rate at 0% because the cached prefix includes per-PR
+        diff bytes, so the cache key never repeats. A cachePoint here would
+        only pay the 1.25x cache-write premium without ever yielding a read.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock call")
@@ -57,10 +61,7 @@ class BedrockClient:
             }
 
             if system_prompt:
-                kwargs["system"] = [
-                    {"text": system_prompt},
-                    {"cachePoint": {"type": "default"}},
-                ]
+                kwargs["system"] = [{"text": system_prompt}]
 
             if json_schema:
                 kwargs["outputConfig"] = {
