@@ -42,6 +42,19 @@ import org.apache.spark.sql.types.StructType
 import scala.util.Failure
 import scala.util.Try
 
+/** State for HistogramBinned that carries bin edges alongside frequencies. */
+case class BinnedFrequencies(
+  frequencies: DataFrame,
+  numRows: Long,
+  edges: Array[Double]
+) extends State[BinnedFrequencies] {
+
+  override def sum(other: BinnedFrequencies): BinnedFrequencies = {
+    throw new UnsupportedOperationException(
+      "BinnedFrequencies states cannot be merged. Use calculate() on the full dataset.")
+  }
+}
+
 /**
  * Histogram analyzer for numerical data with binning support.
  * Currently supports equal-width bins.
@@ -57,7 +70,7 @@ case class HistogramBinned(
                             // by bin index (which becomes categorical data)
                             override val aggregateFunction: AggregateFunction = Histogram.Count)
   extends HistogramBase(column, where, computeFrequenciesAsRatio, aggregateFunction)
-    with Analyzer[FrequenciesAndNumRows, HistogramBinnedMetric] {
+    with Analyzer[BinnedFrequencies, HistogramBinnedMetric] {
 
   require(binCount.isDefined ^ customEdges.isDefined,
     "Must specify either binCount (equal-width) or customEdges (custom)")
@@ -112,7 +125,7 @@ case class HistogramBinned(
   }
 
   override def computeStateFrom(data: DataFrame,
-                                filterCondition: Option[String] = None): Option[FrequenciesAndNumRows] = {
+                                filterCondition: Option[String] = None): Option[BinnedFrequencies] = {
 
     val totalCount = if (computeFrequenciesAsRatio) {
       aggregateFunction.total(data)
@@ -209,7 +222,7 @@ case class HistogramBinned(
 
     val frequencies = aggregateFunction.query(column, binnedData)
 
-    Some(FrequenciesAndNumRows(frequencies, totalCount))
+    Some(BinnedFrequencies(frequencies, totalCount, storedEdges))
   }
 
   private def computeCustomEdges(): Array[Double] = {
@@ -247,7 +260,7 @@ case class HistogramBinned(
     addOverflowEdges(edges)
   }
 
-  override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramBinnedMetric = {
+  override def computeMetricFrom(state: Option[BinnedFrequencies]): HistogramBinnedMetric = {
     state match {
       case Some(theState) =>
         val value: Try[DistributionBinned] = Try {
@@ -266,10 +279,12 @@ case class HistogramBinned(
               binValue -> DistributionValue(absolute, ratio)
             }.toMap
 
+          val edges = theState.edges
+
           // Convert to BinData objects
-          val binDataSeq = (0 until storedEdges.length - 1).map { binIndex =>
-            val binStart = storedEdges(binIndex)
-            val binEnd = storedEdges(binIndex + 1)
+          val binDataSeq = (0 until edges.length - 1).map { binIndex =>
+            val binStart = edges(binIndex)
+            val binEnd = edges(binIndex + 1)
             val distValue = histogramDetails.get(binIndex.toString).getOrElse(DistributionValue(0, 0.0))
             BinData(binStart, binEnd, distValue.absolute, distValue.ratio)
           }.toVector
