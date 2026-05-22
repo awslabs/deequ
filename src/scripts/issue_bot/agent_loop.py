@@ -56,15 +56,25 @@ def run(
     tool_runner,
     caps: AgentCaps,
     pipeline_deadline: Optional[float] = None,
+    untrusted_user_prompt: Optional[str] = None,
 ):
     """Execute an agent's tool-use loop. Returns an AgentResult.
 
-    Termination: caps.max_turns, caps.max_tool_calls, caps.max_tool_output_chars,
-    caps.per_tool_max_calls, or pipeline_deadline (a shared monotonic deadline
-    threaded across pipeline stages) — whichever fires first.
+    user_prompt is trusted; untrusted_user_prompt (PR/issue user input)
+    goes in a guardContent block when the client has a guardrail so model
+    paraphrases of repo content don't false-trip the scanner.
+
+    Termination: caps.max_turns / max_tool_calls / max_tool_output_chars /
+    per_tool_max_calls, or pipeline_deadline.
     """
     result = AgentResult()
-    messages = [{"role": "user", "content": [{"text": user_prompt}]}]
+    messages = [{
+        "role": "user",
+        "content": _build_user_content(
+            user_prompt, untrusted_user_prompt,
+            has_guardrail=getattr(bedrock_client, "has_guardrail", False),
+        ),
+    }]
     per_tool_calls = defaultdict(int)
 
     for turn in range(max(0, caps.max_turns)):
@@ -145,6 +155,19 @@ def run(
     )
     logger.warning("[%s] max_turns (%d) reached", agent_name, caps.max_turns)
     return result
+
+
+def _build_user_content(trusted, untrusted, *, has_guardrail):
+    """Two-block form only when an untrusted segment AND a guardrail are
+    both present; otherwise concatenate into one text block."""
+    if untrusted and has_guardrail:
+        return [
+            {"text": trusted},
+            {"guardContent": {"text": {"text": untrusted}}},
+        ]
+    if untrusted:
+        return [{"text": f"{trusted}\n{untrusted}"}]
+    return [{"text": trusted}]
 
 
 def _run_tool_calls(msg, agent_name, turn, tool_runner, caps, result, per_tool_calls):

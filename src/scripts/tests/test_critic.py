@@ -603,6 +603,488 @@ def test_metrics_totals_equal_sum_of_stages(tmp_path, monkeypatch):
     assert m["totals"]["output_tokens"] == expected_out
 
 
+def test_reporter_skipped_when_pipeline_deadline_exceeded(monkeypatch):
+    """Direct unit test of _run_critic_and_reporter: with the deadline
+    already in the past after the Critic finishes, the Reporter must be
+    skipped and the helper must return skip_reason 'reporter_deadline_exceeded'.
+
+    Direct call (not via analyze()) so we can drive the Critic happy-path
+    independently of the Investigator's deadline check.
+    """
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_critic_and_reporter
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    cfg = Config()
+
+    investigator_notes = (
+        "ID: C1\nFILE: f.py\nLINE: 1\nHYPOTHESIS: real bug\n"
+        "FALSIFICATION_ATTEMPT: searched\nSTATUS: CONFIRMED\n"
+        "SEVERITY: BUG\nCOMMENT: real bug\nEVIDENCE: line 1\nTRIGGER: x\n"
+    )
+
+    fake_critic = agent_loop.AgentResult(
+        text="VERDICT: C1 | UPHELD | verified",
+        turns=1, tool_calls=0, tool_output_chars=0,
+        input_tokens=10, output_tokens=5,
+    )
+
+    bedrock = mock.MagicMock()
+    # Reporter (invoke_with_usage) MUST NOT be called.
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=("never", {}))
+
+    # Patch agent_loop.run so the "Critic" returns a real verdict without
+    # actually doing a Bedrock call.
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_critic):
+        crit_result, skip_reason, comments, rep_metrics = _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=None,
+            critic_system="Critique.", critic_caps=agent_loop.AgentCaps(max_turns=1),
+            reporter_system="Report.",
+            diff="diff", title="T", body="B",
+            investigator_text=investigator_notes,
+            pipeline_deadline=_time.monotonic() - 1.0,  # already past
+        )
+
+    assert bedrock.invoke_with_usage.call_count == 0
+    assert skip_reason == "reporter_deadline_exceeded"
+    assert comments == []
+    # Same string in both places: dashboards filtering on either field
+    # see the same event without drift.
+    assert rep_metrics["skip_reason"] == "reporter_deadline_exceeded"
+
+
+def test_reporter_deadline_does_not_mislabel_critic_skip_reason(monkeypatch):
+    """Regression: when the Reporter is skipped due to wall-clock deadline,
+    the Critic actually ran successfully — its metrics row must NOT be
+    tagged with a reporter-side skip_reason. The skip_reason belongs on the
+    Reporter's metrics row (and the artifact's top-level reason field).
+    """
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_agent_pipeline
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    monkeypatch.setenv("PR_INVESTIGATOR_PROMPT", "Investigate.")
+    monkeypatch.setenv("PR_CRITIC_PROMPT", "Critique.")
+    monkeypatch.setenv("PR_REPORTER_PROMPT", "Report.")
+    cfg = Config()
+
+    investigator_notes = (
+        "ID: C1\nSTATUS: CONFIRMED\nSEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\n"
+    )
+    fake_inv = agent_loop.AgentResult(
+        text=investigator_notes, turns=1, input_tokens=10, output_tokens=5,
+    )
+    fake_critic = agent_loop.AgentResult(
+        text="VERDICT: C1 | UPHELD | verified", turns=1, input_tokens=10, output_tokens=5,
+    )
+
+    artifact_holder = {}
+
+    def capture_artifact(payload):
+        artifact_holder.update(payload)
+
+    bedrock = mock.MagicMock()
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=("never", {}))
+
+    gh = mock.MagicMock()
+    gh.repo_root = "."
+    gh.get_pr_diff.return_value = "diff"
+    gh.get_pr_review_comments.return_value = []
+    gh.get_pr_files.return_value = [{"filename": "f.py", "changes": 5}]
+    gh.get_compare_diff.return_value = ""
+    gh.get_ci_status.return_value = (True, "")
+
+    item = {"head": {"sha": "abc"}}
+    cfg.event_after = "abc"
+
+    # Force deadline-exceeded path: monkeypatch pipeline_wall_clock_seconds to 0
+    cfg.pipeline_wall_clock_seconds = 0
+
+    with mock.patch("issue_bot.main.agent_loop.run", side_effect=[fake_inv, fake_critic]), \
+         mock.patch("issue_bot.main._write_artifact", side_effect=capture_artifact):
+        _run_agent_pipeline(
+            cfg=cfg, gh=gh, bedrock=bedrock, number=1, title="T", body="B",
+            html_url="https://github.com/x", item=item, context="",
+            codebase_map="", comments_data=[], is_pr_update=False,
+        )
+
+    # Reporter NOT invoked due to expired deadline.
+    assert bedrock.invoke_with_usage.call_count == 0
+    # Guard against the patch silently no-op'ing if _write_artifact gets
+    # renamed: an empty holder would otherwise pass the .get() asserts below.
+    assert artifact_holder, "no artifact captured — check the patch target"
+    # Pipeline ESCALATEd with the right top-level reason.
+    assert artifact_holder["action"] == "ESCALATE"
+    assert artifact_holder["reason"] == "reporter_deadline_exceeded"
+    # Critic stage row carries its real metrics, not a reporter-side skip_reason.
+    crit_metrics = artifact_holder["metrics"]["critic"]
+    assert crit_metrics.get("skip_reason") != "reporter_deadline_exceeded", (
+        "Critic mislabeled with a reporter-side skip_reason — pollutes per-stage analytics."
+    )
+    # Reporter row carries the deadline reason; same string as artifact reason.
+    rep_metrics = artifact_holder["metrics"]["reporter"]
+    assert rep_metrics["skip_reason"] == "reporter_deadline_exceeded"
+
+
+def test_reporter_skipped_when_remaining_below_safety_threshold(monkeypatch):
+    """If remaining wall-clock budget is below cfg.reporter_min_remaining_seconds,
+    the Reporter is skipped pre-emptively. This bounds the worst case where
+    the Reporter could otherwise run for its full bedrock_timeout (240s)
+    starting just before the deadline and blow the workflow cap (600s).
+    """
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_critic_and_reporter
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    monkeypatch.setenv("BOT_REPORTER_MIN_REMAINING_S", "60")
+    cfg = Config()
+    assert cfg.reporter_min_remaining_seconds == 60
+
+    fake_critic = agent_loop.AgentResult(text="VERDICT: C1 | UPHELD | ok")
+    bedrock = mock.MagicMock()
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=("never", {}))
+
+    # 30s remaining < 60s threshold → skip pre-emptively
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_critic):
+        _, skip_reason, _, _ = _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=None,
+            critic_system="Critique.", critic_caps=agent_loop.AgentCaps(max_turns=1),
+            reporter_system="Report.",
+            diff="diff", title="T", body="B",
+            investigator_text="ID: C1\nSTATUS: CONFIRMED\n",
+            pipeline_deadline=_time.monotonic() + 30,
+        )
+
+    assert bedrock.invoke_with_usage.call_count == 0
+    assert skip_reason == "reporter_deadline_exceeded"
+
+
+def test_reporter_min_remaining_seconds_default(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    monkeypatch.delenv("BOT_REPORTER_MIN_REMAINING_S", raising=False)
+    from issue_bot.config import Config
+    cfg = Config()
+    # Default tuned to >= realistic Reporter latency (20-45s on slow days)
+    # so a Reporter that starts within budget can finish within budget.
+    assert cfg.reporter_min_remaining_seconds == 60
+
+
+def test_reporter_call_passes_remaining_budget_as_timeout(monkeypatch):
+    """When the Reporter does run, its bedrock call gets a per-call timeout
+    capped at the remaining wall-clock budget so a slow Bedrock day can't
+    blow the GHA workflow cap (600s)."""
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_critic_and_reporter
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    cfg = Config()
+
+    fake_critic = agent_loop.AgentResult(text="VERDICT: C1 | UPHELD | ok")
+    bedrock = mock.MagicMock()
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=(
+        json.dumps({"analysis": []}),
+        {"inputTokens": 5, "outputTokens": 2,
+         "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+    ))
+
+    deadline = _time.monotonic() + 90  # 90s remaining
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_critic):
+        _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=None,
+            critic_system="Critique.", critic_caps=agent_loop.AgentCaps(max_turns=1),
+            reporter_system="Report.",
+            diff="diff", title="T", body="B",
+            investigator_text="ID: C1\nSTATUS: CONFIRMED\n",
+            pipeline_deadline=deadline,
+        )
+
+    assert bedrock.invoke_with_usage.call_count == 1
+    call_kwargs = bedrock.invoke_with_usage.call_args[1]
+    timeout = call_kwargs.get("timeout_seconds")
+    # Deadline was set 90s out and only ms have elapsed inside the test.
+    # Tight bounds catch off-by-one or wrong-units regressions in the
+    # deadline math; loose bounds (e.g., 1 <= timeout <= 90) would let
+    # a buggy value of 5s pass.
+    assert timeout is not None
+    assert 85 <= timeout <= 90
+
+
+def test_reporter_failure_escalates_does_not_post_clean(monkeypatch):
+    """If the Reporter call returns None (Bedrock unavailable, timeout,
+    throttled), the pipeline must ESCALATE, not RESPOND with empty findings.
+    Otherwise confirmed findings would be silently dropped — the same
+    impact as a Critic failure, and treated the same way.
+    """
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_critic_and_reporter
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    cfg = Config()
+
+    fake_critic = agent_loop.AgentResult(text="VERDICT: C1 | UPHELD | ok")
+    bedrock = mock.MagicMock()
+    # Reporter call fails (Bedrock returned None for any reason).
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=(None, {}))
+
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_critic):
+        crit_result, event, comments, rep_metrics = _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=None,
+            critic_system="Critique.", critic_caps=agent_loop.AgentCaps(max_turns=1),
+            reporter_system="Report.",
+            diff="diff", title="T", body="B",
+            investigator_text="ID: C1\nSTATUS: CONFIRMED\n",
+            pipeline_deadline=_time.monotonic() + 600,  # ample budget
+        )
+
+    assert event == "reporter_failed"
+    assert comments == []
+    assert rep_metrics["skip_reason"] == "bedrock_unavailable"
+
+
+def test_reporter_malformed_output_escalates(monkeypatch):
+    """If the Reporter returns text that fails JSON parsing, we cannot trust
+    the findings list. Escalate rather than risk posting nothing on real
+    findings."""
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_critic_and_reporter
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    cfg = Config()
+
+    fake_critic = agent_loop.AgentResult(text="VERDICT: C1 | UPHELD | ok")
+    bedrock = mock.MagicMock()
+    # Returns non-JSON text — parser will fail.
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=(
+        "<<not json>>",
+        {"inputTokens": 5, "outputTokens": 1,
+         "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+    ))
+
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_critic):
+        _, event, comments, rep_metrics = _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=None,
+            critic_system="Critique.", critic_caps=agent_loop.AgentCaps(max_turns=1),
+            reporter_system="Report.",
+            diff="diff", title="T", body="B",
+            investigator_text="ID: C1\nSTATUS: CONFIRMED\n",
+            pipeline_deadline=_time.monotonic() + 600,
+        )
+
+    assert event == "reporter_failed"
+    assert comments == []
+    assert rep_metrics["parse_failed"] is True
+
+
+def test_unknown_pipeline_event_escalates_does_not_mislabel_critic(monkeypatch):
+    """Forward-compat: if _run_critic_and_reporter ever returns an unknown
+    event name (typo, future event missing from both classification sets),
+    the pipeline must ESCALATE with reason='unknown_pipeline_event' and NOT
+    re-tag metrics["critic"] with that string."""
+    import unittest.mock as mock
+    from issue_bot.main import _run_agent_pipeline
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    monkeypatch.setenv("PR_INVESTIGATOR_PROMPT", "Investigate.")
+    monkeypatch.setenv("PR_CRITIC_PROMPT", "Critique.")
+    monkeypatch.setenv("PR_REPORTER_PROMPT", "Report.")
+    cfg = Config()
+
+    fake_inv = agent_loop.AgentResult(
+        text="ID: C1\nSTATUS: CONFIRMED\nSEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\n",
+        turns=1, input_tokens=10, output_tokens=5,
+    )
+    fake_critic = agent_loop.AgentResult(
+        text="VERDICT: C1 | UPHELD | ok", turns=1, input_tokens=10, output_tokens=5,
+    )
+
+    artifact_holder = {}
+    bedrock = mock.MagicMock()
+    gh = mock.MagicMock()
+    gh.repo_root = "."
+    gh.get_pr_diff.return_value = "diff"
+    gh.get_pr_review_comments.return_value = []
+    gh.get_pr_files.return_value = [{"filename": "f.py", "changes": 5}]
+    gh.get_compare_diff.return_value = ""
+    gh.get_ci_status.return_value = (True, "")
+
+    item = {"head": {"sha": "abc"}}
+    cfg.event_after = "abc"
+
+    # Patch _run_critic_and_reporter to return a typo'd event name.
+    bad_metrics = {
+        "skipped": False, "skip_reason": "garbage_value", "turns": 0, "tool_calls": 0,
+        "tool_output_chars": 0, "input_tokens": 0, "output_tokens": 0,
+        "cache_read_tokens": 0, "cache_write_tokens": 0,
+        "max_turns_reached": False, "error": None, "parse_failed": False,
+    }
+
+    def capture_artifact(payload):
+        artifact_holder.update(payload)
+
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_inv), \
+         mock.patch("issue_bot.main._run_critic_and_reporter",
+                    return_value=(fake_critic, "garbage_event_typo", [], bad_metrics)), \
+         mock.patch("issue_bot.main._write_artifact", side_effect=capture_artifact):
+        _run_agent_pipeline(
+            cfg=cfg, gh=gh, bedrock=bedrock, number=1, title="T", body="B",
+            html_url="https://github.com/x", item=item, context="",
+            codebase_map="", comments_data=[], is_pr_update=False,
+        )
+
+    assert artifact_holder, "no artifact captured — check the patch target"
+    assert artifact_holder["action"] == "ESCALATE"
+    assert artifact_holder["reason"] == "unknown_pipeline_event"
+    # Critic ran — its skip_reason must NOT be "unknown_pipeline_event".
+    assert artifact_holder["metrics"]["critic"].get("skip_reason") not in (
+        "unknown_pipeline_event", "garbage_event_typo",
+    )
+
+
+def test_reporter_runs_when_deadline_in_future(monkeypatch):
+    """Sanity check the inverse: a deadline comfortably in the future does
+    NOT cause the Reporter to be skipped."""
+    import time as _time
+    import unittest.mock as mock
+    from issue_bot.main import _run_critic_and_reporter
+    from issue_bot import agent_loop
+    from issue_bot.config import Config
+
+    monkeypatch.setenv("GITHUB_TOKEN", "fake")
+    monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+    cfg = Config()
+
+    investigator_notes = (
+        "ID: C1\nSTATUS: CONFIRMED\nSEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\n"
+    )
+    fake_critic = agent_loop.AgentResult(text="VERDICT: C1 | UPHELD | ok")
+
+    bedrock = mock.MagicMock()
+    bedrock.invoke_with_usage = mock.MagicMock(return_value=(
+        json.dumps({"analysis": []}),
+        {"inputTokens": 5, "outputTokens": 2, "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+    ))
+
+    with mock.patch("issue_bot.main.agent_loop.run", return_value=fake_critic):
+        _, skip_reason, _, _ = _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=None,
+            critic_system="Critique.", critic_caps=agent_loop.AgentCaps(max_turns=1),
+            reporter_system="Report.",
+            diff="diff", title="T", body="B",
+            investigator_text=investigator_notes,
+            # Comfortably above reporter_min_remaining_seconds (default 60).
+            pipeline_deadline=_time.monotonic() + 600,
+        )
+    assert bedrock.invoke_with_usage.call_count == 1
+    assert skip_reason is None
+
+
+def test_investigator_diff_truncation_on_large_diff(tmp_path, monkeypatch):
+    """When the diff > BOT_AGENT_MAX_DIFF_CHARS, the Investigator's user
+    message must contain the truncation marker, not the full diff. Same
+    cap as the Critic to bound input tokens on giant PRs."""
+    import unittest.mock as mock
+    _setup_pipeline_env(tmp_path, monkeypatch, event_action="opened")
+    # Lower the cap to make the test fast; default is 200K.
+    monkeypatch.setenv("BOT_AGENT_MAX_DIFF_CHARS", "5000")
+    huge_diff = "diff --git a/f.py b/f.py\n" + ("+ x\n" * 4000)  # ~16K chars
+    captured = []
+
+    with mock.patch("issue_bot.github_client.GitHubClient.get_pr") as mock_pr, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_comments") as mock_comments, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_diff") as mock_diff, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_review_comments") as mock_rc, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.converse_with_tools") as mock_ctools, \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.invoke_with_usage") as mock_invoke:
+
+        mock_pr.return_value = {
+            "user": {"login": "contributor"}, "title": "T", "body": "B",
+            "state": "open", "html_url": "https://github.com/x", "head": {"sha": "abc"},
+        }
+        mock_comments.return_value = []
+        mock_diff.return_value = huge_diff
+        mock_rc.return_value = []
+        mock_files.return_value = [{"filename": "f.py", "changes": 5}]
+        mock_map.return_value = ""
+        mock_kb.return_value = ""
+        mock_ci.return_value = (True, "")
+        mock_invoke.return_value = (json.dumps({"analysis": []}),
+                                     {"inputTokens": 1, "outputTokens": 1,
+                                      "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0})
+
+        def converse(system_prompt, messages, tool_specs, max_tokens=8000,
+                     temperature=0.3, timeout_seconds=None):
+            captured.append({"system": system_prompt[:80], "messages": messages})
+            text = (
+                "No confirmed issues found." if "Investigate" in system_prompt
+                else "ALL_DISPROVED: nothing to verify"
+            )
+            return _bedrock_text_resp(text)
+
+        mock_ctools.side_effect = converse
+        from issue_bot.main import analyze
+        analyze()
+
+    # Investigator is the FIRST converse call.
+    inv_call = captured[0]
+    inv_user = inv_call["messages"][0]["content"][0]
+    text = inv_user.get("text", "") if isinstance(inv_user, dict) else str(inv_user)
+    assert "diff truncated at 5000 chars" in text
+    # Must be < raw diff (16K) — truncated.
+    assert len(text) < 16_000
+
+
 def test_metrics_schema_uniform_across_stages(tmp_path, monkeypatch):
     """Every stage's metrics dict carries the same canonical key set so
     dashboards iterating stages don't KeyError."""

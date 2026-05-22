@@ -194,3 +194,99 @@ def _setup_minimal_env(monkeypatch):
     monkeypatch.setenv("EVENT_TYPE", "pull_request_target")
     monkeypatch.setenv("ISSUE_NUMBER", "1")
     monkeypatch.setenv("GITHUB_REPOSITORY", "awslabs/test")
+
+
+from issue_bot.main import _truncate_diff_for_user_prompt, _format_pr_input
+
+
+def test_truncate_diff_under_cap_passthrough():
+    diff = "diff --git a/f.py b/f.py\n+x\n"
+    assert _truncate_diff_for_user_prompt(diff, 1000) == diff
+
+
+def test_truncate_diff_over_cap_truncates_with_marker():
+    diff = "x" * 500
+    out = _truncate_diff_for_user_prompt(diff, 100)
+    assert len(out) < 500
+    assert "diff truncated at 100 chars" in out
+
+
+def test_truncate_diff_at_exact_boundary_passthrough():
+    diff = "x" * 100
+    assert _truncate_diff_for_user_prompt(diff, 100) == diff
+
+
+def test_format_pr_input_shape_is_canonical():
+    """Investigator and Critic must frame PR title/body identically so the
+    guardrail wraps the same shape on both."""
+    out = _format_pr_input("Add feature", "What this does")
+    assert out == "<pr>\nTitle: Add feature\nBody: What this does\n</pr>"
+
+
+def test_agent_max_diff_chars_default(monkeypatch):
+    monkeypatch.delenv("BOT_AGENT_MAX_DIFF_CHARS", raising=False)
+    _setup_minimal_env(monkeypatch)
+    from issue_bot.config import Config
+    cfg = Config()
+    assert cfg.agent_max_diff_chars == 200_000
+
+
+def test_agent_max_diff_chars_env_override(monkeypatch):
+    monkeypatch.setenv("BOT_AGENT_MAX_DIFF_CHARS", "50000")
+    _setup_minimal_env(monkeypatch)
+    from issue_bot.config import Config
+    cfg = Config()
+    assert cfg.agent_max_diff_chars == 50_000
+
+
+def test_agent_max_diff_chars_falls_back_on_garbage(monkeypatch):
+    monkeypatch.setenv("BOT_AGENT_MAX_DIFF_CHARS", "not-a-number")
+    _setup_minimal_env(monkeypatch)
+    from issue_bot.config import Config
+    cfg = Config()
+    assert cfg.agent_max_diff_chars == 200_000
+
+
+@pytest.mark.parametrize("bad_value", ["0", "-1", "-200000"])
+def test_agent_max_diff_chars_non_positive_falls_back(monkeypatch, bad_value):
+    """A non-positive value would silently make _truncate_diff_for_user_prompt
+    drop the entire diff (diff[:0] == ''), leaving the model with no context
+    and inviting hallucinated findings. Must fail safe to the default."""
+    monkeypatch.setenv("BOT_AGENT_MAX_DIFF_CHARS", bad_value)
+    _setup_minimal_env(monkeypatch)
+    from issue_bot.config import Config
+    cfg = Config()
+    assert cfg.agent_max_diff_chars == 200_000
+
+
+from issue_bot.main import (
+    _CRITIC_STAGE_EVENTS, _ESCALATE_EVENTS, _KNOWN_PIPELINE_EVENTS,
+)
+
+
+def test_pipeline_event_classification_complete():
+    """Every known event must be classifiable as either critic-stage or
+    escalate (or both). An event in neither set would be silently ignored
+    by _run_agent_pipeline and let the pipeline post a clean review while
+    dropping confirmed findings."""
+    classified = _CRITIC_STAGE_EVENTS | _ESCALATE_EVENTS
+    unclassified = _KNOWN_PIPELINE_EVENTS - classified
+    assert unclassified == frozenset(), (
+        f"Events not classified into _CRITIC_STAGE_EVENTS or _ESCALATE_EVENTS: "
+        f"{sorted(unclassified)}. Add them so the pipeline routes them correctly."
+    )
+
+
+def test_pipeline_event_known_set_includes_documented_events():
+    """The known-event set must include every value _run_critic_and_reporter
+    documents in its docstring as a possible return."""
+    documented = {
+        "no_confirmed_findings",
+        "critic_failed",
+        "reporter_deadline_exceeded",
+        "reporter_failed",
+        "unknown_pipeline_event",
+    }
+    assert documented <= _KNOWN_PIPELINE_EVENTS, (
+        f"Documented events not in known set: {documented - _KNOWN_PIPELINE_EVENTS}"
+    )

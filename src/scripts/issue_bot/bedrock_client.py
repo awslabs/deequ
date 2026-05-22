@@ -12,11 +12,12 @@ _CIRCUIT_BREAKER_THRESHOLD = 3
 class BedrockClient:
     def __init__(self, cfg):
         self._model_id = cfg.bedrock_model_id
+        self._default_timeout = cfg.bedrock_timeout
         self._client = boto3.client(
             "bedrock-runtime",
             config=BotoConfig(
-                read_timeout=cfg.bedrock_timeout,
-                connect_timeout=cfg.bedrock_timeout,
+                read_timeout=self._default_timeout,
+                connect_timeout=self._default_timeout,
                 retries={"max_attempts": 3, "mode": "adaptive"},
             ),
         )
@@ -25,9 +26,32 @@ class BedrockClient:
         self._failures = 0
         self._circuit_open = False  # Resets per-process; GHA runs are ephemeral
 
+    def _client_for_timeout(self, timeout_seconds):
+        """Return a client whose read_timeout is at most timeout_seconds.
+        Single-attempt retry policy: retry storms aren't useful when the
+        caller is already on a tight wall-clock budget."""
+        if timeout_seconds is None or timeout_seconds >= self._default_timeout:
+            return self._client
+        if timeout_seconds <= 0:
+            timeout_seconds = 1  # botocore rejects 0/negative
+        return boto3.client(
+            "bedrock-runtime",
+            config=BotoConfig(
+                read_timeout=timeout_seconds,
+                connect_timeout=min(timeout_seconds, self._default_timeout),
+                retries={"max_attempts": 1, "mode": "standard"},
+            ),
+        )
+
     @property
     def available(self):
         return not self._circuit_open
+
+    @property
+    def has_guardrail(self):
+        """Whether a guardrail is configured on this client. Read by
+        agent_loop to decide whether to compose guardContent blocks."""
+        return bool(self._guardrail_id)
 
     def invoke(self, system_prompt, user_prompt, max_tokens=4096,
                temperature=0.3, json_schema=None):
@@ -106,9 +130,17 @@ class BedrockClient:
             return None
 
     def invoke_with_usage(self, system_prompt, user_prompt, max_tokens=4096,
-                           temperature=0.3, json_schema=None):
-        """Like invoke() but also returns the response's token usage dict so
-        the caller can record it. Returns (None, {}) on failure."""
+                           temperature=0.3, json_schema=None,
+                           timeout_seconds=None):
+        """Like invoke() but also returns the response's token usage dict.
+        Returns (None, {}) on failure.
+
+        timeout_seconds (optional): per-call read/connect timeout, used by
+        the Reporter to bound the call at the remaining wall-clock budget.
+
+        No cachePoint: the Reporter (sole caller) embeds the per-PR diff
+        in its system prompt, so the cache prefix never repeats.
+        """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock call")
             return None, {}
@@ -123,10 +155,7 @@ class BedrockClient:
                 "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
             }
             if system_prompt:
-                kwargs["system"] = [
-                    {"text": system_prompt},
-                    {"cachePoint": {"type": "default"}},
-                ]
+                kwargs["system"] = [{"text": system_prompt}]
             if json_schema:
                 kwargs["outputConfig"] = {
                     "textFormat": {
@@ -143,7 +172,8 @@ class BedrockClient:
                     "guardrailVersion": self._guardrail_version,
                     "trace": "enabled",
                 }
-            resp = self._client.converse(**kwargs)
+            client = self._client_for_timeout(timeout_seconds)
+            resp = client.converse(**kwargs)
             if resp.get("stopReason") == "guardrail_intervened":
                 logger.warning("Guardrail intervened: %s", resp.get("trace", ""))
                 return None, resp.get("usage", {}) or {}
@@ -168,12 +198,14 @@ class BedrockClient:
 
     def converse_with_tools(self, system_prompt, messages, tool_specs,
                              max_tokens=8000, temperature=0.3):
-        """One turn of Converse with toolConfig. The caller owns the messages
-        list and appends tool results between turns. Returns the raw response
+        """One turn of Converse with toolConfig. Returns the raw response
         dict (or None on failure / guardrail intervention / circuit open).
 
-        Only the first user message is wrapped in guardContent — subsequent
-        toolResult messages come from our own filesystem and aren't user input.
+        cachePoint is set here (unlike invoke()/invoke_with_usage) because
+        Investigator and Critic share the static prefix from
+        _build_static_context — the Investigator's first turn warms a cache
+        the Critic's first turn can read. Validate via cacheReadInputTokens
+        on the Critic stage in the artifact metrics.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock tool-use call")
@@ -212,16 +244,31 @@ class BedrockClient:
             return None
 
     def _wrap_first_user_for_guardrail(self, messages):
-        """Wrap the first user message's text in guardContent so the
-        guardrail scans it; pass subsequent user messages through unchanged."""
+        """Wrap the first user message's text in guardContent for guardrail
+        scanning. Skipped when the caller has already set a guardContent
+        block (signals an explicit trust boundary, don't re-wrap adjacent
+        trusted text).
+
+        Assumes callers using the [trusted, guardContent(untrusted)]
+        composition pattern from agent_loop._build_user_content. Reusing
+        this helper with arbitrary content layouts (e.g., multiple
+        text blocks alongside a guardContent block) requires re-thinking
+        the wrap rule — a text block in any position alongside a
+        guardContent block currently passes through unwrapped.
+        """
         if not self._guardrail_id or not messages:
             return messages
         out = []
         guarded = False
         for msg in messages:
             if not guarded and msg.get("role") == "user":
+                content = msg.get("content", [])
+                if any("guardContent" in block for block in content):
+                    out.append(msg)
+                    guarded = True
+                    continue
                 new_content = []
-                for block in msg.get("content", []):
+                for block in content:
                     if "text" in block:
                         new_content.append({"guardContent": {"text": {"text": block["text"]}}})
                     else:

@@ -64,11 +64,20 @@ class Config:
         self.critic_max_tool_output_chars = _int_env(
             "BOT_CRITIC_MAX_TOOL_OUTPUT", 200_000,
         )
-        self.critic_max_diff_chars = _int_env("BOT_CRITIC_MAX_DIFF_CHARS", 200_000)
-        # Pipeline-wide wall-clock cap shared across Investigator + Critic.
-        # The workflow itself is bounded at 10 minutes; this leaves room for
-        # the Reporter call and artifact upload.
+        # Cap on diff bytes in either agent's user prompt. Non-positive
+        # would silently drop the diff entirely → fail safe to default.
+        agent_max_diff = _int_env("BOT_AGENT_MAX_DIFF_CHARS", 200_000)
+        if agent_max_diff <= 0:
+            logger.warning(
+                "BOT_AGENT_MAX_DIFF_CHARS=%d is non-positive; using default 200_000",
+                agent_max_diff,
+            )
+            agent_max_diff = 200_000
+        self.agent_max_diff_chars = agent_max_diff
         self.pipeline_wall_clock_seconds = _int_env("BOT_PIPELINE_WALL_CLOCK_S", 480)
+        # Reporter latency on slow Bedrock days runs 20-45s; below this
+        # margin a Reporter started in budget could finish out of budget.
+        self.reporter_min_remaining_seconds = _int_env("BOT_REPORTER_MIN_REMAINING_S", 60)
 
 
 def _require(name):

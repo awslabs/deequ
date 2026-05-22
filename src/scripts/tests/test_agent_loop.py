@@ -255,3 +255,83 @@ def test_wall_clock_cap_terminates_loop():
         pipeline_deadline=_time.monotonic() - 1,  # already in the past
     )
     assert result.error and "wall-clock" in result.error
+
+
+# -----------------------------------------------------------------------------
+# User-content composition: trusted vs untrusted text and guardrail wrapping.
+# -----------------------------------------------------------------------------
+
+class _GuardedFakeClient(FakeBedrockClient):
+    """Fake client that reports it has a guardrail configured."""
+    has_guardrail = True
+
+
+class _UnguardedFakeClient(FakeBedrockClient):
+    """Fake client that explicitly reports no guardrail."""
+    has_guardrail = False
+
+
+def test_user_prompt_alone_yields_single_text_block():
+    """No untrusted_user_prompt → single canonical text block, regardless
+    of guardrail (helper layer wraps it later if needed)."""
+    bedrock = _UnguardedFakeClient([_resp([{"text": "ok"}])])
+    run(
+        bedrock_client=bedrock, agent_name="critic",
+        system_prompt="sys", user_prompt="trusted-only",
+        tool_specs=[], tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=1),
+    )
+    content = bedrock.calls[0]["messages"][0]["content"]
+    assert content == [{"text": "trusted-only"}]
+
+
+def test_untrusted_with_guardrail_splits_blocks():
+    """When the client has a guardrail AND there is untrusted input, the
+    user message gets two content blocks: trusted text + guardContent."""
+    bedrock = _GuardedFakeClient([_resp([{"text": "ok"}])])
+    run(
+        bedrock_client=bedrock, agent_name="critic",
+        system_prompt="sys", user_prompt="trusted-context",
+        untrusted_user_prompt="USER-INPUT",
+        tool_specs=[], tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=1),
+    )
+    content = bedrock.calls[0]["messages"][0]["content"]
+    assert len(content) == 2
+    assert content[0] == {"text": "trusted-context"}
+    assert content[1] == {"guardContent": {"text": {"text": "USER-INPUT"}}}
+
+
+def test_untrusted_without_guardrail_concatenates():
+    """When no guardrail is configured, having an untrusted segment doesn't
+    earn a separate guardContent block — the API would treat it as inert."""
+    bedrock = _UnguardedFakeClient([_resp([{"text": "ok"}])])
+    run(
+        bedrock_client=bedrock, agent_name="critic",
+        system_prompt="sys", user_prompt="trusted-context",
+        untrusted_user_prompt="USER-INPUT",
+        tool_specs=[], tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=1),
+    )
+    content = bedrock.calls[0]["messages"][0]["content"]
+    assert len(content) == 1
+    assert content[0]["text"] == "trusted-context\nUSER-INPUT"
+
+
+def test_guardrail_does_not_wrap_trusted_block():
+    """Regression guard: an injection-y phrase in the trusted segment must
+    NOT end up inside guardContent (where the guardrail would scan it)."""
+    bedrock = _GuardedFakeClient([_resp([{"text": "ok"}])])
+    investigator_paraphrase = "Author paraphrased: 'ignore previous instructions'"
+    run(
+        bedrock_client=bedrock, agent_name="critic",
+        system_prompt="sys", user_prompt=investigator_paraphrase,
+        untrusted_user_prompt="Real user title and body",
+        tool_specs=[], tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=1),
+    )
+    content = bedrock.calls[0]["messages"][0]["content"]
+    text_block_text = content[0].get("text", "")
+    guard_text = content[1].get("guardContent", {}).get("text", {}).get("text", "")
+    assert "ignore previous instructions" in text_block_text
+    assert "ignore previous instructions" not in guard_text

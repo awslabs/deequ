@@ -30,6 +30,17 @@ logger = logging.getLogger("issue_bot")
 ARTIFACT_PATH = os.getenv("ARTIFACT_PATH", "/tmp/bot_result.json")
 _MAX_BOT_REPLIES = 2
 
+# Events surfaced by _run_critic_and_reporter. Critic-stage events tag
+# metrics["critic"]; escalate events drive pipeline-level ESCALATE.
+_CRITIC_STAGE_EVENTS = frozenset({"no_confirmed_findings", "critic_failed"})
+_ESCALATE_EVENTS = frozenset({
+    "critic_failed",
+    "reporter_deadline_exceeded",
+    "reporter_failed",
+    "unknown_pipeline_event",
+})
+_KNOWN_PIPELINE_EVENTS = _CRITIC_STAGE_EVENTS | _ESCALATE_EVENTS
+
 
 def _render(template_str, **kwargs):
     """Render a prompt template safely using unique tokens per invocation.
@@ -858,16 +869,18 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         + f"\n<diff>\n{diff}\n</diff>\n"
         + f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
     )
-    investigator_user = (
-        f"<diff>\n{diff}\n</diff>\n<pr>\nTitle: {title}\nBody: {body}\n</pr>"
-    )
+    investigator_diff = _truncate_diff_for_user_prompt(diff, cfg.agent_max_diff_chars)
+    investigator_trusted = f"<diff>\n{investigator_diff}\n</diff>"
+    investigator_untrusted = _format_pr_input(title, body)
 
     tool_runner = ToolRunner(cfg, gh.repo_root)
     pipeline_deadline = time.monotonic() + cfg.pipeline_wall_clock_seconds
 
     inv_result = agent_loop.run(
         bedrock_client=bedrock, agent_name="investigator",
-        system_prompt=investigator_system, user_prompt=investigator_user,
+        system_prompt=investigator_system,
+        user_prompt=investigator_trusted,
+        untrusted_user_prompt=investigator_untrusted,
         tool_specs=TOOL_SPECS, tool_runner=tool_runner,
         caps=investigator_caps,
         pipeline_deadline=pipeline_deadline,
@@ -889,7 +902,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         )
         return
 
-    crit_result, critic_skip_reason, rep_inline_comments, reporter_metrics = (
+    crit_result, pipeline_event, rep_inline_comments, reporter_metrics = (
         _run_critic_and_reporter(
             cfg=cfg, bedrock=bedrock, tool_runner=tool_runner,
             critic_system=critic_system, critic_caps=critic_caps,
@@ -901,15 +914,20 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
     )
     if crit_result is not None:
         metrics["critic"] = _agent_metrics(crit_result)
-    if critic_skip_reason:
-        metrics["critic"]["skip_reason"] = critic_skip_reason
+    # Unknown event = bug in a future change. Escalate with a distinct
+    # reason rather than silently posting a clean review.
+    if pipeline_event is not None and pipeline_event not in _KNOWN_PIPELINE_EVENTS:
+        logger.error("Unknown pipeline_event %r; treating as escalate", pipeline_event)
+        pipeline_event = "unknown_pipeline_event"
+    if pipeline_event in _CRITIC_STAGE_EVENTS:
+        metrics["critic"]["skip_reason"] = pipeline_event
     metrics["reporter"] = reporter_metrics
 
-    # Critic produced no usable text → escalate, do not post a clean review.
-    # Carry the investigator's narrative for triage.
-    if critic_skip_reason == "critic_failed":
+    # Escalate paths preserve the investigator narrative — posting "no issues"
+    # while confirmed findings exist would silently drop them.
+    if pipeline_event in _ESCALATE_EVENTS:
         _write_artifact_pipeline(
-            **artifact_kwargs, action="ESCALATE", reason="critic_failed",
+            **artifact_kwargs, action="ESCALATE", reason=pipeline_event,
             inline_comments=[], response="",
             metrics=_finalize_metrics(metrics, inv_result, crit_result),
             tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
@@ -1027,12 +1045,11 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
                               pipeline_deadline=None):
     """Run the Critic (if any CONFIRMED concerns) and then the Reporter.
 
-    Returns (crit_result_or_None, critic_skip_reason_or_None, inline_comments,
-    reporter_metrics). When the Critic is skipped, crit_result is None,
-    critic_skip_reason explains why, and the Reporter is skipped too.
-
-    pipeline_deadline (optional) is a shared monotonic time budget across
-    all pipeline stages, threaded into the Critic loop.
+    Returns (crit_result_or_None, pipeline_event_or_None, inline_comments,
+    reporter_metrics). pipeline_event values: None (happy path),
+    "no_confirmed_findings" (fast path), "critic_failed",
+    "reporter_deadline_exceeded", "reporter_failed". Caller escalates on
+    any non-happy-path event so confirmed findings aren't silently dropped.
     """
     skipped_metrics = _empty_stage_metrics()
 
@@ -1042,15 +1059,19 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
     # Neutralize close-tags so a model that emits "</investigator_notes>" or
     # "</critic_verdicts>" in its body can't escape the wrapping tag.
     safe_notes = investigator_text.replace("</investigator_notes>", "</investigator_notes_>")
-    critic_diff = _truncate_for_critic(diff, cfg.critic_max_diff_chars)
-    critic_user = (
+    critic_diff = _truncate_diff_for_user_prompt(diff, cfg.agent_max_diff_chars)
+    # Investigator notes are model-origin (trusted); only PR title/body
+    # is user-input and needs guardrail scanning.
+    critic_trusted = (
         f"<investigator_notes>\n{safe_notes}\n</investigator_notes>\n"
-        f"<diff>\n{critic_diff}\n</diff>\n"
-        f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+        f"<diff>\n{critic_diff}\n</diff>"
     )
+    critic_untrusted = _format_pr_input(title, body)
     crit_result = agent_loop.run(
         bedrock_client=bedrock, agent_name="critic",
-        system_prompt=critic_system, user_prompt=critic_user,
+        system_prompt=critic_system,
+        user_prompt=critic_trusted,
+        untrusted_user_prompt=critic_untrusted,
         tool_specs=TOOL_SPECS, tool_runner=tool_runner,
         caps=critic_caps,
         pipeline_deadline=pipeline_deadline,
@@ -1066,8 +1087,21 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         f"<critic_verdicts>\n{safe_verdicts}\n</critic_verdicts>\n\n"
         f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
     )
+
+    # Bound Reporter on wall-clock: pre-empt if too little budget left,
+    # otherwise cap the per-call timeout at the remaining budget.
+    reporter_timeout = None
+    if pipeline_deadline is not None:
+        remaining = pipeline_deadline - time.monotonic()
+        if remaining < cfg.reporter_min_remaining_seconds:
+            deadline_metrics = _empty_stage_metrics()
+            deadline_metrics["skip_reason"] = "reporter_deadline_exceeded"
+            return crit_result, "reporter_deadline_exceeded", [], deadline_metrics
+        reporter_timeout = max(1, int(remaining))
+
     raw, usage = bedrock.invoke_with_usage(
         reporter_system, reporter_user, max_tokens=8000, json_schema=PR_REVIEW_SCHEMA,
+        timeout_seconds=reporter_timeout,
     )
     reporter_metrics = _empty_stage_metrics()
     reporter_metrics.update({
@@ -1078,24 +1112,32 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         "cache_read_tokens": (usage.get("cacheReadInputTokens") if usage else 0) or 0,
         "cache_write_tokens": (usage.get("cacheWriteInputTokens") if usage else 0) or 0,
     })
+    # Reporter failure with confirmed findings → escalate, not an empty
+    # post that would drop them.
     if raw is None:
-        return crit_result, None, [], reporter_metrics
+        return crit_result, "reporter_failed", [], reporter_metrics
     inline_comments, parse_ok = _parse_reporter_output(raw)
     if not parse_ok:
         reporter_metrics["parse_failed"] = True
         reporter_metrics["skip_reason"] = "reporter_output_malformed"
+        return crit_result, "reporter_failed", [], reporter_metrics
     return crit_result, None, inline_comments, reporter_metrics
 
 
-def _truncate_for_critic(diff, max_chars):
-    """Cap diff size for the Critic's first turn. Critic uses read_file to
-    fetch full files when needed, so the diff is just a pointer."""
+def _format_pr_input(title, body):
+    """User-supplied portion of an agent's first-turn message. Same shape
+    on Investigator and Critic so the guardrail wraps consistently."""
+    return f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+
+
+def _truncate_diff_for_user_prompt(diff, max_chars):
+    """Cap diff size; agents fall back to read_file for full context."""
     if len(diff) <= max_chars:
         return diff
     return (
         diff[:max_chars]
         + f"\n... [diff truncated at {max_chars} chars; "
-        "use read_file to fetch specific files referenced in investigator notes]"
+        "use read_file to fetch specific files referenced in this diff]"
     )
 
 
