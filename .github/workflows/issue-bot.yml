@@ -75,6 +75,7 @@ jobs:
           SM_PR_FILE_REVIEW_REPORT_PROMPT: deequ-bot/pr-file-review-report-prompt
           SM_PR_INVESTIGATOR_PROMPT: deequ-bot/pr-investigator-prompt
           SM_PR_CRITIC_PROMPT: deequ-bot/pr-critic-prompt
+          SM_PR_REPORTER_PROMPT: deequ-bot/pr-reporter-prompt
           SM_FOLLOWUP_PROMPT: deequ-bot/followup-prompt
           # Flip BOT_AGENT_PIPELINE to "1" to enable the 3-agent (Investigator+Critic+Reporter) pipeline.
           # When unset/empty, the legacy two-phase flow runs unchanged.

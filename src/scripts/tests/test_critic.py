@@ -31,7 +31,7 @@ def _setup_pipeline_env(tmp_path, monkeypatch, event_action="opened"):
     monkeypatch.setenv("KB_S3_KEY", "")
     monkeypatch.setenv("PR_INVESTIGATOR_PROMPT", "Investigate. Today: {current_date}")
     monkeypatch.setenv("PR_CRITIC_PROMPT", "Critique. Today: {current_date}")
-    monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Report. Today: {current_date}")
+    monkeypatch.setenv("PR_REPORTER_PROMPT", "Report. Today: {current_date}")
     monkeypatch.setenv("BOT_AGENT_PIPELINE", "1")
     monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
     import issue_bot.main as bot_main
@@ -461,7 +461,7 @@ def test_pipeline_fails_closed_on_missing_investigator_prompt(tmp_path, monkeypa
     monkeypatch.setenv("KB_S3_KEY", "")
     monkeypatch.setenv("BOT_AGENT_PIPELINE", "1")
     monkeypatch.setenv("PR_CRITIC_PROMPT", "Critique. {current_date}")
-    monkeypatch.setenv("PR_FILE_REVIEW_REPORT_PROMPT", "Report. {current_date}")
+    monkeypatch.setenv("PR_REPORTER_PROMPT", "Report. {current_date}")
     # Set the LEGACY prompt to ensure the silent-fallback path is NOT taken
     monkeypatch.setenv("PR_FILE_REVIEW_PROMPT", "Legacy review. {current_date}")
     # Investigator prompt deliberately NOT set

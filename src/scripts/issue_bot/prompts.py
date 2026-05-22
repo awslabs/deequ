@@ -58,6 +58,13 @@ def get_pr_critic_prompt():
     return _get_prompt("PR_CRITIC_PROMPT", "SM_PR_CRITIC_PROMPT")
 
 
+def get_pr_reporter_prompt():
+    """Reporter prompt for the agentic pipeline. Distinct from
+    `get_pr_file_review_report_prompt` (the legacy two-phase reporter) so
+    the legacy flow can keep its own prompt format unchanged."""
+    return _get_prompt("PR_REPORTER_PROMPT", "SM_PR_REPORTER_PROMPT")
+
+
 def get_pr_investigator_prompt():
     """Investigator prompt for the agentic pipeline.
 

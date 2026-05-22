@@ -937,7 +937,7 @@ def _load_pipeline_prompts(cfg, title, html_url, number):
     ESCALATE artifact if any are missing (fail closed)."""
     investigator = prompts.get_pr_investigator_prompt()
     critic = prompts.get_pr_critic_prompt()
-    reporter = prompts.get_pr_file_review_report_prompt()
+    reporter = prompts.get_pr_reporter_prompt()
     missing = [name for name, val in (
         ("investigator", investigator),
         ("critic", critic),
