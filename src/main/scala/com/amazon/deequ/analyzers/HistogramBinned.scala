@@ -152,7 +152,8 @@ case class HistogramBinned(
     // Create binned data using DataFrame operations
     val binnedData = if (storedEdges.isEmpty) {
       filteredData.withColumn(column, lit(Histogram.NullFieldReplacement))
-    } else if (customEdges.isDefined || includeOverflowBins) {
+    } else if (customEdges.isDefined || includeOverflowBins ||
+               (storedEdges.length == 2 && storedEdges.head == storedEdges.last)) { // constant-value column
       val edges = storedEdges
 
       // Builds a balanced binary decision tree of when/otherwise expressions,
@@ -253,6 +254,12 @@ case class HistogramBinned(
 
     val minDouble = minVal.doubleValue()
     val maxDouble = maxVal.doubleValue()
+
+    // Single distinct value - one bin, ignore binCount
+    if (minDouble == maxDouble) {
+      return addOverflowEdges(Array(minDouble, maxDouble))
+    }
+
     val interiorBins = if (includeOverflowBins) binCount.get - 2 else binCount.get
     val binWidth = (maxDouble - minDouble) / interiorBins
 

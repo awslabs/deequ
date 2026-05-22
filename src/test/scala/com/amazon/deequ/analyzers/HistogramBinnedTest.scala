@@ -1031,6 +1031,62 @@ class HistogramBinnedTest extends AnyWordSpec with Matchers with SparkContextSpe
     }
   }
 
+  "HistogramBinned (min == max)" should {
+    "produce single bin when all values are identical" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(5.0, 5.0, 5.0, 5.0, 5.0).toDF("values")
+      val histogram = HistogramBinned("values", binCount = Some(10))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 1
+      distribution.bins(0).binStart shouldBe 5.0
+      distribution.bins(0).binEnd shouldBe 5.0
+      distribution.bins(0).frequency shouldBe 5
+    }
+
+    "produce single bin with overflow when all values are identical" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(5.0, 5.0, 5.0).toDF("values")
+      val histogram = HistogramBinned("values", binCount = Some(5), includeOverflowBins = true)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // 1 data bin + 2 overflow = 3
+      distribution.numberOfBins shouldBe 3
+      distribution.bins(0).binStart shouldBe Double.NegativeInfinity
+      distribution.bins(0).frequency shouldBe 0
+      distribution.bins(1).binStart shouldBe 5.0
+      distribution.bins(1).binEnd shouldBe 5.0
+      distribution.bins(1).frequency shouldBe 3
+      distribution.bins(2).binEnd shouldBe Double.PositiveInfinity
+      distribution.bins(2).frequency shouldBe 0
+    }
+
+    "produce single bin with nulls when all non-null values are identical" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Some(5.0), None, Some(5.0), None, Some(5.0)).toDF("values")
+      val histogram = HistogramBinned("values", binCount = Some(10))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.numberOfBins shouldBe 1
+      distribution.bins(0).binStart shouldBe 5.0
+      distribution.bins(0).binEnd shouldBe 5.0
+      distribution.bins(0).frequency shouldBe 3
+      distribution.nullCount shouldBe 2
+    }
+  }
+
   "HistogramBinned state" should {
     "compute metric from state without calling computeStateFrom (no NPE)" in withSparkSession { spark =>
       import spark.implicits._
