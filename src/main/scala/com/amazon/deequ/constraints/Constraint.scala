@@ -174,7 +174,13 @@ object Constraint {
     val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Long](
       duplicateRowCount, assertion, Some(_.toLong), hint)
 
-    new NamedConstraint(constraint, s"DuplicateRowCountConstraint($duplicateRowCount)")
+    if (columns.nonEmpty) {
+      new RowLevelGroupedConstraint(constraint,
+        s"DuplicateRowCountConstraint($duplicateRowCount)",
+        duplicateRowCount.columns)
+    } else {
+      new NamedConstraint(constraint, s"DuplicateRowCountConstraint($duplicateRowCount)")
+    }
   }
 
   /**

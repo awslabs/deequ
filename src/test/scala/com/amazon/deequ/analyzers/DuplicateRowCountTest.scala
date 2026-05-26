@@ -150,5 +150,117 @@ class DuplicateRowCountTest extends AnyWordSpec with Matchers with SparkContextS
       val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df)
       result.value shouldBe scala.util.Success(0.0)
     }
+
+    "correctly merge state across partitions" in withSparkSession { session =>
+      import session.implicits._
+      // Partition A: ("a",1) is unique
+      val dfA = Seq(("a", 1), ("b", 2)).toDF("col1", "col2")
+      // Partition B: ("a",1) appears again - now duplicate across A+B
+      val dfB = Seq(("a", 1), ("c", 3)).toDF("col1", "col2")
+
+      val analyzer = DuplicateRowCount(Seq("col1", "col2"))
+      val stateA = analyzer.computeStateFrom(dfA).get
+      val stateB = analyzer.computeStateFrom(dfB).get
+      val merged = stateA.sum(stateB)
+
+      val metric = analyzer.computeMetricFrom(Some(merged))
+      // ("a",1) has count 2 after merge -> 2 duplicate rows
+      metric.value shouldBe Success(2.0)
+    }
+
+    "correctly merge state with overlapping groups" in withSparkSession { session =>
+      import session.implicits._
+      // Partition A: ("a",1) appears twice
+      val dfA = Seq(("a", 1), ("a", 1), ("b", 2)).toDF("col1", "col2")
+      // Partition B: ("a",1) appears once more
+      val dfB = Seq(("a", 1), ("c", 3)).toDF("col1", "col2")
+
+      val analyzer = DuplicateRowCount(Seq("col1", "col2"))
+      val stateA = analyzer.computeStateFrom(dfA).get
+      val stateB = analyzer.computeStateFrom(dfB).get
+      val merged = stateA.sum(stateB)
+
+      val metric = analyzer.computeMetricFrom(Some(merged))
+      // ("a",1) has count 3 after merge -> 3 duplicate rows
+      metric.value shouldBe Success(3.0)
+    }
+
+    "produce correct row-level results" in withSparkSession { session =>
+      import session.implicits._
+      import com.amazon.deequ.{VerificationSuite, VerificationResult}
+      import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+
+      val result = VerificationSuite()
+        .onData(df)
+        .addCheck(Check(CheckLevel.Error, "dup-check")
+          .hasDuplicateRowCount(Seq("col1", "col2"), _ == 2))
+        .run()
+
+      // Verify the check passes
+      result.status shouldBe CheckStatus.Success
+
+      // Verify row-level results: true = duplicate, false = unique
+      val rowLevelDf = VerificationResult.rowLevelResultsAsDataFrame(session, result, df)
+      val flags = rowLevelDf.select("`dup-check`").collect().map(_.getBoolean(0))
+      // 2 rows are duplicates (true), 2 rows are unique (false)
+      flags.count(_ == true) shouldBe 2
+      flags.count(_ == false) shouldBe 2
+    }
+
+    "work with empty columns through VerificationSuite" in withSparkSession { session =>
+      import session.implicits._
+      import com.amazon.deequ.{VerificationSuite, VerificationResult}
+      import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+
+      val result = VerificationSuite()
+        .onData(df)
+        .addCheck(Check(CheckLevel.Error, "dup-empty-cols")
+          .hasDuplicateRowCount(Seq.empty, _ == 2))
+        .run()
+
+      // Empty columns resolves to all columns at runtime
+      result.status shouldBe CheckStatus.Success
+    }
+
+    "not crash with empty columns through constraint path" in withSparkSession { session =>
+      import session.implicits._
+      import com.amazon.deequ.constraints.Constraint
+
+      val df = Seq(("a", 1), ("b", 2), ("a", 1)).toDF("col1", "col2")
+      // Should not throw NoSuchElementException (NamedConstraint fallback for empty columns)
+      val constraint = Constraint.duplicateRowCountConstraint(Seq.empty, _ == 2)
+      constraint should not be null
+    }
+
+    "produce row-level results for empty columns through DeequRulesExecutor" in withSparkSession { session =>
+      import session.implicits._
+      import com.amazon.deequ.{VerificationSuite, VerificationResult}
+      import com.amazon.deequ.checks.{Check, CheckLevel, CheckStatus}
+
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+
+      // Simulate what DeequRulesExecutor does: resolve empty columns then run
+      val allColumns = df.columns.toSeq
+      val result = VerificationSuite()
+        .onData(df)
+        .addCheck(Check(CheckLevel.Error, "dup-resolved")
+          .hasDuplicateRowCount(allColumns, _ == 2))
+        .run()
+
+      result.status shouldBe CheckStatus.Success
+
+      // With resolved columns, RowLevelGroupedConstraint is used -> row-level results exist
+      val rowLevelDf = VerificationResult.rowLevelResultsAsDataFrame(session, result, df)
+      rowLevelDf.columns should contain ("dup-resolved")
+
+      // Verify flags: 2 duplicates (true), 2 unique (false)
+      val flags = rowLevelDf.select("`dup-resolved`").collect().map(_.getBoolean(0))
+      flags.count(_ == true) shouldBe 2
+      flags.count(_ == false) shouldBe 2
+    }
   }
 }

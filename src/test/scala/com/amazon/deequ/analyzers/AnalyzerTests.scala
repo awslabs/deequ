@@ -63,6 +63,21 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
     }
   }
 
+  "DuplicateRowCount analyzer" should {
+    "compute correct metrics" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+      val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df).value
+      result shouldBe Success(2.0)
+    }
+    "return 0 when no duplicates" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("c", 3)).toDF("col1", "col2")
+      val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df).value
+      result shouldBe Success(0.0)
+    }
+  }
+
   "Completeness analyzer" should {
 
     "compute correct metrics" in withSparkSession { sparkSession =>
