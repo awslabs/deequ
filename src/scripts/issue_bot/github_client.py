@@ -18,6 +18,11 @@ class GitHubClient:
             "Accept": "application/vnd.github.v3+json",
         }
 
+    @property
+    def repo_root(self):
+        """Absolute path to the checked-out repo (GITHUB_WORKSPACE in CI)."""
+        return self._repo_root
+
     def get_issue(self, number):
         return self._get(f"/repos/{self._repo}/issues/{number}")
 

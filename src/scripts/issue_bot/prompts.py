@@ -54,5 +54,27 @@ def get_pr_file_review_report_prompt():
     return _get_prompt("PR_FILE_REVIEW_REPORT_PROMPT", "SM_PR_FILE_REVIEW_REPORT_PROMPT")
 
 
+def get_pr_critic_prompt():
+    return _get_prompt("PR_CRITIC_PROMPT", "SM_PR_CRITIC_PROMPT")
+
+
+def get_pr_reporter_prompt():
+    """Reporter prompt for the agentic pipeline. Distinct from
+    `get_pr_file_review_report_prompt` (the legacy two-phase reporter) so
+    the legacy flow can keep its own prompt format unchanged."""
+    return _get_prompt("PR_REPORTER_PROMPT", "SM_PR_REPORTER_PROMPT")
+
+
+def get_pr_investigator_prompt():
+    """Investigator prompt for the agentic pipeline.
+
+    Returns empty string if neither the env override nor the SM secret is set.
+    Callers MUST fail closed: the legacy PR file review prompt does not produce
+    the HYPOTHESIS / STATUS:CONFIRMED markers the pipeline relies on. A silent
+    fallback would mask a misconfiguration as a clean-PR result.
+    """
+    return _get_prompt("PR_INVESTIGATOR_PROMPT", "SM_PR_INVESTIGATOR_PROMPT")
+
+
 def prompt_version(template):
     return hashlib.sha256(template.encode()).hexdigest()[:8]

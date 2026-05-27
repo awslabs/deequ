@@ -46,6 +46,39 @@ class Config:
             "help-wanted", "dqdl", "analyzer", "spark-compatibility",
         }
 
+        # Agentic pipeline (Investigator/Critic/Reporter). Enabled only when
+        # BOT_AGENT_PIPELINE is set to one of: 1, true, yes, on (case-insensitive,
+        # whitespace-stripped). Any other value (including no/off/empty) keeps
+        # the legacy two-phase flow active. Conservative: default off.
+        self.agent_pipeline = os.getenv("BOT_AGENT_PIPELINE", "").strip().lower() in ("1", "true", "yes", "on")
+
+        # Structural caps for runaway protection.
+        self.investigator_max_turns = _int_env("BOT_INVESTIGATOR_MAX_TURNS", 15)
+        self.investigator_max_tool_calls = _int_env("BOT_INVESTIGATOR_MAX_TOOL_CALLS", 50)
+        self.investigator_max_tool_output_chars = _int_env(
+            "BOT_INVESTIGATOR_MAX_TOOL_OUTPUT", 400_000,
+        )
+
+        self.critic_max_turns = _int_env("BOT_CRITIC_MAX_TURNS", 10)
+        self.critic_max_tool_calls = _int_env("BOT_CRITIC_MAX_TOOL_CALLS", 30)
+        self.critic_max_tool_output_chars = _int_env(
+            "BOT_CRITIC_MAX_TOOL_OUTPUT", 200_000,
+        )
+        # Cap on diff bytes in either agent's user prompt. Non-positive
+        # would silently drop the diff entirely → fail safe to default.
+        agent_max_diff = _int_env("BOT_AGENT_MAX_DIFF_CHARS", 200_000)
+        if agent_max_diff <= 0:
+            logger.warning(
+                "BOT_AGENT_MAX_DIFF_CHARS=%d is non-positive; using default 200_000",
+                agent_max_diff,
+            )
+            agent_max_diff = 200_000
+        self.agent_max_diff_chars = agent_max_diff
+        self.pipeline_wall_clock_seconds = _int_env("BOT_PIPELINE_WALL_CLOCK_S", 480)
+        # Reporter latency on slow Bedrock days runs 20-45s; below this
+        # margin a Reporter started in budget could finish out of budget.
+        self.reporter_min_remaining_seconds = _int_env("BOT_REPORTER_MIN_REMAINING_S", 60)
+
 
 def _require(name):
     val = os.getenv(name)
@@ -53,3 +86,15 @@ def _require(name):
         logger.error(f"Missing required env var: {name}")
         sys.exit(1)
     return val
+
+
+def _int_env(name, default):
+    """Parse an integer env var, falling back to `default` on garbage input.
+    A typo in workflow vars (e.g., "15m") shouldn't kill analyze() before
+    any artifact can be written.
+    """
+    try:
+        return int(os.getenv(name) or default)
+    except (TypeError, ValueError):
+        logger.warning("Env var %s is not an integer; using default %d", name, default)
+        return default

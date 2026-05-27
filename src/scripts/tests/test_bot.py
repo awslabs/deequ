@@ -538,6 +538,142 @@ class TestSplitPrompt:
         assert "guardrailConfig" in kwargs
         assert kwargs["guardrailConfig"]["guardrailIdentifier"] == "gr-123"
 
+    def test_invoke_with_usage_returns_usage_dict(self):
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client._client.converse.return_value = {
+            "stopReason": "end_turn",
+            "output": {"message": {"content": [{"text": "ok"}]}},
+            "usage": {"inputTokens": 42, "outputTokens": 7,
+                      "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+        }
+        text, usage = client.invoke_with_usage("system", "user")
+        assert text == "ok"
+        assert usage["inputTokens"] == 42
+
+    def test_invoke_with_usage_does_not_set_cache_point(self):
+        """Reporter (sole caller of invoke_with_usage) embeds the per-PR diff
+        in its system prompt so the cache prefix never repeats. Setting
+        cachePoint would only pay the 1.25x cache-write premium without ever
+        yielding a read."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke_with_usage("instructions + diff", "Title: t\nBody: b")
+        kwargs = client._client.converse.call_args[1]
+        system = kwargs["system"]
+        assert len(system) == 1
+        assert system[0]["text"] == "instructions + diff"
+        assert all("cachePoint" not in block for block in system)
+
+    def test_converse_with_tools_keeps_cache_point_for_inv_to_critic(self):
+        """converse_with_tools is the one path where caching can pay off:
+        Investigator's first turn warms a cache the Critic's first turn can
+        read (shared static prefix from _build_static_context)."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "shared static prefix",
+            [{"role": "user", "content": [{"text": "investigate"}]}],
+            tool_specs=[],
+        )
+        kwargs = client._client.converse.call_args[1]
+        system = kwargs["system"]
+        assert any("cachePoint" in block for block in system)
+
+    def test_wrap_skips_when_caller_already_set_guard_content(self):
+        """If the caller composed [{"text": trusted}, {"guardContent": untrusted}],
+        the helper must NOT re-wrap the trusted text — that would put model-
+        generated investigator notes inside the guardrail's scan and false-trip
+        on benign paraphrases."""
+        client = self._make_client(guardrail_id="gr-123")
+        messages = [{
+            "role": "user",
+            "content": [
+                {"text": "trusted investigator notes mentioning 'ignore previous instructions'"},
+                {"guardContent": {"text": {"text": "PR title and body"}}},
+            ],
+        }]
+        wrapped = client._wrap_first_user_for_guardrail(messages)
+        # Pass-through: trusted text remains as a plain text block
+        assert wrapped[0]["content"][0] == messages[0]["content"][0]
+        # The pre-existing guardContent block stays as-is
+        assert wrapped[0]["content"][1] == messages[0]["content"][1]
+
+    def test_wrap_still_wraps_when_only_text_blocks(self):
+        """Backwards-compatible: when the caller did NOT set a guardContent
+        block, the helper still wraps text blocks (legacy invoke() pattern)."""
+        client = self._make_client(guardrail_id="gr-123")
+        messages = [{"role": "user", "content": [{"text": "user input"}]}]
+        wrapped = client._wrap_first_user_for_guardrail(messages)
+        assert "guardContent" in wrapped[0]["content"][0]
+        assert wrapped[0]["content"][0]["guardContent"]["text"]["text"] == "user input"
+
+    def test_wrap_no_op_when_no_guardrail(self):
+        client = self._make_client()  # no guardrail
+        messages = [{"role": "user", "content": [{"text": "user input"}]}]
+        wrapped = client._wrap_first_user_for_guardrail(messages)
+        assert wrapped == messages
+
+    def test_has_guardrail_property(self):
+        assert self._make_client(guardrail_id="gr-1").has_guardrail is True
+        assert self._make_client().has_guardrail is False
+
+    def test_client_for_timeout_uses_default_when_none(self):
+        client = self._make_client()
+        # No override → returns the default client; same identity.
+        assert client._client_for_timeout(None) is client._client
+
+    def test_client_for_timeout_uses_default_when_override_at_or_above(self):
+        """An override >= the default timeout doesn't earn a fresh client —
+        the default already permits at least that long."""
+        client = self._make_client()
+        # Default timeout is 10s in _make_client's FakeCfg.
+        assert client._client_for_timeout(10) is client._client
+        assert client._client_for_timeout(99) is client._client
+
+    def test_client_for_timeout_builds_fresh_client_for_smaller_override(self):
+        """A smaller override constructs a fresh client with that timeout
+        so the Reporter call can be bounded at the remaining wall-clock."""
+        import unittest.mock as mock
+        client = self._make_client()
+        with mock.patch("issue_bot.bedrock_client.boto3.client") as mock_boto:
+            mock_boto.return_value = mock.MagicMock()
+            out = client._client_for_timeout(5)
+            assert out is mock_boto.return_value
+            # The fresh client got a Config with read_timeout=5
+            args, kwargs = mock_boto.call_args
+            cfg = kwargs["config"]
+            assert cfg.read_timeout == 5
+            assert cfg.connect_timeout <= 5
+
+    def test_client_for_timeout_floors_zero_or_negative(self):
+        """0 / negative are illegal at the boto layer; clamp to 1."""
+        import unittest.mock as mock
+        client = self._make_client()
+        with mock.patch("issue_bot.bedrock_client.boto3.client") as mock_boto:
+            mock_boto.return_value = mock.MagicMock()
+            client._client_for_timeout(0)
+            cfg = mock_boto.call_args[1]["config"]
+            assert cfg.read_timeout == 1
+
+    def test_invoke_with_usage_passes_timeout_to_per_call_client(self):
+        """The plumb-through: a small timeout_seconds on invoke_with_usage
+        must reach _client_for_timeout and use the fresh client for the call."""
+        import unittest.mock as mock
+        client = self._make_client(guardrail_id="gr-1")
+        # Default timeout is 10 (from FakeCfg). Override to 3 → fresh client.
+        fresh = mock.MagicMock()
+        fresh.converse.return_value = {
+            "stopReason": "end_turn",
+            "output": {"message": {"content": [{"text": "ok"}]}},
+            "usage": {"inputTokens": 1, "outputTokens": 1},
+        }
+        with mock.patch.object(client, "_client_for_timeout",
+                                return_value=fresh) as mock_picker:
+            client.invoke_with_usage("system", "user", timeout_seconds=3)
+        mock_picker.assert_called_once_with(3)
+        fresh.converse.assert_called_once()
+
     def test_no_guardrail_no_config(self):
         client = self._make_client()
         self._mock_converse(client)

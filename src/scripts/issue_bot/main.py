@@ -5,12 +5,14 @@ Deequ Bot — two-phase orchestration.
   act:     write-only phase, reads artifact and posts to GitHub/Slack
 """
 
+import datetime
 import json
+import logging
+import os
+import posixpath
 import re
 import sys
-import os
-import datetime
-import logging
+import time
 import uuid
 
 from .config import Config
@@ -20,11 +22,24 @@ from .knowledge_base import KnowledgeBase
 from .slack_client import SlackClient
 from .sanitizer import sanitize
 from . import prompts
+from . import agent_loop
+from .tools import TOOL_SPECS, ToolRunner
 
 logger = logging.getLogger("issue_bot")
 
 ARTIFACT_PATH = os.getenv("ARTIFACT_PATH", "/tmp/bot_result.json")
 _MAX_BOT_REPLIES = 2
+
+# Events surfaced by _run_critic_and_reporter. Critic-stage events tag
+# metrics["critic"]; escalate events drive pipeline-level ESCALATE.
+_CRITIC_STAGE_EVENTS = frozenset({"no_confirmed_findings", "critic_failed"})
+_ESCALATE_EVENTS = frozenset({
+    "critic_failed",
+    "reporter_deadline_exceeded",
+    "reporter_failed",
+    "unknown_pipeline_event",
+})
+_KNOWN_PIPELINE_EVENTS = _CRITIC_STAGE_EVENTS | _ESCALATE_EVENTS
 
 
 def _render(template_str, **kwargs):
@@ -139,6 +154,15 @@ def analyze():
     issue_text = f"{title} {body}"
     context = kb.build_context(issue_text)
     codebase_map = gh.get_codebase_map() if not is_followup else ""
+
+    if is_pr and cfg.agent_pipeline:
+        _run_agent_pipeline(
+            cfg=cfg, gh=gh, bedrock=bedrock,
+            number=number, title=title, body=body, html_url=html_url, item=item,
+            context=context, codebase_map=codebase_map,
+            comments_data=comments_data, is_pr_update=is_pr_update,
+        )
+        return
 
     if is_pr:
         tmpl = prompts.get_pr_file_review_prompt()
@@ -272,33 +296,11 @@ def analyze():
                          type(e).__name__, (raw or "")[:500])
             inline_comments = []
 
-        # Hard filter: drop comments without a usable file path or positive line number
-        inline_comments = [
-            c for c in inline_comments
-            if c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0
-        ]
-
-        # Hard filter: on incremental review, drop comments on files not in the incremental diff
-        if incremental_files and inline_comments:
-            inline_comments = [
-                c for c in inline_comments
-                if c.get("file", "") in incremental_files
-            ]
-
-        # Hard filter: drop NITs on re-reviews (code-enforced, not prompt-dependent)
-        if is_pr_update and inline_comments:
-            inline_comments = [
-                c for c in inline_comments
-                if c.get("severity", "").upper() != "NIT"
-            ]
-
-        # Format comments: prepend severity, append evidence as context
-        for c in inline_comments:
-            severity = c.get("severity", "")
-            evidence = c.get("evidence", "")
-            prefix = f"**{severity}**: " if severity else ""
-            suffix = "\n\n> " + evidence.replace("\n", "\n> ") if evidence else ""
-            c["comment"] = prefix + c.get("comment", "") + suffix
+        inline_comments = _filter_and_format_inline_comments(
+            inline_comments,
+            incremental_files=incremental_files,
+            is_pr_update=is_pr_update,
+        )
 
         # Check CI status to give accurate signal to human reviewers
         ci_passed, ci_summary = gh.get_ci_status(head_sha) if head_sha else (None, "")
@@ -734,13 +736,24 @@ def _format_pr_feedback(issue_comments, review_comments):
 
 
 def _extract_diff_files(diff_text):
-    """Extract the set of file paths touched in a unified diff."""
+    """Extract the set of file paths touched in a unified diff. Paths are
+    normalized via posixpath.normpath so they compare equal to Reporter
+    output (which the model derives from the same diff text)."""
     files = set()
     for line in diff_text.split("\n"):
         m = re.match(r'^diff --git a/.+ b/(.+)$', line)
         if m:
-            files.add(m.group(1))
+            files.add(_canonicalize_path(m.group(1)))
     return files
+
+
+def _canonicalize_path(path):
+    """Normalize a repo-relative path so the diff-extracted set and the
+    Reporter's emitted path compare equal. Returns "" for falsy input."""
+    if not isinstance(path, str) or not path:
+        return ""
+    p = posixpath.normpath(path.replace("\\", "/"))
+    return "" if p == "." else p
 
 
 def _read_requested_files(gh, file_paths, cfg):
@@ -770,6 +783,536 @@ def _read_artifact():
     except Exception as e:
         logger.error(f"Artifact read failed: {e}")
         return None
+
+
+def _clamp(value, lo, hi):
+    return max(lo, min(hi, value))
+
+
+_STATUS_CONFIRMED_RE = re.compile(
+    r"^\s*STATUS\s*:\s*CONFIRMED\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _has_confirmed_findings(notes):
+    """Check for any line matching exactly 'STATUS: CONFIRMED' in investigator notes.
+
+    Anchored at line start/end with optional surrounding whitespace. Avoids
+    false positives where 'CONFIRMED' appears in a COMMENT or rationale.
+    """
+    if not notes:
+        return False
+    return _STATUS_CONFIRMED_RE.search(notes) is not None
+
+
+def _filter_and_format_inline_comments(comments, *, incremental_files, is_pr_update):
+    """Filter and decorate inline comments before they reach GitHub.
+
+    Drops entries without a positive line number; restricts to files in the
+    incremental diff on re-review; drops NIT severity on re-review (the
+    author saw them on the first pass); prepends severity, appends evidence
+    as a blockquote. Returns the kept list (does not mutate the input)."""
+    kept = []
+    for c in comments:
+        if not (c.get("file") and isinstance(c.get("line"), int) and c["line"] > 0):
+            continue
+        canon = _canonicalize_path(c["file"])
+        if not canon:
+            continue
+        new_c = dict(c)
+        new_c["file"] = canon
+        kept.append(new_c)
+    if incremental_files and kept:
+        kept = [c for c in kept if c["file"] in incremental_files]
+    if is_pr_update and kept:
+        kept = [c for c in kept if c.get("severity", "").upper() != "NIT"]
+    for c in kept:
+        severity = c.get("severity", "")
+        evidence = c.get("evidence", "")
+        raw_comment = c.get("comment", "")
+        c["comment_raw"] = raw_comment
+        prefix = f"**{severity}**: " if severity else ""
+        suffix = "\n\n> " + evidence.replace("\n", "\n> ") if evidence else ""
+        c["comment"] = prefix + raw_comment + suffix
+    return kept
+
+
+def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item,
+                        context, codebase_map, comments_data, is_pr_update):
+    """Investigator + Critic + Reporter pipeline. Replaces the legacy two-phase
+    flow when cfg.agent_pipeline is True. Writes the analyze artifact and returns.
+    """
+    prompts_or_none = _load_pipeline_prompts(cfg, title, html_url, number)
+    if prompts_or_none is None:
+        return
+    investigator_tmpl, critic_tmpl, reporter_tmpl = prompts_or_none
+
+    diff = gh.get_pr_diff(number)
+    review_comments = gh.get_pr_review_comments(number)
+    existing_feedback = _format_pr_feedback(comments_data, review_comments)
+    head_sha = cfg.event_after or item.get("head", {}).get("sha", "")
+    pr_files = gh.get_pr_files(number)
+    incremental_diff, incremental_files = _maybe_compute_incremental(
+        gh, cfg, is_pr_update,
+    )
+
+    investigator_caps, critic_caps = _build_caps(cfg, pr_files)
+    today = datetime.date.today().isoformat()
+    static_context = _build_static_context(
+        context, codebase_map, existing_feedback, incremental_diff,
+    )
+    investigator_system = _render(investigator_tmpl, current_date=today) + static_context
+    critic_system = _render(critic_tmpl, current_date=today) + static_context
+    reporter_system = (
+        _render(reporter_tmpl, current_date=today)
+        + f"\n<diff>\n{diff}\n</diff>\n"
+        + f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
+    )
+    investigator_diff = _truncate_diff_for_user_prompt(diff, cfg.agent_max_diff_chars)
+    investigator_trusted = f"<diff>\n{investigator_diff}\n</diff>"
+    investigator_untrusted = _format_pr_input(title, body)
+
+    tool_runner = ToolRunner(cfg, gh.repo_root)
+    pipeline_deadline = time.monotonic() + cfg.pipeline_wall_clock_seconds
+
+    inv_result = agent_loop.run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt=investigator_system,
+        user_prompt=investigator_trusted,
+        untrusted_user_prompt=investigator_untrusted,
+        tool_specs=TOOL_SPECS, tool_runner=tool_runner,
+        caps=investigator_caps,
+        pipeline_deadline=pipeline_deadline,
+    )
+
+    metrics = _initial_metrics(inv_result)
+    artifact_kwargs = dict(
+        cfg=cfg, title=title, html_url=html_url, number=number,
+        inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
+        is_incremental=bool(incremental_diff),
+    )
+
+    if not inv_result.text:
+        _write_artifact_pipeline(
+            **artifact_kwargs, action="ESCALATE", reason="investigator_empty",
+            inline_comments=[], response="",
+            metrics=_finalize_metrics(metrics, inv_result, None),
+            tool_trace=inv_result.tool_trace,
+        )
+        return
+
+    crit_result, pipeline_event, rep_inline_comments, reporter_metrics = (
+        _run_critic_and_reporter(
+            cfg=cfg, bedrock=bedrock, tool_runner=tool_runner,
+            critic_system=critic_system, critic_caps=critic_caps,
+            reporter_system=reporter_system,
+            diff=diff, title=title, body=body,
+            investigator_text=inv_result.text,
+            pipeline_deadline=pipeline_deadline,
+        )
+    )
+    if crit_result is not None:
+        metrics["critic"] = _agent_metrics(crit_result)
+    # Unknown event = bug in a future change. Escalate with a distinct
+    # reason rather than silently posting a clean review.
+    if pipeline_event is not None and pipeline_event not in _KNOWN_PIPELINE_EVENTS:
+        logger.error("Unknown pipeline_event %r; treating as escalate", pipeline_event)
+        pipeline_event = "unknown_pipeline_event"
+    if pipeline_event in _CRITIC_STAGE_EVENTS:
+        metrics["critic"]["skip_reason"] = pipeline_event
+    metrics["reporter"] = reporter_metrics
+
+    # Escalate paths preserve the investigator narrative — posting "no issues"
+    # while confirmed findings exist would silently drop them.
+    if pipeline_event in _ESCALATE_EVENTS:
+        _write_artifact_pipeline(
+            **artifact_kwargs, action="ESCALATE", reason=pipeline_event,
+            inline_comments=[], response="",
+            metrics=_finalize_metrics(metrics, inv_result, crit_result),
+            tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+            investigator_summary=inv_result.text,
+        )
+        return
+
+    rep_inline_comments = _filter_and_format_inline_comments(
+        rep_inline_comments,
+        incremental_files=incremental_files,
+        is_pr_update=is_pr_update,
+    )
+    response = _build_clean_response(gh, head_sha, rep_inline_comments)
+
+    _write_artifact_pipeline(
+        **artifact_kwargs, action="RESPOND", reason=None,
+        inline_comments=rep_inline_comments, response=response,
+        metrics=_finalize_metrics(metrics, inv_result, crit_result),
+        tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+    )
+
+
+def _load_pipeline_prompts(cfg, title, html_url, number):
+    """Load the three prompts. Returns the tuple, or None after writing an
+    ESCALATE artifact if any are missing (fail closed)."""
+    investigator = prompts.get_pr_investigator_prompt()
+    critic = prompts.get_pr_critic_prompt()
+    reporter = prompts.get_pr_reporter_prompt()
+    missing = [name for name, val in (
+        ("investigator", investigator),
+        ("critic", critic),
+        ("reporter", reporter),
+    ) if not val]
+    if not missing:
+        return investigator, critic, reporter
+    logger.error(
+        "Pipeline enabled but required prompt(s) missing: %s. Failing closed.",
+        ", ".join(missing),
+    )
+    _write_artifact({
+        "action": "ESCALATE", "labels": [], "response": "",
+        "reason": f"prompt_load_failed: {','.join(missing)}",
+        "title": title, "html_url": html_url, "number": number, "is_pr": True,
+        "prompt_id": "n/a", "model_id": cfg.bedrock_model_id,
+    })
+    return None
+
+
+def _maybe_compute_incremental(gh, cfg, is_pr_update):
+    """Return (incremental_diff, incremental_files) or ("", set()) when N/A."""
+    if not (is_pr_update and cfg.event_before and cfg.event_after):
+        return "", set()
+    diff = gh.get_compare_diff(cfg.event_before, cfg.event_after)
+    files = _extract_diff_files(diff) if diff else set()
+    return diff, files
+
+
+def _build_caps(cfg, pr_files):
+    """Return (investigator_caps, critic_caps), sized to PR length within
+    user-configured ceilings. The Investigator floor is min(5, ceiling) and the
+    Critic floor is min(3, ceiling) so a user lowering the ceiling below the
+    default floor is still respected."""
+    diff_lines = sum(int(pf.get("changes", 0) or 0) for pf in pr_files)
+    inv_ceiling = max(1, cfg.investigator_max_turns)
+    inv_floor = min(5, inv_ceiling)
+    investigator = agent_loop.AgentCaps(
+        max_turns=_clamp(diff_lines // 30, inv_floor, inv_ceiling),
+        max_tool_calls=cfg.investigator_max_tool_calls,
+        max_tool_output_chars=cfg.investigator_max_tool_output_chars,
+    )
+    crit_ceiling = max(1, cfg.critic_max_turns)
+    crit_floor = min(3, crit_ceiling)
+    critic = agent_loop.AgentCaps(
+        max_turns=_clamp(investigator.max_turns // 2, crit_floor, crit_ceiling),
+        max_tool_calls=cfg.critic_max_tool_calls,
+        max_tool_output_chars=cfg.critic_max_tool_output_chars,
+    )
+    return investigator, critic
+
+
+def _build_static_context(kb_context, codebase_map, existing_feedback, incremental_diff):
+    """Assemble the system-prompt suffix shared between Investigator and Critic.
+    Same prefix → cache hit on Critic's first turn."""
+    incremental_section = ""
+    if incremental_diff:
+        incremental_section = (
+            "\n<incremental_review_instructions>\n"
+            "This is a RE-REVIEW after the author pushed new commits. "
+            "Limit findings to lines/files in the incremental diff below. "
+            "Do not re-raise issues on unchanged code.\n"
+            "</incremental_review_instructions>\n"
+            f"<incremental_diff>\n{incremental_diff}\n</incremental_diff>\n"
+        )
+    return (
+        f"\n<knowledge_base>\n{kb_context}\n</knowledge_base>\n"
+        f"<codebase_map>\n{codebase_map}\n</codebase_map>\n"
+        f"<existing_feedback>\n{existing_feedback}\n</existing_feedback>\n"
+        f"{incremental_section}"
+    )
+
+
+def _initial_metrics(inv_result):
+    return {
+        "investigator": _agent_metrics(inv_result),
+        "critic": _empty_stage_metrics(),
+        "reporter": _empty_stage_metrics(),
+        "totals": {},
+        "max_turns_reached": inv_result.max_turns_reached,
+        "critic_overturn_rate": None,
+    }
+
+
+def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic_caps,
+                              reporter_system, diff, title, body, investigator_text,
+                              pipeline_deadline=None):
+    """Run the Critic (if any CONFIRMED concerns) and then the Reporter.
+
+    Returns (crit_result_or_None, pipeline_event_or_None, inline_comments,
+    reporter_metrics). pipeline_event values: None (happy path),
+    "no_confirmed_findings" (fast path), "critic_failed",
+    "reporter_deadline_exceeded", "reporter_failed". Caller escalates on
+    any non-happy-path event so confirmed findings aren't silently dropped.
+    """
+    skipped_metrics = _empty_stage_metrics()
+
+    if not _has_confirmed_findings(investigator_text):
+        return None, "no_confirmed_findings", [], skipped_metrics
+
+    # Neutralize close-tags so a model that emits "</investigator_notes>" or
+    # "</critic_verdicts>" in its body can't escape the wrapping tag.
+    safe_notes = investigator_text.replace("</investigator_notes>", "</investigator_notes_>")
+    critic_diff = _truncate_diff_for_user_prompt(diff, cfg.agent_max_diff_chars)
+    # Investigator notes are model-origin (trusted); only PR title/body
+    # is user-input and needs guardrail scanning.
+    critic_trusted = (
+        f"<investigator_notes>\n{safe_notes}\n</investigator_notes>\n"
+        f"<diff>\n{critic_diff}\n</diff>"
+    )
+    critic_untrusted = _format_pr_input(title, body)
+    crit_result = agent_loop.run(
+        bedrock_client=bedrock, agent_name="critic",
+        system_prompt=critic_system,
+        user_prompt=critic_trusted,
+        untrusted_user_prompt=critic_untrusted,
+        tool_specs=TOOL_SPECS, tool_runner=tool_runner,
+        caps=critic_caps,
+        pipeline_deadline=pipeline_deadline,
+    )
+
+    if not crit_result.text:
+        skipped_metrics["skip_reason"] = "critic_failed"
+        return crit_result, "critic_failed", [], skipped_metrics
+
+    safe_verdicts = crit_result.text.replace("</critic_verdicts>", "</critic_verdicts_>")
+    reporter_user = (
+        f"<investigator_notes>\n{safe_notes}\n</investigator_notes>\n\n"
+        f"<critic_verdicts>\n{safe_verdicts}\n</critic_verdicts>\n\n"
+        f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+    )
+
+    # Bound Reporter on wall-clock: pre-empt if too little budget left,
+    # otherwise cap the per-call timeout at the remaining budget.
+    reporter_timeout = None
+    if pipeline_deadline is not None:
+        remaining = pipeline_deadline - time.monotonic()
+        if remaining < cfg.reporter_min_remaining_seconds:
+            deadline_metrics = _empty_stage_metrics()
+            deadline_metrics["skip_reason"] = "reporter_deadline_exceeded"
+            return crit_result, "reporter_deadline_exceeded", [], deadline_metrics
+        reporter_timeout = max(1, int(remaining))
+
+    raw, usage = bedrock.invoke_with_usage(
+        reporter_system, reporter_user, max_tokens=8000, json_schema=PR_REVIEW_SCHEMA,
+        timeout_seconds=reporter_timeout,
+    )
+    reporter_metrics = _empty_stage_metrics()
+    reporter_metrics.update({
+        "skipped": False,
+        "skip_reason": None if raw is not None else "bedrock_unavailable",
+        "input_tokens": (usage.get("inputTokens") if usage else 0) or 0,
+        "output_tokens": (usage.get("outputTokens") if usage else 0) or 0,
+        "cache_read_tokens": (usage.get("cacheReadInputTokens") if usage else 0) or 0,
+        "cache_write_tokens": (usage.get("cacheWriteInputTokens") if usage else 0) or 0,
+    })
+    # Reporter failure with confirmed findings → escalate, not an empty
+    # post that would drop them.
+    if raw is None:
+        return crit_result, "reporter_failed", [], reporter_metrics
+    inline_comments, parse_ok = _parse_reporter_output(raw)
+    if not parse_ok:
+        reporter_metrics["parse_failed"] = True
+        reporter_metrics["skip_reason"] = "reporter_output_malformed"
+        return crit_result, "reporter_failed", [], reporter_metrics
+    return crit_result, None, inline_comments, reporter_metrics
+
+
+def _format_pr_input(title, body):
+    """User-supplied portion of an agent's first-turn message. Same shape
+    on Investigator and Critic so the guardrail wraps consistently."""
+    return f"<pr>\nTitle: {title}\nBody: {body}\n</pr>"
+
+
+def _truncate_diff_for_user_prompt(diff, max_chars):
+    """Cap diff size; agents fall back to read_file for full context."""
+    if len(diff) <= max_chars:
+        return diff
+    return (
+        diff[:max_chars]
+        + f"\n... [diff truncated at {max_chars} chars; "
+        "use read_file to fetch specific files referenced in this diff]"
+    )
+
+
+def _build_clean_response(gh, head_sha, inline_comments):
+    """Compose the top-level review body when no inline comments were emitted."""
+    if inline_comments:
+        return ""
+    ci_passed, ci_summary = gh.get_ci_status(head_sha) if head_sha else (None, "")
+    if ci_passed is True:
+        return "No issues found. CI is passing.\n<!-- deequ-bot:clean -->"
+    if ci_passed is False:
+        return f"No code issues found, but {ci_summary}."
+    return "No issues found.\n<!-- deequ-bot:clean -->"
+
+
+def _empty_stage_metrics():
+    """Canonical shape for a per-stage metrics block. Every stage emits the
+    same keys so dashboards can iterate uniformly."""
+    return {
+        "skipped": True,
+        "skip_reason": None,
+        "turns": 0,
+        "tool_calls": 0,
+        "tool_output_chars": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "max_turns_reached": False,
+        "error": None,
+        "parse_failed": False,
+    }
+
+
+def _agent_metrics(r):
+    metrics = _empty_stage_metrics()
+    metrics.update({
+        "skipped": False,
+        "turns": r.turns,
+        "tool_calls": r.tool_calls,
+        "tool_output_chars": r.tool_output_chars,
+        "input_tokens": r.input_tokens,
+        "output_tokens": r.output_tokens,
+        "cache_read_tokens": r.cache_read_tokens,
+        "cache_write_tokens": r.cache_write_tokens,
+        "max_turns_reached": r.max_turns_reached,
+        "error": r.error,
+    })
+    return metrics
+
+
+def _finalize_metrics(metrics, inv, crit):
+    metrics["critic_overturn_rate"] = _critic_overturn_rate(
+        crit.text if (crit and crit.text) else ""
+    )
+    rep_in = metrics.get("reporter", {}).get("input_tokens", 0) or 0
+    rep_out = metrics.get("reporter", {}).get("output_tokens", 0) or 0
+    metrics["totals"] = {
+        "input_tokens": (inv.input_tokens if inv else 0) + (crit.input_tokens if crit else 0) + rep_in,
+        "output_tokens": (inv.output_tokens if inv else 0) + (crit.output_tokens if crit else 0) + rep_out,
+    }
+    return metrics
+
+
+_VERDICT_RE = re.compile(
+    r"^\s*VERDICT\s*:\s*\S+\s*\|\s*(UPHELD|OVERTURNED)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _critic_overturn_rate(critic_text):
+    """Fraction of OVERTURNED verdicts among VERDICT lines, or None if there
+    are no parseable verdicts. Anchored regex prevents substring matches in
+    rationale text from skewing the count."""
+    if not critic_text:
+        return None
+    upheld = 0
+    overturned = 0
+    for m in _VERDICT_RE.finditer(critic_text):
+        verdict = m.group(1).upper()
+        if verdict == "UPHELD":
+            upheld += 1
+        elif verdict == "OVERTURNED":
+            overturned += 1
+    total = upheld + overturned
+    if total == 0:
+        return None
+    return round(overturned / total, 3)
+
+
+def _parse_reporter_output(raw):
+    """Parse the Reporter's JSON output. Returns (inline_comments, parse_ok).
+
+    Defensive — never raises. parse_ok=False signals malformed output so the
+    caller can flag it in metrics rather than treating empty == clean.
+    """
+    try:
+        result = json.loads(raw)
+        if not isinstance(result, dict):
+            raise TypeError("reporter root is not an object")
+        analysis = result.get("analysis", [])
+        if not isinstance(analysis, list):
+            raise TypeError("reporter analysis is not a list")
+        out = []
+        for a in analysis:
+            if not isinstance(a, dict):
+                continue
+            if a.get("disproved") is True:
+                continue
+            finding = a.get("finding")
+            if not isinstance(finding, dict):
+                continue
+            out.append({
+                "file": a.get("file") or "",
+                "line": a.get("line") or 0,
+                "severity": finding.get("severity") or "",
+                "comment": finding.get("comment") or "",
+                "evidence": finding.get("evidence") or "",
+            })
+        return out, True
+    except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
+        logger.error("Reporter output parse failed (%s): %s",
+                     type(e).__name__, (raw or "")[:500])
+        return [], False
+
+
+def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
+                              inv_tmpl, critic_tmpl, reporter_tmpl,
+                              inline_comments, response, is_incremental,
+                              metrics, tool_trace, investigator_summary=None):
+    """Write the analyze artifact for a pipeline run, including per-stage
+    metrics, tool trace, and (on escalate) the investigator's narrative."""
+    artifact = {
+        "action": action,
+        "labels": [],
+        "response": response,
+        "inline_comments": inline_comments,
+        "title": title, "html_url": html_url, "number": number,
+        "is_pr": True, "is_incremental": is_incremental,
+        "prompt_id": prompts.prompt_version(inv_tmpl) if inv_tmpl else "n/a",
+        "prompt_ids": {
+            "investigator": prompts.prompt_version(inv_tmpl) if inv_tmpl else "n/a",
+            "critic": prompts.prompt_version(critic_tmpl) if critic_tmpl else "n/a",
+            "reporter": prompts.prompt_version(reporter_tmpl) if reporter_tmpl else "n/a",
+        },
+        "model_id": cfg.bedrock_model_id,
+        "metrics": metrics,
+        "tool_trace": _truncate_trace(tool_trace),
+        "pipeline": "agentic",
+    }
+    if reason:
+        artifact["reason"] = reason
+    if investigator_summary:
+        artifact["investigator_summary"] = investigator_summary[:5000]
+    _write_artifact(artifact)
+
+
+def _truncate_trace(trace, max_chars=100_000):
+    """Cap trace size in the artifact and append a sentinel describing how
+    many entries were dropped."""
+    if not trace:
+        return []
+    serialized = json.dumps(trace)
+    if len(serialized) <= max_chars:
+        return trace
+    out = []
+    running = 2  # for the brackets
+    for entry in trace:
+        s = json.dumps(entry)
+        if running + len(s) + 2 > max_chars:
+            out.append({"truncated": True, "remaining_entries": len(trace) - len(out)})
+            break
+        out.append(entry)
+        running += len(s) + 1
+    return out
 
 
 def main():
