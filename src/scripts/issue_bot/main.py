@@ -950,6 +950,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         inline_comments=rep_inline_comments, response=response,
         metrics=_finalize_metrics(metrics, inv_result, crit_result),
         tool_trace=(inv_result.tool_trace + (crit_result.tool_trace if crit_result else [])),
+        investigator_summary=inv_result.text,
     )
 
 
@@ -1299,7 +1300,7 @@ def _write_artifact_pipeline(*, cfg, action, reason, title, html_url, number,
     if reason:
         artifact["reason"] = reason
     if investigator_summary:
-        artifact["investigator_summary"] = investigator_summary[:5000]
+        artifact["investigator_summary"] = investigator_summary
     _write_artifact(artifact)
 
 

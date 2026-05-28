@@ -136,6 +136,28 @@ def test_clean_pr_fast_path_skips_critic_and_reporter(tmp_path, monkeypatch):
     assert artifact["metrics"]["critic"]["skip_reason"] == "no_confirmed_findings"
     assert artifact["metrics"]["reporter"]["skipped"] is True
     assert artifact["pipeline"] == "agentic"
+    # Investigator narrative preserved on RESPOND so a "no issues found"
+    # outcome is still auditable post-hoc.
+    assert artifact.get("investigator_summary") == investigator_notes
+
+
+def test_investigator_summary_not_truncated_on_long_narrative(tmp_path, monkeypatch):
+    """A long investigator narrative (e.g. several confirmed findings each
+    with falsification details) must be preserved end-to-end. Truncation
+    here defeats the artifact's role as a post-hoc audit log."""
+    import unittest.mock as mock
+    long_notes = "Investigator narrative for audit. " * 1000  # ~33KB
+    artifact, _, _ = _run_pipeline(
+        tmp_path, monkeypatch, mock,
+        investigator_text=long_notes,
+        critic_text="should not be called",
+        reporter_json='{"analysis": []}',
+    )
+    assert artifact["action"] == "RESPOND"
+    summary = artifact.get("investigator_summary", "")
+    # Allow for the .strip() in agent_loop's text extraction; assert the
+    # bulk of the content survives so a 5000-char or similar cap fails.
+    assert len(summary) > 30_000
 
 
 def test_confirmed_finding_triggers_critic_and_reporter(tmp_path, monkeypatch):
@@ -174,6 +196,9 @@ def test_confirmed_finding_triggers_critic_and_reporter(tmp_path, monkeypatch):
     assert mock_invoke.call_count == 1
     assert artifact["metrics"]["critic"]["skipped"] is False
     assert artifact["metrics"]["critic_overturn_rate"] == 0.0
+    # Investigator narrative preserved on RESPOND with confirmed findings.
+    assert artifact.get("investigator_summary", "").startswith("ID: C1")
+    assert "STATUS: CONFIRMED" in artifact.get("investigator_summary", "")
 
 
 def test_overturned_finding_dropped_by_reporter(tmp_path, monkeypatch):
