@@ -19,6 +19,10 @@ logger = logging.getLogger("issue_bot")
 _MAX_RESULT_CHARS = 50_000
 _MAX_FILE_LINES_PER_CALL = 200
 _MAX_GREP_RESULTS = 50
+_MAX_FILES_FOR_CALLERS = 20
+_MAX_FILES_LINE_SNIPPETS = 10
+_MAX_LINES_PER_FILE = 5
+_MAX_SNIPPET_CHARS = 200
 
 # Default per-tool call budgets, co-located with TOOL_SPECS so a tool rename
 # requires updating both in one place. Tools omitted from this dict have no
@@ -52,7 +56,14 @@ TOOL_SPECS = [
                         },
                         "path_glob": {
                             "type": "string",
-                            "description": "File extension filter (e.g., '.scala', '.py'). Defaults to the codebase's primary extension.",
+                            "description": (
+                                "Optional scope. Accepts: empty (search all files of the "
+                                "codebase's primary extension); an extension like '.scala' "
+                                "or '.py'; or a repo-relative path to a single file or "
+                                "directory INSIDE the configured source directory. Paths "
+                                "outside the source dir (tests, docs, build artifacts) are "
+                                "rejected — use empty scope plus a more specific pattern instead."
+                            ),
                         },
                     },
                     "required": ["pattern"],
@@ -116,8 +127,11 @@ TOOL_SPECS = [
             "name": "find_callers",
             "description": (
                 "Find files that reference a class, trait, object, or method "
-                "name. Returns a list of files ranked by reference count. Use "
-                "when changing a type signature to discover impacted callers."
+                "name. Returns files ranked by reference count, each with the "
+                "specific line numbers and matching-line snippets. Use when "
+                "changing a type signature to discover impacted callers; the "
+                "inlined snippets often surface enough context to decide "
+                "whether a follow-up read_file is needed."
             ),
             "inputSchema": {
                 "json": {
@@ -187,6 +201,8 @@ def _safe_repo_path(repo_root, rel_path):
 def grep_codebase(pattern, path_glob, repo_root, src_dir, default_ext):
     """Search for a regex across the codebase. Returns 'path:line:text' lines.
 
+    See _resolve_grep_scope for the path_glob shapes accepted.
+
     The pattern is model-supplied; pathological patterns can ReDoS-pin a
     worker. Acceptable today (we own the model and the diffs it sees);
     revisit when this runs in less-trusted contexts.
@@ -197,29 +213,110 @@ def grep_codebase(pattern, path_glob, repo_root, src_dir, default_ext):
         regex = re.compile(pattern)
     except re.error as e:
         return f"ERROR: invalid regex: {e}"
-    ext = path_glob if (path_glob and path_glob.startswith(".")) else default_ext
-    search_root = os.path.join(repo_root, src_dir)
-    if not os.path.isdir(search_root):
-        return f"ERROR: search root '{src_dir}' does not exist in repo"
 
-    matches = list(_iter_matches(regex, search_root, repo_root, ext, _MAX_GREP_RESULTS))
+    search_root, ext, scope_label, single_file, err = _resolve_grep_scope(
+        path_glob, repo_root, src_dir, default_ext,
+    )
+    if err:
+        return err
+
+    if single_file:
+        matches = list(_iter_matches_in_file(regex, single_file, repo_root, _MAX_GREP_RESULTS))
+    else:
+        matches = list(_iter_matches(regex, search_root, repo_root, ext, _MAX_GREP_RESULTS))
     if not matches:
-        return f"No matches for pattern '{pattern}' in {src_dir}/**/*{ext}"
-    header = f"Found {len(matches)} match(es) (capped at {_MAX_GREP_RESULTS}):\n"
+        return f"No matches for pattern '{pattern}' in {scope_label}"
+    header = f"Found {len(matches)} match(es) (capped at {_MAX_GREP_RESULTS}) in {scope_label}:\n"
     return _truncate(header + "\n".join(matches))
 
 
+def _resolve_grep_scope(path_glob, repo_root, src_dir, default_ext):
+    """Resolve path_glob → (search_root, ext, scope_label, single_file, error).
+
+    Accepted path_glob shapes:
+      empty   → walk src_dir for default_ext.
+      ".X"    → walk src_dir for that extension.
+      path    → repo-relative file or directory; must resolve inside src_dir.
+
+    Path values that resolve outside src_dir are rejected so a path scope
+    can only narrow the default search, not broaden it.
+    """
+    real_root = os.path.realpath(repo_root)
+    default_root = os.path.realpath(os.path.join(repo_root, src_dir))
+    if not os.path.isdir(default_root):
+        return None, None, None, None, f"ERROR: search root '{src_dir}' does not exist in repo"
+    # Guard against operator misconfig where src_dir resolves outside the
+    # repo (e.g., a symlinked checkout). Silent-empty would mislead the
+    # model into "no callers" conclusions.
+    if not (default_root == real_root or default_root.startswith(real_root + os.sep)):
+        return None, None, None, None, (
+            f"ERROR: configured source dir '{src_dir}' resolves outside the repo root"
+        )
+
+    if not path_glob or not isinstance(path_glob, str):
+        return default_root, default_ext, f"{src_dir}/**/*{default_ext}", None, ""
+
+    # Extension filter: configured default (handles multi-dot like '.d.ts')
+    # or '.' + alphanumerics. Tighter than startswith('.') so '../...'
+    # falls through to path resolution and gets safety-checked.
+    if path_glob == default_ext or re.fullmatch(r"\.[A-Za-z0-9]+", path_glob):
+        return default_root, path_glob, f"{src_dir}/**/*{path_glob}", None, ""
+
+    abs_path, err = _safe_repo_path(repo_root, path_glob)
+    if err:
+        return None, None, None, None, err
+    # Inside src_dir, not just inside repo_root: 'src' would otherwise
+    # broaden scope to include tests/.
+    if not (abs_path == default_root or abs_path.startswith(default_root + os.sep)):
+        return None, None, None, None, (
+            f"ERROR: path_glob '{path_glob}' must be inside the source directory "
+            f"'{src_dir}' (got a path outside it)"
+        )
+    # Use the realpath-relative form for both file and dir scope labels so
+    # the header agrees with the match rows when the model passed an
+    # in-repo symlink as path_glob.
+    rel_label = os.path.relpath(abs_path, real_root)
+    if os.path.isfile(abs_path):
+        return None, default_ext, rel_label, abs_path, ""
+    if os.path.isdir(abs_path):
+        return abs_path, default_ext, f"{rel_label}/**/*{default_ext}", None, ""
+    return None, None, None, None, (
+        f"ERROR: path_glob '{path_glob}' is not an extension (start with '.') "
+        f"and does not resolve to a file or directory in the repo"
+    )
+
+
+def _is_inside(real_root, candidate_full_path):
+    """True iff candidate's realpath is at or under real_root. Used to skip
+    planted symlinks that would otherwise leak external file contents."""
+    try:
+        real_candidate = os.path.realpath(candidate_full_path)
+    except OSError:
+        return False
+    return real_candidate == real_root or real_candidate.startswith(real_root + os.sep)
+
+
 def _iter_matches(regex, search_root, repo_root, ext, limit):
-    """Yield up to `limit` regex matches as 'path:line:text' strings."""
+    """Yield up to `limit` regex matches as 'path:line:text' strings.
+    Symlinks pointing outside repo_root are skipped; in-repo symlinks
+    are deduped by realpath so each physical file is grepped once."""
+    real_root = os.path.realpath(repo_root)
+    seen = set()
     count = 0
     for dirpath, _, files in os.walk(search_root):
         for fn in files:
             if not fn.endswith(ext):
                 continue
             full = os.path.join(dirpath, fn)
+            if not _is_inside(real_root, full):
+                continue
+            real_full = os.path.realpath(full)
+            if real_full in seen:
+                continue
+            seen.add(real_full)
             try:
                 with open(full, encoding="utf-8", errors="ignore") as f:
-                    rel = os.path.relpath(full, repo_root)
+                    rel = os.path.relpath(full, real_root)
                     for lineno, line in enumerate(f, 1):
                         if regex.search(line):
                             yield f"{rel}:{lineno}:{line.rstrip()}"
@@ -228,6 +325,27 @@ def _iter_matches(regex, search_root, repo_root, ext, limit):
                                 return
             except OSError:
                 continue
+
+
+def _iter_matches_in_file(regex, abs_path, repo_root, limit):
+    """Yield matches from a single file. abs_path is expected to be
+    realpath-validated by the caller; the _is_inside re-check below is
+    defense-in-depth in case a future caller skips that step."""
+    real_root = os.path.realpath(repo_root)
+    if not _is_inside(real_root, abs_path):
+        return
+    rel = os.path.relpath(abs_path, real_root)
+    count = 0
+    try:
+        with open(abs_path, encoding="utf-8", errors="ignore") as f:
+            for lineno, line in enumerate(f, 1):
+                if regex.search(line):
+                    yield f"{rel}:{lineno}:{line.rstrip()}"
+                    count += 1
+                    if count >= limit:
+                        return
+    except OSError:
+        return
 
 
 def read_file(path, start_line, end_line, repo_root):
@@ -295,36 +413,66 @@ def list_dir(path, repo_root):
 
 
 def find_callers(symbol, repo_root, src_dir, default_ext):
-    """Find files that reference a symbol, ranked by count."""
+    """Find files referencing a symbol, ranked by count, with line snippets."""
     if not symbol or not isinstance(symbol, str):
         return "ERROR: symbol must be a non-empty string"
-    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", symbol):
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol):
         return f"ERROR: symbol '{symbol}' is not a valid identifier"
     pattern = re.compile(rf"\b{re.escape(symbol)}\b")
-    search_root = os.path.join(repo_root, src_dir)
+    real_root = os.path.realpath(repo_root)
+    # Walk under the canonical search_root so emitted paths share real_root's
+    # prefix; relpath then produces clean repo-relative output.
+    search_root = os.path.realpath(os.path.join(repo_root, src_dir))
     if not os.path.isdir(search_root):
         return f"ERROR: search root '{src_dir}' does not exist in repo"
-    counts = {}
+    if not (search_root == real_root or search_root.startswith(real_root + os.sep)):
+        return f"ERROR: configured source dir '{src_dir}' resolves outside the repo root"
+    file_hits = {}
+    seen = set()
     for dirpath, _, files in os.walk(search_root):
         for fn in files:
             if not fn.endswith(default_ext):
                 continue
             full = os.path.join(dirpath, fn)
+            if not _is_inside(real_root, full):
+                continue
+            real_full = os.path.realpath(full)
+            if real_full in seen:
+                continue
+            seen.add(real_full)
             try:
                 with open(full, encoding="utf-8", errors="ignore") as f:
-                    text = f.read()
+                    matches = []
+                    occurrences = 0
+                    for lineno, line in enumerate(f, 1):
+                        line_count = len(pattern.findall(line))
+                        if line_count:
+                            matches.append((lineno, line.rstrip()))
+                            occurrences += line_count
             except OSError:
                 continue
-            n = len(pattern.findall(text))
-            if n > 0:
-                rel = os.path.relpath(full, repo_root)
-                counts[rel] = n
-    if not counts:
+            if matches:
+                rel = os.path.relpath(full, real_root)
+                file_hits[rel] = (occurrences, matches)
+    if not file_hits:
         return f"No files reference '{symbol}' in {src_dir}"
-    ranked = sorted(counts.items(), key=lambda kv: -kv[1])
-    out = [f"Files referencing '{symbol}' (top {min(20, len(ranked))} by count):"]
-    for rel, n in ranked[:20]:
-        out.append(f"  {rel} ({n} reference{'s' if n != 1 else ''})")
+    ranked = sorted(file_hits.items(), key=lambda kv: -kv[1][0])
+    total = len(ranked)
+    shown_total = min(_MAX_FILES_FOR_CALLERS, total)
+    out = [f"Files referencing '{symbol}' ({shown_total} of {total} by count):"]
+    for rel, (occ, matches) in ranked[:_MAX_FILES_LINE_SNIPPETS]:
+        out.append(f"  {rel} ({occ} reference{'s' if occ != 1 else ''})")
+        for lineno, text in matches[:_MAX_LINES_PER_FILE]:
+            out.append(f"    line {lineno}: {text.strip()[:_MAX_SNIPPET_CHARS]}")
+        if len(matches) > _MAX_LINES_PER_FILE:
+            out.append(f"    ... [{len(matches) - _MAX_LINES_PER_FILE} more lines in this file]")
+    names_only = ranked[_MAX_FILES_LINE_SNIPPETS:_MAX_FILES_FOR_CALLERS]
+    if names_only:
+        out.append(f"  (additional {len(names_only)} files with fewer references, names only:)")
+        for rel, (occ, _) in names_only:
+            out.append(f"    {rel} ({occ} reference{'s' if occ != 1 else ''})")
+    if total > _MAX_FILES_FOR_CALLERS:
+        out.append(f"  ... [{total - _MAX_FILES_FOR_CALLERS} more files truncated]")
     return _truncate("\n".join(out))
 
 
@@ -337,22 +485,37 @@ def find_tests_for(target, repo_root, src_dir, default_ext):
     """
     if not target or not isinstance(target, str):
         return "ERROR: target must be a non-empty string"
-    test_root = os.path.join(repo_root, src_dir.replace("src/main", "src/test", 1))
-    if not os.path.isdir(test_root):
-        test_root = os.path.join(repo_root, "src", "test")
-        if not os.path.isdir(test_root):
-            return "ERROR: no test directory found at src/test"
+    real_root = os.path.realpath(repo_root)
+    # Mirror src_dir into the test tree only when the substitution actually
+    # changed the path; otherwise str.replace is a no-op and we'd walk the
+    # source tree as if it were tests.
+    mirrored = src_dir.replace("src/main", "src/test", 1)
+    test_root = None
+    if mirrored != src_dir:
+        candidate = os.path.realpath(os.path.join(repo_root, mirrored))
+        if os.path.isdir(candidate):
+            test_root = candidate
+    if test_root is None:
+        candidate = os.path.realpath(os.path.join(repo_root, "src", "test"))
+        if os.path.isdir(candidate):
+            test_root = candidate
+    if test_root is None:
+        return "ERROR: no test directory found at src/test"
+    if not (test_root == real_root or test_root.startswith(real_root + os.sep)):
+        return "ERROR: test directory resolves outside the repo root"
 
     name = os.path.basename(target)
     if name.endswith(default_ext):
         name = name[:-len(default_ext)]
-    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         return f"ERROR: target '{target}' did not yield a valid identifier"
 
     convention_names = {f"{name}{suffix}{default_ext}" for suffix in ("Test", "Spec")}
     grep_pattern = re.compile(rf"\b{re.escape(name)}\b")
-    candidates = []
-    seen = set()
+    # real_full → (is_convention, rel). A convention-named hit overwrites a
+    # prior grep-match for the same physical file so symlink ordering in
+    # os.walk doesn't cause the non-conventional path to win.
+    by_real = {}
     limit = 20
 
     for dirpath, _, files in os.walk(test_root):
@@ -360,28 +523,43 @@ def find_tests_for(target, repo_root, src_dir, default_ext):
             if not fn.endswith(default_ext):
                 continue
             full = os.path.join(dirpath, fn)
-            rel = os.path.relpath(full, repo_root)
-            if rel in seen:
+            if not _is_inside(real_root, full):
                 continue
-            if fn in convention_names:
-                candidates.append(rel)
-                seen.add(rel)
-            else:
+            real_full = os.path.realpath(full)
+            existing = by_real.get(real_full)
+            if existing and existing[0]:
+                # Already accepted as convention; nothing better to find.
+                continue
+            is_convention = fn in convention_names
+            # Stop accepting new entries past the limit, but still allow
+            # upgrades (grep-match → convention-match) on entries already
+            # tracked so symlink-ordering doesn't trap a worse path.
+            if existing is None and len(by_real) >= limit:
+                continue
+            rel = os.path.relpath(full, real_root)
+            if is_convention:
+                by_real[real_full] = (True, rel)
+            elif existing is None:
                 try:
                     with open(full, encoding="utf-8", errors="ignore") as f:
                         if grep_pattern.search(f.read()):
-                            candidates.append(rel)
-                            seen.add(rel)
+                            by_real[real_full] = (False, rel)
                 except OSError:
                     continue
-            if len(candidates) >= limit:
-                break
-        if len(candidates) >= limit:
+        # Early exit when we have enough convention-named entries; no
+        # future visit can upgrade those. Skip when only grep matches
+        # exist since a later convention name could still upgrade.
+        if (len(by_real) >= limit
+                and all(is_conv for is_conv, _ in by_real.values())):
             break
 
-    if not candidates:
-        return f"No tests found for '{target}' under {os.path.relpath(test_root, repo_root)}"
-    out = [f"Tests for '{target}':"] + [f"  {rel}" for rel in candidates]
+    if not by_real:
+        return f"No tests found for '{target}' under {os.path.relpath(test_root, real_root)}"
+    # Convention names first, then grep matches; walk order preserved
+    # within each group via dict insertion order.
+    convention_hits = [rel for is_conv, rel in by_real.values() if is_conv]
+    grep_hits = [rel for is_conv, rel in by_real.values() if not is_conv]
+    out = [f"Tests for '{target}':"] + [f"  {rel}" for rel in convention_hits + grep_hits]
     return _truncate("\n".join(out))
 
 

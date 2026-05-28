@@ -290,3 +290,83 @@ def test_pipeline_event_known_set_includes_documented_events():
     assert documented <= _KNOWN_PIPELINE_EVENTS, (
         f"Documented events not in known set: {documented - _KNOWN_PIPELINE_EVENTS}"
     )
+
+
+# _build_caps adapts the Investigator/Critic turn budgets to PR size.
+# Diff-line count is a poor proxy for investigation depth (a small typed
+# change can ripple through many files), so a generous floor is enforced.
+
+from issue_bot.main import _build_caps
+
+
+class _CapsConfig:
+    """Minimal config double for _build_caps — only the fields it reads."""
+    def __init__(self, inv_max=15, crit_max=10, inv_calls=50, crit_calls=30,
+                 inv_chars=400_000, crit_chars=200_000):
+        self.investigator_max_turns = inv_max
+        self.critic_max_turns = crit_max
+        self.investigator_max_tool_calls = inv_calls
+        self.critic_max_tool_calls = crit_calls
+        self.investigator_max_tool_output_chars = inv_chars
+        self.critic_max_tool_output_chars = crit_chars
+
+
+def test_build_caps_small_pr_hits_floor():
+    """A small PR (56 changed lines) must get the floor-10 turn budget
+    so cross-file investigation has headroom."""
+    cfg = _CapsConfig()
+    pr_files = [{"changes": 56}]
+    inv, _ = _build_caps(cfg, pr_files)
+    assert inv.max_turns == 10
+
+
+def test_build_caps_zero_diff_hits_floor():
+    """Empty PR still gets floor=10 — clamping treats min as a floor, not
+    a target."""
+    cfg = _CapsConfig()
+    inv, _ = _build_caps(cfg, [])
+    assert inv.max_turns == 10
+
+
+def test_build_caps_large_pr_hits_ceiling():
+    """A large PR (>450 changed lines) clamps at the user's ceiling."""
+    cfg = _CapsConfig(inv_max=15)
+    pr_files = [{"changes": 1000}]
+    inv, _ = _build_caps(cfg, pr_files)
+    assert inv.max_turns == 15
+
+
+def test_build_caps_low_user_ceiling_overrides_floor():
+    """A user-configured low ceiling clamps the floor — never exceeds the
+    user's stated max."""
+    cfg = _CapsConfig(inv_max=3)
+    pr_files = [{"changes": 56}]
+    inv, _ = _build_caps(cfg, pr_files)
+    assert inv.max_turns == 3
+
+
+def test_build_caps_critic_floor_is_three():
+    """Critic floor is min(3, ceiling) — always smaller than Investigator
+    since the Critic verifies a smaller surface."""
+    cfg = _CapsConfig()
+    _, crit = _build_caps(cfg, [{"changes": 0}])
+    # inv=10, crit=clamp(10//2, 3, 10) = 5
+    assert crit.max_turns == 5
+
+
+def test_build_caps_critic_low_user_ceiling_clamps_floor():
+    """If the user lowers critic_max_turns below 3, the critic floor
+    yields to the user's ceiling."""
+    cfg = _CapsConfig(crit_max=2)
+    _, crit = _build_caps(cfg, [{"changes": 0}])
+    # inv=10, crit=clamp(10//2, min(3,2)=2, 2) = 2
+    assert crit.max_turns == 2
+
+
+def test_build_caps_handles_missing_changes_field():
+    """A pr_files entry without 'changes' (defensive against GitHub API
+    quirks) must default to 0 contribution, not crash."""
+    cfg = _CapsConfig()
+    inv, _ = _build_caps(cfg, [{}, {"changes": None}, {"changes": 30}])
+    # diff_lines = 0 + 0 + 30 = 30; 30//30 = 1; clamped to floor=10
+    assert inv.max_turns == 10
