@@ -773,7 +773,10 @@ def _write_artifact(data):
     os.makedirs(os.path.dirname(ARTIFACT_PATH) or "/tmp", exist_ok=True)
     with open(ARTIFACT_PATH, "w") as f:
         json.dump(data, f)
-    logger.info(f"Artifact: action={data.get('action')}")
+    # Don't interpolate `data` fields into the log line — CodeQL's
+    # clear-text-logging rule flags any field of the artifact dict as
+    # sensitive. The artifact JSON itself has full triage context.
+    logger.info("Artifact written to %s", ARTIFACT_PATH)
 
 
 def _read_artifact():
@@ -963,9 +966,12 @@ def _load_pipeline_prompts(cfg, title, html_url, number):
     ) if not val]
     if not missing:
         return investigator, critic, reporter
+    # Log only the count: `missing` is taint-tracked from _read_from_sm
+    # and trips CodeQL's clear-text-logging rule despite being literal
+    # names. The artifact's `reason` field below carries the names.
     logger.error(
-        "Pipeline enabled but required prompt(s) missing: %s. Failing closed.",
-        ", ".join(missing),
+        "Pipeline enabled but %d required prompt(s) missing. Failing closed.",
+        len(missing),
     )
     _write_artifact({
         "action": "ESCALATE", "labels": [], "response": "",
@@ -987,12 +993,14 @@ def _maybe_compute_incremental(gh, cfg, is_pr_update):
 
 def _build_caps(cfg, pr_files):
     """Return (investigator_caps, critic_caps), sized to PR length within
-    user-configured ceilings. The Investigator floor is min(5, ceiling) and the
-    Critic floor is min(3, ceiling) so a user lowering the ceiling below the
-    default floor is still respected."""
+    user-configured ceilings. Diff-line count is a poor proxy for
+    investigation depth — a small typed-API change can ripple through many
+    files — so the Investigator floor is generous (10 turns). Critic floor
+    is min(3, ceiling) so a user lowering the ceiling below the default
+    floor is still respected."""
     diff_lines = sum(int(pf.get("changes", 0) or 0) for pf in pr_files)
     inv_ceiling = max(1, cfg.investigator_max_turns)
-    inv_floor = min(5, inv_ceiling)
+    inv_floor = min(10, inv_ceiling)
     investigator = agent_loop.AgentCaps(
         max_turns=_clamp(diff_lines // 30, inv_floor, inv_ceiling),
         max_tool_calls=cfg.investigator_max_tool_calls,
