@@ -551,6 +551,27 @@ class TestSplitPrompt:
         assert text == "ok"
         assert usage["inputTokens"] == 42
 
+    def test_invoke_with_usage_uses_override_model_id(self):
+        """Reporter is a JSON-formatting + filter step; it can run on a
+        cheaper model than the Investigator/Critic. The per-call model_id
+        override lets the same client serve both without a second instance."""
+        client = self._make_client()
+        self._mock_converse(client)
+        client.invoke_with_usage(
+            "system", "user", model_id="us.anthropic.claude-haiku-4-5-v1",
+        )
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == "us.anthropic.claude-haiku-4-5-v1"
+
+    def test_invoke_with_usage_default_model_id(self):
+        """Without override, invoke_with_usage uses the client's default
+        model — preserves legacy behavior for callers that don't opt in."""
+        client = self._make_client()
+        self._mock_converse(client)
+        client.invoke_with_usage("system", "user")
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == client._model_id
+
     def test_invoke_with_usage_does_not_set_cache_point(self):
         """Reporter (sole caller of invoke_with_usage) embeds the per-PR diff
         in its system prompt so the cache prefix never repeats. Setting

@@ -67,6 +67,7 @@ jobs:
           KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
           KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
           BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
+          BEDROCK_REPORTER_MODEL_ID: ${{ vars.BEDROCK_REPORTER_MODEL_ID }}
           GUARDRAIL_ID: ${{ secrets.GUARDRAIL_ID }}
           GUARDRAIL_VERSION: ${{ secrets.GUARDRAIL_VERSION }}
           SM_ISSUE_CLASSIFY_PROMPT: deequ-bot/issue-classify-prompt

@@ -1244,6 +1244,7 @@ def test_metrics_schema_uniform_across_stages(tmp_path, monkeypatch):
         "skipped", "skip_reason", "turns", "tool_calls", "tool_output_chars",
         "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens",
         "max_turns_reached", "commit_phase_ran", "error", "parse_failed",
+        "model_id",
     }
     for stage in ("investigator", "critic", "reporter"):
         assert set(artifact["metrics"][stage].keys()) >= canonical_keys, (
