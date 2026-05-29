@@ -160,6 +160,124 @@ def test_investigator_summary_not_truncated_on_long_narrative(tmp_path, monkeypa
     assert len(summary) > 30_000
 
 
+def test_investigator_max_turns_routes_to_critic_even_without_confirmed(tmp_path, monkeypatch):
+    """Layer C: when the Investigator hits max_turns (silent bail), the
+    fast-path MUST NOT bypass the Critic. Otherwise a budget-exhausted
+    Investigator looks identical to a clean PR from outside, and the
+    Critic — whose entire job is to catch Investigator failures — never
+    runs on the case it was specifically designed for."""
+    import unittest.mock as mock
+    _setup_pipeline_env(tmp_path, monkeypatch, event_action="opened")
+    monkeypatch.setenv("PR_INVESTIGATOR_COMMIT_PROMPT", "TOOL BUDGET EXHAUSTED. Emit STATUS blocks.")
+    monkeypatch.setenv("PR_CRITIC_COMMIT_PROMPT", "TOOL BUDGET EXHAUSTED. Emit VERDICTs.")
+    with mock.patch("issue_bot.github_client.GitHubClient.get_pr") as mock_pr, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_comments") as mock_comments, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_diff") as mock_diff, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_review_comments") as mock_rc, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_pr_files") as mock_files, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_codebase_map") as mock_map, \
+         mock.patch("issue_bot.github_client.GitHubClient.get_ci_status") as mock_ci, \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.load"), \
+         mock.patch("issue_bot.knowledge_base.KnowledgeBase.build_context") as mock_kb, \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.__init__", return_value=None), \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.converse_with_tools") as mock_ctools, \
+         mock.patch("issue_bot.bedrock_client.BedrockClient.invoke_with_usage") as mock_invoke:
+        mock_pr.return_value = {
+            "user": {"login": "contributor"}, "title": "T", "body": "B", "state": "open",
+            "html_url": "https://github.com/x", "head": {"sha": "abc"},
+        }
+        mock_comments.return_value = []
+        mock_diff.return_value = "diff --git a/f.py b/f.py\n+x\n"
+        mock_rc.return_value = []
+        mock_files.return_value = [{"filename": "f.py", "changes": 50}]
+        mock_map.return_value = ""
+        mock_kb.return_value = ""
+        mock_ci.return_value = (True, "")
+
+        tool_use_resp = {
+            "stopReason": "tool_use",
+            "output": {"message": {"role": "assistant", "content": [
+                {"toolUse": {"toolUseId": "t", "name": "read_file", "input": {"path": "f.py"}}},
+            ]}},
+            "usage": {"inputTokens": 100, "outputTokens": 50,
+                      "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+        }
+        commit_resp = {
+            "stopReason": "end_turn",
+            "output": {"message": {"role": "assistant", "content": [
+                {"text": "ID: C1\nSTATUS: UNVERIFIED\nCOMMENT: ran out of turns"},
+            ]}},
+            "usage": {"inputTokens": 100, "outputTokens": 50,
+                      "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+        }
+        critic_response_text = "VERDICT: C1 | OVERTURNED | insufficient evidence at budget exhaustion"
+        critic_resp = _bedrock_text_resp(critic_response_text)
+
+        # Investigator: tool_use forever (forces max_turns), then commit phase.
+        # Critic: single end_turn with VERDICT line.
+        # Sequence: Investigator hits max_turns_reached, runs commit phase
+        # (with no tools), then Critic runs because Layer C routes to Critic
+        # despite no STATUS: CONFIRMED in investigator output.
+        call_log = []
+
+        # Investigator: track per-turn user-message text so we can detect
+        # the commit-phase turn (it merges TOOL BUDGET EXHAUSTED into the
+        # last user message) and respond with the final emit.
+        def _has_commit_marker(messages):
+            for m in messages:
+                if m.get("role") != "user":
+                    continue
+                for b in m.get("content", []):
+                    if "TOOL BUDGET EXHAUSTED" in (b.get("text") or ""):
+                        return True
+            return False
+
+        def converse_side_effect(system_prompt, messages, tool_specs,
+                                 max_tokens=8000, temperature=0.3,
+                                 timeout_seconds=None):
+            is_critic = "Critique" in system_prompt
+            commit_phase = _has_commit_marker(messages)
+            call_log.append({
+                "is_critic": is_critic,
+                "tool_specs": tool_specs,
+                "commit_phase": commit_phase,
+            })
+            if is_critic:
+                return critic_resp
+            if commit_phase:
+                return commit_resp
+            return tool_use_resp
+
+        mock_ctools.side_effect = converse_side_effect
+        # Reporter receives the commit-phase finding (UNVERIFIED) and the
+        # critic's OVERTURNED verdict. Reporter emits no inline comments
+        # (the only finding was overturned), but Reporter MUST be invoked —
+        # that proves Layer C routed past the fast-path.
+        mock_invoke.return_value = (
+            '{"analysis": []}',
+            {"inputTokens": 50, "outputTokens": 20,
+             "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0},
+        )
+
+        from issue_bot.main import analyze
+        analyze()
+        with open(str(tmp_path / "result.json")) as f:
+            artifact = json.load(f)
+
+    investigator_calls = [c for c in call_log if not c["is_critic"]]
+    critic_calls = [c for c in call_log if c["is_critic"]]
+    assert len(investigator_calls) >= 2, (
+        "Investigator should have at least one tool turn plus one commit-phase turn"
+    )
+    assert investigator_calls[-1]["commit_phase"], "last investigator call must be commit phase"
+    assert len(critic_calls) >= 1
+    # Reporter was invoked.
+    assert mock_invoke.call_count == 1
+    # Critic skip_reason is NOT no_confirmed_findings — Layer C bypassed
+    # that fast-path because the Investigator's silent-bail signal was set.
+    assert artifact["metrics"]["critic"]["skipped"] is False
+
+
 def test_confirmed_finding_triggers_critic_and_reporter(tmp_path, monkeypatch):
     import unittest.mock as mock
     investigator_notes = (

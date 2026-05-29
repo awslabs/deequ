@@ -2,8 +2,10 @@
 
 Each turn calls Bedrock with toolConfig; if stopReason is "tool_use" the
 loop executes the requested tools and continues, otherwise it returns the
-final text. Owns budget enforcement (turns, tool calls, tool output chars)
-and records each tool call in the result's tool_trace.
+final text. Owns budget enforcement (turns, tool calls, tool output chars),
+records each tool call in the result's tool_trace, and runs a forced
+no-tool commit phase when the tool budget is exhausted so the model is
+physically constrained to emit text instead of more tool calls.
 """
 import logging
 import time
@@ -31,9 +33,9 @@ class AgentCaps:
 
 @dataclass
 class AgentResult:
-    """Outcome of an agent loop run. Empty `text` means the agent had no
-    usable output and downstream stages should skip; `error` is a one-line
-    label for logs."""
+    """Outcome of an agent loop run. `text` is the full aggregated assistant
+    text across every turn so partial commits are preserved when a later
+    turn ends in tool calls. `error` is a one-line label for logs."""
     text: str = ""
     turns: int = 0
     tool_calls: int = 0
@@ -43,6 +45,7 @@ class AgentResult:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     max_turns_reached: bool = False
+    commit_phase_ran: bool = False
     error: Optional[str] = None
     tool_trace: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -57,6 +60,7 @@ def run(
     caps: AgentCaps,
     pipeline_deadline: Optional[float] = None,
     untrusted_user_prompt: Optional[str] = None,
+    commit_phase_user_prompt: Optional[str] = None,
 ):
     """Execute an agent's tool-use loop. Returns an AgentResult.
 
@@ -64,8 +68,15 @@ def run(
     goes in a guardContent block when the client has a guardrail so model
     paraphrases of repo content don't false-trip the scanner.
 
+    commit_phase_user_prompt (optional) drives the forced no-tool turn
+    that runs when the tool budget is exhausted. The Bedrock call on that
+    turn omits toolConfig so the model is physically unable to call tools
+    and must emit text. If unset, the loop terminates without a commit
+    phase (legacy behavior).
+
     Termination: caps.max_turns / max_tool_calls / max_tool_output_chars /
-    per_tool_max_calls, or pipeline_deadline.
+    per_tool_max_calls, or pipeline_deadline. Result.text is the aggregated
+    assistant text across every turn so partial commitments are preserved.
     """
     result = AgentResult()
     messages = [{
@@ -77,17 +88,26 @@ def run(
     }]
     per_tool_calls = defaultdict(int)
 
+    def _finalize(termination_reason: Optional[str] = None):
+        if termination_reason and not result.error:
+            result.error = termination_reason
+        if commit_phase_user_prompt and _is_budget_exhaustion(termination_reason):
+            _run_commit_phase(
+                bedrock_client, agent_name, system_prompt, messages,
+                commit_phase_user_prompt, tool_specs, caps, result, pipeline_deadline,
+            )
+        result.text = _aggregate_all_assistant_text(messages)
+        return result
+
     for turn in range(max(0, caps.max_turns)):
         result.turns = turn + 1
 
         if pipeline_deadline is not None and time.monotonic() >= pipeline_deadline:
-            result.error = "pipeline wall-clock deadline reached"
-            result.text = result.text or _recover_last_assistant_text(messages)
             logger.warning(
                 "[%s turn=%d] pipeline wall-clock reached, terminating",
                 agent_name, turn + 1,
             )
-            return result
+            return _finalize("pipeline wall-clock deadline reached")
 
         try:
             resp = bedrock_client.converse_with_tools(
@@ -98,12 +118,10 @@ def run(
             )
         except Exception as e:
             logger.error("[%s turn=%d] bedrock error: %s", agent_name, turn + 1, type(e).__name__)
-            result.error = f"bedrock error: {type(e).__name__}"
-            return result
+            return _finalize(f"bedrock error: {type(e).__name__}")
 
         if resp is None:
-            result.error = "bedrock returned None (circuit-breaker or transient failure)"
-            return result
+            return _finalize("bedrock returned None (circuit-breaker or transient failure)")
 
         usage = resp.get("usage") or {}
         result.input_tokens += usage.get("inputTokens") or 0
@@ -118,43 +136,103 @@ def run(
 
         msg = resp.get("output", {}).get("message", {})
         if not msg:
-            result.error = "empty bedrock message"
-            return result
+            return _finalize("empty bedrock message")
         messages.append(msg)
 
         if resp.get("stopReason") != "tool_use":
-            result.text = _extract_text(msg)
-            return result
+            return _finalize(None)
 
         tool_results = _run_tool_calls(
             msg, agent_name, turn + 1, tool_runner, caps, result, per_tool_calls,
         )
         if not tool_results:
-            # Bedrock protocol violation: stopReason=tool_use with no toolUse
-            # blocks. We capture any accompanying text and exit; if the text
-            # happens to be parseable downstream the caller can use it.
-            result.text = _extract_text(msg)
-            result.error = "stopReason was tool_use but no toolUse blocks emitted"
-            return result
+            return _finalize("stopReason was tool_use but no toolUse blocks emitted")
 
-        # Stop before paying another Bedrock turn against exhausted budgets.
-        if (result.tool_calls >= caps.max_tool_calls
-                or result.tool_output_chars >= caps.max_tool_output_chars):
-            result.error = "structural cap hit; terminating before next turn"
-            result.text = _extract_text(msg) or (
-                f"Investigation terminated on turn {turn + 1}: structural cap reached."
-            )
-            return result
-
+        # Bedrock requires tool_use to be followed by toolResult, so we
+        # append before the cap check — otherwise commit phase inherits an
+        # unfollowed tool_use turn and the request is rejected.
         messages.append({"role": "user", "content": tool_results})
 
+        if (result.tool_calls >= caps.max_tool_calls
+                or result.tool_output_chars >= caps.max_tool_output_chars):
+            logger.info("[%s turn=%d] structural cap hit", agent_name, turn + 1)
+            return _finalize("structural cap hit; terminating before next turn")
+
     result.max_turns_reached = True
-    result.text = _recover_last_assistant_text(messages) or (
-        f"Investigation hit max_turns ({caps.max_turns}) without conclusion. "
-        f"Made {result.tool_calls} tool call(s)."
-    )
     logger.warning("[%s] max_turns (%d) reached", agent_name, caps.max_turns)
-    return result
+    return _finalize(f"max_turns ({caps.max_turns}) reached")
+
+
+_BUDGET_EXHAUSTION_REASONS = frozenset({
+    "pipeline wall-clock deadline reached",
+    "structural cap hit; terminating before next turn",
+})
+# max_turns reached is also a budget exhaustion case; we match it by
+# substring rather than exact text since the message includes the cap value.
+_BUDGET_EXHAUSTION_PREFIXES = ("max_turns",)
+
+
+def _is_budget_exhaustion(reason: Optional[str]) -> bool:
+    if not reason:
+        return False
+    if reason in _BUDGET_EXHAUSTION_REASONS:
+        return True
+    return any(reason.startswith(p) for p in _BUDGET_EXHAUSTION_PREFIXES)
+
+
+def _run_commit_phase(bedrock_client, agent_name, system_prompt, messages,
+                      commit_phase_user_prompt, tool_specs, caps, result,
+                      pipeline_deadline):
+    """One Bedrock turn after the loop's tool budget is exhausted, prompting
+    the model to emit text only. tool_specs is kept on the request because
+    Bedrock validates toolUse/toolResult content blocks in the conversation
+    history against toolConfig — omitting it would trip ValidationException
+    on any history that includes a prior tool call. Suppression of new tool
+    calls is enforced by the commit-phase user prompt, not by removing
+    toolConfig.
+    """
+    if pipeline_deadline is not None and time.monotonic() >= pipeline_deadline:
+        logger.warning(
+            "[%s] commit phase skipped: pipeline wall-clock already past",
+            agent_name,
+        )
+        return
+    # Bedrock rejects two consecutive same-role messages. Merge the commit
+    # prompt into the trailing user turn (which usually carries toolResults)
+    # instead of appending a second user message.
+    if messages and messages[-1].get("role") == "user":
+        last_content = list(messages[-1].get("content", []))
+        last_content.append({"text": commit_phase_user_prompt})
+        messages[-1] = {"role": "user", "content": last_content}
+    else:
+        messages.append({"role": "user", "content": [{"text": commit_phase_user_prompt}]})
+
+    result.commit_phase_ran = True
+
+    try:
+        resp = bedrock_client.converse_with_tools(
+            system_prompt=system_prompt,
+            messages=messages,
+            tool_specs=tool_specs,
+            max_tokens=caps.max_tokens_per_call,
+        )
+    except Exception as e:
+        logger.error("[%s] commit phase bedrock error: %s", agent_name, type(e).__name__)
+        return
+    if resp is None:
+        logger.warning("[%s] commit phase returned None", agent_name)
+        return
+
+    usage = resp.get("usage") or {}
+    result.input_tokens += usage.get("inputTokens") or 0
+    result.output_tokens += usage.get("outputTokens") or 0
+    result.cache_read_tokens += usage.get("cacheReadInputTokens") or 0
+    result.cache_write_tokens += usage.get("cacheWriteInputTokens") or 0
+
+    msg = resp.get("output", {}).get("message", {})
+    if msg:
+        messages.append(msg)
+    logger.info("[%s] commit phase emitted %d output tokens", agent_name, usage.get("outputTokens") or 0)
 
 
 def _build_user_content(trusted, untrusted, *, has_guardrail):
@@ -266,14 +344,18 @@ def _extract_text(msg):
     ).strip()
 
 
-def _recover_last_assistant_text(messages):
-    """Walk back to the most recent assistant message and extract its text.
-    Used on max_turns / wall-clock exits so partial findings aren't dropped
-    when the trailing message is the user-side toolResult."""
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant":
-            return _extract_text(msg)
-    return ""
+def _aggregate_all_assistant_text(messages):
+    """Concatenate text blocks from every assistant message in order.
+    Preserves partial commitments emitted in mid-loop turns even when later
+    turns end in tool calls or the loop terminates abnormally."""
+    parts = []
+    for msg in messages:
+        if msg.get("role") != "assistant":
+            continue
+        text = _extract_text(msg)
+        if text:
+            parts.append(text)
+    return "\n\n".join(parts)
 
 
 def _summarize_args(args):

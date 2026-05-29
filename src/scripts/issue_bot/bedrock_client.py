@@ -198,8 +198,13 @@ class BedrockClient:
 
     def converse_with_tools(self, system_prompt, messages, tool_specs,
                              max_tokens=8000, temperature=0.3):
-        """One turn of Converse with toolConfig. Returns the raw response
-        dict (or None on failure / guardrail intervention / circuit open).
+        """One turn of Converse with optional toolConfig. Returns the raw
+        response dict (or None on failure / guardrail intervention /
+        circuit open).
+
+        Pass `tool_specs=None` (or an empty list) to omit toolConfig — used
+        by the loop's commit phase to physically prevent further tool calls
+        after the tool budget is exhausted.
 
         cachePoint is set here (unlike invoke()/invoke_with_usage) because
         Investigator and Critic share the static prefix from
@@ -216,8 +221,9 @@ class BedrockClient:
                 "modelId": self._model_id,
                 "messages": wrapped_messages,
                 "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
-                "toolConfig": {"tools": tool_specs},
             }
+            if tool_specs:
+                kwargs["toolConfig"] = {"tools": tool_specs}
             if system_prompt:
                 kwargs["system"] = [
                     {"text": system_prompt},

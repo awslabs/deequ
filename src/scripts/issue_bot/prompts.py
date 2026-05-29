@@ -76,5 +76,18 @@ def get_pr_investigator_prompt():
     return _get_prompt("PR_INVESTIGATOR_PROMPT", "SM_PR_INVESTIGATOR_PROMPT")
 
 
+def get_pr_investigator_commit_prompt():
+    """Forced-emit user prompt for the Investigator's commit phase. Sent
+    on the no-tool turn after the tool budget is exhausted. An empty
+    return disables the commit phase — the loop falls back to legacy
+    terminate-without-conclusion behavior."""
+    return _get_prompt("PR_INVESTIGATOR_COMMIT_PROMPT", "SM_PR_INVESTIGATOR_COMMIT_PROMPT")
+
+
+def get_pr_critic_commit_prompt():
+    """Forced-emit user prompt for the Critic's commit phase."""
+    return _get_prompt("PR_CRITIC_COMMIT_PROMPT", "SM_PR_CRITIC_COMMIT_PROMPT")
+
+
 def prompt_version(template):
     return hashlib.sha256(template.encode()).hexdigest()[:8]

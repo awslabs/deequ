@@ -225,7 +225,11 @@ def test_max_turns_recovers_text_from_assistant_message():
     assert "max_turns" not in result.text
 
 
-def test_max_turns_falls_back_to_boilerplate_if_no_text():
+def test_max_turns_with_no_text_returns_empty_when_no_commit_phase():
+    """When max_turns hits without any text emitted by the model and no
+    commit-phase prompt is configured, result.text must be empty so
+    downstream callers can detect the silent-bail case via max_turns_reached
+    and route to a Critic backstop."""
     tu_only = _resp(
         [{"toolUse": {"toolUseId": "t", "name": "grep_codebase", "input": {"pattern": "x"}}}],
         stop_reason="tool_use",
@@ -234,7 +238,8 @@ def test_max_turns_falls_back_to_boilerplate_if_no_text():
     tr = FakeToolRunner()
     result = _run(bedrock, tr, caps=AgentCaps(max_turns=2))
     assert result.max_turns_reached is True
-    assert "max_turns" in result.text
+    assert result.text == ""
+    assert "max_turns" in (result.error or "")
 
 
 def test_wall_clock_cap_terminates_loop():
@@ -335,3 +340,172 @@ def test_guardrail_does_not_wrap_trusted_block():
     guard_text = content[1].get("guardContent", {}).get("text", {}).get("text", "")
     assert "ignore previous instructions" in text_block_text
     assert "ignore previous instructions" not in guard_text
+
+
+# Layer A: aggregate text from all assistant messages, not only the last.
+
+def test_aggregate_text_preserves_partial_commits_from_earlier_turns():
+    """When the model emits a STATUS block on turn 1 alongside tool calls,
+    then runs out of turns, the per-turn commit MUST be in result.text. The
+    old behavior (walk-back to last assistant message) lost it because the
+    last turn's text block could be empty when the model ended on tool use."""
+    turn1 = _resp(
+        [
+            {"text": "WORKING_NOTES: hypothesis A formed.\nID: A1\nSTATUS: CONFIRMED\nCOMMENT: real bug at line 5"},
+            {"toolUse": {"toolUseId": "t1", "name": "read_file", "input": {"path": "x"}}},
+        ],
+        stop_reason="tool_use",
+    )
+    turn2_no_text = _resp(
+        [{"toolUse": {"toolUseId": "t2", "name": "read_file", "input": {"path": "y"}}}],
+        stop_reason="tool_use",
+    )
+    bedrock = FakeBedrockClient([turn1, turn2_no_text, turn2_no_text])
+    result = _run(bedrock, FakeToolRunner(), caps=AgentCaps(max_turns=3))
+    # Turn 1's STATUS: CONFIRMED block must survive even though turn 3
+    # ended on tool_use with no text.
+    assert "STATUS: CONFIRMED" in result.text
+    assert "ID: A1" in result.text
+
+
+def test_aggregate_text_concatenates_all_turns_in_order():
+    """Multiple turns each emit a STATUS block; result.text must contain
+    every block in turn order so the Reporter can parse them all."""
+    turn1 = _resp([{"text": "ID: A1\nSTATUS: CONFIRMED"},
+                   {"toolUse": {"toolUseId": "t1", "name": "read_file", "input": {"path": "x"}}}],
+                  stop_reason="tool_use")
+    turn2 = _resp([{"text": "ID: A2\nSTATUS: DISPROVED"}],
+                  stop_reason="end_turn")
+    bedrock = FakeBedrockClient([turn1, turn2])
+    result = _run(bedrock, FakeToolRunner(), caps=AgentCaps(max_turns=3))
+    a1_idx = result.text.index("ID: A1")
+    a2_idx = result.text.index("ID: A2")
+    assert a1_idx < a2_idx, "later turns must appear after earlier turns in result.text"
+
+
+# Layer B: forced commit phase when budget exhausted.
+
+def test_commit_phase_runs_with_prompt_when_max_turns_hit():
+    """After max_turns, the loop calls Bedrock once more with the commit-
+    phase user prompt appended to the conversation. tool_specs are kept on
+    the request so toolUse/toolResult blocks in history validate against
+    Bedrock's schema; the prompt suppresses new tool calls."""
+    tool_specs = [{"toolSpec": {"name": "read_file"}}]
+    turns_with_tools = [
+        _resp([{"toolUse": {"toolUseId": "t", "name": "read_file", "input": {"path": "x"}}}],
+              stop_reason="tool_use"),
+    ] * 2
+    commit_resp = _resp([{"text": "ID: A1\nSTATUS: UNVERIFIED\nCOMMENT: ran out of turns"}],
+                        stop_reason="end_turn")
+    bedrock = FakeBedrockClient(turns_with_tools + [commit_resp])
+    result = run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt="sys", user_prompt="user",
+        tool_specs=tool_specs,
+        tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=2),
+        commit_phase_user_prompt="TOOL BUDGET EXHAUSTED. Emit findings now.",
+    )
+    assert result.max_turns_reached is True
+    assert result.commit_phase_ran is True
+    last_call = bedrock.calls[-1]
+    assert last_call["tool_specs"] == tool_specs
+    last_user_msgs = [m for m in last_call["messages"] if m.get("role") == "user"]
+    last_user_text = "".join(
+        b.get("text", "") for b in last_user_msgs[-1].get("content", []) if "text" in b
+    )
+    assert "TOOL BUDGET EXHAUSTED" in last_user_text
+    assert "STATUS: UNVERIFIED" in result.text
+
+
+def test_commit_phase_skipped_when_no_prompt_configured():
+    """Without a commit_phase_user_prompt, the loop terminates without an
+    extra Bedrock call (legacy behavior, opt-in feature flag style)."""
+    turns_with_tools = [
+        _resp([{"toolUse": {"toolUseId": "t", "name": "read_file", "input": {"path": "x"}}}],
+              stop_reason="tool_use"),
+    ] * 3
+    bedrock = FakeBedrockClient(turns_with_tools)
+    result = _run(bedrock, FakeToolRunner(), caps=AgentCaps(max_turns=2))
+    assert result.max_turns_reached is True
+    assert result.commit_phase_ran is False
+    # Two turns, no commit phase, so two Bedrock calls.
+    assert len(bedrock.calls) == 2
+
+
+def test_commit_phase_runs_on_structural_cap_hit():
+    """Tool-call budget exhaustion (max_tool_calls reached) must also
+    trigger the commit phase, not just max_turns."""
+    turn = _resp(
+        [{"toolUse": {"toolUseId": "t", "name": "read_file", "input": {"path": "x"}}}],
+        stop_reason="tool_use",
+    )
+    commit_resp = _resp([{"text": "ID: A1\nSTATUS: CONFIRMED\nCOMMENT: hit cap"}],
+                        stop_reason="end_turn")
+    bedrock = FakeBedrockClient([turn, commit_resp])
+    caps = AgentCaps(max_turns=10, max_tool_calls=1)
+    result = run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt="sys", user_prompt="user",
+        tool_specs=[{"toolSpec": {"name": "read_file"}}],
+        tool_runner=FakeToolRunner(),
+        caps=caps,
+        commit_phase_user_prompt="TOOL BUDGET EXHAUSTED.",
+    )
+    assert result.commit_phase_ran is True
+    assert "STATUS: CONFIRMED" in result.text
+
+
+def test_commit_phase_merges_prompt_into_trailing_user_toolresult_message():
+    """When the loop terminates after appending a user(toolResult) message,
+    the commit phase MUST merge the prompt into that message (not append
+    a second consecutive user, which Bedrock rejects)."""
+    turn = _resp(
+        [{"toolUse": {"toolUseId": "t", "name": "read_file", "input": {"path": "x"}}}],
+        stop_reason="tool_use",
+    )
+    commit_resp = _resp([{"text": "ok"}], stop_reason="end_turn")
+    bedrock = FakeBedrockClient([turn, commit_resp])
+    run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt="sys", user_prompt="user",
+        tool_specs=[{"toolSpec": {"name": "read_file"}}],
+        tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=1),
+        commit_phase_user_prompt="TOOL BUDGET EXHAUSTED.",
+    )
+    # Last bedrock call's messages must end in a single user message that
+    # contains both the toolResult AND the commit prompt text.
+    final_messages = bedrock.calls[-1]["messages"]
+    last = final_messages[-1]
+    assert last["role"] == "user"
+    contents = last["content"]
+    assert any("toolResult" in b for b in contents), "toolResult preserved"
+    assert any(b.get("text") == "TOOL BUDGET EXHAUSTED." for b in contents), (
+        "commit prompt merged"
+    )
+    # Strict alternation: no two consecutive user messages.
+    roles = [m.get("role") for m in final_messages]
+    for i in range(1, len(roles)):
+        assert roles[i] != roles[i - 1], (
+            f"consecutive {roles[i]} messages at index {i}: {roles}"
+        )
+
+
+def test_commit_phase_skipped_when_pipeline_deadline_past():
+    """When wall-clock is already past, the commit phase must not fire —
+    spending another Bedrock call against a dead deadline is wasted."""
+    import time
+    turns = [_resp([{"toolUse": {"toolUseId": "t", "name": "read_file", "input": {}}}],
+                   stop_reason="tool_use")] * 3
+    bedrock = FakeBedrockClient(turns)
+    result = run(
+        bedrock_client=bedrock, agent_name="investigator",
+        system_prompt="sys", user_prompt="user",
+        tool_specs=[{"toolSpec": {"name": "read_file"}}],
+        tool_runner=FakeToolRunner(),
+        caps=AgentCaps(max_turns=5),
+        commit_phase_user_prompt="TOOL BUDGET EXHAUSTED.",
+        pipeline_deadline=time.monotonic() - 1,  # deadline already past
+    )
+    assert result.commit_phase_ran is False

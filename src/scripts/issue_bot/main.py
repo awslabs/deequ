@@ -887,6 +887,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         tool_specs=TOOL_SPECS, tool_runner=tool_runner,
         caps=investigator_caps,
         pipeline_deadline=pipeline_deadline,
+        commit_phase_user_prompt=prompts.get_pr_investigator_commit_prompt() or None,
     )
 
     metrics = _initial_metrics(inv_result)
@@ -912,6 +913,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
             reporter_system=reporter_system,
             diff=diff, title=title, body=body,
             investigator_text=inv_result.text,
+            investigator_max_turns_reached=inv_result.max_turns_reached,
             pipeline_deadline=pipeline_deadline,
         )
     )
@@ -1051,6 +1053,7 @@ def _initial_metrics(inv_result):
 
 def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic_caps,
                               reporter_system, diff, title, body, investigator_text,
+                              investigator_max_turns_reached=False,
                               pipeline_deadline=None):
     """Run the Critic (if any CONFIRMED concerns) and then the Reporter.
 
@@ -1059,10 +1062,17 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
     "no_confirmed_findings" (fast path), "critic_failed",
     "reporter_deadline_exceeded", "reporter_failed". Caller escalates on
     any non-happy-path event so confirmed findings aren't silently dropped.
+
+    The fast path fires only when the Investigator emitted no CONFIRMED
+    block AND did not hit max_turns. When the Investigator ran out of
+    budget, the Critic backstops — the absence of CONFIRMED on a budget-
+    exhausted run cannot be distinguished from a silent bail without a
+    second-pass agent investigating from scratch.
     """
     skipped_metrics = _empty_stage_metrics()
 
-    if not _has_confirmed_findings(investigator_text):
+    if (not _has_confirmed_findings(investigator_text)
+            and not investigator_max_turns_reached):
         return None, "no_confirmed_findings", [], skipped_metrics
 
     # Neutralize close-tags so a model that emits "</investigator_notes>" or
@@ -1084,6 +1094,7 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         tool_specs=TOOL_SPECS, tool_runner=tool_runner,
         caps=critic_caps,
         pipeline_deadline=pipeline_deadline,
+        commit_phase_user_prompt=prompts.get_pr_critic_commit_prompt() or None,
     )
 
     if not crit_result.text:
