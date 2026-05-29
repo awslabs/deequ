@@ -918,7 +918,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         )
     )
     if crit_result is not None:
-        metrics["critic"] = _agent_metrics(crit_result, model_id=cfg.bedrock_model_id)
+        metrics["critic"] = _agent_metrics(crit_result, model_id=cfg.critic_model_id)
     # Unknown event = bug in a future change. Escalate with a distinct
     # reason rather than silently posting a clean review.
     if pipeline_event is not None and pipeline_event not in _KNOWN_PIPELINE_EVENTS:
@@ -1021,7 +1021,8 @@ def _build_caps(cfg, pr_files):
 
 def _build_static_context(kb_context, codebase_map, existing_feedback, incremental_diff):
     """Assemble the system-prompt suffix shared between Investigator and Critic.
-    Same prefix → cache hit on Critic's first turn."""
+    The two agents have different prompt templates rendered in front of this
+    suffix, so they don't share a Bedrock cache key — each warms its own."""
     incremental_section = ""
     if incremental_diff:
         incremental_section = (
@@ -1095,6 +1096,7 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         caps=critic_caps,
         pipeline_deadline=pipeline_deadline,
         commit_phase_user_prompt=prompts.get_pr_critic_commit_prompt() or None,
+        model_id=cfg.critic_model_id,
     )
 
     if not crit_result.text:

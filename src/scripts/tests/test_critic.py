@@ -85,7 +85,7 @@ def _run_pipeline(tmp_path, monkeypatch, mock,
         # The fast path skips critic entirely if no CONFIRMED findings.
         def converse_side_effect(system_prompt, messages, tool_specs,
                                  max_tokens=8000, temperature=0.3,
-                                 timeout_seconds=None):
+                                 timeout_seconds=None, model_id=None):
             # Identify which agent by scanning the system prompt
             if "Investigate" in system_prompt:
                 return _bedrock_text_resp(investigator_text)
@@ -234,7 +234,7 @@ def test_investigator_max_turns_routes_to_critic_even_without_confirmed(tmp_path
 
         def converse_side_effect(system_prompt, messages, tool_specs,
                                  max_tokens=8000, temperature=0.3,
-                                 timeout_seconds=None):
+                                 timeout_seconds=None, model_id=None):
             is_critic = "Critique" in system_prompt
             commit_phase = _has_commit_marker(messages)
             call_log.append({
@@ -563,7 +563,7 @@ def test_critic_diff_truncation_on_large_diff(tmp_path, monkeypatch):
         mock_invoke.return_value = (json.dumps({"analysis": []}), {"inputTokens": 1, "outputTokens": 1, "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0})
 
         def converse(system_prompt, messages, tool_specs, max_tokens=8000,
-                     temperature=0.3, timeout_seconds=None):
+                     temperature=0.3, timeout_seconds=None, model_id=None):
             captured_messages.append({"system": system_prompt[:200], "messages": messages})
             text = (
                 "ID: C1\nSTATUS: CONFIRMED\nSEVERITY: BUG\nCOMMENT: c\nEVIDENCE: e\n"
@@ -1208,7 +1208,7 @@ def test_investigator_diff_truncation_on_large_diff(tmp_path, monkeypatch):
                                       "cacheReadInputTokens": 0, "cacheWriteInputTokens": 0})
 
         def converse(system_prompt, messages, tool_specs, max_tokens=8000,
-                     temperature=0.3, timeout_seconds=None):
+                     temperature=0.3, timeout_seconds=None, model_id=None):
             captured.append({"system": system_prompt[:80], "messages": messages})
             text = (
                 "No confirmed issues found." if "Investigate" in system_prompt

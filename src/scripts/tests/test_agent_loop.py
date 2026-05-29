@@ -15,13 +15,14 @@ class FakeBedrockClient:
 
     def converse_with_tools(self, system_prompt, messages, tool_specs,
                              max_tokens=8000, temperature=0.3,
-                             timeout_seconds=None):
+                             timeout_seconds=None, model_id=None):
         self.calls.append({
             "system_prompt": system_prompt,
             "messages": list(messages),
             "tool_specs": tool_specs,
             "max_tokens": max_tokens,
             "timeout_seconds": timeout_seconds,
+            "model_id": model_id,
         })
         if not self._responses:
             return None
