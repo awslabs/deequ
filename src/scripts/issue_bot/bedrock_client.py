@@ -1,4 +1,5 @@
 import logging
+import re
 
 import boto3
 from botocore.config import Config as BotoConfig
@@ -7,6 +8,23 @@ from botocore.exceptions import ClientError, BotoCoreError
 logger = logging.getLogger("issue_bot")
 
 _CIRCUIT_BREAKER_THRESHOLD = 3
+
+# Models that reject `temperature` (and `top_p`, `top_k`) in inferenceConfig.
+# Opus 4.7 was the first; pattern is anchored at a non-digit boundary so we
+# match `claude-opus-4-7` and `claude-opus-4-7-mini-...` but not a hypothetical
+# `opus-4-70`. Add new families here as they drop sampling params.
+_NO_SAMPLING_PARAMS_PATTERN = re.compile(r"opus-4-7(?!\d)")
+
+
+def _build_inference_config(max_tokens, temperature, model_id):
+    """Compose inferenceConfig for converse(). Drops temperature for models
+    that reject it; leaves the field on older Claude models so we keep the
+    existing 0.3 sampling behavior for Reporter/Haiku/legacy."""
+    cfg = {"maxTokens": max_tokens}
+    if model_id and _NO_SAMPLING_PARAMS_PATTERN.search(model_id):
+        return cfg
+    cfg["temperature"] = temperature
+    return cfg
 
 
 class BedrockClient:
@@ -82,7 +100,7 @@ class BedrockClient:
             kwargs = {
                 "modelId": self._model_id,
                 "messages": [{"role": "user", "content": user_content}],
-                "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
+                "inferenceConfig": _build_inference_config(max_tokens, temperature, self._model_id),
             }
 
             if system_prompt:
@@ -159,10 +177,11 @@ class BedrockClient:
                 user_content = [{"guardContent": {"text": {"text": user_prompt}}}]
             else:
                 user_content = [{"text": user_prompt}]
+            effective_model = model_id or self._model_id
             kwargs = {
-                "modelId": model_id or self._model_id,
+                "modelId": effective_model,
                 "messages": [{"role": "user", "content": user_content}],
-                "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
+                "inferenceConfig": _build_inference_config(max_tokens, temperature, effective_model),
             }
             if system_prompt:
                 kwargs["system"] = [{"text": system_prompt}]
@@ -224,9 +243,9 @@ class BedrockClient:
         Two cachePoints: one after the system block, one at the tail of the
         last message (so the growing conversation history is cached
         turn-over-turn instead of re-priced as fresh input every turn).
-        Both Opus 4.6 and Haiku 4.5 require ≥4,096 tokens before a cachePoint
-        for it to take effect; first-turn message-tail caches silently no-op
-        on small payloads but become useful once tool results accumulate.
+        Opus 4.x and Haiku 4.5 require ≥4,096 tokens before a cachePoint for
+        it to take effect; first-turn message-tail caches silently no-op on
+        small payloads but become useful once tool results accumulate.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock tool-use call")
@@ -234,10 +253,11 @@ class BedrockClient:
         try:
             wrapped_messages = self._wrap_first_user_for_guardrail(messages)
             wrapped_messages = self._append_tail_cache_point(wrapped_messages)
+            effective_model = model_id or self._model_id
             kwargs = {
-                "modelId": model_id or self._model_id,
+                "modelId": effective_model,
                 "messages": wrapped_messages,
-                "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
+                "inferenceConfig": _build_inference_config(max_tokens, temperature, effective_model),
             }
             if tool_specs:
                 kwargs["toolConfig"] = {"tools": tool_specs}
