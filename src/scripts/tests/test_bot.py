@@ -580,6 +580,110 @@ class TestSplitPrompt:
         system = kwargs["system"]
         assert any("cachePoint" in block for block in system)
 
+    def test_converse_with_tools_appends_tail_cache_point(self):
+        """Tail cachePoint on the last message lets the growing conversation
+        history (tool results re-sent each turn) be served as cache reads
+        on subsequent turns."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": [{"text": "investigate"}]}],
+            tool_specs=[],
+        )
+        kwargs = client._client.converse.call_args[1]
+        last_content = kwargs["messages"][-1]["content"]
+        assert last_content[-1] == {"cachePoint": {"type": "default"}}
+
+    def test_append_tail_cache_point_idempotent(self):
+        """A messages list with a trailing cachePoint must not get a second
+        one stacked on it (would exceed Bedrock's max-4 cachePoint limit
+        across many turns)."""
+        client = self._make_client()
+        messages = [{
+            "role": "user",
+            "content": [{"text": "x"}, {"cachePoint": {"type": "default"}}],
+        }]
+        out = client._append_tail_cache_point(messages)
+        assert len(out[-1]["content"]) == 2
+
+    def test_append_tail_cache_point_empty_messages(self):
+        client = self._make_client()
+        assert client._append_tail_cache_point([]) == []
+
+    def test_invoke_cache_prefix_opt_in(self):
+        """cache_prefix=True appends a cachePoint after the system block so
+        a stable prefix (issue path: KB + codebase_map) is reused across
+        calls within the TTL."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke("kb + codebase_map", "issue body", cache_prefix=True)
+        kwargs = client._client.converse.call_args[1]
+        system = kwargs["system"]
+        assert system[0] == {"text": "kb + codebase_map"}
+        assert system[-1] == {"cachePoint": {"type": "default"}}
+
+    def test_invoke_default_no_cache_prefix(self):
+        """Legacy callers whose prefix varies per call (per-PR diff embedded
+        in system_prompt) must not auto-cache — would pay the 1.25x write
+        premium with zero reuse."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.invoke("system", "user")
+        kwargs = client._client.converse.call_args[1]
+        for block in kwargs.get("system", []):
+            assert "cachePoint" not in block
+
+    def test_converse_with_tools_total_cache_points_under_limit(self):
+        """Bedrock rejects requests with more than 4 cachePoints. Sum across
+        system + every message content block to catch any future addition."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": [{"text": "investigate"}]}],
+            tool_specs=[],
+        )
+        kwargs = client._client.converse.call_args[1]
+        count = sum(1 for b in kwargs.get("system", []) if "cachePoint" in b)
+        for msg in kwargs.get("messages", []):
+            count += sum(1 for b in msg.get("content", []) if "cachePoint" in b)
+        assert count <= 4
+
+    def test_converse_with_tools_handles_two_block_guardrail_composition(self):
+        """The agent loop's _build_user_content emits [{text: trusted},
+        {guardContent: untrusted}] when a guardrail is configured. The wrap
+        helper passes that through unchanged; the tail cachePoint must
+        append AFTER the guardContent without disturbing it."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        messages = [{
+            "role": "user",
+            "content": [
+                {"text": "diff and instructions"},
+                {"guardContent": {"text": {"text": "PR title and body"}}},
+            ],
+        }]
+        client.converse_with_tools("system", messages, tool_specs=[])
+        sent_content = client._client.converse.call_args[1]["messages"][-1]["content"]
+        assert sent_content[0] == {"text": "diff and instructions"}
+        assert sent_content[1] == {"guardContent": {"text": {"text": "PR title and body"}}}
+        assert sent_content[2] == {"cachePoint": {"type": "default"}}
+
+    def test_invoke_typeerror_increments_failure_counter(self):
+        """A malformed Bedrock response (e.g., non-iterable content) raises
+        TypeError. The circuit breaker must count it so persistent failures
+        open the breaker instead of silently retrying forever."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        before = client._failures
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": 5}],
+            tool_specs=[],
+        )
+        assert client._failures == before + 1
+
     def test_wrap_skips_when_caller_already_set_guard_content(self):
         """If the caller composed [{"text": trusted}, {"guardContent": untrusted}],
         the helper must NOT re-wrap the trusted text — that would put model-
