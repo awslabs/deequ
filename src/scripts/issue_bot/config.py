@@ -24,8 +24,14 @@ class Config:
         # Reporter is a JSON-formatting + filter step; it doesn't reason. A
         # cheaper model (Haiku 4.5) handles structured output cleanly at ~5x
         # less cost. Defaults to bedrock_model_id so the swap is opt-in via
-        # workflow env var.
-        self.reporter_model_id = os.getenv("BEDROCK_REPORTER_MODEL_ID") or self.bedrock_model_id
+        # workflow env var. .strip() guards against stray whitespace from
+        # the workflow vars context.
+        self.reporter_model_id = (os.getenv("BEDROCK_REPORTER_MODEL_ID") or "").strip() or self.bedrock_model_id
+        if self.reporter_model_id != self.bedrock_model_id:
+            logger.info(
+                "Reporter model override active: %s (default: %s)",
+                self.reporter_model_id, self.bedrock_model_id,
+            )
 
         self.kb_s3_bucket = os.getenv("KB_S3_BUCKET", "")
         self.kb_s3_key = os.getenv("KB_S3_KEY", "")

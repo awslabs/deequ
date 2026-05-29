@@ -557,11 +557,9 @@ class TestSplitPrompt:
         override lets the same client serve both without a second instance."""
         client = self._make_client()
         self._mock_converse(client)
-        client.invoke_with_usage(
-            "system", "user", model_id="us.anthropic.claude-haiku-4-5-v1",
-        )
+        client.invoke_with_usage("system", "user", model_id="TEST_MODEL_ID")
         kwargs = client._client.converse.call_args[1]
-        assert kwargs["modelId"] == "us.anthropic.claude-haiku-4-5-v1"
+        assert kwargs["modelId"] == "TEST_MODEL_ID"
 
     def test_invoke_with_usage_default_model_id(self):
         """Without override, invoke_with_usage uses the client's default
@@ -569,6 +567,23 @@ class TestSplitPrompt:
         client = self._make_client()
         self._mock_converse(client)
         client.invoke_with_usage("system", "user")
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == client._model_id
+
+    def test_invoke_with_usage_empty_model_id_falls_back_to_default(self):
+        """An empty-string override (e.g., from an unset GH Actions vars
+        expansion) must fall through to the client default — not be sent
+        verbatim to Bedrock as ''."""
+        client = self._make_client()
+        self._mock_converse(client)
+        client.invoke_with_usage("system", "user", model_id="")
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == client._model_id
+
+    def test_invoke_with_usage_none_model_id_falls_back_to_default(self):
+        client = self._make_client()
+        self._mock_converse(client)
+        client.invoke_with_usage("system", "user", model_id=None)
         kwargs = client._client.converse.call_args[1]
         assert kwargs["modelId"] == client._model_id
 
