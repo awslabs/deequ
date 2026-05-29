@@ -1187,6 +1187,7 @@ def _empty_stage_metrics():
         "cache_read_tokens": 0,
         "cache_write_tokens": 0,
         "max_turns_reached": False,
+        "commit_phase_ran": False,
         "error": None,
         "parse_failed": False,
     }
@@ -1204,6 +1205,7 @@ def _agent_metrics(r):
         "cache_read_tokens": r.cache_read_tokens,
         "cache_write_tokens": r.cache_write_tokens,
         "max_turns_reached": r.max_turns_reached,
+        "commit_phase_ran": r.commit_phase_ran,
         "error": r.error,
     })
     return metrics

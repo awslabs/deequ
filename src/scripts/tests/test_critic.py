@@ -1102,7 +1102,8 @@ def test_unknown_pipeline_event_escalates_does_not_mislabel_critic(monkeypatch):
         "skipped": False, "skip_reason": "garbage_value", "turns": 0, "tool_calls": 0,
         "tool_output_chars": 0, "input_tokens": 0, "output_tokens": 0,
         "cache_read_tokens": 0, "cache_write_tokens": 0,
-        "max_turns_reached": False, "error": None, "parse_failed": False,
+        "max_turns_reached": False, "commit_phase_ran": False,
+        "error": None, "parse_failed": False,
     }
 
     def capture_artifact(payload):
@@ -1242,7 +1243,7 @@ def test_metrics_schema_uniform_across_stages(tmp_path, monkeypatch):
     canonical_keys = {
         "skipped", "skip_reason", "turns", "tool_calls", "tool_output_chars",
         "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens",
-        "max_turns_reached", "error", "parse_failed",
+        "max_turns_reached", "commit_phase_ran", "error", "parse_failed",
     }
     for stage in ("investigator", "critic", "reporter"):
         assert set(artifact["metrics"][stage].keys()) >= canonical_keys, (
