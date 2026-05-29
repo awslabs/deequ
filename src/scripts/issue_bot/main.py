@@ -351,7 +351,7 @@ def analyze():
         prompt_id = prompts.prompt_version(tmpl)
 
     schema = FOLLOWUP_SCHEMA if is_followup else ISSUE_RESPONSE_SCHEMA
-    raw = bedrock.invoke(system_prompt, user_prompt, json_schema=schema)
+    raw = bedrock.invoke(system_prompt, user_prompt, json_schema=schema, cache_prefix=True)
 
     if raw is None:
         _write_artifact({

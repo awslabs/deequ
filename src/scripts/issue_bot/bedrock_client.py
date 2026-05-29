@@ -54,7 +54,7 @@ class BedrockClient:
         return bool(self._guardrail_id)
 
     def invoke(self, system_prompt, user_prompt, max_tokens=4096,
-               temperature=0.3, json_schema=None):
+               temperature=0.3, json_schema=None, cache_prefix=False):
         """Invoke Bedrock Converse API with guardrail on user message only.
 
         - system_prompt: Instructions + trusted context (KB, diffs, codebase).
@@ -63,11 +63,12 @@ class BedrockClient:
         - user_prompt: Untrusted user input (issue title/body, PR title/body,
             comments). When guardrail is configured, wrapped in guardContent
             so the guardrail scans it for prompt injection.
-
-        No cachePoint is set: production logs (last 30 runs / 44 calls) show
-        the cache read rate at 0% because the cached prefix includes per-PR
-        diff bytes, so the cache key never repeats. A cachePoint here would
-        only pay the 1.25x cache-write premium without ever yielding a read.
+        - cache_prefix: when True, append a cachePoint after the system block
+            so subsequent calls with the same system prefix can be served as
+            cache reads. Opt-in because legacy PR file-review callers embed
+            per-PR diff bytes in system_prompt — caching there pays the 1.25x
+            write premium with zero reuse. Issue/followup callers pass True
+            since their prefix is KB + codebase_map, stable across calls.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock call")
@@ -85,7 +86,10 @@ class BedrockClient:
             }
 
             if system_prompt:
-                kwargs["system"] = [{"text": system_prompt}]
+                system_blocks = [{"text": system_prompt}]
+                if cache_prefix:
+                    system_blocks.append({"cachePoint": {"type": "default"}})
+                kwargs["system"] = system_blocks
 
             if json_schema:
                 kwargs["outputConfig"] = {
@@ -139,7 +143,9 @@ class BedrockClient:
         the Reporter to bound the call at the remaining wall-clock budget.
 
         No cachePoint: the Reporter (sole caller) embeds the per-PR diff
-        in its system prompt, so the cache prefix never repeats.
+        in its system prompt, so the cache prefix never repeats. invoke()'s
+        cache_prefix opt-in is not exposed here — no caller has a stable
+        prefix to cache.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock call")
@@ -206,17 +212,17 @@ class BedrockClient:
         by the loop's commit phase to physically prevent further tool calls
         after the tool budget is exhausted.
 
-        cachePoint is set here (unlike invoke()/invoke_with_usage) because
-        Investigator and Critic share the static prefix from
-        _build_static_context — the Investigator's first turn warms a cache
-        the Critic's first turn can read. Validate via cacheReadInputTokens
-        on the Critic stage in the artifact metrics.
+        Two cachePoints: one after the system block (the static_context
+        prefix shared between Investigator and Critic), one at the tail of
+        the last message (so the growing conversation history is cached
+        turn-over-turn instead of re-priced as fresh input every turn).
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock tool-use call")
             return None
         try:
             wrapped_messages = self._wrap_first_user_for_guardrail(messages)
+            wrapped_messages = self._append_tail_cache_point(wrapped_messages)
             kwargs = {
                 "modelId": self._model_id,
                 "messages": wrapped_messages,
@@ -248,6 +254,19 @@ class BedrockClient:
                 self._circuit_open = True
                 logger.error("Circuit breaker OPEN")
             return None
+
+    def _append_tail_cache_point(self, messages):
+        """Append a cachePoint to the last message's content. Returns a new
+        list so the caller's `messages` is not mutated (cachePoints would
+        otherwise accumulate turn-over-turn)."""
+        if not messages:
+            return messages
+        last = messages[-1]
+        content = list(last.get("content") or [])
+        if content and isinstance(content[-1], dict) and "cachePoint" in content[-1]:
+            return messages
+        content.append({"cachePoint": {"type": "default"}})
+        return messages[:-1] + [{**last, "content": content}]
 
     def _wrap_first_user_for_guardrail(self, messages):
         """Wrap the first user message's text in guardContent for guardrail
