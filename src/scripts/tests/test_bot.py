@@ -650,6 +650,40 @@ class TestSplitPrompt:
             count += sum(1 for b in msg.get("content", []) if "cachePoint" in b)
         assert count <= 4
 
+    def test_converse_with_tools_handles_two_block_guardrail_composition(self):
+        """The agent loop's _build_user_content emits [{text: trusted},
+        {guardContent: untrusted}] when a guardrail is configured. The wrap
+        helper passes that through unchanged; the tail cachePoint must
+        append AFTER the guardContent without disturbing it."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        messages = [{
+            "role": "user",
+            "content": [
+                {"text": "diff and instructions"},
+                {"guardContent": {"text": {"text": "PR title and body"}}},
+            ],
+        }]
+        client.converse_with_tools("system", messages, tool_specs=[])
+        sent_content = client._client.converse.call_args[1]["messages"][-1]["content"]
+        assert sent_content[0] == {"text": "diff and instructions"}
+        assert sent_content[1] == {"guardContent": {"text": {"text": "PR title and body"}}}
+        assert sent_content[2] == {"cachePoint": {"type": "default"}}
+
+    def test_invoke_typeerror_increments_failure_counter(self):
+        """A malformed Bedrock response (e.g., non-iterable content) raises
+        TypeError. The circuit breaker must count it so persistent failures
+        open the breaker instead of silently retrying forever."""
+        client = self._make_client(guardrail_id="gr-123")
+        self._mock_converse(client)
+        before = client._failures
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": 5}],
+            tool_specs=[],
+        )
+        assert client._failures == before + 1
+
     def test_wrap_skips_when_caller_already_set_guard_content(self):
         """If the caller composed [{"text": trusted}, {"guardContent": untrusted}],
         the helper must NOT re-wrap the trusted text — that would put model-

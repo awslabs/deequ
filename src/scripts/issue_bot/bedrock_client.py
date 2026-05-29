@@ -247,7 +247,7 @@ class BedrockClient:
                 return None
             self._failures = 0
             return resp
-        except (ClientError, BotoCoreError, ValueError, ConnectionError) as e:
+        except (ClientError, BotoCoreError, ValueError, TypeError, ConnectionError) as e:
             self._failures += 1
             logger.error(f"Bedrock tool-use call failed ({self._failures}/{_CIRCUIT_BREAKER_THRESHOLD}): {e}")
             if self._failures >= _CIRCUIT_BREAKER_THRESHOLD:
