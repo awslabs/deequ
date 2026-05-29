@@ -135,12 +135,16 @@ class BedrockClient:
 
     def invoke_with_usage(self, system_prompt, user_prompt, max_tokens=4096,
                            temperature=0.3, json_schema=None,
-                           timeout_seconds=None):
+                           timeout_seconds=None, model_id=None):
         """Like invoke() but also returns the response's token usage dict.
         Returns (None, {}) on failure.
 
         timeout_seconds (optional): per-call read/connect timeout, used by
         the Reporter to bound the call at the remaining wall-clock budget.
+
+        model_id (optional): override the default model for this call. Used
+        to run cheaper structured-output stages (e.g., Reporter on Haiku)
+        on the same client without a second BedrockClient instance.
 
         No cachePoint: the Reporter (sole caller) embeds the per-PR diff
         in its system prompt, so the cache prefix never repeats. invoke()'s
@@ -156,7 +160,7 @@ class BedrockClient:
             else:
                 user_content = [{"text": user_prompt}]
             kwargs = {
-                "modelId": self._model_id,
+                "modelId": model_id or self._model_id,
                 "messages": [{"role": "user", "content": user_content}],
                 "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
             }

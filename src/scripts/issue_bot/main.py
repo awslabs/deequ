@@ -890,7 +890,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         commit_phase_user_prompt=prompts.get_pr_investigator_commit_prompt() or None,
     )
 
-    metrics = _initial_metrics(inv_result)
+    metrics = _initial_metrics(inv_result, cfg.bedrock_model_id)
     artifact_kwargs = dict(
         cfg=cfg, title=title, html_url=html_url, number=number,
         inv_tmpl=investigator_tmpl, critic_tmpl=critic_tmpl, reporter_tmpl=reporter_tmpl,
@@ -918,7 +918,7 @@ def _run_agent_pipeline(*, cfg, gh, bedrock, number, title, body, html_url, item
         )
     )
     if crit_result is not None:
-        metrics["critic"] = _agent_metrics(crit_result)
+        metrics["critic"] = _agent_metrics(crit_result, model_id=cfg.bedrock_model_id)
     # Unknown event = bug in a future change. Escalate with a distinct
     # reason rather than silently posting a clean review.
     if pipeline_event is not None and pipeline_event not in _KNOWN_PIPELINE_EVENTS:
@@ -1040,9 +1040,9 @@ def _build_static_context(kb_context, codebase_map, existing_feedback, increment
     )
 
 
-def _initial_metrics(inv_result):
+def _initial_metrics(inv_result, model_id):
     return {
-        "investigator": _agent_metrics(inv_result),
+        "investigator": _agent_metrics(inv_result, model_id=model_id),
         "critic": _empty_stage_metrics(),
         "reporter": _empty_stage_metrics(),
         "totals": {},
@@ -1121,7 +1121,7 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
 
     raw, usage = bedrock.invoke_with_usage(
         reporter_system, reporter_user, max_tokens=8000, json_schema=PR_REVIEW_SCHEMA,
-        timeout_seconds=reporter_timeout,
+        timeout_seconds=reporter_timeout, model_id=cfg.reporter_model_id,
     )
     reporter_metrics = _empty_stage_metrics()
     reporter_metrics.update({
@@ -1131,6 +1131,7 @@ def _run_critic_and_reporter(*, cfg, bedrock, tool_runner, critic_system, critic
         "output_tokens": (usage.get("outputTokens") if usage else 0) or 0,
         "cache_read_tokens": (usage.get("cacheReadInputTokens") if usage else 0) or 0,
         "cache_write_tokens": (usage.get("cacheWriteInputTokens") if usage else 0) or 0,
+        "model_id": cfg.reporter_model_id,
     })
     # Reporter failure with confirmed findings → escalate, not an empty
     # post that would drop them.
@@ -1175,7 +1176,9 @@ def _build_clean_response(gh, head_sha, inline_comments):
 
 def _empty_stage_metrics():
     """Canonical shape for a per-stage metrics block. Every stage emits the
-    same keys so dashboards can iterate uniformly."""
+    same keys so dashboards can iterate uniformly. `model_id` is None for
+    skipped stages and set by the call site for executed stages so cost
+    accounting can use the right per-token rate."""
     return {
         "skipped": True,
         "skip_reason": None,
@@ -1190,10 +1193,11 @@ def _empty_stage_metrics():
         "commit_phase_ran": False,
         "error": None,
         "parse_failed": False,
+        "model_id": None,
     }
 
 
-def _agent_metrics(r):
+def _agent_metrics(r, model_id=None):
     metrics = _empty_stage_metrics()
     metrics.update({
         "skipped": False,
@@ -1207,6 +1211,7 @@ def _agent_metrics(r):
         "max_turns_reached": r.max_turns_reached,
         "commit_phase_ran": r.commit_phase_ran,
         "error": r.error,
+        "model_id": model_id,
     })
     return metrics
 
