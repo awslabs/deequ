@@ -710,6 +710,62 @@ class TestSplitPrompt:
         for block in kwargs.get("system", []):
             assert "cachePoint" not in block
 
+    def test_inference_config_drops_temperature_for_opus_4_7(self):
+        """Opus 4.7 returns 400 if temperature is in inferenceConfig. The
+        helper omits it for any model_id matching the opus-4-7 marker
+        (regional 'us.' or 'global.' inference profiles)."""
+        from issue_bot.bedrock_client import _build_inference_config
+        cfg = _build_inference_config(8000, 0.3, "us.anthropic.claude-opus-4-7")
+        assert "temperature" not in cfg
+        assert cfg["maxTokens"] == 8000
+
+        cfg = _build_inference_config(8000, 0.3, "global.anthropic.claude-opus-4-7")
+        assert "temperature" not in cfg
+
+    def test_inference_config_keeps_temperature_for_other_models(self):
+        from issue_bot.bedrock_client import _build_inference_config
+        cfg = _build_inference_config(4096, 0.5, "us.anthropic.claude-opus-4-6-v1")
+        assert cfg["temperature"] == 0.5
+
+        cfg = _build_inference_config(4096, 0.5, "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+        assert cfg["temperature"] == 0.5
+
+    def test_inference_config_handles_missing_model_id(self):
+        """If model_id is None or empty, fall back to including temperature
+        (preserves legacy behavior — caller is responsible for compatibility)."""
+        from issue_bot.bedrock_client import _build_inference_config
+        cfg = _build_inference_config(4096, 0.3, None)
+        assert cfg["temperature"] == 0.3
+        cfg = _build_inference_config(4096, 0.3, "")
+        assert cfg["temperature"] == 0.3
+
+    def test_converse_with_tools_drops_temperature_end_to_end_for_opus_4_7(self):
+        """End-to-end guard: a future refactor that bypasses _build_inference_config
+        at one of the call sites would slip a 400 ValidationException into
+        production. Assert the wire payload to Bedrock has no temperature when
+        the effective model is Opus 4.7."""
+        client = self._make_client()
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": [{"text": "x"}]}],
+            tool_specs=[],
+            model_id="us.anthropic.claude-opus-4-7",
+        )
+        kwargs = client._client.converse.call_args[1]
+        assert "temperature" not in kwargs["inferenceConfig"]
+        assert kwargs["inferenceConfig"]["maxTokens"] > 0
+
+    def test_invoke_drops_temperature_for_opus_4_7_default(self):
+        """invoke() takes no model_id arg; uses self._model_id. When Config
+        defaults to Opus 4.7, the wire payload must drop temperature."""
+        client = self._make_client()
+        client._model_id = "us.anthropic.claude-opus-4-7"
+        self._mock_converse(client)
+        client.invoke("system", "user")
+        kwargs = client._client.converse.call_args[1]
+        assert "temperature" not in kwargs["inferenceConfig"]
+
     def test_converse_with_tools_total_cache_points_under_limit(self):
         """Bedrock rejects requests with more than 4 cachePoints. Sum across
         system + every message content block to catch any future addition."""
