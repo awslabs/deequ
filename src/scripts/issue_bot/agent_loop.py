@@ -61,6 +61,7 @@ def run(
     pipeline_deadline: Optional[float] = None,
     untrusted_user_prompt: Optional[str] = None,
     commit_phase_user_prompt: Optional[str] = None,
+    model_id: Optional[str] = None,
 ):
     """Execute an agent's tool-use loop. Returns an AgentResult.
 
@@ -95,6 +96,7 @@ def run(
             _run_commit_phase(
                 bedrock_client, agent_name, system_prompt, messages,
                 commit_phase_user_prompt, tool_specs, caps, result, pipeline_deadline,
+                model_id=model_id,
             )
         result.text = _aggregate_all_assistant_text(messages)
         return result
@@ -115,6 +117,7 @@ def run(
                 messages=messages,
                 tool_specs=tool_specs,
                 max_tokens=caps.max_tokens_per_call,
+                model_id=model_id,
             )
         except Exception as e:
             logger.error("[%s turn=%d] bedrock error: %s", agent_name, turn + 1, type(e).__name__)
@@ -182,7 +185,7 @@ def _is_budget_exhaustion(reason: Optional[str]) -> bool:
 
 def _run_commit_phase(bedrock_client, agent_name, system_prompt, messages,
                       commit_phase_user_prompt, tool_specs, caps, result,
-                      pipeline_deadline):
+                      pipeline_deadline, model_id: Optional[str] = None):
     """One Bedrock turn after the loop's tool budget is exhausted, prompting
     the model to emit text only. tool_specs is kept on the request because
     Bedrock validates toolUse/toolResult content blocks in the conversation
@@ -215,6 +218,7 @@ def _run_commit_phase(bedrock_client, agent_name, system_prompt, messages,
             messages=messages,
             tool_specs=tool_specs,
             max_tokens=caps.max_tokens_per_call,
+            model_id=model_id,
         )
     except Exception as e:
         logger.error("[%s] commit phase bedrock error: %s", agent_name, type(e).__name__)

@@ -32,6 +32,15 @@ class Config:
                 "Reporter model override active: %s (default: %s)",
                 self.reporter_model_id, self.bedrock_model_id,
             )
+        # Critic uses converse_with_tools (multi-turn loop). Override goes
+        # through agent_loop.run → converse_with_tools so the same model is
+        # used for every turn within one Critic run.
+        self.critic_model_id = (os.getenv("BEDROCK_CRITIC_MODEL_ID") or "").strip() or self.bedrock_model_id
+        if self.critic_model_id != self.bedrock_model_id:
+            logger.info(
+                "Critic model override active: %s (default: %s)",
+                self.critic_model_id, self.bedrock_model_id,
+            )
 
         self.kb_s3_bucket = os.getenv("KB_S3_BUCKET", "")
         self.kb_s3_key = os.getenv("KB_S3_KEY", "")

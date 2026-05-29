@@ -601,10 +601,11 @@ class TestSplitPrompt:
         assert system[0]["text"] == "instructions + diff"
         assert all("cachePoint" not in block for block in system)
 
-    def test_converse_with_tools_keeps_cache_point_for_inv_to_critic(self):
-        """converse_with_tools is the one path where caching can pay off:
-        Investigator's first turn warms a cache the Critic's first turn can
-        read (shared static prefix from _build_static_context)."""
+    def test_converse_with_tools_emits_system_cache_point(self):
+        """converse_with_tools sets a cachePoint after the system block so
+        each agent's tool-use loop reads its own cache from turn 2 onward
+        (Bedrock's prefix-match lookback turns N's input into a cache read
+        for turn N+1 within the same agent run)."""
         client = self._make_client(guardrail_id="gr-123")
         self._mock_converse(client)
         client.converse_with_tools(
@@ -615,6 +616,45 @@ class TestSplitPrompt:
         kwargs = client._client.converse.call_args[1]
         system = kwargs["system"]
         assert any("cachePoint" in block for block in system)
+
+    def test_converse_with_tools_uses_override_model_id(self):
+        """Critic can run on Haiku while Investigator stays on Opus. The
+        per-call model_id override lets a single client serve both."""
+        client = self._make_client()
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": [{"text": "x"}]}],
+            tool_specs=[],
+            model_id="TEST_MODEL_ID",
+        )
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == "TEST_MODEL_ID"
+
+    def test_converse_with_tools_default_model_id(self):
+        client = self._make_client()
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": [{"text": "x"}]}],
+            tool_specs=[],
+        )
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == client._model_id
+
+    def test_converse_with_tools_empty_model_id_falls_back(self):
+        """An empty-string override (e.g., from an unset GH Actions vars
+        expansion) must fall through to the client default."""
+        client = self._make_client()
+        self._mock_converse(client)
+        client.converse_with_tools(
+            "system",
+            [{"role": "user", "content": [{"text": "x"}]}],
+            tool_specs=[],
+            model_id="",
+        )
+        kwargs = client._client.converse.call_args[1]
+        assert kwargs["modelId"] == client._model_id
 
     def test_converse_with_tools_appends_tail_cache_point(self):
         """Tail cachePoint on the last message lets the growing conversation

@@ -207,7 +207,7 @@ class BedrockClient:
             return None, {}
 
     def converse_with_tools(self, system_prompt, messages, tool_specs,
-                             max_tokens=8000, temperature=0.3):
+                             max_tokens=8000, temperature=0.3, model_id=None):
         """One turn of Converse with optional toolConfig. Returns the raw
         response dict (or None on failure / guardrail intervention /
         circuit open).
@@ -216,10 +216,17 @@ class BedrockClient:
         by the loop's commit phase to physically prevent further tool calls
         after the tool budget is exhausted.
 
-        Two cachePoints: one after the system block (the static_context
-        prefix shared between Investigator and Critic), one at the tail of
-        the last message (so the growing conversation history is cached
+        model_id (optional): override the default model. Used to run the
+        Critic on a cheaper model (Haiku) while keeping Investigator on Opus.
+        Within one agent's loop, the model stays fixed across turns — switching
+        mid-loop would invalidate the message cache.
+
+        Two cachePoints: one after the system block, one at the tail of the
+        last message (so the growing conversation history is cached
         turn-over-turn instead of re-priced as fresh input every turn).
+        Both Opus 4.6 and Haiku 4.5 require ≥4,096 tokens before a cachePoint
+        for it to take effect; first-turn message-tail caches silently no-op
+        on small payloads but become useful once tool results accumulate.
         """
         if self._circuit_open:
             logger.warning("Circuit breaker open, skipping Bedrock tool-use call")
@@ -228,7 +235,7 @@ class BedrockClient:
             wrapped_messages = self._wrap_first_user_for_guardrail(messages)
             wrapped_messages = self._append_tail_cache_point(wrapped_messages)
             kwargs = {
-                "modelId": self._model_id,
+                "modelId": model_id or self._model_id,
                 "messages": wrapped_messages,
                 "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
             }
