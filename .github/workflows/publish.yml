@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        spark: ${{ fromJSON('["4.0", "4.1"]') }}
+        spark: ${{ fromJSON('["4.1"]') }}
     
     steps:
       - name: Checkout code
