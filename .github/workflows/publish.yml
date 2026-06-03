@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - '4.0'
+          - '4.1'
       release_version:
         description: 'Release version (check README badge for current version)'
         required: true
@@ -26,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        spark: ${{ fromJSON('["4.0"]') }}
+        spark: ${{ fromJSON('["4.0", "4.1"]') }}
     
     steps:
       - name: Checkout code
@@ -66,7 +67,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
         with:
-          java-version: ${{ matrix.spark == '4.0' && '17' || '8' }}
+          java-version: '17'
           distribution: 'corretto'
           cache: maven
 
