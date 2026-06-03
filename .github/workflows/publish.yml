@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - '4.0'
+          - '4.1'
       release_version:
         description: 'Release version (check README badge for current version)'
         required: true
