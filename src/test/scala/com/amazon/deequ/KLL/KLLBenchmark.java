@@ -80,7 +80,7 @@ public class KLLBenchmark {
 
   @Benchmark
   public void sketchArrayWithJavaSketchesKLL(Blackhole bh) {
-    KllFloatsSketch sketch = new KllFloatsSketch();
+    KllFloatsSketch sketch = KllFloatsSketch.newHeapInstance();
     for (int i = 0; i < N; i++) {
       sketch.update(DATA_FOR_TESTING[i]);
     }
