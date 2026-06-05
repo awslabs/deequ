@@ -74,6 +74,8 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresFrequencyBasedState(provider, provider,
         Uniqueness(Seq("att1", "count")), data)
       assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("att1"), data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider,
+        DuplicateRowCount(Seq("att1", "count")), data)
 
       assertCorrectlyApproxQuantileState(provider, provider, ApproxQuantile("price", 0.5), data)
     }

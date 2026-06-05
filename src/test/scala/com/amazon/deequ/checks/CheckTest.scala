@@ -282,6 +282,19 @@ class CheckTest extends AnyWordSpec with Matchers with SparkContextSpec with Fix
       assert(constraintStatuses(9) == ConstraintStatus.Success)
     }
 
+    "return the correct check status for hasDuplicateRowCount" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+
+      val check = Check(CheckLevel.Error, "duplicate-row-count-check")
+        .hasDuplicateRowCount(Seq("col1", "col2"), _ == 2)
+
+      val context = runChecks(df, check)
+      val result = check.evaluate(context)
+
+      assert(result.status == CheckStatus.Success)
+    }
+
     "return the correct check status for hasUniqueValueRatio" in withSparkSession { sparkSession =>
 
       val check = Check(CheckLevel.Error, "unique-value-ratio-check")

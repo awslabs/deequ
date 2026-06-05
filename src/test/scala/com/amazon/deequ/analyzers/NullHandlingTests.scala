@@ -161,5 +161,29 @@ class NullHandlingTests extends AnyWordSpec
     assert(metric.value.failed.get.isInstanceOf[EmptyStateException])
   }
 
+  "DuplicateRowCount" should {
+    "exclude all-null rows and return 0 duplicates" in withSparkSession { session =>
+      import session.implicits._
+      val df = Seq(
+        (None: Option[String], None: Option[String]),
+        (None: Option[String], None: Option[String]),
+        (Some("a"), Some("b"))
+      ).toDF("col1", "col2")
+      val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df)
+      assert(result.value == Success(0.0))
+    }
+
+    "treat partial nulls as equal for grouping" in withSparkSession { session =>
+      import session.implicits._
+      val df = Seq(
+        (Some("a"), None: Option[String]),
+        (Some("a"), None: Option[String]),
+        (Some("b"), Some("c"))
+      ).toDF("col1", "col2")
+      val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df)
+      assert(result.value == Success(2.0))
+    }
+  }
+
 
 }

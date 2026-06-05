@@ -44,7 +44,7 @@ case class DuplicateRowCount(columns: Seq[String], where: Option[String] = None,
 
   override def fromAggregationResult(result: Row, offset: Int, fullColumn: Option[Column]): DoubleMetric = {
     if (result.isNullAt(offset)) {
-      // WHERE clause matched zero rows — return 0 (no duplicates) instead of empty metric
+      // WHERE clause matched zero rows — return 0 (no duplicates)
       toSuccessMetric(0.0, fullColumn)
     } else {
       val conditionColumn = where.map { expression => expr(expression) }
@@ -78,7 +78,7 @@ case class DuplicateRowCount(columns: Seq[String], where: Option[String] = None,
     }
   }
 
-  /** For empty columns, resolve all DataFrame columns at calculation time */
+  /** For empty columns, resolve all DataFrame columns and re-wrap metric entity */
   override def calculate(
       data: DataFrame,
       aggregateWith: Option[StateLoader] = None,
@@ -104,6 +104,9 @@ case class DuplicateRowCount(columns: Seq[String], where: Option[String] = None,
   }
 
   override def filterCondition: Option[String] = where
+
+  override def columnsReferenced(): Option[Set[String]] =
+    if (columns.isEmpty || where.isDefined) None else Some(columns.toSet)
 }
 
 object DuplicateRowCount {
