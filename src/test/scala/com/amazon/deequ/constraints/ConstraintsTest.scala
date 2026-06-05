@@ -62,8 +62,9 @@ class ConstraintsTest extends WordSpec with Matchers with SparkContextSpec with 
     "fail when assertion is not met" in withSparkSession { sparkSession =>
       import sparkSession.implicits._
       val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
-      calculate(Constraint.duplicateRowCountConstraint(Seq("col1", "col2"), _ == 0), df)
-        .status shouldBe ConstraintStatus.Failure
+      val result = calculate(Constraint.duplicateRowCountConstraint(Seq("col1", "col2"), _ == 0), df)
+      result.status shouldBe ConstraintStatus.Failure
+      result.message.get should include ("2")
     }
   }
 

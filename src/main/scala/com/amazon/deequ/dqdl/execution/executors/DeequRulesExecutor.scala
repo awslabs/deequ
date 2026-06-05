@@ -20,8 +20,10 @@ import com.amazon.deequ.{VerificationResult, VerificationSuite}
 import com.amazon.deequ.constraints.{RowLevelAssertedConstraint, RowLevelConstraint, RowLevelGroupedConstraint}
 import com.amazon.deequ.dqdl.execution.DQDLExecutor
 import com.amazon.deequ.dqdl.model.{DeequExecutableRule, DeequMetricMapping, Failed, NoColumn, RuleOutcome, SingularColumn}
+import com.amazon.deequ.dqdl.translation.rules.DuplicateRowCountRule
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, concat, lit}
+import scala.collection.JavaConverters._
 import software.amazon.glue.dqdl.model.DQRule
 
 case class DeequExecutionResult(outcomes: Map[DQRule, RuleOutcome], rowLevelData: DataFrame)
@@ -40,9 +42,13 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
       return DeequExecutionResult(Map.empty, df)
     }
 
+    // Resolve empty DuplicateRowCount columns to all DataFrame columns
+    // so RowLevelGroupedConstraint gets a populated column list for row-level results
+    val resolvedRules = rules.map(rule => resolveDuplicateRowCountColumns(rule, df))
+
     val verificationResult = VerificationSuite()
       .onData(df.toDF())
-      .addChecks(rules.map(_.check))
+      .addChecks(resolvedRules.map(_.check))
       .run()
 
     val rowLevelData = VerificationResult.rowLevelResultsAsDataFrame(
@@ -68,7 +74,7 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
         if (hasRowLevel) Some(check.description) else None
     }.toSet
 
-    val outcomes = rules.map { r =>
+    val outcomes = resolvedRules.map { r =>
       val rowLevelOutcome = if (rowLevelCheckDescriptions.contains(r.check.description)) {
         SingularColumn(r.check.description)
       } else {
@@ -101,5 +107,42 @@ object DeequRulesExecutor extends DQDLExecutor.RuleExecutor[DeequExecutableRule]
         s"${mapping.entity}$delim${mapping.instance}$delim${mapping.name}" -> metricValue
       }
     }.toMap
+  }
+
+  /**
+   * Resolves empty columns in DuplicateRowCount rules to all DataFrame columns.
+   * This ensures RowLevelGroupedConstraint gets a populated column list for row-level results.
+   */
+  private def resolveDuplicateRowCountColumns(rule: DeequExecutableRule, df: DataFrame): DeequExecutableRule = {
+    import com.amazon.deequ.checks.{Check, CheckLevel}
+    import com.amazon.deequ.dqdl.util.DQDLUtility.addWhereClause
+    import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
+
+    // Only resolve for DuplicateRowCount with no explicit columns
+    val isDuplicateRowCountNoColumns = rule.dqRule.getRuleType == "DuplicateRowCount" &&
+      !rule.dqRule.getParameters.asScala.exists(_._1.startsWith("TargetColumn"))
+
+    if (!isDuplicateRowCountNoColumns) {
+      rule
+    } else {
+      // Re-derive the assertion from the DQRule condition
+      val condition = rule.dqRule.getCondition.asInstanceOf[NumberBasedCondition]
+      val converter = new DuplicateRowCountRule()
+      val doubleAssertion = converter.assertionAsScala(rule.dqRule, condition)
+      val longAssertion: Long => Boolean = (v: Long) => doubleAssertion(v.toDouble)
+
+      // Rebuild check with all DataFrame columns
+      val allColumns = df.columns.toSeq
+      val check = Check(CheckLevel.Error, rule.check.description)
+        .hasDuplicateRowCount(allColumns, longAssertion)
+
+      val resolvedCheck = if (rule.dqRule.getWhereClause != null && !rule.dqRule.getWhereClause.isEmpty) {
+        addWhereClause(rule.dqRule, check)
+      } else {
+        check
+      }
+
+      DeequExecutableRule(rule.dqRule, resolvedCheck, rule.deequMetricMappings)
+    }
   }
 }

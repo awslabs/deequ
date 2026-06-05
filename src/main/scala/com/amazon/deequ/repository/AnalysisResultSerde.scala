@@ -356,6 +356,7 @@ private[deequ] object AnalyzerSerializer
         result.add(COLUMNS_FIELD, context.serialize(duplicateRowCount.columns.asJava,
           new TypeToken[JList[String]]() {}.getType))
         result.addProperty(WHERE_FIELD, duplicateRowCount.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(duplicateRowCount.analyzerOptions.orNull))
 
       case histogram: Histogram if histogram.binningUdf.isEmpty =>
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
@@ -598,7 +599,8 @@ private[deequ] object AnalyzerDeserializer
       case "DuplicateRowCount" =>
         DuplicateRowCount(
           getColumnsAsSeq(context, json),
-          getOptionalWhereParam(json))
+          getOptionalWhereParam(json),
+          analyzerOptions = getOptionalAnalyzerOptions(json))
 
       case "Histogram" =>
         Histogram(
