@@ -16,7 +16,8 @@
 package com.amazon.deequ.connect
 
 import com.amazon.deequ.{VerificationResult, VerificationSuite}
-import com.amazon.deequ.analyzers.{Analyzer, DataTypeInstances, KLLParameters}
+import com.amazon.deequ.analyzers.{Analyzer, DataTypeInstances}
+import com.amazon.deequ.connect.proto.{KLLParameters => ProtoKLLParameters}
 import com.amazon.deequ.analyzers.runners.{AnalysisRunner, AnalyzerContext}
 import com.amazon.deequ.checks.Check
 import com.amazon.deequ.connect.proto._
@@ -30,8 +31,18 @@ import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.connect.planner.SparkConnectPlanner
 import org.apache.spark.sql.connect.plugin.RelationPlugin
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+
+/**
+ * Wire-format version constant - see ADR-0004. Every Spark Connect Relation
+ * envelope must carry this value; mismatches surface as a structured error
+ * instead of a low-level proto parse failure.
+ */
+object DeequRelationPlugin {
+  val WIRE_FORMAT_VERSION = "deequ-connect/2"
+}
 
 /**
  * Spark Connect RelationPlugin for Deequ.
@@ -44,48 +55,60 @@ import scala.collection.JavaConverters._
  */
 class DeequRelationPlugin extends RelationPlugin {
 
-  // The transform method receives protobuf Any from Spark Connect
-  // Scala compiler sees com.google.protobuf.Any in the interface signature
+  private val logger = LoggerFactory.getLogger(classOf[DeequRelationPlugin])
+
   override def transform(
       relation: ProtobufAny,
       planner: SparkConnectPlanner): Option[LogicalPlan] = {
 
-    // Debug: Log what we're receiving
-    println(s"[DeequPlugin] Received relation with type_url: ${relation.getTypeUrl}")
-    println(s"[DeequPlugin] Expected type_url for verification: ${DeequVerificationRelation.getDescriptor.getFullName}")
-    println(s"[DeequPlugin] is(DeequVerificationRelation): ${relation.is(classOf[DeequVerificationRelation])}")
+    logger.debug("Received relation with type_url={}", relation.getTypeUrl)
 
-    // Handle verification requests
     if (relation.is(classOf[DeequVerificationRelation])) {
-      println("[DeequPlugin] Handling verification request")
       val req = relation.unpack(classOf[DeequVerificationRelation])
+      assertWireFormat(req.getWireFormatVersion, "DeequVerificationRelation")
+      logger.debug("Handling verification request")
       return Some(handleVerification(req, planner))
     }
 
-    // Handle analysis requests
     if (relation.is(classOf[DeequAnalysisRelation])) {
-      println("[DeequPlugin] Handling analysis request")
       val req = relation.unpack(classOf[DeequAnalysisRelation])
+      assertWireFormat(req.getWireFormatVersion, "DeequAnalysisRelation")
+      logger.debug("Handling analysis request")
       return Some(handleAnalysis(req, planner))
     }
 
-    // Handle column profiler requests
     if (relation.is(classOf[DeequColumnProfilerRelation])) {
-      println("[DeequPlugin] Handling column profiler request")
       val req = relation.unpack(classOf[DeequColumnProfilerRelation])
+      assertWireFormat(req.getWireFormatVersion, "DeequColumnProfilerRelation")
+      logger.debug("Handling column profiler request")
       return Some(handleColumnProfiler(req, planner))
     }
 
-    // Handle constraint suggestion requests
     if (relation.is(classOf[DeequConstraintSuggestionRelation])) {
-      println("[DeequPlugin] Handling constraint suggestion request")
       val req = relation.unpack(classOf[DeequConstraintSuggestionRelation])
+      assertWireFormat(req.getWireFormatVersion, "DeequConstraintSuggestionRelation")
+      logger.debug("Handling constraint suggestion request")
       return Some(handleConstraintSuggestion(req, planner))
     }
 
-    // Not our message type
-    println(s"[DeequPlugin] Unknown message type, returning None")
+    logger.debug("Unknown message type, returning None")
     None
+  }
+
+  /**
+   * Verify the client's wire-format version matches what this plugin understands.
+   * Mismatched versions throw a clear, actionable error rather than letting
+   * the request fall through to a per-field unpack that would surface as a
+   * confusing low-level error.
+   */
+  private def assertWireFormat(actual: String, envelope: String): Unit = {
+    val expected = DeequRelationPlugin.WIRE_FORMAT_VERSION
+    if (actual != expected) {
+      throw new IllegalArgumentException(
+        s"Wire format version mismatch on $envelope: server expects '$expected' but " +
+          s"client sent '${if (actual.isEmpty) "<unset>" else actual}'. " +
+          "Upgrade the deequ JAR and pydeequ wheel together.")
+    }
   }
 
   /**
@@ -246,8 +269,8 @@ class DeequRelationPlugin extends RelationPlugin {
       profilerRunner = profilerRunner.restrictToColumns(restrictToColumns)
     }
 
-    // Set histogram threshold
-    if (req.getLowCardinalityHistogramThreshold > 0) {
+    // Set histogram threshold (presence-checked - see ADR-0001 F1)
+    if (req.hasLowCardinalityHistogramThreshold) {
       profilerRunner = profilerRunner
         .withLowCardinalityHistogramThreshold(req.getLowCardinalityHistogramThreshold)
     }
@@ -258,12 +281,7 @@ class DeequRelationPlugin extends RelationPlugin {
 
       // Set KLL parameters if provided
       if (req.hasKllParameters) {
-        val kllParams = req.getKllParameters
-        profilerRunner = profilerRunner.setKLLParameters(Some(KLLParameters(
-          kllParams.getSketchSize,
-          kllParams.getShrinkingFactor,
-          kllParams.getNumberOfBuckets
-        )))
+        profilerRunner = profilerRunner.setKLLParameters(Some(toKLLParameters(req.getKllParameters)))
       }
     }
 
@@ -296,10 +314,9 @@ class DeequRelationPlugin extends RelationPlugin {
     // Build suggestion runner
     var suggestionRunner = ConstraintSuggestionRunner().onData(inputDf)
 
-    // Add constraint rules
-    val ruleNames = req.getConstraintRulesList.asScala.toSeq
-    ruleNames.foreach { ruleName =>
-      suggestionRunner = suggestionRunner.addConstraintRules(parseConstraintRules(ruleName))
+    // Add constraint rules (typed enum - see CONTEXT.md)
+    req.getConstraintRulesList.asScala.foreach { rule =>
+      suggestionRunner = suggestionRunner.addConstraintRules(rulesFromProto(rule))
     }
 
     // Restrict to columns if specified
@@ -308,23 +325,18 @@ class DeequRelationPlugin extends RelationPlugin {
       suggestionRunner = suggestionRunner.restrictToColumns(restrictToColumns)
     }
 
-    // Set histogram threshold
-    if (req.getLowCardinalityHistogramThreshold > 0) {
+    // Set histogram threshold (presence-checked - see ADR-0001 F1)
+    if (req.hasLowCardinalityHistogramThreshold) {
       suggestionRunner = suggestionRunner
         .withLowCardinalityHistogramThreshold(req.getLowCardinalityHistogramThreshold)
     }
 
     // Set KLL parameters if KLL profiling is enabled
-    if (req.getEnableKllProfiling && req.hasKllParameters) {
-      val kllParams = req.getKllParameters
-      suggestionRunner = suggestionRunner.setKLLParameters(KLLParameters(
-        kllParams.getSketchSize,
-        kllParams.getShrinkingFactor,
-        kllParams.getNumberOfBuckets
-      ))
-    } else if (req.getEnableKllProfiling) {
-      // Use default KLL parameters (matching Python defaults)
-      suggestionRunner = suggestionRunner.setKLLParameters(KLLParameters(2048, 0.64, 64))
+    if (req.getEnableKllProfiling) {
+      val kll =
+        if (req.hasKllParameters) toKLLParameters(req.getKllParameters)
+        else com.amazon.deequ.analyzers.KLLParameters(2048, 0.64, 64)  // library defaults
+      suggestionRunner = suggestionRunner.setKLLParameters(kll)
     }
 
     // Set predefined types if provided
@@ -336,13 +348,9 @@ class DeequRelationPlugin extends RelationPlugin {
       suggestionRunner = suggestionRunner.setPredefinedTypes(typeMap)
     }
 
-    // Set train/test split if specified
-    if (req.getTestsetRatio > 0) {
-      val seed = if (req.getTestsetSplitRandomSeed != 0) {
-        Some(req.getTestsetSplitRandomSeed)
-      } else {
-        None
-      }
+    // Set train/test split - presence-checked so seed=0 is a legal user choice.
+    if (req.hasTestsetRatio) {
+      val seed = if (req.hasTestsetSplitRandomSeed) Some(req.getTestsetSplitRandomSeed) else None
       suggestionRunner = suggestionRunner.useTrainTestSplitWithTestsetRatio(req.getTestsetRatio, seed)
     }
 
@@ -354,18 +362,32 @@ class DeequRelationPlugin extends RelationPlugin {
   }
 
   /**
-   * Parse constraint rule name to Deequ Rules.
+   * Map a `ConstraintRuleSet` enum value to the corresponding Deequ rule bundle.
+   * Closed-set match - UNSPECIFIED is rejected because the schema's enum
+   * always carries an explicit non-default variant under correct client use.
    */
-  private def parseConstraintRules(
-      ruleName: String): Seq[com.amazon.deequ.suggestions.rules.ConstraintRule[ColumnProfile]] = {
-    ruleName.toUpperCase match {
-      case "DEFAULT" => Rules.DEFAULT
-      case "STRING" => Rules.STRING
-      case "NUMERICAL" => Rules.NUMERICAL
-      case "COMMON" => Rules.COMMON
-      case "EXTENDED" => Rules.EXTENDED
-      case _ => Rules.DEFAULT
-    }
+  private def rulesFromProto(
+      rule: ConstraintRuleSet)
+    : Seq[com.amazon.deequ.suggestions.rules.ConstraintRule[ColumnProfile]] = rule match {
+    case ConstraintRuleSet.CONSTRAINT_RULE_SET_DEFAULT => Rules.DEFAULT
+    case ConstraintRuleSet.CONSTRAINT_RULE_SET_STRING => Rules.STRING
+    case ConstraintRuleSet.CONSTRAINT_RULE_SET_NUMERICAL => Rules.NUMERICAL
+    case ConstraintRuleSet.CONSTRAINT_RULE_SET_COMMON => Rules.COMMON
+    case ConstraintRuleSet.CONSTRAINT_RULE_SET_EXTENDED => Rules.EXTENDED
+    case ConstraintRuleSet.CONSTRAINT_RULE_SET_UNSPECIFIED | _ =>
+      throw new IllegalArgumentException(
+        s"Unspecified or unknown ConstraintRuleSet: $rule")
+  }
+
+  /**
+   * Map a wire `ProtoKLLParameters` (with optional fields) to the Deequ
+   * `KLLParameters` case class. Missing fields fall back to library defaults.
+   */
+  private def toKLLParameters(p: ProtoKLLParameters): com.amazon.deequ.analyzers.KLLParameters = {
+    val sketchSize = if (p.hasSketchSize) p.getSketchSize else 2048
+    val shrinkingFactor = if (p.hasShrinkingFactor) p.getShrinkingFactor else 0.64
+    val numberOfBuckets = if (p.hasNumberOfBuckets) p.getNumberOfBuckets else 64
+    com.amazon.deequ.analyzers.KLLParameters(sketchSize, shrinkingFactor, numberOfBuckets)
   }
 
   /**
