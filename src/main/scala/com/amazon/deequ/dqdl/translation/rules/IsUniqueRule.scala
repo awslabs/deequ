@@ -33,12 +33,12 @@ case class IsUniqueRule() extends DQDLRuleConverter {
       case Nil => Left("Required parameters not found")
 
       case Seq(singleCol) =>
-        val singleColCheck = check.isUnique(singleCol)
+        val singleColCheck = check.isUnique(singleCol, analyzerOptions = analyzerOptionsForWhereClause(rule))
         Right((addWhereClause(rule, singleColCheck),
           Seq(DeequMetricMapping("Column", singleCol, "Uniqueness", "Uniqueness", None, rule = rule))))
 
       case cols@(head +: tail) =>
-        val multiColCheck = check.areUnique(columns)
+        val multiColCheck = check.areUnique(columns, analyzerOptions = analyzerOptionsForWhereClause(rule))
         Right(
           addWhereClause(rule, multiColCheck),
           Seq(DeequMetricMapping("Multicolumn", columns.mkString(","), "Uniqueness", "Uniqueness", None, rule = rule)))
