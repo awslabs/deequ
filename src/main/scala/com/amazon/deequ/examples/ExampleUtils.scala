@@ -25,6 +25,7 @@ private[deequ] object ExampleUtils {
       .master("local")
       .appName("test")
       .config("spark.ui.enabled", "false")
+      .config("spark.sql.datetime.java8API.enabled", "true")
       .getOrCreate()
     session.sparkContext.setCheckpointDir(System.getProperty("java.io.tmpdir"))
 
@@ -43,6 +44,11 @@ private[deequ] object ExampleUtils {
 
   def manufacturersAsDataframe(session: SparkSession, manufacturers: Manufacturer*): DataFrame = {
     val rdd = session.sparkContext.parallelize(manufacturers)
+    session.createDataFrame(rdd)
+  }
+
+  def customerAsDataframe(session: SparkSession, customer: Customer*): DataFrame = {
+    val rdd = session.sparkContext.parallelize(customer)
     session.createDataFrame(rdd)
   }
 }
