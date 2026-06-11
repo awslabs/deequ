@@ -191,18 +191,6 @@
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
 
-        <!-- Ship the .proto source inside the JAR at META-INF/protobuf/. -->
-        <!-- See ADR-0003: python-deequ extracts and runs protoc at build time. -->
-        <resources>
-            <resource>
-                <directory>src/main/protobuf</directory>
-                <targetPath>META-INF/protobuf</targetPath>
-                <includes>
-                    <include>*.proto</include>
-                </includes>
-            </resource>
-        </resources>
-
         <extensions>
             <extension>
                 <groupId>kr.motd.maven</groupId>

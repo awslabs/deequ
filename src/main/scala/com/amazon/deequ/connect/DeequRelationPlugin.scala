@@ -36,19 +36,13 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
 /**
- * Wire-format version constant - see ADR-0004. Every Spark Connect Relation
- * envelope must carry this value; mismatches surface as a structured error
- * instead of a low-level proto parse failure.
- */
-object DeequRelationPlugin {
-  val WIRE_FORMAT_VERSION = "deequ-connect/2"
-}
-
-/**
  * Spark Connect RelationPlugin for Deequ.
  *
- * This plugin handles custom Deequ relation types sent from Python clients,
- * executes the corresponding Deequ operations, and returns results as DataFrames.
+ * Versioning follows Spark's RelationPlugin convention (see ADR-0005): the
+ * protobuf type URL of the unpacked message is the wire-version discriminator.
+ * Mismatched JAR/wheel pairs naturally fall through `relation.is(classOf[X])`
+ * to `Optional.empty()`, letting Spark surface a clear "no handler found"
+ * error.
  *
  * Register this plugin with:
  * --conf spark.connect.extensions.relation.classes=com.amazon.deequ.connect.DeequRelationPlugin
@@ -64,51 +58,26 @@ class DeequRelationPlugin extends RelationPlugin {
     logger.debug("Received relation with type_url={}", relation.getTypeUrl)
 
     if (relation.is(classOf[DeequVerificationRelation])) {
-      val req = relation.unpack(classOf[DeequVerificationRelation])
-      assertWireFormat(req.getWireFormatVersion, "DeequVerificationRelation")
       logger.debug("Handling verification request")
-      return Some(handleVerification(req, planner))
+      return Some(handleVerification(relation.unpack(classOf[DeequVerificationRelation]), planner))
     }
 
     if (relation.is(classOf[DeequAnalysisRelation])) {
-      val req = relation.unpack(classOf[DeequAnalysisRelation])
-      assertWireFormat(req.getWireFormatVersion, "DeequAnalysisRelation")
       logger.debug("Handling analysis request")
-      return Some(handleAnalysis(req, planner))
+      return Some(handleAnalysis(relation.unpack(classOf[DeequAnalysisRelation]), planner))
     }
 
     if (relation.is(classOf[DeequColumnProfilerRelation])) {
-      val req = relation.unpack(classOf[DeequColumnProfilerRelation])
-      assertWireFormat(req.getWireFormatVersion, "DeequColumnProfilerRelation")
       logger.debug("Handling column profiler request")
-      return Some(handleColumnProfiler(req, planner))
+      return Some(handleColumnProfiler(relation.unpack(classOf[DeequColumnProfilerRelation]), planner))
     }
 
     if (relation.is(classOf[DeequConstraintSuggestionRelation])) {
-      val req = relation.unpack(classOf[DeequConstraintSuggestionRelation])
-      assertWireFormat(req.getWireFormatVersion, "DeequConstraintSuggestionRelation")
       logger.debug("Handling constraint suggestion request")
-      return Some(handleConstraintSuggestion(req, planner))
+      return Some(handleConstraintSuggestion(relation.unpack(classOf[DeequConstraintSuggestionRelation]), planner))
     }
 
-    logger.debug("Unknown message type, returning None")
     None
-  }
-
-  /**
-   * Verify the client's wire-format version matches what this plugin understands.
-   * Mismatched versions throw a clear, actionable error rather than letting
-   * the request fall through to a per-field unpack that would surface as a
-   * confusing low-level error.
-   */
-  private def assertWireFormat(actual: String, envelope: String): Unit = {
-    val expected = DeequRelationPlugin.WIRE_FORMAT_VERSION
-    if (actual != expected) {
-      throw new IllegalArgumentException(
-        s"Wire format version mismatch on $envelope: server expects '$expected' but " +
-          s"client sent '${if (actual.isEmpty) "<unset>" else actual}'. " +
-          "Upgrade the deequ JAR and pydeequ wheel together.")
-    }
   }
 
   /**

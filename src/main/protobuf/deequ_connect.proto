@@ -32,6 +32,8 @@ option java_outer_classname = "DeequConnectProtos";
 // ============================================================================
 
 message Predicate {
+  // CompareOp is closed: every operator the wire format supports is listed
+  // here. Adding a new operator is a wire-format-version bump (per AIP-126).
   enum CompareOp {
     COMPARE_OP_UNSPECIFIED = 0;
     COMPARE_OP_EQ          = 1;
@@ -213,6 +215,8 @@ message Constraint {
 // Check — a named collection of constraints.
 // ============================================================================
 
+// CheckLevel is closed: Deequ supports exactly Error and Warning. New levels
+// would be a wire-format-version bump (per AIP-126).
 enum CheckLevel {
   CHECK_LEVEL_UNSPECIFIED = 0;
   CHECK_LEVEL_ERROR       = 1;
@@ -352,6 +356,9 @@ message KLLParameters {
 // Constraint Suggestion rule sets — see CONTEXT.md.
 // ============================================================================
 
+// ConstraintRuleSet is closed: every entry maps 1:1 to a member of
+// com.amazon.deequ.suggestions.Rules on the JVM. Adding a rule set is a
+// wire-format-version bump (per AIP-126).
 enum ConstraintRuleSet {
   CONSTRAINT_RULE_SET_UNSPECIFIED = 0;
   CONSTRAINT_RULE_SET_DEFAULT     = 1;
@@ -365,53 +372,45 @@ enum ConstraintRuleSet {
 // Top-level request envelopes — Spark Connect Relation extensions.
 // ============================================================================
 //
-// Every envelope carries `wire_format_version`. The client populates it from
-// a constant bundled with its generated stubs; the plugin asserts equality
-// before unpacking. Mismatches are returned as structured errors rather than
-// proto-parse failures. See ADR-0004.
-//
-// Stage 1 sets WIRE_FORMAT_VERSION = "deequ-connect/2".
+// Versioning: the protobuf type URL of the unpacked message is the wire
+// version discriminator (Spark Connect's RelationPlugin contract — see
+// ADR-0005). When a breaking change is needed, bump the message name or
+// promote to a new package (e.g., com.amazon.deequ.connect.v2). Older
+// plugins naturally `Optional.empty()` on the new type URL.
 
 message DeequVerificationRelation {
-  string wire_format_version            = 1;
-  bytes input_relation                  = 2;
-  repeated Check checks                 = 3;
-  repeated Analyzer required_analyzers  = 4;
+  bytes input_relation                  = 1;
+  repeated Check checks                 = 2;
+  repeated Analyzer required_analyzers  = 3;
 }
 
 message DeequAnalysisRelation {
-  string wire_format_version  = 1;
-  bytes input_relation        = 2;
-  repeated Analyzer analyzers = 3;
+  bytes input_relation        = 1;
+  repeated Analyzer analyzers = 2;
 }
 
 message DeequColumnProfilerRelation {
-  string wire_format_version                         = 1;
-  bytes input_relation                               = 2;
+  bytes input_relation                               = 1;
+  repeated string restrict_to_columns                = 2;
+  optional int32 low_cardinality_histogram_threshold = 3;
+  bool enable_kll_profiling                          = 4;
+  KLLParameters kll_parameters                       = 5;
+
+  // Open-ended for now — set of supported type names is not closed.
+  // (See architecture review Candidate 8; deferred pending Deequ team input.)
+  map<string, string> predefined_types               = 6;
+}
+
+message DeequConstraintSuggestionRelation {
+  bytes input_relation                               = 1;
+  repeated ConstraintRuleSet constraint_rules        = 2;
   repeated string restrict_to_columns                = 3;
   optional int32 low_cardinality_histogram_threshold = 4;
   bool enable_kll_profiling                          = 5;
   KLLParameters kll_parameters                       = 6;
-
-  // Open-ended for now — set of supported type names is not closed.
-  // (See architecture review Candidate 8; deferred pending Deequ team input.)
   map<string, string> predefined_types               = 7;
-}
-
-message DeequConstraintSuggestionRelation {
-  string wire_format_version                         = 1;
-  bytes input_relation                               = 2;
-  repeated ConstraintRuleSet constraint_rules        = 3;
-  repeated string restrict_to_columns                = 4;
-  optional int32 low_cardinality_histogram_threshold = 5;
-  bool enable_kll_profiling                          = 6;
-  KLLParameters kll_parameters                       = 7;
-  map<string, string> predefined_types               = 8;
-  optional double testset_ratio                      = 9;   // (0,1) — server-side disabled if unset
-  optional int64 testset_split_random_seed           = 10;  // any int64; unset = no seed
-  // Note: field name `constraint_rules` is reused with a new type
-  // (was `repeated string`, now `repeated ConstraintRuleSet`). Per ADR-0002
-  // this is a clean wire break, so reuse rather than rename is appropriate.
+  optional double testset_ratio                      = 8;   // (0,1) — server-side disabled if unset
+  optional int64 testset_split_random_seed           = 9;   // any int64; unset = no seed
 }
 
 // ============================================================================

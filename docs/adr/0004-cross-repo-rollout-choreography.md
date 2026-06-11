@@ -1,7 +1,16 @@
 # ADR-0004 — Cross-repo Stage 1 rollout: deequ-first, pinned JAR-by-tag
 
 Date: 2026-05-29
-Status: Accepted
+Status: **Partially superseded by ADR-0005 (2026-06-10)**
+
+> The "deequ-first, JAR-tag-pinned, then python-deequ" sequence remains
+> valid. The `wire_format_version` runtime guard described in this ADR is
+> **superseded**: the survey of Spark Connect plugins found that no plugin
+> uses such a field, and Spark's own `client_type` field is documented as
+> "will not be interpreted by the server." ADR-0005 replaces the guard with
+> the canonical Spark precedent: the protobuf type URL of the unpacked
+> message is the version discriminator. Mismatched JAR/wheel pairs surface
+> as Spark's standard "no handler found" error.
 
 ## Context
 

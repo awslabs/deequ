@@ -1,7 +1,14 @@
 # ADR-0003 — Stage 1 stub delivery: ship `.proto` in the JAR; python-deequ runs `protoc` at build
 
 Date: 2026-05-29
-Status: Accepted
+Status: **Superseded by ADR-0005 (2026-06-10)**
+
+> A subsequent survey of Spark Connect plugins (Apache Spark itself, Delta
+> Connect, GraphFrames, Apache Iceberg, Apache Sedona) found that **none** of
+> them ship `.proto` source inside published JARs. Spark's own build
+> explicitly drops `.proto` files (`MergeStrategy.discard` in
+> `project/SparkBuild.scala`). GraphFrames checks in the generated `_pb2.py`
+> alongside its Python source. ADR-0005 adopts the GraphFrames pattern.
 
 ## Context
 
