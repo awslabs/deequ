@@ -69,11 +69,16 @@ message HistogramSpec {
   optional int32 max_detail_bins = 2;  // server default Histogram.MaximumAllowedDetailBins
 }
 
-// Compliance analyzer: instance name + SQL predicate string.
+// Compliance analyzer: instance name + SQL predicate string + the columns
+// the predicate references (used by Deequ for precondition checks).
 // (`predicate` here is a SQL boolean expression, not a numeric assertion.)
 message ComplianceAnalyzerSpec {
-  string instance  = 1;  // metric name (NOT a column reference)
-  string predicate = 2;  // SQL boolean expression
+  string instance         = 1;  // metric name (NOT a column reference)
+  string predicate        = 2;  // SQL boolean expression
+  repeated string columns = 3;  // columns referenced by `predicate` — used by
+                                // Compliance.additionalPreconditions to fail
+                                // fast on missing columns. Empty = skip the
+                                // precondition check (caller's risk).
 }
 
 // PatternMatch analyzer.

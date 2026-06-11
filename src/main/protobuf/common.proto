@@ -69,14 +69,15 @@ message Predicate {
 // ============================================================================
 // KLL Sketch parameters — used by ColumnProfilerRelation and
 // ConstraintSuggestionRelation when KLL profiling is enabled.
-// Stage 2: clients populate concrete values; the server-side library-default
-// fallback was removed.
+// All three fields are required; clients must populate concrete values
+// (Python clients use the `KLLParameters()` dataclass defaults of
+// 2048, 0.64, 64). The server validates that all fields are positive.
 // ============================================================================
 
 message KLLParameters {
-  optional int32  sketch_size       = 1;
-  optional double shrinking_factor  = 2;
-  optional int32  number_of_buckets = 3;
+  int32  sketch_size       = 1;
+  double shrinking_factor  = 2;
+  int32  number_of_buckets = 3;
 }
 
 // ============================================================================

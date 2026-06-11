@@ -94,7 +94,7 @@ object AnalyzerBuilder {
         CountDistinct(msg.getCountDistinct.getColumnsList.asScala.toSeq)
 
       case MUTUAL_INFORMATION =>
-        MutualInformation(msg.getMutualInformation.getColumnsList.asScala.toSeq)
+        MutualInformation(msg.getMutualInformation.getColumnsList.asScala.toSeq, where)
 
       // ---- Pair-of-columns analyzer ---------------------------------------
       case CORRELATION =>
@@ -106,9 +106,12 @@ object AnalyzerBuilder {
         val s = msg.getApproxQuantile
         val quantile = if (s.hasQuantile) s.getQuantile else 0.5
         val relativeError = if (s.hasRelativeError) s.getRelativeError else 0.01
-        ApproxQuantile(s.getColumn, quantile, relativeError)
+        ApproxQuantile(s.getColumn, quantile, relativeError, where)
 
       case APPROX_QUANTILES =>
+        // Note: ApproxQuantiles does not accept `where` in Deequ's signature
+        // (unlike ApproxQuantile). Any `where` set on the parent Analyzer
+        // message is intentionally ignored for this arm.
         val s = msg.getApproxQuantiles
         val quantiles =
           if (s.getQuantilesList.isEmpty) Seq(0.25, 0.5, 0.75)
@@ -121,11 +124,15 @@ object AnalyzerBuilder {
         val s = msg.getHistogram
         val maxBins =
           if (s.hasMaxDetailBins) s.getMaxDetailBins else Histogram.MaximumAllowedDetailBins
-        Histogram(s.getColumn, None, maxBins)
+        Histogram(s.getColumn, binningUdf = None, maxDetailBins = maxBins, where = where)
 
       case COMPLIANCE =>
         val s = msg.getCompliance
-        Compliance(s.getInstance, s.getPredicate, where)
+        Compliance(
+          instance = s.getInstance,
+          predicate = s.getPredicate,
+          where = where,
+          columns = s.getColumnsList.asScala.toList)
 
       case PATTERN_MATCH =>
         val s = msg.getPatternMatch

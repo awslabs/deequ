@@ -195,17 +195,24 @@ class DeequRelationPlugin extends RelationPlugin {
 
     import spark.implicits._
 
-    // Flatten all metrics (converts HistogramMetric, KLLMetric, etc. to DoubleMetrics)
-    // then extract the Double values
+    // Flatten all metrics (converts HistogramMetric, KLLMetric, etc. to
+    // DoubleMetrics) then extract the Double values. Failed metrics
+    // (DoubleMetric.value: Try[Double]) carry their exception via the
+    // `error_message` column - symmetric with the verification path's
+    // `constraint_message`. value is NaN whenever an error is set.
     val metrics = context.metricMap.toSeq.flatMap { case (analyzer, metric) =>
       metric.flatten().map { doubleMetric =>
-        val value: Double = doubleMetric.value.getOrElse(Double.NaN)
+        val (value, errorMessage) = doubleMetric.value match {
+          case scala.util.Success(v) => (v, "")
+          case scala.util.Failure(t) => (Double.NaN, t.getMessage)
+        }
         (
           analyzer.toString,
           doubleMetric.entity.toString,
           doubleMetric.instance,
           doubleMetric.name,
-          value
+          value,
+          errorMessage
         )
       }
     }
@@ -215,7 +222,8 @@ class DeequRelationPlugin extends RelationPlugin {
       "entity",
       "instance",
       "name",
-      "value"
+      "value",
+      "error_message"
     )
   }
 
@@ -357,14 +365,18 @@ class DeequRelationPlugin extends RelationPlugin {
 
   /**
    * Map a wire `ProtoKLLParameters` to the Deequ `KLLParameters` case class.
-   * Stage 2: all three fields are required when KLL is enabled (client-side
-   * defaults via Python `KLLParameters()`); missing-field branches removed.
+   * All three fields are required by the schema (proto3 scalars, no
+   * `optional`); the server validates that they are positive - proto3's
+   * implicit default of 0 is not a meaningful KLL parameter, so a zero
+   * here means the client failed to populate concrete values.
    */
   private def toKLLParameters(p: ProtoKLLParameters): com.amazon.deequ.analyzers.KLLParameters = {
-    if (!(p.hasSketchSize && p.hasShrinkingFactor && p.hasNumberOfBuckets)) {
+    if (p.getSketchSize <= 0 || p.getShrinkingFactor <= 0.0 || p.getNumberOfBuckets <= 0) {
       throw new IllegalArgumentException(
-        "KLLParameters must have sketch_size, shrinking_factor, and number_of_buckets " +
-          "all set (Stage 2: client must populate concrete values)")
+        s"KLLParameters must have positive sketch_size, shrinking_factor, and " +
+          s"number_of_buckets (got ${p.getSketchSize}, ${p.getShrinkingFactor}, " +
+          s"${p.getNumberOfBuckets}). Client must populate concrete values when " +
+          "enable_kll_profiling is true.")
     }
     com.amazon.deequ.analyzers.KLLParameters(
       p.getSketchSize, p.getShrinkingFactor, p.getNumberOfBuckets)
@@ -373,6 +385,12 @@ class DeequRelationPlugin extends RelationPlugin {
   /**
    * Parse data type string to DataTypeInstances.
    */
+  /**
+   * Parse a `predefined_types` value to a Deequ `DataTypeInstances`. Unknown
+   * values are rejected with an actionable error rather than coerced to
+   * `Unknown` - a typo like "strring" should surface as a client-side bug,
+   * not a silent profile-with-Unknown-type.
+   */
   private def parseDataType(typeName: String): DataTypeInstances.Value = {
     typeName.toLowerCase match {
       case "string" => DataTypeInstances.String
@@ -380,7 +398,10 @@ class DeequRelationPlugin extends RelationPlugin {
       case "long" => DataTypeInstances.Integral
       case "double" | "float" => DataTypeInstances.Fractional
       case "boolean" | "bool" => DataTypeInstances.Boolean
-      case _ => DataTypeInstances.Unknown
+      case other =>
+        throw new IllegalArgumentException(
+          s"Unknown predefined_types value: '$typeName'. Supported values: " +
+            "String, Integer, Int, Long, Double, Float, Boolean, Bool")
     }
   }
 
@@ -469,24 +490,38 @@ class DeequRelationPlugin extends RelationPlugin {
 
     import spark.implicits._
 
-    // Flatten all suggestions
+    // Flatten all suggestions. NOTE: `constraintSuggestions` is a Map keyed by
+    // column name (built via groupBy in ConstraintSuggestionRunner), so its
+    // iteration order is hash-based and DOES NOT match the original
+    // construction order that built the verification check. Pairing by index
+    // (a previous bug) silently associated wrong evaluation results.
     val allSuggestions = result.constraintSuggestions.values.flatten.toSeq
 
-    // Get evaluation results if available
-    val evaluationResults = result.verificationResult.map { verificationResult =>
-      verificationResult.checkResults.values.headOption.map { checkResult =>
-        checkResult.constraintResults.map { cr =>
-          (cr.status.toString, cr.metric.flatMap(_.value.toOption))
+    // Build a Constraint-keyed lookup of evaluation results so each suggestion
+    // joins to the result for its own constraint, regardless of iteration
+    // order. ConstraintSuggestionRunner adds suggestions' Constraint instances
+    // by reference into the verification Check, so object identity is stable.
+    val evaluationByConstraint: Map[com.amazon.deequ.constraints.Constraint,
+        (String, Option[Double])] =
+      result.verificationResult.flatMap { verificationResult =>
+        verificationResult.checkResults.values.headOption.map { checkResult =>
+          checkResult.constraintResults.map { cr =>
+            val maybeDouble: Option[Double] = cr.metric
+              .flatMap(_.value.toOption)
+              .collect { case d: Double => d }
+            cr.constraint -> (cr.status.toString, maybeDouble)
+          }.toMap
         }
-      }.getOrElse(Seq.empty)
-    }.getOrElse(Seq.empty)
+      }.getOrElse(Map.empty)
 
-    val rows = allSuggestions.zipWithIndex.map { case (suggestion, idx) =>
-      val evaluationStatus = evaluationResults.lift(idx).map(_._1).orNull
-      val evaluationMetricValue = evaluationResults.lift(idx)
-        .flatMap(_._2)
-        .map(v => java.lang.Double.valueOf(v.asInstanceOf[Double]))
-        .orNull
+    val rows = allSuggestions.map { suggestion =>
+      val (evaluationStatus, evaluationMetricValue): (String, java.lang.Double) =
+        evaluationByConstraint.get(suggestion.constraint) match {
+          case Some((status, valueOpt)) =>
+            (status, valueOpt.map(java.lang.Double.valueOf).orNull)
+          case None =>
+            (null, null)
+        }
 
       (
         suggestion.columnName,

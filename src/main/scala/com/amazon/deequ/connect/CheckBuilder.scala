@@ -43,7 +43,12 @@ object CheckBuilder {
     val level = msg.getLevel match {
       case ProtoCheckLevel.CHECK_LEVEL_ERROR => CheckLevel.Error
       case ProtoCheckLevel.CHECK_LEVEL_WARNING => CheckLevel.Warning
-      case _ => CheckLevel.Error
+      case ProtoCheckLevel.CHECK_LEVEL_UNSPECIFIED =>
+        throw new IllegalArgumentException(
+          "CheckLevel is unspecified; client must set it to CHECK_LEVEL_ERROR " +
+            "or CHECK_LEVEL_WARNING")
+      case other =>
+        throw new IllegalArgumentException(s"Unknown CheckLevel: $other")
     }
 
     msg.getConstraintsList.asScala.foldLeft(Check(level, msg.getDescription)) {
