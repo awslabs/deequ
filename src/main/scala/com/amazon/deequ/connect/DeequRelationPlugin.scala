@@ -38,7 +38,7 @@ import scala.collection.JavaConverters._
 /**
  * Spark Connect RelationPlugin for Deequ.
  *
- * Versioning follows Spark's RelationPlugin convention (see ADR-0005): the
+ * Versioning follows Spark's RelationPlugin convention: the
  * protobuf type URL of the unpacked message is the wire-version discriminator.
  * Mismatched JAR/wheel pairs naturally fall through `relation.is(classOf[X])`
  * to `Optional.empty()`, letting Spark surface a clear "no handler found"
@@ -244,14 +244,16 @@ class DeequRelationPlugin extends RelationPlugin {
         .withLowCardinalityHistogramThreshold(req.getLowCardinalityHistogramThreshold)
     }
 
-    // Enable KLL profiling if requested
+    // Enable KLL profiling if requested.
+    // Stage 2: clients send concrete parameters when KLL is enabled.
     if (req.getEnableKllProfiling) {
       profilerRunner = profilerRunner.withKLLProfiling()
-
-      // Set KLL parameters if provided
-      if (req.hasKllParameters) {
-        profilerRunner = profilerRunner.setKLLParameters(Some(toKLLParameters(req.getKllParameters)))
+      if (!req.hasKllParameters) {
+        throw new IllegalArgumentException(
+          "enable_kll_profiling=true requires kll_parameters to be set " +
+            "(Stage 2: client must populate KLL defaults)")
       }
+      profilerRunner = profilerRunner.setKLLParameters(Some(toKLLParameters(req.getKllParameters)))
     }
 
     // Set predefined types if provided
@@ -300,12 +302,17 @@ class DeequRelationPlugin extends RelationPlugin {
         .withLowCardinalityHistogramThreshold(req.getLowCardinalityHistogramThreshold)
     }
 
-    // Set KLL parameters if KLL profiling is enabled
+    // Set KLL parameters if KLL profiling is enabled.
+    // Stage 2: clients are required to send concrete parameters when KLL is
+    // enabled (Python defaults via KLLParameters() dataclass). The previous
+    // server-side library-default fallback is removed.
     if (req.getEnableKllProfiling) {
-      val kll =
-        if (req.hasKllParameters) toKLLParameters(req.getKllParameters)
-        else com.amazon.deequ.analyzers.KLLParameters(2048, 0.64, 64)  // library defaults
-      suggestionRunner = suggestionRunner.setKLLParameters(kll)
+      if (!req.hasKllParameters) {
+        throw new IllegalArgumentException(
+          "enable_kll_profiling=true requires kll_parameters to be set " +
+            "(Stage 2: client must populate KLL defaults)")
+      }
+      suggestionRunner = suggestionRunner.setKLLParameters(toKLLParameters(req.getKllParameters))
     }
 
     // Set predefined types if provided
@@ -349,14 +356,18 @@ class DeequRelationPlugin extends RelationPlugin {
   }
 
   /**
-   * Map a wire `ProtoKLLParameters` (with optional fields) to the Deequ
-   * `KLLParameters` case class. Missing fields fall back to library defaults.
+   * Map a wire `ProtoKLLParameters` to the Deequ `KLLParameters` case class.
+   * Stage 2: all three fields are required when KLL is enabled (client-side
+   * defaults via Python `KLLParameters()`); missing-field branches removed.
    */
   private def toKLLParameters(p: ProtoKLLParameters): com.amazon.deequ.analyzers.KLLParameters = {
-    val sketchSize = if (p.hasSketchSize) p.getSketchSize else 2048
-    val shrinkingFactor = if (p.hasShrinkingFactor) p.getShrinkingFactor else 0.64
-    val numberOfBuckets = if (p.hasNumberOfBuckets) p.getNumberOfBuckets else 64
-    com.amazon.deequ.analyzers.KLLParameters(sketchSize, shrinkingFactor, numberOfBuckets)
+    if (!(p.hasSketchSize && p.hasShrinkingFactor && p.hasNumberOfBuckets)) {
+      throw new IllegalArgumentException(
+        "KLLParameters must have sketch_size, shrinking_factor, and number_of_buckets " +
+          "all set (Stage 2: client must populate concrete values)")
+    }
+    com.amazon.deequ.analyzers.KLLParameters(
+      p.getSketchSize, p.getShrinkingFactor, p.getNumberOfBuckets)
   }
 
   /**

@@ -1,0 +1,143 @@
+/**
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// Analysis surface: Analyzer (oneof body), DeequAnalysisRelation, and the
+// analyzer-specific Spec submessages.
+
+syntax = "proto3";
+
+package com.amazon.deequ.connect;
+
+option java_multiple_files = true;
+option java_package = "com.amazon.deequ.connect.proto";
+
+// ============================================================================
+// Analyzer Spec submessages
+// ============================================================================
+
+// Marker spec for analyzers whose only parameter is `where` (Size).
+message EmptySpec {}
+
+// Single-column analyzers (no assertion; Analyzer's `where` applies):
+// Completeness, Mean, Sum, StandardDeviation, Minimum, Maximum,
+// MinLength, MaxLength, ApproxCountDistinct, Entropy, DataType.
+message ColumnAnalyzerSpec {
+  string column = 1;
+}
+
+// Multi-column analyzers: Uniqueness, Distinctness, UniqueValueRatio,
+// CountDistinct, MutualInformation.
+message ColumnsAnalyzerSpec {
+  repeated string columns = 1;
+}
+
+// Pair-of-columns analyzer (Correlation).
+message PairColumnsAnalyzerSpec {
+  string column_a = 1;
+  string column_b = 2;
+}
+
+// ApproxQuantile (single quantile).
+message ApproxQuantileSpec {
+  string column                  = 1;
+  optional double quantile       = 2;  // (0,1); server default 0.5 if unset
+  optional double relative_error = 3;  // (0,1); server default 0.01 if unset
+}
+
+// ApproxQuantiles (multiple quantiles).
+message ApproxQuantilesSpec {
+  string column                  = 1;
+  repeated double quantiles      = 2;  // server default [0.25, 0.5, 0.75] if empty
+  optional double relative_error = 3;  // (0,1); server default 0.01 if unset
+}
+
+// Histogram.
+message HistogramSpec {
+  string column = 1;
+  optional int32 max_detail_bins = 2;  // server default Histogram.MaximumAllowedDetailBins
+}
+
+// Compliance analyzer: instance name + SQL predicate string.
+// (`predicate` here is a SQL boolean expression, not a numeric assertion.)
+message ComplianceAnalyzerSpec {
+  string instance  = 1;  // metric name (NOT a column reference)
+  string predicate = 2;  // SQL boolean expression
+}
+
+// PatternMatch analyzer.
+message PatternMatchSpec {
+  string column  = 1;
+  string pattern = 2;  // regex
+}
+
+// ============================================================================
+// Analyzer — computes a metric on data.
+// ============================================================================
+
+message Analyzer {
+  // Optional SQL WHERE filter. Ignored by analyzers that don't support it
+  // (today: ApproxQuantile, ApproxQuantiles, CountDistinct, Histogram,
+  // MutualInformation).
+  string where = 1;
+
+  oneof body {
+    // No-parameter (only `where`)
+    EmptySpec                size                   = 10;
+
+    // Single-column analyzers
+    ColumnAnalyzerSpec       completeness           = 11;
+    ColumnAnalyzerSpec       mean                   = 12;
+    ColumnAnalyzerSpec       sum                    = 13;
+    ColumnAnalyzerSpec       standard_deviation     = 14;
+    ColumnAnalyzerSpec       minimum                = 15;
+    ColumnAnalyzerSpec       maximum                = 16;
+    ColumnAnalyzerSpec       min_length             = 17;
+    ColumnAnalyzerSpec       max_length             = 18;
+    ColumnAnalyzerSpec       approx_count_distinct  = 19;
+    ColumnAnalyzerSpec       entropy                = 20;
+    ColumnAnalyzerSpec       data_type              = 21;
+
+    // Multi-column analyzers
+    ColumnsAnalyzerSpec      uniqueness             = 22;
+    ColumnsAnalyzerSpec      distinctness           = 23;
+    ColumnsAnalyzerSpec      unique_value_ratio     = 24;
+    ColumnsAnalyzerSpec      count_distinct         = 25;
+    ColumnsAnalyzerSpec      mutual_information     = 26;
+
+    // Pair-of-columns analyzer
+    PairColumnsAnalyzerSpec  correlation            = 27;
+
+    // Approx quantile analyzers
+    ApproxQuantileSpec       approx_quantile        = 28;
+    ApproxQuantilesSpec      approx_quantiles       = 29;
+
+    // Specialised analyzers
+    HistogramSpec            histogram              = 30;
+    ComplianceAnalyzerSpec   compliance             = 31;
+    PatternMatchSpec         pattern_match          = 32;
+  }
+
+  reserved "type", "column", "columns", "quantile", "relative_error",
+           "pattern", "max_detail_bins", "kll_parameters";
+}
+
+// ============================================================================
+// DeequAnalysisRelation — Spark Connect Relation extension envelope.
+// ============================================================================
+
+message DeequAnalysisRelation {
+  bytes input_relation       = 1;
+  repeated Analyzer analyzers = 2;
+}

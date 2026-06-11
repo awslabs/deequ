@@ -1,0 +1,104 @@
+/**
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// Shared types referenced by multiple Deequ Spark Connect Relations.
+// Per ADR-0006 (Stage 2: 1-1-1 file split): each surface (.proto file) owns
+// its own top-level Relation envelope; cross-file shared types live here.
+
+syntax = "proto3";
+
+package com.amazon.deequ.connect;
+
+option java_multiple_files = true;
+option java_package = "com.amazon.deequ.connect.proto";
+
+// ============================================================================
+// Predicate — numeric assertion used by Constraint arms that take one.
+// ============================================================================
+
+message Predicate {
+  // CompareOp is closed: every operator the wire format supports is listed
+  // here. Adding a new operator is a wire-format-version bump (per AIP-126).
+  // BETWEEN was removed in Stage 2 — range checks are now their own arm
+  // (`Range`) on the `body` oneof rather than a CompareOp variant.
+  enum CompareOp {
+    COMPARE_OP_UNSPECIFIED = 0;
+    COMPARE_OP_EQ          = 1;
+    COMPARE_OP_NE          = 2;
+    COMPARE_OP_GT          = 3;
+    COMPARE_OP_GE          = 4;
+    COMPARE_OP_LT          = 5;
+    COMPARE_OP_LE          = 6;
+    reserved 7;
+    reserved "COMPARE_OP_BETWEEN";
+  }
+
+  // A binary comparison: `x <op> value`.
+  message Comparison {
+    CompareOp op = 1;
+    double value = 2;
+  }
+
+  // An inclusive range check: `lower <= x <= upper`.
+  message Range {
+    double lower = 1;
+    double upper = 2;
+  }
+
+  oneof body {
+    Comparison comparison = 10;
+    Range range           = 11;
+  }
+
+  reserved "operator", "op", "value", "lower_bound", "upper_bound";
+  reserved 1, 2, 3, 4;
+}
+
+// ============================================================================
+// KLL Sketch parameters — used by ColumnProfilerRelation and
+// ConstraintSuggestionRelation when KLL profiling is enabled.
+// Stage 2: clients populate concrete values; the server-side library-default
+// fallback was removed.
+// ============================================================================
+
+message KLLParameters {
+  optional int32  sketch_size       = 1;
+  optional double shrinking_factor  = 2;
+  optional int32  number_of_buckets = 3;
+}
+
+// ============================================================================
+// CheckLevel — Check severity (closed; per AIP-126).
+// ============================================================================
+
+enum CheckLevel {
+  CHECK_LEVEL_UNSPECIFIED = 0;
+  CHECK_LEVEL_ERROR       = 1;
+  CHECK_LEVEL_WARNING     = 2;
+}
+
+// ============================================================================
+// ConstraintRuleSet — closed; 1:1 with `com.amazon.deequ.suggestions.Rules`
+// (see CONTEXT.md). Adding a rule set is a wire-format-version bump.
+// ============================================================================
+
+enum ConstraintRuleSet {
+  CONSTRAINT_RULE_SET_UNSPECIFIED = 0;
+  CONSTRAINT_RULE_SET_DEFAULT     = 1;
+  CONSTRAINT_RULE_SET_STRING      = 2;
+  CONSTRAINT_RULE_SET_NUMERICAL   = 3;
+  CONSTRAINT_RULE_SET_COMMON      = 4;
+  CONSTRAINT_RULE_SET_EXTENDED    = 5;
+}

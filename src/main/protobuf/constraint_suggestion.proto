@@ -1,0 +1,41 @@
+/**
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// Constraint suggestion surface: DeequConstraintSuggestionRelation envelope.
+
+syntax = "proto3";
+
+package com.amazon.deequ.connect;
+
+option java_multiple_files = true;
+option java_package = "com.amazon.deequ.connect.proto";
+
+import "common.proto";
+
+// ============================================================================
+// DeequConstraintSuggestionRelation — Spark Connect Relation extension envelope.
+// ============================================================================
+
+message DeequConstraintSuggestionRelation {
+  bytes input_relation                               = 1;
+  repeated ConstraintRuleSet constraint_rules        = 2;
+  repeated string restrict_to_columns                = 3;
+  optional int32 low_cardinality_histogram_threshold = 4;
+  bool enable_kll_profiling                          = 5;
+  KLLParameters kll_parameters                       = 6;
+  map<string, string> predefined_types               = 7;
+  optional double testset_ratio                      = 8;   // (0,1) — server-side disabled if unset
+  optional int64 testset_split_random_seed           = 9;   // any int64; unset = no seed
+}

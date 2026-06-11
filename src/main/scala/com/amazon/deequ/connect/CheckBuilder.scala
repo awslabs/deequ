@@ -146,9 +146,12 @@ object CheckBuilder {
       // ---- Quantile ---------------------------------------------------------
       case HAS_APPROX_QUANTILE =>
         val s = c.getHasApproxQuantile
-        val q = if (s.hasQuantile) s.getQuantile else 0.5
+        if (!s.hasQuantile) {
+          throw new IllegalArgumentException(
+            "QuantileAssertionSpec.quantile is required (Stage 2: client must set it explicitly)")
+        }
         applyFilter(
-          check.hasApproxQuantile(s.getColumn, q, doubleAssertion(s.getAssertion), hint),
+          check.hasApproxQuantile(s.getColumn, s.getQuantile, doubleAssertion(s.getAssertion), hint),
           where)
 
       // ---- Information theory ----------------------------------------------
@@ -263,24 +266,25 @@ object CheckBuilder {
     case None => checkWithConstraint
   }
 
-  /** `x => Boolean`-style predicate for Double metrics. */
+  /**
+   * `x => Boolean`-style predicate for Double metrics. Stage 2: dispatch on
+   * the body oneof case (Comparison vs Range), not on a flat operator field.
+   */
   private def doubleAssertion(pred: ProtoPredicate): Double => Boolean = {
     if (pred == null) {
       // Schema enforces a Predicate on every arm that declares one. A null
       // here means the client violated the contract - fail loud.
       throw new IllegalArgumentException("Predicate is missing on a constraint that requires it")
     }
-    pred.getOp match {
-      case ProtoPredicate.CompareOp.COMPARE_OP_EQ => (x: Double) => x == pred.getValue
-      case ProtoPredicate.CompareOp.COMPARE_OP_NE => (x: Double) => x != pred.getValue
-      case ProtoPredicate.CompareOp.COMPARE_OP_GT => (x: Double) => x > pred.getValue
-      case ProtoPredicate.CompareOp.COMPARE_OP_GE => (x: Double) => x >= pred.getValue
-      case ProtoPredicate.CompareOp.COMPARE_OP_LT => (x: Double) => x < pred.getValue
-      case ProtoPredicate.CompareOp.COMPARE_OP_LE => (x: Double) => x <= pred.getValue
-      case ProtoPredicate.CompareOp.COMPARE_OP_BETWEEN =>
-        (x: Double) => x >= pred.getLowerBound && x <= pred.getUpperBound
-      case op =>
-        throw new IllegalArgumentException(s"Unsupported predicate operator: $op")
+    pred.getBodyCase match {
+      case ProtoPredicate.BodyCase.COMPARISON =>
+        val cmp = pred.getComparison
+        compareDouble(cmp.getOp, cmp.getValue)
+      case ProtoPredicate.BodyCase.RANGE =>
+        val r = pred.getRange
+        (x: Double) => x >= r.getLower && x <= r.getUpper
+      case ProtoPredicate.BodyCase.BODY_NOT_SET =>
+        throw new IllegalArgumentException("Predicate has no body set")
     }
   }
 
@@ -288,17 +292,39 @@ object CheckBuilder {
     if (pred == null) {
       throw new IllegalArgumentException("Predicate is missing on hasSize constraint")
     }
-    pred.getOp match {
-      case ProtoPredicate.CompareOp.COMPARE_OP_EQ => (x: Long) => x == pred.getValue.toLong
-      case ProtoPredicate.CompareOp.COMPARE_OP_NE => (x: Long) => x != pred.getValue.toLong
-      case ProtoPredicate.CompareOp.COMPARE_OP_GT => (x: Long) => x > pred.getValue.toLong
-      case ProtoPredicate.CompareOp.COMPARE_OP_GE => (x: Long) => x >= pred.getValue.toLong
-      case ProtoPredicate.CompareOp.COMPARE_OP_LT => (x: Long) => x < pred.getValue.toLong
-      case ProtoPredicate.CompareOp.COMPARE_OP_LE => (x: Long) => x <= pred.getValue.toLong
-      case ProtoPredicate.CompareOp.COMPARE_OP_BETWEEN =>
-        (x: Long) => x >= pred.getLowerBound.toLong && x <= pred.getUpperBound.toLong
-      case op =>
-        throw new IllegalArgumentException(s"Unsupported predicate operator: $op")
+    pred.getBodyCase match {
+      case ProtoPredicate.BodyCase.COMPARISON =>
+        val cmp = pred.getComparison
+        compareLong(cmp.getOp, cmp.getValue.toLong)
+      case ProtoPredicate.BodyCase.RANGE =>
+        val r = pred.getRange
+        (x: Long) => x >= r.getLower.toLong && x <= r.getUpper.toLong
+      case ProtoPredicate.BodyCase.BODY_NOT_SET =>
+        throw new IllegalArgumentException("Predicate has no body set on hasSize constraint")
     }
+  }
+
+  private def compareDouble(
+      op: ProtoPredicate.CompareOp, value: Double): Double => Boolean = op match {
+    case ProtoPredicate.CompareOp.COMPARE_OP_EQ => (x: Double) => x == value
+    case ProtoPredicate.CompareOp.COMPARE_OP_NE => (x: Double) => x != value
+    case ProtoPredicate.CompareOp.COMPARE_OP_GT => (x: Double) => x > value
+    case ProtoPredicate.CompareOp.COMPARE_OP_GE => (x: Double) => x >= value
+    case ProtoPredicate.CompareOp.COMPARE_OP_LT => (x: Double) => x < value
+    case ProtoPredicate.CompareOp.COMPARE_OP_LE => (x: Double) => x <= value
+    case other =>
+      throw new IllegalArgumentException(s"Unsupported comparison operator: $other")
+  }
+
+  private def compareLong(
+      op: ProtoPredicate.CompareOp, value: Long): Long => Boolean = op match {
+    case ProtoPredicate.CompareOp.COMPARE_OP_EQ => (x: Long) => x == value
+    case ProtoPredicate.CompareOp.COMPARE_OP_NE => (x: Long) => x != value
+    case ProtoPredicate.CompareOp.COMPARE_OP_GT => (x: Long) => x > value
+    case ProtoPredicate.CompareOp.COMPARE_OP_GE => (x: Long) => x >= value
+    case ProtoPredicate.CompareOp.COMPARE_OP_LT => (x: Long) => x < value
+    case ProtoPredicate.CompareOp.COMPARE_OP_LE => (x: Long) => x <= value
+    case other =>
+      throw new IllegalArgumentException(s"Unsupported comparison operator: $other")
   }
 }
