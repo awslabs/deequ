@@ -51,8 +51,8 @@ case class DuplicateRowCount(columns: Seq[String], where: Option[String] = None,
       val fullColumnDuplicate = fullColumn.map { rowLevelColumn =>
         conditionColumn.map { condition =>
           when(not(condition), getRowLevelFilterTreatment(analyzerOptions).getExpression)
-            .when(rowLevelColumn > lit(1), true).otherwise(false)
-        }.getOrElse(when(rowLevelColumn > lit(1), true).otherwise(false))
+            .when(rowLevelColumn > lit(1), false).otherwise(true)
+        }.getOrElse(when(rowLevelColumn > lit(1), false).otherwise(true))
       }
       super.fromAggregationResult(result, offset, fullColumnDuplicate)
     }
