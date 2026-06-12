@@ -1,0 +1,204 @@
+/**
+ * Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License
+ * is located at
+ *
+ *     http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file accompanying this file. This file is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+// Verification surface: Constraint, Check, and DeequVerificationRelation.
+
+syntax = "proto3";
+
+package com.amazon.deequ.connect;
+
+option java_multiple_files = true;
+option java_package = "com.amazon.deequ.connect.proto";
+
+import "common.proto";
+import "analysis.proto";
+
+// ============================================================================
+// Spec submessages — payload bundles reused across Constraint `oneof` arms.
+// (See CONTEXT.md → "Spec submessage" and ADR-0001.)
+// ============================================================================
+
+// Single column, no assertion (server applies implicit `x == 1.0`).
+// Used by isComplete, isUnique.
+message ColumnSpec {
+  string column = 1;
+}
+
+// Single column + numeric assertion.
+// Used by hasCompleteness, hasMin, hasMax, hasMean, hasSum,
+// hasStandardDeviation, hasMinLength, hasMaxLength, hasEntropy,
+// hasApproxCountDistinct, containsCreditCardNumber, containsEmail,
+// containsURL, containsSocialSecurityNumber, isNonNegative, isPositive.
+message ColumnAssertionSpec {
+  string column = 1;
+  Predicate assertion = 2;
+}
+
+// List of columns, no assertion. Used by areComplete, areUnique.
+message ColumnsSpec {
+  repeated string columns = 1;
+}
+
+// List of columns + numeric assertion. Used by haveCompleteness,
+// hasUniqueness, hasDistinctness, hasUniqueValueRatio.
+message ColumnsAssertionSpec {
+  repeated string columns = 1;
+  Predicate assertion = 2;
+}
+
+// hasSize — assertion only.
+message SizeSpec {
+  Predicate assertion = 1;
+}
+
+// isPrimaryKey — designated column plus optional additional columns.
+message PrimaryKeySpec {
+  string column = 1;
+  repeated string additional_columns = 2;
+}
+
+// hasPattern — column + regex + assertion.
+message PatternAssertionSpec {
+  string column = 1;
+  string regex = 2;
+  Predicate assertion = 3;
+}
+
+// Pair-of-columns constraints with assertion: hasCorrelation, isLessThan,
+// isLessThanOrEqualTo, isGreaterThan, isGreaterThanOrEqualTo.
+message PairColumnsAssertionSpec {
+  string column_a = 1;
+  string column_b = 2;
+  Predicate assertion = 3;
+}
+
+// hasApproxQuantile — column + quantile + assertion.
+// Stage 2: quantile is required (the server no longer supplies a default).
+message QuantileAssertionSpec {
+  string column = 1;
+  optional double quantile = 2;
+  Predicate assertion = 3;
+}
+
+// isContainedIn — column + allowed values + assertion.
+message AllowedValuesSpec {
+  string column = 1;
+  repeated string allowed_values = 2;
+  Predicate assertion = 3;
+}
+
+// satisfies — SQL condition + name + assertion.
+message SatisfiesSpec {
+  string column_condition = 1;
+  string constraint_name  = 2;
+  Predicate assertion     = 3;
+}
+
+// ============================================================================
+// Constraint — a single data-quality rule.
+// ============================================================================
+
+message Constraint {
+  string hint  = 1;
+  string where = 2;
+
+  oneof body {
+    // Completeness
+    ColumnSpec               is_complete             = 10;
+    ColumnAssertionSpec      has_completeness        = 11;
+    ColumnsSpec              are_complete            = 12;
+    ColumnsAssertionSpec     have_completeness       = 13;
+
+    // Size
+    SizeSpec                 has_size                = 14;
+
+    // Uniqueness / distinctness
+    ColumnSpec               is_unique               = 15;
+    ColumnsAssertionSpec     has_uniqueness          = 16;
+    ColumnsSpec              are_unique              = 17;
+    PrimaryKeySpec           is_primary_key          = 18;
+    ColumnsAssertionSpec     has_distinctness        = 19;
+    ColumnsAssertionSpec     has_unique_value_ratio  = 20;
+
+    // Statistical
+    ColumnAssertionSpec      has_min                 = 21;
+    ColumnAssertionSpec      has_max                 = 22;
+    ColumnAssertionSpec      has_mean                = 23;
+    ColumnAssertionSpec      has_sum                 = 24;
+    ColumnAssertionSpec      has_standard_deviation  = 25;
+
+    // Length
+    ColumnAssertionSpec      has_min_length          = 26;
+    ColumnAssertionSpec      has_max_length          = 27;
+
+    // Quantile
+    QuantileAssertionSpec    has_approx_quantile     = 28;
+
+    // Information theory
+    ColumnAssertionSpec      has_entropy             = 29;
+
+    // Correlation
+    PairColumnsAssertionSpec has_correlation         = 30;
+
+    // Pattern matching
+    PatternAssertionSpec     has_pattern                       = 31;
+    ColumnAssertionSpec      contains_credit_card_number       = 32;
+    ColumnAssertionSpec      contains_email                    = 33;
+    ColumnAssertionSpec      contains_url                      = 34;
+    ColumnAssertionSpec      contains_social_security_number   = 35;
+
+    // SQL condition
+    SatisfiesSpec            satisfies                         = 36;
+
+    // Membership
+    AllowedValuesSpec        is_contained_in                   = 37;
+
+    // Sign
+    ColumnAssertionSpec      is_non_negative                   = 38;
+    ColumnAssertionSpec      is_positive                       = 39;
+
+    // Inter-column comparison
+    PairColumnsAssertionSpec is_less_than                      = 40;
+    PairColumnsAssertionSpec is_less_than_or_equal_to          = 41;
+    PairColumnsAssertionSpec is_greater_than                   = 42;
+    PairColumnsAssertionSpec is_greater_than_or_equal_to       = 43;
+
+    // Cardinality estimation
+    ColumnAssertionSpec      has_approx_count_distinct         = 44;
+  }
+
+  reserved "type", "column", "columns", "assertion", "pattern",
+           "column_condition", "constraint_name", "allowed_values", "quantile";
+}
+
+// ============================================================================
+// Check — a named collection of constraints.
+// ============================================================================
+
+message Check {
+  CheckLevel level                 = 1;
+  string description               = 2;
+  repeated Constraint constraints  = 3;
+}
+
+// ============================================================================
+// DeequVerificationRelation — Spark Connect Relation extension envelope.
+// ============================================================================
+
+message DeequVerificationRelation {
+  bytes input_relation                  = 1;
+  repeated Check checks                 = 2;
+  repeated Analyzer required_analyzers  = 3;
+}

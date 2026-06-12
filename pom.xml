@@ -19,6 +19,15 @@
         <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
 
         <spark.version>3.5.7</spark.version>
+
+        <!-- Must match Spark's bundled protobuf version exactly. Spark publishes
+             this as `protobuf.version` in its own parent POM; Maven does not
+             expose properties to downstream consumers, so we mirror the value
+             manually. Verify with `mvn dependency:tree -Dincludes=com.google.protobuf:*`
+             after bumping `spark.version`. SPARK-41247 tracks the same alignment
+             on the Spark side. When supporting a new Spark major, also bump
+             this — Spark 3.5 ships protobuf-java 3.23.4; Spark 4.0+ ships 4.x. -->
+        <protobuf.version>3.23.4</protobuf.version>
     </properties>
 
     <name>deequ</name>
@@ -100,6 +109,24 @@
             <version>${spark.version}</version>
         </dependency>
 
+        <!-- Spark Connect for server-side plugin -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-connect_${scala.major.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Protobuf for wire protocol. Compile-time only: at runtime our
+             references are relocated to `org.sparkproject.connect.protobuf`
+             (provided by Spark Connect). -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.scalanlp</groupId>
             <artifactId>breeze_${scala.major.version}</artifactId>
@@ -174,7 +201,32 @@
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
 
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.1</version>
+            </extension>
+        </extensions>
+
         <plugins>
+            <!-- Protobuf compilation -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <protoSourceRoot>${project.basedir}/src/main/protobuf</protoSourceRoot>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
@@ -274,6 +326,45 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Relocate `com.google.protobuf` references in our compiled
+                 classes to `org.sparkproject.connect.protobuf`. Spark Connect
+                 ships shaded protobuf under that package at runtime; without
+                 this relocation, our `Any.is(class)` / `Any.unpack(class)`
+                 calls would resolve to the wrong (non-shaded) classes.
+
+                 We do NOT bundle protobuf classes into our JAR — Spark
+                 Connect's runtime provides them under the shaded namespace. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <!-- Bundle only the project artifact itself; do not pull
+                         in any third-party jars. The relocation block below
+                         only rewrites references in our own bytecode. -->
+                    <artifactSet>
+                        <includes>
+                            <include>${project.groupId}:${project.artifactId}</include>
+                        </includes>
+                    </artifactSet>
+                    <relocations>
+                        <relocation>
+                            <pattern>com.google.protobuf</pattern>
+                            <shadedPattern>org.sparkproject.connect.protobuf</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
