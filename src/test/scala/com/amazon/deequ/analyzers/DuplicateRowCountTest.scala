@@ -201,7 +201,7 @@ class DuplicateRowCountTest extends AnyWordSpec with Matchers with SparkContextS
       // Verify the check passes
       result.status shouldBe CheckStatus.Success
 
-      // Verify row-level results: true = duplicate, false = unique
+      // Verify row-level results: true = passes (not duplicate), false = fails (is duplicate)
       val rowLevelDf = VerificationResult.rowLevelResultsAsDataFrame(session, result, df)
       val flags = rowLevelDf.select("`dup-check`").collect().map(_.getBoolean(0))
       // 2 rows are duplicates (true), 2 rows are unique (false)
