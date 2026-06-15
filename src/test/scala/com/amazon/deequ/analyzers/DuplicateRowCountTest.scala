@@ -201,12 +201,14 @@ class DuplicateRowCountTest extends AnyWordSpec with Matchers with SparkContextS
       // Verify the check passes
       result.status shouldBe CheckStatus.Success
 
-      // Verify row-level results: true = duplicate, false = unique
+      // Verify row-level results: true = passes (not duplicate), false = fails (is duplicate)
       val rowLevelDf = VerificationResult.rowLevelResultsAsDataFrame(session, result, df)
-      val flags = rowLevelDf.select("`dup-check`").collect().map(_.getBoolean(0))
-      // 2 rows are duplicates (true), 2 rows are unique (false)
-      flags.count(_ == true) shouldBe 2
-      flags.count(_ == false) shouldBe 2
+      val rows = rowLevelDf.select("col1", "col2", "`dup-check`").collect()
+      // (a,1) appears twice -> duplicate -> false (fails)
+      // (b,2) and (c,3) appear once -> unique -> true (passes)
+      rows.filter(r => r.getString(0) == "b").foreach(r => r.getBoolean(2) shouldBe true)
+      rows.filter(r => r.getString(0) == "c").foreach(r => r.getBoolean(2) shouldBe true)
+      rows.filter(r => r.getString(0) == "a").foreach(r => r.getBoolean(2) shouldBe false)
     }
 
     "work with empty columns through VerificationSuite" in withSparkSession { session =>
@@ -257,10 +259,11 @@ class DuplicateRowCountTest extends AnyWordSpec with Matchers with SparkContextS
       val rowLevelDf = VerificationResult.rowLevelResultsAsDataFrame(session, result, df)
       rowLevelDf.columns should contain ("dup-resolved")
 
-      // Verify flags: 2 duplicates (true), 2 unique (false)
-      val flags = rowLevelDf.select("`dup-resolved`").collect().map(_.getBoolean(0))
-      flags.count(_ == true) shouldBe 2
-      flags.count(_ == false) shouldBe 2
+      // Verify flags: duplicates -> false (fails), unique -> true (passes)
+      val flags = rowLevelDf.select("col1", "`dup-resolved`").collect()
+      flags.filter(_.getString(0) == "b").foreach(_.getBoolean(1) shouldBe true)
+      flags.filter(_.getString(0) == "c").foreach(_.getBoolean(1) shouldBe true)
+      flags.filter(_.getString(0) == "a").foreach(_.getBoolean(1) shouldBe false)
     }
   }
 }
