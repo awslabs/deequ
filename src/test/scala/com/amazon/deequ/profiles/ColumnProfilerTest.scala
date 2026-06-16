@@ -571,6 +571,36 @@ class ColumnProfilerTest extends WordSpec with Matchers with SparkContextSpec
       assert(histogram(NullFieldReplacement).absolute == 1)
       assert(histogram(NullFieldReplacement).ratio == 1.0 / nRows)
     }
+
+    "profile a numeric column whose name requires escaping (e.g. a leading space)" in
+      withSparkSession { session =>
+        val schema = StructType(Seq(
+          StructField("flower_type", StringType),
+          StructField(" length", IntegerType)
+        ))
+        val rows = session.sparkContext.parallelize(Seq(
+          Row("setosa", 5),
+          Row("setosa", 4),
+          Row("versicolor", 6),
+          Row("versicolor", 7),
+          Row("virginica", 6)
+        ))
+        val data = session.createDataFrame(rows, schema)
+
+        val profiles = ColumnProfiler.profile(data).profiles
+
+        // Profiles are keyed by the original (un-escaped) column name.
+        val lengthProfile = profiles(" length")
+        assert(lengthProfile.dataType == DataTypeInstances.Integral)
+        assert(lengthProfile.completeness == 1.0)
+        lengthProfile match {
+          case n: NumericColumnProfile =>
+            assert(n.maximum.contains(7.0))
+            assert(n.minimum.contains(4.0))
+          case other =>
+            fail(s"expected a NumericColumnProfile, got $other")
+        }
+      }
   }
 
   "return correct profile for the Titanic dataset" in withSparkSession { session =>
