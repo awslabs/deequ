@@ -281,6 +281,7 @@ case class ColumnValuesRule() extends DQDLRuleConverter {
         .filter(_.getEvaluatedExpression != null)
         .map(_.getEvaluatedExpression.toLocalDate
           .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE))
+        .toSeq
 
       for {
         _ <- validateDateOperandCount(condition.getOperator, dateStrings.size, hasNull)
