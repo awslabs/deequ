@@ -532,5 +532,32 @@ class AnalysisRunnerTests extends AnyWordSpec
         assert(result.metric(mean).get.value === mean.calculate(data).value)
         assert(result.metric(minimum).get.value === minimum.calculate(data).value)
       }
+
+    "handle column pruning when column name collides with Spark function name" in
+      withSparkSession { session =>
+        import session.implicits._
+        val data = Seq(
+          ("setosa", 5),
+          ("setosa", 4),
+          ("versicolor", 6),
+          ("versicolor", 7),
+          ("virginica", 6)
+        ).toDF("flower_type", "length")
+
+        val completeness = Completeness("length")
+        val mean = Mean("length")
+        val maximum = Maximum("length")
+
+        val analysis = Analysis()
+          .addAnalyzer(completeness)
+          .addAnalyzer(mean)
+          .addAnalyzer(maximum)
+
+        val result = AnalysisRunner.run(data, analysis)
+
+        assert(result.metric(completeness).get.value.isSuccess)
+        assert(result.metric(mean).get.value.isSuccess)
+        assert(result.metric(maximum).get.value.get === 7.0)
+      }
   }
 }
