@@ -256,6 +256,10 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "Size")
         result.addProperty(WHERE_FIELD, size.where.orNull)
 
+      case zerosCount: ZerosCount =>
+        result.addProperty(ANALYZER_NAME_FIELD, "ZerosCount")
+        result.addProperty(COLUMN_FIELD, zerosCount.column)
+        result.addProperty(WHERE_FIELD, zerosCount.where.orNull)
 
       case completeness: Completeness =>
         result.addProperty(ANALYZER_NAME_FIELD, "Completeness")
@@ -307,6 +311,16 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(WHERE_FIELD, maximum.where.orNull)
         result.add(ANALYZER_OPTIONS_FIELD, context.serialize(maximum.analyzerOptions.orNull))
 
+      case range: Range =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Range")
+        result.addProperty(COLUMN_FIELD, range.column)
+        result.addProperty(WHERE_FIELD, range.where.orNull)
+
+      case iqr: InterquartileRange =>
+        result.addProperty(ANALYZER_NAME_FIELD, "InterquartileRange")
+        result.addProperty(COLUMN_FIELD, iqr.column)
+        result.addProperty(WHERE_FIELD, iqr.where.orNull)
+
       case countDistinct: CountDistinct =>
         result.addProperty(ANALYZER_NAME_FIELD, "CountDistinct")
         result.add(COLUMNS_FIELD, context.serialize(countDistinct.columns.asJava,
@@ -337,10 +351,18 @@ private[deequ] object AnalyzerSerializer
           new TypeToken[JList[String]]() {}.getType))
         result.add(ANALYZER_OPTIONS_FIELD, context.serialize(uniqueness.analyzerOptions.orNull))
 
+      case duplicateRowCount: DuplicateRowCount =>
+        result.addProperty(ANALYZER_NAME_FIELD, "DuplicateRowCount")
+        result.add(COLUMNS_FIELD, context.serialize(duplicateRowCount.columns.asJava,
+          new TypeToken[JList[String]]() {}.getType))
+        result.addProperty(WHERE_FIELD, duplicateRowCount.where.orNull)
+        result.add(ANALYZER_OPTIONS_FIELD, context.serialize(duplicateRowCount.analyzerOptions.orNull))
+
       case histogram: Histogram if histogram.binningUdf.isEmpty =>
         result.addProperty(ANALYZER_NAME_FIELD, "Histogram")
         result.addProperty(COLUMN_FIELD, histogram.column)
         result.addProperty("maxDetailBins", histogram.maxDetailBins)
+        result.addProperty(WHERE_FIELD, histogram.where.orNull)
         // Count is initial and default implementation for Histogram
         // We don't include fields below in json to preserve json backward compatibility.
         if (histogram.aggregateFunction != Histogram.Count) {
@@ -357,6 +379,10 @@ private[deequ] object AnalyzerSerializer
         if (histogramBinned.customEdges.isDefined) {
           result.add("customEdges", context.serialize(histogramBinned.customEdges.get))
         }
+        if (histogramBinned.includeOverflowBins) {
+          result.addProperty("includeOverflowBins", true)
+        }
+        result.addProperty(WHERE_FIELD, histogramBinned.where.orNull)
 
       case _ : Histogram =>
         throw new IllegalArgumentException("Unable to serialize Histogram with binningUdf!")
@@ -384,6 +410,21 @@ private[deequ] object AnalyzerSerializer
         result.addProperty(ANALYZER_NAME_FIELD, "StandardDeviation")
         result.addProperty(COLUMN_FIELD, standardDeviation.column)
         result.addProperty(WHERE_FIELD, standardDeviation.where.orNull)
+
+      case variance: Variance =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Variance")
+        result.addProperty(COLUMN_FIELD, variance.column)
+        result.addProperty(WHERE_FIELD, variance.where.orNull)
+
+      case skewness: Skewness =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Skewness")
+        result.addProperty(COLUMN_FIELD, skewness.column)
+        result.addProperty(WHERE_FIELD, skewness.where.orNull)
+
+      case kurtosis: Kurtosis =>
+        result.addProperty(ANALYZER_NAME_FIELD, "Kurtosis")
+        result.addProperty(COLUMN_FIELD, kurtosis.column)
+        result.addProperty(WHERE_FIELD, kurtosis.where.orNull)
 
       case approxQuantile: ApproxQuantile =>
         result.addProperty(ANALYZER_NAME_FIELD, "ApproxQuantile")
@@ -469,6 +510,11 @@ private[deequ] object AnalyzerDeserializer
       case "Size" =>
         Size(getOptionalWhereParam(json))
 
+      case "ZerosCount" =>
+        ZerosCount(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
       case "Completeness" =>
         Completeness(
           json.get(COLUMN_FIELD).getAsString,
@@ -518,6 +564,16 @@ private[deequ] object AnalyzerDeserializer
           getOptionalWhereParam(json),
           getOptionalAnalyzerOptions(json))
 
+      case "Range" =>
+        Range(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "InterquartileRange" =>
+        InterquartileRange(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
       case "CountDistinct" =>
         CountDistinct(getColumnsAsSeq(context, json))
 
@@ -540,11 +596,18 @@ private[deequ] object AnalyzerDeserializer
           getColumnsAsSeq(context, json),
           analyzerOptions = getOptionalAnalyzerOptions(json))
 
+      case "DuplicateRowCount" =>
+        DuplicateRowCount(
+          getColumnsAsSeq(context, json),
+          getOptionalWhereParam(json),
+          analyzerOptions = getOptionalAnalyzerOptions(json))
+
       case "Histogram" =>
         Histogram(
           json.get(COLUMN_FIELD).getAsString,
           None,
           json.get("maxDetailBins").getAsInt,
+          getOptionalWhereParam(json),
           aggregateFunction = createAggregateFunction(
             getOptionalStringParam(json, "aggregateFunction").getOrElse(Histogram.count_function),
             getOptionalStringParam(json, "aggregateColumn").getOrElse("")))
@@ -554,10 +617,15 @@ private[deequ] object AnalyzerDeserializer
         val customEdges = if (json.has("customEdges")) {
           Some(context.deserialize(json.get("customEdges"), classOf[Array[Double]]))
         } else None
+        val includeOverflowBins = if (json.has("includeOverflowBins")) {
+          json.get("includeOverflowBins").getAsBoolean
+        } else false
         HistogramBinned(
           json.get(COLUMN_FIELD).getAsString,
           binCount,
-          customEdges)
+          customEdges,
+          includeOverflowBins,
+          getOptionalWhereParam(json))
 
       case "DataType" =>
         DataType(
@@ -577,6 +645,21 @@ private[deequ] object AnalyzerDeserializer
 
       case "StandardDeviation" =>
         StandardDeviation(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "Variance" =>
+        Variance(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "Skewness" =>
+        Skewness(
+          json.get(COLUMN_FIELD).getAsString,
+          getOptionalWhereParam(json))
+
+      case "Kurtosis" =>
+        Kurtosis(
           json.get(COLUMN_FIELD).getAsString,
           getOptionalWhereParam(json))
 
@@ -834,6 +917,10 @@ private[deequ] object DistributionSerializer extends JsonSerializer[Distribution
 
     result.add("values", values)
 
+    if (distribution.tailCount > 0) {
+      result.addProperty("tailCount", distribution.tailCount)
+    }
+
     result
   }
 }
@@ -854,7 +941,8 @@ private[deequ] object DistributionDeserializer extends JsonDeserializer[Distribu
       }
       .toMap
 
-    Distribution(values, jsonObject.get("numberOfBins").getAsLong)
+    Distribution(values, jsonObject.get("numberOfBins").getAsLong,
+      if (jsonObject.has("tailCount")) jsonObject.get("tailCount").getAsLong else 0L)
   }
 }
 
@@ -877,6 +965,11 @@ private[deequ] object DistributionBinnedSerializer extends JsonSerializer[Distri
     }
 
     result.add("bins", bins)
+
+    if (distributionBinned.nullCount > 0) {
+      result.addProperty("nullCount", distributionBinned.nullCount)
+    }
+
     result
   }
 }
@@ -900,7 +993,11 @@ private[deequ] object DistributionBinnedDeserializer extends JsonDeserializer[Di
       }
       .toVector
 
-    DistributionBinned(bins, jsonObject.get("numberOfBins").getAsLong)
+    val nullCount = if (jsonObject.has("nullCount")) {
+      jsonObject.get("nullCount").getAsLong
+    } else 0L
+
+    DistributionBinned(bins, jsonObject.get("numberOfBins").getAsLong, nullCount)
   }
 }
 

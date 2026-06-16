@@ -17,6 +17,7 @@
 package com.amazon.deequ.dqdl.translation
 
 import com.amazon.deequ.dqdl.model.DeequExecutableRule
+import com.amazon.deequ.dqdl.model.CustomSqlRowLevelExecutableRule
 import com.amazon.deequ.utils.ConditionUtils.ConditionAsString
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -73,5 +74,29 @@ class DQDLRuleTranslatorSpec extends AnyWordSpec with Matchers {
     val rule = rules.head
     rule.evaluatedMetricName.get should equal("Dataset.*.RowCount")
     rule.dqRule.getRuleType should equal("RowCount")
+  }
+
+  "route scalar CustomSql to DeequExecutableRule" in {
+    val ruleset = DefaultDQDLParser.parse("""Rules=[CustomSql "select count(*) from primary" > 0]""")
+    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
+    rules.size should equal(1)
+    rules.head shouldBe a[DeequExecutableRule]
+    rules.head.evaluatedMetricName.get should equal("Dataset.*.CustomSQL")
+  }
+
+  "route row-level CustomSql to CustomSqlRowLevelExecutableRule" in {
+    val ruleset = DefaultDQDLParser.parse("""Rules=[CustomSql "select id from primary where age > 18"]""")
+    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
+    rules.size should equal(1)
+    rules.head shouldBe a[CustomSqlRowLevelExecutableRule]
+    rules.head.evaluatedMetricName.get should equal("Dataset.*.CustomSQL.Compliance")
+  }
+
+  "route row-level CustomSql with threshold to CustomSqlRowLevelExecutableRule" in {
+    val ruleset = DefaultDQDLParser.parse(
+      """Rules=[CustomSql "select id from primary where age > 18" with threshold > 0.5]""")
+    val rules = DQDLRuleTranslator.toExecutableRules(ruleset)
+    rules.size should equal(1)
+    rules.head shouldBe a[CustomSqlRowLevelExecutableRule]
   }
 }

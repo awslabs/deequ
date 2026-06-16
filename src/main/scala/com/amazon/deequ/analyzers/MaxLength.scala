@@ -54,6 +54,9 @@ case class MaxLength(column: String, where: Option[String] = None, analyzerOptio
 
   override def filterCondition: Option[String] = where
 
+  override def columnsReferenced(): Option[Set[String]] =
+    if (where.isDefined) None else Some(Set(column))
+
   private[deequ] def criterion: Column = {
     val isNullCheck = col(column).isNull
     val colLength = length(col(column)).cast(DoubleType)

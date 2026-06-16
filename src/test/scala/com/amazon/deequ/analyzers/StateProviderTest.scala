@@ -38,6 +38,7 @@ class StateProviderTest extends AnyWordSpec
       val data = someData(session)
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
+      assertCorrectlyRestoresState[NumMatches](provider, provider, ZerosCount("price"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresState[NumMatchesAndCount](provider, provider,
@@ -49,8 +50,17 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
       assertCorrectlyRestoresState[MinState](provider, provider, Minimum("price"), data)
       assertCorrectlyRestoresState[MaxState](provider, provider, Maximum("price"), data)
+      assertCorrectlyRestoresState[RangeState](provider, provider, Range("price"), data)
+      assertCorrectlyRestoresState[InterquartileRangeState](provider, provider,
+        InterquartileRange("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
+      assertCorrectlyRestoresState[VarianceState](provider, provider,
+        Variance("price"), data)
+      assertCorrectlyRestoresState[SkewnessState](provider, provider,
+        Skewness("price"), data)
+      assertCorrectlyRestoresState[KurtosisState](provider, provider,
+        Kurtosis("price"), data)
 
       assertCorrectlyRestoresState[MaxState](provider, provider, MaxLength("att1"), data)
       assertCorrectlyRestoresState[MinState](provider, provider, MinLength("att1"), data)
@@ -64,6 +74,8 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresFrequencyBasedState(provider, provider,
         Uniqueness(Seq("att1", "count")), data)
       assertCorrectlyRestoresFrequencyBasedState(provider, provider, Entropy("att1"), data)
+      assertCorrectlyRestoresFrequencyBasedState(provider, provider,
+        DuplicateRowCount(Seq("att1", "count")), data)
 
       assertCorrectlyApproxQuantileState(provider, provider, ApproxQuantile("price", 0.5), data)
     }
@@ -77,6 +89,7 @@ class StateProviderTest extends AnyWordSpec
       val data = someData(session)
 
       assertCorrectlyRestoresState[NumMatches](provider, provider, Size(), data)
+      assertCorrectlyRestoresState[NumMatches](provider, provider, ZerosCount("price"), data)
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
         Completeness("att1"), data)
       assertCorrectlyRestoresNumMatchesAndCount(provider, provider,
@@ -89,8 +102,17 @@ class StateProviderTest extends AnyWordSpec
       assertCorrectlyRestoresState[MeanState](provider, provider, Mean("price"), data)
       assertCorrectlyRestoresMinState(provider, provider, Minimum("price"), data)
       assertCorrectlyRestoresMaxState(provider, provider, Maximum("price"), data)
+      assertCorrectlyRestoresState[RangeState](provider, provider, Range("price"), data)
+      assertCorrectlyRestoresState[InterquartileRangeState](provider, provider,
+        InterquartileRange("price"), data)
       assertCorrectlyRestoresState[StandardDeviationState](provider, provider,
         StandardDeviation("price"), data)
+      assertCorrectlyRestoresState[VarianceState](provider, provider,
+        Variance("price"), data)
+      assertCorrectlyRestoresState[SkewnessState](provider, provider,
+        Skewness("price"), data)
+      assertCorrectlyRestoresState[KurtosisState](provider, provider,
+        Kurtosis("price"), data)
 
       assertCorrectlyRestoresMaxState(provider, provider, MaxLength("att1"), data)
       assertCorrectlyRestoresMinState(provider, provider, MinLength("att1"), data)

@@ -142,6 +142,7 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 
 - **RowCount**: `RowCount < 100`
 - **ColumnCount**: `ColumnCount = 10`
+- **ZerosCount**: `ZerosCount "column" = 0`
 - **Completeness**: `Completeness "column" > 0.9`
 - **IsComplete**: `IsComplete "column"`
 - **Uniqueness**: `Uniqueness "column" = 1.0`
@@ -151,12 +152,20 @@ Deequ also supports [DQDL](https://docs.aws.amazon.com/glue/latest/dg/dqdl.html)
 - **Entropy**: `Entropy "column" > 2.0`
 - **Mean**: `Mean "column" between 10 and 50`
 - **StandardDeviation**: `StandardDeviation "column" < 5.0`
+- **Variance**: `Variance "column" < 25.0`
+- **Skewness**: `Skewness "column" between -1 and 1`
+- **Kurtosis**: `Kurtosis "column" between -2 and 10`
+- **Range**: `Range "column" between 0 and 100`
 - **Sum**: `Sum "column" = 100`
 - **UniqueValueRatio**: `UniqueValueRatio "column" > 0.7`
 - **CustomSql**: `CustomSql "SELECT COUNT(*) FROM primary" > 0`
 - **IsPrimaryKey**: `IsPrimaryKey "column"`
 - **ColumnLength**: `ColumnLength "column" between 1 and 5`
 - **ColumnExists**: `ColumnExists "column"`
+- **ColumnValues**: Validate column values against numeric, string, or date expressions
+  - Numeric: `ColumnValues "price" > 0`, `ColumnValues "age" between 18 and 65`
+  - String: `ColumnValues "status" in ["active", "inactive"]`
+  - Date: `ColumnValues "order_date" > "2022-01-01"`, `ColumnValues "order_date" between "2022-01-01" and "2023-01-01"`
 - **RowCountMatch**: `RowCountMatch "referenceDataset" >= 0.9`
 - **SchemaMatch**: `SchemaMatch "referenceDataset" > 0.8`
 - **DataFreshness**: `DataFreshness "Order_Date" <= 24 hours`

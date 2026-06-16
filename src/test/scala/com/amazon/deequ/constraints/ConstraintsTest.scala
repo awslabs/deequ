@@ -43,6 +43,32 @@ class ConstraintsTest extends AnyWordSpec with Matchers with SparkContextSpec wi
     }
   }
 
+  "ZerosCount constraint" should {
+    "assert on zeros count" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      // att2 has values [0, 0, 0, 5, 6, 7] -> 3 zeros
+      calculate(Constraint.zerosCountConstraint("att2", _ == 3), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+  }
+
+  "DuplicateRowCount constraint" should {
+    "assert on duplicate row count" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+      calculate(Constraint.duplicateRowCountConstraint(Seq("col1", "col2"), _ == 2), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+
+    "fail when assertion is not met" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("a", 1), ("c", 3)).toDF("col1", "col2")
+      val result = calculate(Constraint.duplicateRowCountConstraint(Seq("col1", "col2"), _ == 0), df)
+      result.status shouldBe ConstraintStatus.Failure
+      result.message.get should include ("2")
+    }
+  }
+
   "Histogram constraints" should {
     "assert on bin number" in withSparkSession { sparkSession =>
       val df = getDfMissing(sparkSession)
@@ -87,6 +113,70 @@ class ConstraintsTest extends AnyWordSpec with Matchers with SparkContextSpec wi
       calculate(Constraint.histogramBinnedConstraint("value",
         _.bins.map(_.frequency).sum > 5), df).status shouldBe ConstraintStatus.Failure
     }
+
+    "succeed for valid custom edges binned distribution assertions" in withSparkSession { sparkSession =>
+      val df = sparkSession.createDataFrame(Seq(
+        (1, 15000.0), (2, 25000.0), (3, 35000.0), (4, 45000.0), (5, 55000.0),
+        (6, 75000.0), (7, 85000.0), (8, 120000.0), (9, 180000.0)
+      )).toDF("id", "income")
+
+      val incomeEdges = Array(0.0, 40000.0, 100000.0, 200000.0)
+
+      // Test custom edges constraint - should have 3 bins
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.numberOfBins == 3, customEdges = Some(incomeEdges)), df).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedBinConstraint("income",
+        _ == 3, customEdges = Some(incomeEdges)), df).status shouldBe ConstraintStatus.Success
+
+      // Test specific bin frequencies with custom edges
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(0).frequency == 3,
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success  // Low bracket: 15k, 25k, 35k
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(1).frequency == 4,
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success  // Middle bracket: 45k, 55k, 75k, 85k
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(2).frequency == 2,
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success  // High bracket: 120k, 180k
+
+      // Test bin ranges with custom edges
+      calculate(Constraint.histogramBinnedConstraint("income",
+        (dist => dist.bins(0).binStart == 0.0 && dist.bins(0).binEnd == 40000.0),
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        (dist => dist.bins(1).binStart == 40000.0 && dist.bins(1).binEnd == 100000.0),
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success
+
+      calculate(Constraint.histogramBinnedConstraint("income",
+        (dist => dist.bins(2).binStart == 100000.0 && dist.bins(2).binEnd == 200000.0),
+        customEdges = Some(incomeEdges)), df
+      ).status shouldBe ConstraintStatus.Success
+    }
+
+    "fail for invalid custom edges binned distribution assertions" in withSparkSession { sparkSession =>
+      val df = sparkSession.createDataFrame(Seq(
+        (1, 25000.0), (2, 75000.0)
+      )).toDF("id", "income")
+
+      val customEdges = Array(0.0, 50000.0, 100000.0)
+
+      // Should fail - expecting 3 bins but assertion is wrong
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.numberOfBins == 5, customEdges = Some(customEdges)), df).status shouldBe ConstraintStatus.Failure
+
+      // Should fail - wrong frequency expectation
+      calculate(Constraint.histogramBinnedConstraint("income",
+        _.bins(0).frequency == 5, customEdges = Some(customEdges)), df).status shouldBe ConstraintStatus.Failure
+    }
   }
 
   "Mutual information constraint" should {
@@ -114,6 +204,17 @@ class ConstraintsTest extends AnyWordSpec with Matchers with SparkContextSpec wi
       calculate(Constraint.maxConstraint("att1", _ == 6.0), df)
         .status shouldBe ConstraintStatus.Success
     }
+    "assert on range" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.rangeConstraint("att1", _ == 5.0), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+    "assert on interquartile range" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.interquartileRangeConstraint(
+        "att1", _ == 2.5), df)
+        .status shouldBe ConstraintStatus.Success
+    }
     "assert on mean" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       calculate(Constraint.meanConstraint("att1", _ == 3.5), df)
@@ -127,6 +228,21 @@ class ConstraintsTest extends AnyWordSpec with Matchers with SparkContextSpec wi
     "assert on standard deviation" in withSparkSession { sparkSession =>
       val df = getDfWithNumericValues(sparkSession)
       calculate(Constraint.standardDeviationConstraint("att1", _ == 1.707825127659933), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+    "assert on variance" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.varianceConstraint("att1", _ == 2.9166666666666665), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+    "assert on skewness" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.skewnessConstraint("att1", _ == 0.0), df)
+        .status shouldBe ConstraintStatus.Success
+    }
+    "assert on kurtosis" in withSparkSession { sparkSession =>
+      val df = getDfWithNumericValues(sparkSession)
+      calculate(Constraint.kurtosisConstraint("att1", _ < 0.0), df)
         .status shouldBe ConstraintStatus.Success
     }
     "assert on approximate count distinct" in withSparkSession { sparkSession =>

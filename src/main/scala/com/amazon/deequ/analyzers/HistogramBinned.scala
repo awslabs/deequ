@@ -23,6 +23,7 @@ import com.amazon.deequ.metrics.BinData
 import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.DistributionValue
 import com.amazon.deequ.metrics.HistogramBinnedMetric
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.floor
@@ -41,6 +42,19 @@ import org.apache.spark.sql.types.StructType
 import scala.util.Failure
 import scala.util.Try
 
+/** State for HistogramBinned that carries bin edges alongside frequencies. */
+case class BinnedFrequencies(
+  frequencies: DataFrame,
+  numRows: Long,
+  edges: Array[Double]
+) extends State[BinnedFrequencies] {
+
+  override def sum(other: BinnedFrequencies): BinnedFrequencies = {
+    throw new UnsupportedOperationException(
+      "BinnedFrequencies states cannot be merged. Use calculate() on the full dataset.")
+  }
+}
+
 /**
  * Histogram analyzer for numerical data with binning support.
  * Currently supports equal-width bins.
@@ -48,23 +62,62 @@ import scala.util.Try
 case class HistogramBinned(
                             override val column: String,
                             binCount: Option[Int] = None,
-                            customEdges: Option[Array[Double]] = None, // TODO: implement
+                            customEdges: Option[Array[Double]] = None,
+                            includeOverflowBins: Boolean = false,
                             override val where: Option[String] = None,
                             override val computeFrequenciesAsRatio: Boolean = true,
                             // Reuse Histogram's AggregateFunction implementations since just grouping
                             // by bin index (which becomes categorical data)
                             override val aggregateFunction: AggregateFunction = Histogram.Count)
   extends HistogramBase(column, where, computeFrequenciesAsRatio, aggregateFunction)
-    with Analyzer[FrequenciesAndNumRows, HistogramBinnedMetric] {
+    with Analyzer[BinnedFrequencies, HistogramBinnedMetric] {
 
   require(binCount.isDefined ^ customEdges.isDefined,
     "Must specify either binCount (equal-width) or customEdges (custom)")
+
+  require(customEdges.forall(_.length >= 2),
+    "Custom edges must have at least 2 values")
+
+  // Array has reference equality in Scala; override so AnalyzerContext map
+  // lookups and serde round-trips compare contents, not references.
+  override def equals(obj: Any): Boolean = obj match {
+    case other: HistogramBinned =>
+      column == other.column &&
+        binCount == other.binCount &&
+        customEdges.map(_.toSeq) == other.customEdges.map(_.toSeq) &&
+        includeOverflowBins == other.includeOverflowBins &&
+        where == other.where &&
+        computeFrequenciesAsRatio == other.computeFrequenciesAsRatio &&
+        aggregateFunction == other.aggregateFunction
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    (column, binCount, customEdges.map(_.toSeq), includeOverflowBins,
+      where, computeFrequenciesAsRatio, aggregateFunction).hashCode()
+  }
 
   private var storedEdges: Array[Double] = _
 
   protected[this] val PARAM_CHECK: StructType => Unit = { _ =>
     binCount.foreach { count =>
+      if (includeOverflowBins && count < 3) {
+        throw new IllegalAnalyzerParameterException(
+          "binCount must be at least 3 when includeOverflowBins is true (2 overflow + 1 interior)")
+      }
       if (count > HistogramBinned.MaximumAllowedDetailBins) {
+        throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
+          s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
+      }
+    }
+    customEdges.foreach { edges =>
+      // Count overflow bins that will actually be added (only if not already present)
+      val overflowExtra = if (includeOverflowBins) {
+        (if (edges.sorted.head != Double.NegativeInfinity) 1 else 0) +
+        (if (edges.sorted.last != Double.PositiveInfinity) 1 else 0)
+      } else 0
+      val numBins = edges.length - 1 + overflowExtra
+      if (numBins > HistogramBinned.MaximumAllowedDetailBins) {
         throw new IllegalAnalyzerParameterException(s"Cannot return histogram values for more " +
           s"than ${HistogramBinned.MaximumAllowedDetailBins} bins")
       }
@@ -72,7 +125,7 @@ case class HistogramBinned(
   }
 
   override def computeStateFrom(data: DataFrame,
-                                filterCondition: Option[String] = None): Option[FrequenciesAndNumRows] = {
+                                filterCondition: Option[String] = None): Option[BinnedFrequencies] = {
 
     val totalCount = if (computeFrequenciesAsRatio) {
       aggregateFunction.total(data)
@@ -99,6 +152,60 @@ case class HistogramBinned(
     // Create binned data using DataFrame operations
     val binnedData = if (storedEdges.isEmpty) {
       filteredData.withColumn(column, lit(Histogram.NullFieldReplacement))
+    } else if (customEdges.isDefined || includeOverflowBins ||
+               (storedEdges.length == 2 && storedEdges.head == storedEdges.last)) { // constant-value column
+      val edges = storedEdges
+
+      // Builds a balanced binary decision tree of when/otherwise expressions,
+      // giving O(log n) comparisons per row instead of O(n) for a linear chain.
+      // This matches Spark's own Bucketizer.binarySearchForBuckets approach
+      // (see org.apache.spark.ml.feature.Bucketizer) and matters at scale:
+      // e.g. 100 bins x 1B rows = ~7 comparisons/row vs ~99 for linear scan.
+      def buildBinaryCondition(binIndices: Seq[Int]): Column = {
+        if (binIndices.isEmpty) {
+          lit(HistogramBinned.OutOfRangeReplacement)
+        } else if (binIndices.size == 1) {
+          // Single bin, check if value falls in this bin
+          val i = binIndices.head
+          val isLastBin = i == edges.length - 2
+          // Last interior bin is inclusive [a, b] when overflow is enabled,
+          // so data max stays in interior. Identified by: next bin ends at +Inf.
+          val isLastInterior = includeOverflowBins && i < edges.length - 2 &&
+            edges(i + 2) == Double.PositiveInfinity
+          val condition = if (isLastBin || isLastInterior) {
+            // Last bin and last interior bin are inclusive [a, b]
+            numericCol >= edges(i) && numericCol <= edges(i + 1)
+          } else {
+            // All other bins exclude upper bound [a, b)
+            numericCol >= edges(i) && numericCol < edges(i + 1)
+          }
+          when(condition, lit(i.toString)).otherwise(lit(HistogramBinned.OutOfRangeReplacement))
+        } else {
+          // Split bins in half and create decision tree
+          val mid = binIndices.size / 2
+          val (leftBins, rightBins) = binIndices.splitAt(mid)
+          val splitEdge = edges(rightBins.head)
+
+          // When the right branch starts with the overflow bin, use <= so that
+          // values on the boundary stay in the last interior bin (left side)
+          val isOverflowSplit = includeOverflowBins &&
+            edges(rightBins.head + 1) == Double.PositiveInfinity
+          if (isOverflowSplit) {
+            when(numericCol <= splitEdge, buildBinaryCondition(leftBins))
+              .otherwise(buildBinaryCondition(rightBins))
+          } else {
+            when(numericCol < splitEdge, buildBinaryCondition(leftBins))
+              .otherwise(buildBinaryCondition(rightBins))
+          }
+        }
+      }
+
+      val allBinIndices = (0 until edges.length - 1)
+      val binCondition = buildBinaryCondition(allBinIndices)
+      val finalCondition = when(numericCol.isNull, lit(Histogram.NullFieldReplacement))
+        .otherwise(binCondition)
+
+      filteredData.withColumn(column, finalCondition)
     } else {
       val minVal = storedEdges.head
       val binWidth = (storedEdges.last - storedEdges.head) / (storedEdges.length - 1)
@@ -116,11 +223,19 @@ case class HistogramBinned(
 
     val frequencies = aggregateFunction.query(column, binnedData)
 
-    Some(FrequenciesAndNumRows(frequencies, totalCount))
+    Some(BinnedFrequencies(frequencies, totalCount, storedEdges))
   }
 
   private def computeCustomEdges(): Array[Double] = {
-    throw new UnsupportedOperationException("Custom edges not yet implemented")
+    val sorted = customEdges.get.sorted
+    addOverflowEdges(sorted)
+  }
+
+  private def addOverflowEdges(edges: Array[Double]): Array[Double] = {
+    if (!includeOverflowBins) return edges
+    val withLeft = if (edges.head != Double.NegativeInfinity) Double.NegativeInfinity +: edges else edges
+    val withBoth = if (withLeft.last != Double.PositiveInfinity) withLeft :+ Double.PositiveInfinity else withLeft
+    withBoth.toArray
   }
 
   private def computeEqualWidthEdges(filteredData: DataFrame,
@@ -139,12 +254,20 @@ case class HistogramBinned(
 
     val minDouble = minVal.doubleValue()
     val maxDouble = maxVal.doubleValue()
-    val binWidth = (maxDouble - minDouble) / binCount.get
 
-    Array.tabulate(binCount.get + 1)(i => minDouble + i * binWidth)
+    // Single distinct value - one bin, ignore binCount
+    if (minDouble == maxDouble) {
+      return addOverflowEdges(Array(minDouble, maxDouble))
+    }
+
+    val interiorBins = if (includeOverflowBins) binCount.get - 2 else binCount.get
+    val binWidth = (maxDouble - minDouble) / interiorBins
+
+    val edges = Array.tabulate(interiorBins + 1)(i => minDouble + i * binWidth)
+    addOverflowEdges(edges)
   }
 
-  override def computeMetricFrom(state: Option[FrequenciesAndNumRows]): HistogramBinnedMetric = {
+  override def computeMetricFrom(state: Option[BinnedFrequencies]): HistogramBinnedMetric = {
     state match {
       case Some(theState) =>
         val value: Try[DistributionBinned] = Try {
@@ -163,26 +286,20 @@ case class HistogramBinned(
               binValue -> DistributionValue(absolute, ratio)
             }.toMap
 
+          val edges = theState.edges
+
           // Convert to BinData objects
-          val binDataSeq = (0 until storedEdges.length - 1).map { binIndex =>
-            val binStart = storedEdges(binIndex)
-            val binEnd = storedEdges(binIndex + 1)
+          val binDataSeq = (0 until edges.length - 1).map { binIndex =>
+            val binStart = edges(binIndex)
+            val binEnd = edges(binIndex + 1)
             val distValue = histogramDetails.get(binIndex.toString).getOrElse(DistributionValue(0, 0.0))
             BinData(binStart, binEnd, distValue.absolute, distValue.ratio)
           }.toVector
 
-          // Add NullValue bin if it exists
-          val finalBins = if (histogramDetails.contains(Histogram.NullFieldReplacement)) {
-            val nullDistValue = histogramDetails(Histogram.NullFieldReplacement)
-            val nullBin = BinData(Double.NegativeInfinity, Double.PositiveInfinity,
-                                 nullDistValue.absolute, nullDistValue.ratio)
-            binDataSeq :+ nullBin
-          } else {
-            binDataSeq
-          }
+          val nullCount = histogramDetails.get(Histogram.NullFieldReplacement)
+            .map(_.absolute).getOrElse(0L)
 
-          val totalBins = finalBins.size // Count null and empty bins
-          DistributionBinned(finalBins, totalBins)
+          DistributionBinned(binDataSeq, binDataSeq.size, nullCount)
         }
 
         HistogramBinnedMetric(column, value)
@@ -204,6 +321,8 @@ case class HistogramBinned(
 object HistogramBinned {
   val DefaultBinCount = 10
   val MaximumAllowedDetailBins = 1000
+  // Out-of-range values get this label; ignored in computeMetricFrom (effectively dropped)
+  val OutOfRangeReplacement = "OutOfRange"
 
   // Note: Reuse Histogram.Count and Histogram.Sum for aggregation
   // since after binning, it is working with categorical bin indices

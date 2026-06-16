@@ -98,6 +98,13 @@ case class ColumnNamesMatchPatternExecutableRule(dqRule: DQRule,
     Some("Dataset.*.ColumnNamesPatternMatchRatio")
 }
 
+case class CustomSqlRowLevelExecutableRule(dqRule: DQRule,
+                                           customSqlStatement: String,
+                                           assertion: Double => Boolean) extends ExecutableRule {
+  override val evaluatedMetricName: Option[String] =
+    Some("Dataset.*.CustomSQL.Compliance")
+}
+
 /**
  * Represents a composite rule that combines multiple nested rules using logical operators (AND/OR).
  * Composite rules allow complex data quality checks by composing simpler rules.

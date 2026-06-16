@@ -37,6 +37,7 @@ import com.amazon.deequ.checks.ColumnCondition.isEachNotNull
 import com.amazon.deequ.constraints.Constraint._
 import com.amazon.deequ.constraints._
 import com.amazon.deequ.metrics.BucketDistribution
+import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
 import com.amazon.deequ.metrics.Distribution
 import com.amazon.deequ.metrics.DistributionBinned
 import com.amazon.deequ.metrics.Metric
@@ -136,6 +137,43 @@ case class Check(
     addFilterableConstraint {
       filter => Constraint.columnCountConstraint(assertion, hint)
     }
+  }
+
+  /**
+    * Creates a constraint that asserts on the number of zero values in a column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a long input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasZerosCount(
+      column: String,
+      assertion: Long => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      zerosCountConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+    * Creates a constraint that asserts on the number of duplicate rows.
+    *
+    * @param columns Columns to check for duplicates
+    * @param assertion Function that receives a long input parameter (duplicate row count)
+    *                  and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasDuplicateRowCount(
+      columns: Seq[String],
+      assertion: Long => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      duplicateRowCountConstraint(columns, assertion, filter, hint) }
   }
 
   /**
@@ -578,11 +616,12 @@ case class Check(
       column: String,
       assertion: DistributionBinned => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      histogramBinnedConstraint(column, assertion, binCount, filter, hint) }
+      histogramBinnedConstraint(column, assertion, binCount, customEdges, filter, hint) }
   }
 
   /**
@@ -601,11 +640,12 @@ case class Check(
       column: String,
       assertion: Long => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
     addFilterableConstraint { filter =>
-      histogramBinnedBinConstraint(column, assertion, binCount, filter, hint) }
+      histogramBinnedBinConstraint(column, assertion, binCount, customEdges, filter, hint) }
   }
 
   /**
@@ -823,6 +863,42 @@ case class Check(
   }
 
   /**
+    * Creates a constraint that asserts on the range (max - min) of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasRange(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      rangeConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+    * Creates a constraint that asserts on the interquartile range of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasInterquartileRange(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      interquartileRangeConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
     * Creates a constraint that asserts on the mean of the column
     *
     * @param column Column to run the assertion on
@@ -872,6 +948,60 @@ case class Check(
 
     addFilterableConstraint { filter =>
       standardDeviationConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+    * Creates a constraint that asserts on the variance of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasVariance(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      varianceConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+    * Creates a constraint that asserts on the skewness of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasSkewness(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      skewnessConstraint(column, assertion, filter, hint) }
+  }
+
+  /**
+    * Creates a constraint that asserts on the kurtosis of the column
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint A hint to provide additional context why a constraint could have failed
+    * @return
+    */
+  def hasKurtosis(
+      column: String,
+      assertion: Double => Boolean,
+      hint: Option[String] = None)
+    : CheckWithLastConstraintFilterable = {
+
+    addFilterableConstraint { filter =>
+      kurtosisConstraint(column, assertion, filter, hint) }
   }
 
   /**
@@ -1072,8 +1202,7 @@ case class Check(
 
     satisfies(
       // coalescing column to not count NULL values as non-compliant
-      // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
-      s"COALESCE(CAST($column AS DECIMAL(20,10)), 0.0) >= 0",
+      s"COALESCE(CAST(${escapeColumn(column)} AS DOUBLE), 0.0) >= 0",
       s"$column is non-negative",
       assertion,
       hint = hint,
@@ -1095,9 +1224,8 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
     // coalescing column to not count NULL values as non-compliant
-    // NOTE: cast to DECIMAL(20, 10) is needed to handle scientific notations
     satisfies(
-      s"COALESCE(CAST($column AS DECIMAL(20,10)), 1.0) > 0",
+      s"COALESCE(CAST(${escapeColumn(column)} AS DOUBLE), 1.0) > 0",
       s"$column is positive",
       assertion,
       hint,
@@ -1122,7 +1250,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA < $columnB", s"$columnA is less than $columnB", assertion,
+    satisfies(s"${escapeColumn(columnA)} < ${escapeColumn(columnB)}", s"$columnA is less than $columnB", assertion,
       hint = hint, columns = List(columnA, columnB))
   }
 
@@ -1142,7 +1270,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA <= $columnB", s"$columnA is less than or equal to $columnB",
+    satisfies(s"${escapeColumn(columnA)} <= ${escapeColumn(columnB)}", s"$columnA is less than or equal to $columnB",
       assertion, hint = hint, columns = List(columnA, columnB))
   }
 
@@ -1162,7 +1290,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA > $columnB", s"$columnA is greater than $columnB",
+    satisfies(s"${escapeColumn(columnA)} > ${escapeColumn(columnB)}", s"$columnA is greater than $columnB",
       assertion, hint = hint, columns = List(columnA, columnB))
   }
 
@@ -1183,7 +1311,7 @@ case class Check(
       hint: Option[String] = None)
     : CheckWithLastConstraintFilterable = {
 
-    satisfies(s"$columnA >= $columnB", s"$columnA is greater than or equal to $columnB",
+    satisfies(s"${escapeColumn(columnA)} >= ${escapeColumn(columnB)}", s"$columnA is greater than or equal to $columnB",
       assertion, hint = hint, columns = List(columnA, columnB))
   }
 

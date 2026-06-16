@@ -310,6 +310,23 @@ class HistogramTest extends AnyWordSpec with Matchers with SparkContextSpec with
       keys(1) shouldBe "Electronics"  // second highest: 600
     }
 
+    "sort tied frequencies alphabetically" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = (Seq.fill(51)("Iris-setosa") ++
+        Seq.fill(50)("Iris-virginica") ++
+        Seq.fill(50)("Iris-versicolor") ++
+        Seq.fill(10)("Iris-xiphium")).toDF("class")
+
+      val histogram = Histogram("class", computeFrequenciesAsRatio = false)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val keys = result.value.get.values.keys.toSeq
+
+      keys shouldBe Seq("Iris-setosa", "Iris-versicolor", "Iris-virginica", "Iris-xiphium")
+    }
+
     "handle all null data gracefully" in withSparkSession { spark =>
       import spark.implicits._
 
@@ -326,6 +343,280 @@ class HistogramTest extends AnyWordSpec with Matchers with SparkContextSpec with
       distribution.values.size shouldBe 1
 
       distribution.values("NullValue").absolute shouldBe 4
+    }
+  }
+
+  "Histogram (tail)" should {
+    "compute tailCount when categories exceed maxDetailBins" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        "A", "A", "A", "A", "A",  // 5
+        "B", "B", "B", "B",       // 4
+        "C", "C", "C",            // 3
+        "D", "D",                 // 2
+        "E"                       // 1
+      ).toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 3)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Top 3 by frequency: A=5, B=4, C=3
+      distribution.values.size shouldBe 3
+      distribution.values("A").absolute shouldBe 5
+      distribution.values("B").absolute shouldBe 4
+      distribution.values("C").absolute shouldBe 3
+
+      // Tail: D=2 + E=1 = 3
+      distribution.tailCount shouldBe 3
+
+      // Total categories
+      distribution.numberOfBins shouldBe 5
+    }
+
+    "have zero tailCount when categories fit within maxDetailBins" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq("A", "A", "B", "B", "C").toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 10)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.values.size shouldBe 3
+      distribution.tailCount shouldBe 0
+    }
+
+    "have zero tailCount when categories exactly equal maxDetailBins" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq("A", "A", "B", "C").toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 3)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.values.size shouldBe 3
+      distribution.tailCount shouldBe 0
+    }
+
+    "compute tailCount with maxDetailBins = 1" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq("A", "A", "A", "B", "B", "C").toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 1)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.values.size shouldBe 1
+      distribution.values("A").absolute shouldBe 3
+      // Tail: B=2 + C=1 = 3
+      distribution.tailCount shouldBe 3
+    }
+
+    "compute tailCount with nulls present" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(Some("A"), Some("A"), Some("B"), None, Some("C"), None).toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 2)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Top 2: A=2, NullValue=2 (sorted by freq desc, then name asc)
+      distribution.values.size shouldBe 2
+      // Tail: B=1 + C=1 = 2
+      distribution.tailCount shouldBe 2
+    }
+
+    "compute tailCount with Sum aggregation" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        ("A", 100), ("A", 200),
+        ("B", 50), ("B", 75),
+        ("C", 10), ("D", 5)
+      ).toDF("category", "amount")
+
+      val histogram = Histogram("category", maxDetailBins = 2,
+        aggregateFunction = Histogram.Sum("amount"))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Top 2 by sum: A=300, B=125
+      distribution.values.size shouldBe 2
+      distribution.values("A").absolute shouldBe 300
+      distribution.values("B").absolute shouldBe 125
+      // Tail: C=10 + D=5 = 15
+      distribution.tailCount shouldBe 15
+    }
+
+    "compute tailCount larger than any individual top bin" in withSparkSession { spark =>
+      import spark.implicits._
+
+      // 50 rare categories with 2 each = 100 in tail
+      // Top 3 categories have 10, 8, 6
+      val topData = Seq.fill(10)("Top1") ++ Seq.fill(8)("Top2") ++ Seq.fill(6)("Top3")
+      val tailData = (1 to 50).flatMap(i => Seq.fill(2)(s"Rare$i"))
+      val data = (topData ++ tailData).toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 3)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      distribution.values.size shouldBe 3
+      distribution.values("Top1").absolute shouldBe 10
+      // Tail = 100, larger than any single top bin
+      distribution.tailCount shouldBe 100
+      distribution.tailCount should be > distribution.values("Top1").absolute
+    }
+
+    "break ties alphabetically when frequencies are equal" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        "Banana", "Banana",
+        "Apple", "Apple",
+        "Cherry", "Cherry",
+        "Date", "Date"
+      ).toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 2)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // All have frequency 2, tie-broken alphabetically ascending
+      distribution.values.size shouldBe 2
+      val keys = distribution.values.keys.toSeq
+      keys should contain("Apple")
+      keys should contain("Banana")
+      // Cherry and Date go to tail
+      distribution.tailCount shouldBe 4
+    }
+
+    "have correct ratios relative to total including tail" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        "A", "A", "A", "A", "A",  // 5
+        "B", "B", "B",            // 3
+        "C", "C"                  // 2
+      ).toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 2)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Ratios should be relative to total (10), not just top N
+      distribution.values("A").ratio shouldBe 0.5 +- 0.001
+      distribution.values("B").ratio shouldBe 0.3 +- 0.001
+      distribution.tailCount shouldBe 2
+    }
+
+    "throw when maxDetailBins is 0" in withSparkSession { spark =>
+      import spark.implicits._
+      import com.amazon.deequ.analyzers.runners.AnalysisRunner
+
+      val data = Seq("A", "B").toDF("category")
+      val histogram = Histogram("category", maxDetailBins = 0)
+
+      val analysis = AnalysisRunner.onData(data).addAnalyzer(histogram)
+      val result = analysis.run()
+
+      val metric = result.metricMap(histogram)
+      metric.value.isFailure shouldBe true
+    }
+
+    "compute tailCount with where filter" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq(
+        (1, "A"), (2, "A"), (3, "A"),
+        (4, "B"), (5, "B"),
+        (6, "C"), (7, "C"),
+        (8, "D")
+      ).toDF("id", "category")
+
+      val histogram = Histogram("category", maxDetailBins = 2, where = Some("id <= 6"))
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // Filtered data: A=3, B=2, C=1 (id 6 has C, id 7 excluded)
+      distribution.values.size shouldBe 2
+      distribution.values("A").absolute shouldBe 3
+      distribution.values("B").absolute shouldBe 2
+      distribution.tailCount shouldBe 1  // C=1
+    }
+
+    "compute tailCount with binningUdf" in withSparkSession { spark =>
+      import spark.implicits._
+      import org.apache.spark.sql.functions.udf
+
+      val data = Seq("US", "USA", "UK", "GB", "France", "Germany", "Italy").toDF("country")
+
+      // UDF groups US/USA and UK/GB together
+      val normalize = udf((s: String) => s match {
+        case "US" | "USA" => "US"
+        case "UK" | "GB" => "UK"
+        case other => other
+      })
+
+      val histogram = Histogram("country", binningUdf = Some(normalize), maxDetailBins = 2)
+      val result = histogram.calculate(data)
+
+      result.value.isSuccess shouldBe true
+      val distribution = result.value.get
+
+      // After UDF: US=2, UK=2, France=1, Germany=1, Italy=1
+      distribution.values.size shouldBe 2
+      // Tail: remaining categories after UDF grouping
+      distribution.tailCount shouldBe 3  // France + Germany + Italy
+    }
+
+    "emit tailCount in flatten() when tail exists" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq("A", "A", "A", "B", "B", "C").toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 1)
+      val metric = histogram.calculate(data)
+
+      val flattened = metric.flatten()
+      flattened.exists(m => m.name == "Histogram.tailCount" && m.value.get == 3.0) shouldBe true
+    }
+
+    "not emit tailCount in flatten() when no tail" in withSparkSession { spark =>
+      import spark.implicits._
+
+      val data = Seq("A", "B").toDF("category")
+
+      val histogram = Histogram("category", maxDetailBins = 10)
+      val metric = histogram.calculate(data)
+
+      val flattened = metric.flatten()
+      flattened.exists(_.name == "Histogram.tailCount") shouldBe false
     }
   }
 }

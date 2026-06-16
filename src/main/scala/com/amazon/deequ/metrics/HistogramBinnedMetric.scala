@@ -24,18 +24,23 @@ case class BinData(binStart: Double, binEnd: Double, frequency: Long, ratio: Dou
 
 case class DistributionBinned(
   bins: Vector[BinData],
-  numberOfBins: Long
+  numberOfBins: Long,
+  nullCount: Long = 0
 ) {
 
   def apply(index: Int): BinData = bins(index)
 
   def getInterval(index: Int): String = {
     val bin = bins(index)
-    if (index == bins.length - 1) {
-      f"[${bin.binStart}%.2f, ${bin.binEnd}%.2f]"
-    } else {
-      f"[${bin.binStart}%.2f, ${bin.binEnd}%.2f)"
+    val leftBracket = if (bin.binStart.isNegInfinity) "(" else "["
+    val isLastInterior = index < bins.length - 1 &&
+      bins(index + 1).binEnd.isPosInfinity
+    val rightBracket = if (bin.binEnd.isPosInfinity) ")" else {
+      if (index == bins.length - 1 || isLastInterior) "]" else ")"
     }
+    val startStr = if (bin.binStart.isNegInfinity) "-Inf" else f"${bin.binStart}%.2f"
+    val endStr = if (bin.binEnd.isPosInfinity) "Inf" else f"${bin.binEnd}%.2f"
+    s"$leftBracket$startStr, $endStr$rightBracket"
   }
 }
 
@@ -54,7 +59,13 @@ case class HistogramBinnedMetric(column: String, value: Try[DistributionBinned])
         val details = distribution.bins.zipWithIndex.map { case (binData, index) =>
           DoubleMetric(entity, s"$name.abs.bin$index", instance, Success(binData.frequency))
         }
-        numberOfBins +: details
+
+        val nulls = if (distribution.nullCount > 0) {
+          Seq(DoubleMetric(entity, s"$name.nullCount", instance,
+            Success(distribution.nullCount.toDouble)))
+        } else Seq.empty
+
+        numberOfBins +: (details ++ nulls)
       }
       .recover {
         case e: Exception => Seq(DoubleMetric(entity, s"$name.bins", instance, Failure(e)))

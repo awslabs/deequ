@@ -89,6 +89,9 @@ case class HdfsStateProvider(
       case _: Size =>
         persistLongState(state.asInstanceOf[NumMatches].numMatches, identifier)
 
+      case _: ZerosCount =>
+        persistLongState(state.asInstanceOf[NumMatches].numMatches, identifier)
+
       case _ : Completeness | _ : Compliance | _ : PatternMatch =>
         persistLongLongState(state.asInstanceOf[NumMatchesAndCount], identifier)
 
@@ -103,6 +106,13 @@ case class HdfsStateProvider(
 
       case _: Maximum =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
+
+      case _ : Range =>
+        persistRangeState(state.asInstanceOf[RangeState], identifier)
+
+      case _ : InterquartileRange =>
+        persistIQRState(
+          state.asInstanceOf[InterquartileRangeState], identifier)
 
       case _: MaxLength =>
         persistDoubleState(state.asInstanceOf[MaxState].maxValue, identifier)
@@ -128,6 +138,15 @@ case class HdfsStateProvider(
       case _ : StandardDeviation =>
         persistStandardDeviationState(state.asInstanceOf[StandardDeviationState], identifier)
 
+      case _ : Variance =>
+        persistVarianceState(state.asInstanceOf[VarianceState], identifier)
+
+      case _ : Skewness =>
+        persistSkewnessState(state.asInstanceOf[SkewnessState], identifier)
+
+      case _ : Kurtosis =>
+        persistKurtosisState(state.asInstanceOf[KurtosisState], identifier)
+
       case _: ApproxQuantile =>
         val percentileDigest = state.asInstanceOf[ApproxQuantileState].percentileDigest
         val serializedDigest = ApproximatePercentile.serializer.serialize(percentileDigest)
@@ -149,6 +168,8 @@ case class HdfsStateProvider(
 
       case _ : Size => NumMatches(loadLongState(identifier))
 
+      case _ : ZerosCount => NumMatches(loadLongState(identifier))
+
       case _ : Completeness | _ : Compliance | _ : PatternMatch => loadLongLongState(identifier)
 
       case _ : Sum => SumState(loadDoubleState(identifier))
@@ -158,6 +179,10 @@ case class HdfsStateProvider(
       case _ : Minimum => MinState(loadDoubleState(identifier))
 
       case _ : Maximum => MaxState(loadDoubleState(identifier))
+
+      case _ : Range => loadRangeState(identifier)
+
+      case _ : InterquartileRange => loadIQRState(identifier)
 
       case _ : MaxLength => MaxState(loadDoubleState(identifier))
 
@@ -173,6 +198,12 @@ case class HdfsStateProvider(
       case _ : Correlation => loadCorrelationState(identifier)
 
       case _ : StandardDeviation => loadStandardDeviationState(identifier)
+
+      case _ : Variance => loadVarianceState(identifier)
+
+      case _ : Skewness => loadSkewnessState(identifier)
+
+      case _ : Kurtosis => loadKurtosisState(identifier)
 
        case _: ApproxQuantile =>
          val percentileDigest = ApproximatePercentile.serializer.deserialize(loadBytes(identifier))
@@ -264,6 +295,17 @@ case class HdfsStateProvider(
     }
   }
 
+  private[this] def persistVarianceState(
+      state: VarianceState,
+      identifier: String) {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.n)
+      out.writeDouble(state.avg)
+      out.writeDouble(state.m2)
+    }
+  }
+
   private[this] def loadLongState(identifier: String): Long = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { _.readLong() }
   }
@@ -310,6 +352,84 @@ case class HdfsStateProvider(
   private[this] def loadStandardDeviationState(identifier: String): StandardDeviationState = {
     readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
       StandardDeviationState(in.readDouble(), in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def loadVarianceState(identifier: String): VarianceState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      VarianceState(in.readDouble(), in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistSkewnessState(
+      state: SkewnessState,
+      identifier: String) {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.n)
+      out.writeDouble(state.avg)
+      out.writeDouble(state.m2)
+      out.writeDouble(state.m3)
+    }
+  }
+
+  private[this] def loadSkewnessState(identifier: String): SkewnessState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      SkewnessState(in.readDouble(), in.readDouble(),
+        in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistKurtosisState(
+      state: KurtosisState,
+      identifier: String): Unit = {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.n)
+      out.writeDouble(state.avg)
+      out.writeDouble(state.m2)
+      out.writeDouble(state.m3)
+      out.writeDouble(state.m4)
+    }
+  }
+
+  private[this] def loadKurtosisState(identifier: String): KurtosisState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      KurtosisState(in.readDouble(), in.readDouble(),
+        in.readDouble(), in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistRangeState(
+      state: RangeState,
+      identifier: String) {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.minValue)
+      out.writeDouble(state.maxValue)
+    }
+  }
+
+  private[this] def loadRangeState(identifier: String): RangeState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      RangeState(in.readDouble(), in.readDouble())
+    }
+  }
+
+  private[this] def persistIQRState(
+      state: InterquartileRangeState,
+      identifier: String): Unit = {
+
+    writeToFileOnDfs(session, s"$locationPrefix-$identifier.bin", allowOverwrite) { out =>
+      out.writeDouble(state.q1)
+      out.writeDouble(state.q3)
+    }
+  }
+
+  private[this] def loadIQRState(
+      identifier: String): InterquartileRangeState = {
+    readFromFileOnDfs(session, s"$locationPrefix-$identifier.bin") { in =>
+      InterquartileRangeState(in.readDouble(), in.readDouble())
     }
   }
 }

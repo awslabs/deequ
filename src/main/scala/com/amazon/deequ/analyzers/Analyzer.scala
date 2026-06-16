@@ -80,6 +80,14 @@ trait Analyzer[S <: State[_], +M <: Metric[_]] extends Serializable {
   def computeMetricFrom(state: Option[S]): M
 
   /**
+    * Returns the columns this analyzer reads from the data, if known statically.
+    * Returns Some(columns) when all referenced columns can be determined,
+    * or None when the analyzer may reference arbitrary columns (e.g. free-form SQL predicates).
+    * Used by AnalysisRunner to enable column pruning for V2 DataSource connectors like Iceberg.
+    */
+  def columnsReferenced(): Option[Set[String]] = None
+
+  /**
     * A set of assertions that must hold on the schema of the data frame
     * @return
     */
@@ -582,6 +590,17 @@ private[deequ] object Analyzers {
       entity: Entity.Value = Entity.Column)
     : DoubleMetric = {
     metricFromFailure(emptyStateException(analyzer), name, instance, entity)
+  }
+
+  /** metricFromEmpty that preserves a fullColumn for correct row-level results
+    * when a WHERE clause filters out all rows. */
+  def metricFromEmptyWithColumn(
+      analyzer: Analyzer[_, _],
+      name: String,
+      instance: String,
+      fullColumn: Column)
+    : DoubleMetric = {
+    metricFromEmpty(analyzer, name, instance).copy(fullColumn = Some(fullColumn))
   }
 
   def metricFromFailure(

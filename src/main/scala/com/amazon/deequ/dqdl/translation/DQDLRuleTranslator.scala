@@ -24,15 +24,22 @@ import com.amazon.deequ.dqdl.translation.rules.CustomSqlRule
 import com.amazon.deequ.dqdl.translation.rules.DistinctValuesCountRule
 import com.amazon.deequ.dqdl.translation.rules.EntropyRule
 import com.amazon.deequ.dqdl.translation.rules.IsCompleteRule
+import com.amazon.deequ.dqdl.translation.rules.InterquartileRangeRule
 import com.amazon.deequ.dqdl.translation.rules.IsPrimaryKeyRule
 import com.amazon.deequ.dqdl.translation.rules.IsUniqueRule
+import com.amazon.deequ.dqdl.translation.rules.KurtosisRule
 import com.amazon.deequ.dqdl.translation.rules.MeanRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnCountRule
 import com.amazon.deequ.dqdl.translation.rules.RowCountRule
+import com.amazon.deequ.dqdl.translation.rules.RangeRule
+import com.amazon.deequ.dqdl.translation.rules.DuplicateRowCountRule
+import com.amazon.deequ.dqdl.translation.rules.SkewnessRule
 import com.amazon.deequ.dqdl.translation.rules.StandardDeviationRule
 import com.amazon.deequ.dqdl.translation.rules.SumRule
+import com.amazon.deequ.dqdl.translation.rules.VarianceRule
 import com.amazon.deequ.dqdl.translation.rules.UniqueValueRatioRule
 import com.amazon.deequ.dqdl.translation.rules.UniquenessRule
+import com.amazon.deequ.dqdl.translation.rules.ZerosCountRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnLengthRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnExistsRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnValuesRule
@@ -44,8 +51,10 @@ import com.amazon.deequ.dqdl.translation.rules.ColumnDataTypeRule
 import com.amazon.deequ.dqdl.translation.rules.ColumnNamesMatchPatternRule
 import com.amazon.deequ.dqdl.translation.rules.SchemaMatchRule
 import com.amazon.deequ.dqdl.translation.rules.AggregateMatchRule
+import com.amazon.deequ.dqdl.translation.rules.CustomSqlRowLevelRule
 import software.amazon.glue.dqdl.model.DQRule
 import software.amazon.glue.dqdl.model.DQRuleset
+import software.amazon.glue.dqdl.model.condition.number.NumberBasedCondition
 
 import scala.jdk.CollectionConverters._
 
@@ -60,6 +69,7 @@ object DQDLRuleTranslator {
   private val converters = Map[String, DQDLRuleConverter](
     "RowCount" -> new RowCountRule,
     "ColumnCount" -> new ColumnCountRule,
+    "ZerosCount" -> new ZerosCountRule,
     "Completeness" -> new CompletenessRule,
     "IsComplete" -> new IsCompleteRule,
     "Uniqueness" -> new UniquenessRule,
@@ -68,14 +78,20 @@ object DQDLRuleTranslator {
     "DistinctValuesCount" -> new DistinctValuesCountRule,
     "Entropy" -> new EntropyRule,
     "Mean" -> new MeanRule,
+    "Range" -> new RangeRule,
+    "InterquartileRange" -> new InterquartileRangeRule,
     "StandardDeviation" -> new StandardDeviationRule,
+    "Variance" -> new VarianceRule,
+    "Skewness" -> new SkewnessRule,
+    "Kurtosis" -> new KurtosisRule,
     "Sum" -> new SumRule,
     "UniqueValueRatio" -> new UniqueValueRatioRule,
     "CustomSql" -> new CustomSqlRule,
     "IsPrimaryKey" -> new IsPrimaryKeyRule,
     "ColumnLength" -> new ColumnLengthRule,
     "ColumnExists" -> new ColumnExistsRule,
-    "ColumnValues" -> new ColumnValuesRule
+    "ColumnValues" -> new ColumnValuesRule,
+    "DuplicateRowCount" -> new DuplicateRowCountRule
   )
 
   /**
@@ -124,6 +140,16 @@ object DQDLRuleTranslator {
         DatasetMatchRule.toExecutableRule(rule) match {
           case Right(executableRule) => executableRule
           case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+        }
+      case "CustomSql" =>
+        rule.getCondition match {
+          case _: NumberBasedCondition =>
+            translateRule(rule) match {
+              case Right(deequExecutableRule) => deequExecutableRule
+              case Left(message) => UnsupportedExecutableRule(rule, Some(message))
+            }
+          case _ =>
+            CustomSqlRowLevelRule.toExecutableRule(rule)
         }
       case _ =>
         translateRule(rule) match {

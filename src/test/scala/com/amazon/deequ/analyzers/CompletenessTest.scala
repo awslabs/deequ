@@ -70,5 +70,32 @@ class CompletenessTest extends AnyWordSpec with Matchers with SparkContextSpec w
       df.collect().map(_.getAs[Any]("new")).toSeq shouldBe
         Seq(true, true, false, true, true, true)
     }
+
+    "return Failure metric with fullColumn when where clause filters all rows" in withSparkSession { session =>
+      val data = getDfWithNumericValues(session)
+
+      val analyzer = Completeness("att1", where = Some("att1 > 100"))
+      val state = analyzer.computeStateFrom(data)
+      val metric = analyzer.computeMetricFrom(state)
+
+      state.map(s => (s.numMatches, s.count)) shouldBe Some((0L, 0L))
+      metric.value.isFailure shouldBe true
+      metric.fullColumn shouldBe defined
+    }
+
+    "return null row-level results when where filters all rows with NULL" in
+      withSparkSession { session =>
+        val data = getDfWithNumericValues(session)
+
+        val analyzer = Completeness("att1", where = Some("att1 > 100"),
+          analyzerOptions = Some(AnalyzerOptions(filteredRow = FilteredRowOutcome.NULL)))
+        val state = analyzer.computeStateFrom(data)
+        val metric = analyzer.computeMetricFrom(state)
+
+        metric.fullColumn shouldBe defined
+        val results = data.withColumn("result", metric.fullColumn.get)
+          .collect().map(r => r.isNullAt(r.fieldIndex("result")))
+        results.foreach(_ shouldBe true)
+      }
   }
 }

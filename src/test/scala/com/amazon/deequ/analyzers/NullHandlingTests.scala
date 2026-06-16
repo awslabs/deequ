@@ -67,8 +67,13 @@ class NullHandlingTests extends AnyWordSpec
 
       Mean("numericCol").computeStateFrom(data) shouldBe None
       StandardDeviation("numericCol").computeStateFrom(data) shouldBe None
+      Variance("numericCol").computeStateFrom(data) shouldBe None
+      Skewness("numericCol").computeStateFrom(data) shouldBe None
+      Kurtosis("numericCol").computeStateFrom(data) shouldBe None
       Minimum("numericCol").computeStateFrom(data) shouldBe None
       Maximum("numericCol").computeStateFrom(data) shouldBe None
+      Range("numericCol").computeStateFrom(data) shouldBe None
+      InterquartileRange("numericCol").computeStateFrom(data) shouldBe None
 
       MinLength("stringCol").computeStateFrom(data) shouldBe None
       MaxLength("stringCol").computeStateFrom(data) shouldBe None
@@ -107,8 +112,14 @@ class NullHandlingTests extends AnyWordSpec
       assertFailedWithEmptyState(Mean("numericCol").calculate(data))
 
       assertFailedWithEmptyState(StandardDeviation("numericCol").calculate(data))
+      assertFailedWithEmptyState(Variance("numericCol").calculate(data))
+      assertFailedWithEmptyState(Skewness("numericCol").calculate(data))
+      assertFailedWithEmptyState(Kurtosis("numericCol").calculate(data))
       assertFailedWithEmptyState(Minimum("numericCol").calculate(data))
       assertFailedWithEmptyState(Maximum("numericCol").calculate(data))
+      assertFailedWithEmptyState(Range("numericCol").calculate(data))
+      assertFailedWithEmptyState(
+        InterquartileRange("numericCol").calculate(data))
 
       assertFailedWithEmptyState(MinLength("stringCol").calculate(data))
       assertFailedWithEmptyState(MaxLength("stringCol").calculate(data))
@@ -148,6 +159,30 @@ class NullHandlingTests extends AnyWordSpec
   private[this] def assertFailedWithEmptyState(metric: DoubleMetric): Unit = {
     assert(metric.value.isFailure)
     assert(metric.value.failed.get.isInstanceOf[EmptyStateException])
+  }
+
+  "DuplicateRowCount" should {
+    "exclude all-null rows and return 0 duplicates" in withSparkSession { session =>
+      import session.implicits._
+      val df = Seq(
+        (None: Option[String], None: Option[String]),
+        (None: Option[String], None: Option[String]),
+        (Some("a"), Some("b"))
+      ).toDF("col1", "col2")
+      val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df)
+      assert(result.value == Success(0.0))
+    }
+
+    "treat partial nulls as equal for grouping" in withSparkSession { session =>
+      import session.implicits._
+      val df = Seq(
+        (Some("a"), None: Option[String]),
+        (Some("a"), None: Option[String]),
+        (Some("b"), Some("c"))
+      ).toDF("col1", "col2")
+      val result = DuplicateRowCount(Seq("col1", "col2")).calculate(df)
+      assert(result.value == Success(2.0))
+    }
   }
 
 

@@ -36,6 +36,10 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
 
     val analyzerContextWithAllSuccValues = new AnalyzerContext(Map(
       Size() -> DoubleMetric(Entity.Column, "Size", "*", Success(5.0)),
+      ZerosCount("ColumnA") ->
+        DoubleMetric(Entity.Column, "ZerosCount", "ColumnA", Success(0.0)),
+      DuplicateRowCount(Seq("ColumnA", "ColumnB")) ->
+        DoubleMetric(Entity.Multicolumn, "DuplicateRowCount", "ColumnA,ColumnB", Success(5.0)),
       Completeness("ColumnA", analyzerOptions = Some(AnalyzerOptions(
         nullBehavior = NullBehavior.Ignore
       ))) ->
@@ -71,13 +75,18 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
       Histogram("ColumnA", None, 5) ->
         HistogramMetric("ColumnA", Success(Distribution(
           Map("some" -> DistributionValue(10, 0.5)), 10))),
+      Histogram("ColumnA", None, Histogram.MaximumAllowedDetailBins, Some("id > 5")) ->
+        HistogramMetric("ColumnA", Success(Distribution(
+          Map("filtered" -> DistributionValue(3, 0.6)), 5))),
       HistogramBinned("ColumnA", Some(5)) ->
         HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
           Vector(BinData(0.0, 10.0, 5, 0.5), BinData(10.0, 20.0, 5, 0.5)), 2))),
       HistogramBinned("ColumnA", Some(3)) ->
         HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
-          Vector(BinData(Double.NegativeInfinity, Double.NegativeInfinity, 2, 0.2),
-                 BinData(0.0, 15.0, 4, 0.4), BinData(15.0, 30.0, 4, 0.4)), 3))),
+          Vector(BinData(0.0, 15.0, 4, 0.4), BinData(15.0, 30.0, 4, 0.4)), 2, 2))),
+      HistogramBinned("ColumnA", Some(5), None, includeOverflowBins = false, where = Some("id > 3")) ->
+        HistogramBinnedMetric("ColumnA", Success(DistributionBinned(
+          Vector(BinData(0.0, 10.0, 3, 0.6), BinData(10.0, 20.0, 2, 0.4)), 2))),
       Entropy("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       MutualInformation(Seq("ColumnA", "ColumnB")) ->
@@ -86,6 +95,11 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       Maximum("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
+      Range("ColumnA") ->
+        DoubleMetric(Entity.Column, "Range", "ColumnA", Success(5.0)),
+      InterquartileRange("ColumnA") ->
+        DoubleMetric(Entity.Column, "InterquartileRange",
+          "ColumnA", Success(2.5)),
       Mean("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       Sum("ColumnA") ->
@@ -94,6 +108,12 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
         DoubleMetric(Entity.Column, "RatioOfSums", "ColumnA", Success(5.0)),
       StandardDeviation("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
+      Variance("ColumnA") ->
+        DoubleMetric(Entity.Column, "Variance", "ColumnA", Success(5.0)),
+      Skewness("ColumnA") ->
+        DoubleMetric(Entity.Column, "Skewness", "ColumnA", Success(0.0)),
+      Kurtosis("ColumnA") ->
+        DoubleMetric(Entity.Column, "Kurtosis", "ColumnA", Success(0.0)),
       DataType("ColumnA") ->
         DoubleMetric(Entity.Column, "Completeness", "ColumnA", Success(5.0)),
       MinLength("ColumnA") ->
@@ -369,16 +389,10 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
         |          "metric": {
         |            "metricName": "HistogramBinnedMetric",
         |            "column": "columnA",
-        |            "numberOfBins": 3,
+        |            "numberOfBins": 2,
         |            "value": {
-        |              "numberOfBins": 3,
+        |              "numberOfBins": 2,
         |              "bins": [
-        |                {
-        |                  "binStart": -Infinity,
-        |                  "binEnd": -Infinity,
-        |                  "frequency": 2,
-        |                  "ratio": 0.2
-        |                },
         |                {
         |                  "binStart": 0.0,
         |                  "binEnd": 15.0,
@@ -391,7 +405,8 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
         |                  "frequency": 4,
         |                  "ratio": 0.4
         |                }
-        |              ]
+        |              ],
+        |              "nullCount": 2
         |            }
         |          }
         |        }
@@ -458,10 +473,9 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
     val analyzer = HistogramBinned("columnA", Some(3))
     val metric = HistogramBinnedMetric("columnA", Success(DistributionBinned(
       Vector(
-        BinData(Double.NegativeInfinity, Double.NegativeInfinity, 2, 0.2),
         BinData(0.0, 15.0, 4, 0.4),
         BinData(15.0, 30.0, 4, 0.4)
-      ), 3)))
+      ), 2, 2)))
     val context = AnalyzerContext(Map(analyzer -> metric))
     val result = new AnalysisResult(ResultKey(0), context)
     assert(serialize(Seq(result)) == expected)
@@ -471,13 +485,145 @@ class AnalysisResultSerdeTest extends AnyFlatSpec with Matchers {
     val analyzer = HistogramBinned("columnA", Some(3))
     val metric = HistogramBinnedMetric("columnA", Success(DistributionBinned(
       Vector(
-        BinData(Double.NegativeInfinity, Double.NegativeInfinity, 2, 0.2),
         BinData(0.0, 15.0, 4, 0.4),
         BinData(15.0, 30.0, 4, 0.4)
-      ), 3)))
+      ), 2, 2)))
     val context = AnalyzerContext(Map(analyzer -> metric))
     val expected = new AnalysisResult(ResultKey(0), context)
     assert(deserialize(histogramBinnedWithNullsJson) == List(expected))
+  }
+
+  val histogramBinnedCustomEdgesJson =
+      """[
+        |  {
+        |    "resultKey": {
+        |      "dataSetDate": 0,
+        |      "tags": {}
+        |    },
+        |    "analyzerContext": {
+        |      "metricMap": [
+        |        {
+        |          "analyzer": {
+        |            "analyzerName": "HistogramBinned",
+        |            "column": "income",
+        |            "customEdges": [
+        |              0.0,
+        |              40000.0,
+        |              100000.0,
+        |              200000.0
+        |            ]
+        |          },
+        |          "metric": {
+        |            "metricName": "HistogramBinnedMetric",
+        |            "column": "income",
+        |            "numberOfBins": 3,
+        |            "value": {
+        |              "numberOfBins": 3,
+        |              "bins": [
+        |                {
+        |                  "binStart": 0.0,
+        |                  "binEnd": 40000.0,
+        |                  "frequency": 2,
+        |                  "ratio": 0.4
+        |                },
+        |                {
+        |                  "binStart": 40000.0,
+        |                  "binEnd": 100000.0,
+        |                  "frequency": 2,
+        |                  "ratio": 0.4
+        |                },
+        |                {
+        |                  "binStart": 100000.0,
+        |                  "binEnd": 200000.0,
+        |                  "frequency": 1,
+        |                  "ratio": 0.2
+        |                }
+        |              ]
+        |            }
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |]""".stripMargin
+
+  "HistogramBinned serialization" should "properly serialize custom edges binned distribution" in {
+    val expected = histogramBinnedCustomEdgesJson
+    val customEdges = Array(0.0, 40000.0, 100000.0, 200000.0)
+    val analyzer = HistogramBinned("income", customEdges = Some(customEdges))
+    val metric = HistogramBinnedMetric("income", Success(DistributionBinned(
+      Vector(
+        BinData(0.0, 40000.0, 2, 0.4),
+        BinData(40000.0, 100000.0, 2, 0.4),
+        BinData(100000.0, 200000.0, 1, 0.2)
+      ), 3)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    assert(serialize(List(result)) == expected)
+  }
+
+  "HistogramBinned deserialization" should "properly deserialize custom edges binned distribution" in {
+    val customEdges = Array(0.0, 40000.0, 100000.0, 200000.0)
+    val analyzer = HistogramBinned("income", customEdges = Some(customEdges))
+    val metric = HistogramBinnedMetric("income", Success(DistributionBinned(
+      Vector(
+        BinData(0.0, 40000.0, 2, 0.4),
+        BinData(40000.0, 100000.0, 2, 0.4),
+        BinData(100000.0, 200000.0, 1, 0.2)
+      ), 3)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val expected = new AnalysisResult(ResultKey(0), context)
+    assert(deserialize(histogramBinnedCustomEdgesJson) == List(expected))
+  }
+
+  "HistogramBinned with overflow" should "round-trip serialize and deserialize" in {
+    val customEdges = Array(0.0, 10.0, 20.0)
+    val analyzer = HistogramBinned("values", customEdges = Some(customEdges), includeOverflowBins = true)
+    val metric = HistogramBinnedMetric("values", Success(DistributionBinned(
+      Vector(
+        BinData(Double.NegativeInfinity, 0.0, 1, 0.25),
+        BinData(0.0, 10.0, 1, 0.25),
+        BinData(10.0, 20.0, 1, 0.25),
+        BinData(20.0, Double.PositiveInfinity, 1, 0.25)
+      ), 4)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    val serialized = serialize(List(result))
+    val deserialized = deserialize(serialized)
+    assert(deserialized == List(result))
+  }
+
+  "Distribution with tailCount" should "round-trip serialize and deserialize" in {
+    val analyzer = Histogram("category", maxDetailBins = 3)
+    val metric = HistogramMetric("category", Success(Distribution(
+      Map("A" -> DistributionValue(5, 0.5), "B" -> DistributionValue(3, 0.3)),
+      5, 2)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    val serialized = serialize(List(result))
+    val deserialized = deserialize(serialized)
+    assert(deserialized == List(result))
+
+    // Verify tailCount is in the JSON
+    serialized should include("tailCount")
+  }
+
+  "Distribution without tail" should "not include tailCount in JSON" in {
+    val analyzer = Histogram("category")
+    val metric = HistogramMetric("category", Success(Distribution(
+      Map("A" -> DistributionValue(5, 0.5), "B" -> DistributionValue(5, 0.5)),
+      2, 0)))
+    val context = AnalyzerContext(Map(analyzer -> metric))
+    val result = new AnalysisResult(ResultKey(0), context)
+
+    val serialized = serialize(List(result))
+    serialized should not include("tailCount")
+
+    val deserialized = deserialize(serialized)
+    assert(deserialized == List(result))
   }
 
   def assertCorrectlyConvertsAnalysisResults(

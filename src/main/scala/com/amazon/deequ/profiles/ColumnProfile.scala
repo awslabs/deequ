@@ -62,11 +62,17 @@ case class NumericColumnProfile(
     typeCounts: Map[String, Long],
     histogram: Option[Distribution],
     kll: Option[BucketDistribution],
+    zerosCount: Option[Long],
     mean: Option[Double],
     maximum: Option[Double],
     minimum: Option[Double],
+    range: Option[Double],
+    interquartileRange: Option[Double],
     sum: Option[Double],
     stdDev: Option[Double],
+    variance: Option[Double],
+    skewness: Option[Double],
+    kurtosis: Option[Double],
     approxPercentiles: Option[Seq[Double]])
   extends ColumnProfile
 
@@ -118,6 +124,9 @@ object ColumnProfiles {
 
       profile match {
         case numericColumnProfile: NumericColumnProfile =>
+          numericColumnProfile.zerosCount.foreach { zerosCount =>
+            columnProfileJson.addProperty("zerosCount", zerosCount)
+          }
           numericColumnProfile.mean.foreach { mean =>
             columnProfileJson.addProperty("mean", mean)
           }
@@ -127,11 +136,26 @@ object ColumnProfiles {
           numericColumnProfile.minimum.foreach { minimum =>
             columnProfileJson.addProperty("minimum", minimum)
           }
+          numericColumnProfile.range.foreach { range =>
+            columnProfileJson.addProperty("range", range)
+          }
+          numericColumnProfile.interquartileRange.foreach { iqr =>
+            columnProfileJson.addProperty("interquartileRange", iqr)
+          }
           numericColumnProfile.sum.foreach { sum =>
             columnProfileJson.addProperty("sum", sum)
           }
           numericColumnProfile.stdDev.foreach { stdDev =>
             columnProfileJson.addProperty("stdDev", stdDev)
+          }
+          numericColumnProfile.variance.foreach { variance =>
+            columnProfileJson.addProperty("variance", variance)
+          }
+          numericColumnProfile.skewness.foreach { skewness =>
+            columnProfileJson.addProperty("skewness", skewness)
+          }
+          numericColumnProfile.kurtosis.foreach { kurtosis =>
+            columnProfileJson.addProperty("kurtosis", kurtosis)
           }
 
           // KLL Sketch

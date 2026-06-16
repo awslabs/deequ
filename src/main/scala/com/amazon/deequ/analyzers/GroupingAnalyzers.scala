@@ -67,10 +67,17 @@ object FrequencyBasedAnalyzer {
       where: Option[String] = None)
     : FrequenciesAndNumRows = {
 
-    val columnsToGroupBy = groupingColumns.map { name => col(name) }.toArray
+    // Resolve empty groupingColumns to all DataFrame columns.
+    // Only DuplicateRowCount can reach here with empty columns (it overrides preconditions
+    // to skip atLeastOne check). All other analyzers enforce atLeastOne(columnsToGroupOn)
+    // which rejects empty columns before this method is called.
+    require(groupingColumns.nonEmpty || data.columns.nonEmpty,
+      "groupingColumns is empty and DataFrame has no columns")
+    val resolvedColumns = if (groupingColumns.isEmpty) data.columns.toSeq else groupingColumns
+    val columnsToGroupBy = resolvedColumns.map { name => col(name) }.toArray
     val projectionColumns = columnsToGroupBy :+ col(COUNT_COL)
 
-    val atLeastOneNonNullGroupingColumn = groupingColumns
+    val atLeastOneNonNullGroupingColumn = resolvedColumns
       .foldLeft(expr(false.toString)) { case (condition, name) =>
         condition.or(col(name).isNotNull)
       }

@@ -63,10 +63,16 @@ private[deequ] case class StringColumnStatistics(
 )
 
 private[deequ] case class NumericColumnStatistics(
+    zerosCounts: Map[String, Long],
     means: Map[String, Double],
     stdDevs: Map[String, Double],
+    variances: Map[String, Double],
+    skewnesses: Map[String, Double],
+    kurtoses: Map[String, Double],
     minima: Map[String, Double],
     maxima: Map[String, Double],
+    ranges: Map[String, Double],
+    iqrs: Map[String, Double],
     sums: Map[String, Double],
     kll: Map[String, BucketDistribution],
     approxPercentiles: Map[String, Seq[Double]]
@@ -291,8 +297,11 @@ object ColumnProfiler {
       kllProfiling: Boolean,
       kllParameters: Option[KLLParameters])
     : Seq[Analyzer[_, Metric[_]]] = {
-      val mandatoryAnalyzers = Seq(Minimum(column), Maximum(column), Mean(column),
-        StandardDeviation(column), Sum(column))
+      val mandatoryAnalyzers = Seq(Minimum(column), Maximum(column),
+        Range(column), InterquartileRange(column), Mean(column),
+        StandardDeviation(column), Variance(column), Skewness(column),
+        Kurtosis(column), Sum(column),
+        ZerosCount(column))
 
       val optionalAnalyzers = if (kllProfiling) {
         Seq(KLLSketch(column, kllParameters))
@@ -397,19 +406,6 @@ object ColumnProfiler {
     }
   }
 
-  /* Cast string columns detected as numeric to their detected type */
-  private[profiles] def castColumn(
-      data: DataFrame,
-      name: String,
-      toType: SparkDataType)
-    : DataFrame = {
-
-    val originalName = removeEscapeColumn(name)
-
-    data.withColumn(s"${name}___CASTED", data(name).cast(toType))
-      .drop(originalName)
-      .withColumnRenamed(s"${name}___CASTED", originalName)
-  }
 
   private[this] def extractGenericStatistics(
       columns: Seq[String],
@@ -496,16 +492,21 @@ object ColumnProfiler {
       genericStatistics: GenericColumnStatistics)
     : DataFrame = {
 
-    var castedData = originalData
-
-    columns.foreach { name =>
-      castedData = genericStatistics.typeOf(name) match {
-        case Integral => castColumn(castedData, name, LongType)
-        case Fractional => castColumn(castedData, name, DoubleType)
-        case _ => castedData
-      }
-    }
-    castedData
+    val escapedToCast = columns.map(c => removeEscapeColumn(c) -> c).toMap
+    originalData.select(
+      originalData.columns.map { rawName =>
+        val escaped = escapeColumn(rawName)
+        escapedToCast.get(rawName) match {
+          case Some(escapedName) =>
+            genericStatistics.typeOf(escapedName) match {
+              case Integral => originalData(escaped).cast(LongType).as(rawName)
+              case Fractional => originalData(escaped).cast(DoubleType).as(rawName)
+              case _ => originalData(escaped)
+            }
+          case None => originalData(escaped)
+        }
+      }: _*
+    )
   }
 
 
@@ -531,12 +532,64 @@ object ColumnProfiler {
       .flatten
       .toMap
 
+    val variances = results.metricMap
+      .collect { case (analyzer: Variance, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
+    val skewnesses = results.metricMap
+      .collect { case (analyzer: Skewness, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
+    val kurtoses = results.metricMap
+      .collect { case (analyzer: Kurtosis, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
     val maxima = results.metricMap
       .collect { case (analyzer: Maximum, metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(analyzer.column -> metricValue)
           case _ => None
         }
+      }
+      .flatten
+      .toMap
+
+    val ranges = results.metricMap
+      .collect { case (analyzer: Range, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
+    val iqrs = results.metricMap
+      .collect {
+        case (analyzer: InterquartileRange, metric: DoubleMetric) =>
+          metric.value match {
+            case Success(metricValue) =>
+              Some(analyzer.column -> metricValue)
+            case _ => None
+          }
       }
       .flatten
       .toMap
@@ -555,6 +608,16 @@ object ColumnProfiler {
       .collect { case (analyzer: Sum, metric: DoubleMetric) =>
         metric.value match {
           case Success(metricValue) => Some(analyzer.column -> metricValue)
+          case _ => None
+        }
+      }
+      .flatten
+      .toMap
+
+    val zerosCounts = results.metricMap
+      .collect { case (analyzer: ZerosCount, metric: DoubleMetric) =>
+        metric.value match {
+          case Success(metricValue) => Some(analyzer.column -> metricValue.toLong)
           case _ => None
         }
       }
@@ -588,7 +651,9 @@ object ColumnProfiler {
       .toMap
 
 
-    NumericColumnStatistics(means, stdDevs, minima, maxima, sums, kll, approxPercentiles)
+    NumericColumnStatistics(zerosCounts, means, stdDevs, variances,
+      skewnesses, kurtoses, minima, maxima, ranges, iqrs, sums,
+      kll, approxPercentiles)
   }
 
   /* Identifies all columns, which:
@@ -750,11 +815,17 @@ object ColumnProfiler {
               typeCounts,
               histogram,
               numericStats.kll.get(name),
+              numericStats.zerosCounts.get(name),
               numericStats.means.get(name),
               numericStats.maxima.get(name),
               numericStats.minima.get(name),
+              numericStats.ranges.get(name),
+              numericStats.iqrs.get(name),
               numericStats.sums.get(name),
               numericStats.stdDevs.get(name),
+              numericStats.variances.get(name),
+              numericStats.skewnesses.get(name),
+              numericStats.kurtoses.get(name),
               numericStats.approxPercentiles.get(name))
 
           case String =>
@@ -781,7 +852,7 @@ object ColumnProfiler {
               histogram)
         }
 
-        name -> profile
+        removeEscapeColumn(name) -> profile
       }
       .toMap
 

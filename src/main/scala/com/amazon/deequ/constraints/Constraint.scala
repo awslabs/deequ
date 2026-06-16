@@ -143,6 +143,46 @@ object Constraint {
   }
 
   /**
+    * Runs zeros count analysis on the given column and executes the assertion
+    */
+  def zerosCountConstraint(
+      column: String,
+      assertion: Long => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val zerosCount = ZerosCount(column, where)
+    val constraint = AnalysisBasedConstraint[NumMatches, Double, Long](
+      zerosCount, assertion, Some(_.toLong), hint)
+
+    new NamedConstraint(constraint, s"ZerosCountConstraint($zerosCount)")
+  }
+
+  /**
+    * Runs DuplicateRowCount analysis on the given columns and executes the assertion
+    */
+  def duplicateRowCountConstraint(
+      columns: Seq[String],
+      assertion: Long => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val duplicateRowCount = DuplicateRowCount(columns, where)
+    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, Double, Long](
+      duplicateRowCount, assertion, Some(_.toLong), hint)
+
+    if (columns.nonEmpty) {
+      new RowLevelGroupedConstraint(constraint,
+        s"DuplicateRowCountConstraint($duplicateRowCount)",
+        duplicateRowCount.columns)
+    } else {
+      new NamedConstraint(constraint, s"DuplicateRowCountConstraint($duplicateRowCount)")
+    }
+  }
+
+  /**
     * Runs Histogram analysis on the given column and executes the assertion
     *
     * @param column     Column to run the assertion on
@@ -206,13 +246,17 @@ object Constraint {
       column: String,
       assertion: DistributionBinned => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val histogramBinned = HistogramBinned(column, binCount, where = where)
+    // HistogramBinned requires exactly one of binCount or customEdges to be defined
+    // If customEdges is provided, we must set binCount to None
+    val actualBinCount = if (customEdges.isDefined) None else binCount
+    val histogramBinned = HistogramBinned(column, actualBinCount, customEdges, where = where)
 
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, DistributionBinned](
+    val constraint = AnalysisBasedConstraint[BinnedFrequencies, DistributionBinned, DistributionBinned](
       histogramBinned, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"HistogramBinnedConstraint($histogramBinned)")
@@ -225,13 +269,17 @@ object Constraint {
       column: String,
       assertion: Long => Boolean,
       binCount: Option[Int] = Some(HistogramBinned.DefaultBinCount),
+      customEdges: Option[Array[Double]] = None,
       where: Option[String] = None,
       hint: Option[String] = None)
     : Constraint = {
 
-    val histogramBinned = HistogramBinned(column, binCount, where = where)
+    // HistogramBinned requires exactly one of binCount or customEdges to be defined
+    // If customEdges is provided, we must set binCount to None
+    val actualBinCount = if (customEdges.isDefined) None else binCount
+    val histogramBinned = HistogramBinned(column, actualBinCount, customEdges, where = where)
 
-    val constraint = AnalysisBasedConstraint[FrequenciesAndNumRows, DistributionBinned, Long](
+    val constraint = AnalysisBasedConstraint[BinnedFrequencies, DistributionBinned, Long](
       histogramBinned, assertion, Some(_.numberOfBins), hint)
 
     new NamedConstraint(constraint, s"HistogramBinnedBinConstraint($histogramBinned)")
@@ -729,6 +777,68 @@ object Constraint {
   }
 
   /**
+    * Runs range analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def rangeConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val range = Range(column, where)
+
+    fromAnalyzer(range, assertion, hint)
+  }
+
+  def fromAnalyzer(
+      range: Range,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[RangeState, Double, Double](
+      range, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"RangeConstraint($range)")
+  }
+
+  /**
+    * Runs interquartile range analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def interquartileRangeConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val iqr = InterquartileRange(column, where)
+
+    fromAnalyzer(iqr, assertion, hint)
+  }
+
+  private[deequ] def fromAnalyzer(
+      iqr: InterquartileRange,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint =
+      AnalysisBasedConstraint[InterquartileRangeState, Double, Double](
+        iqr, assertion, hint = hint)
+
+    new NamedConstraint(constraint,
+      s"InterquartileRangeConstraint($iqr)")
+  }
+
+  /**
     * Runs mean analysis on the given column and executes the assertion
     *
     * @param column Column to run the assertion on
@@ -827,6 +937,96 @@ object Constraint {
       standardDeviation, assertion, hint = hint)
 
     new NamedConstraint(constraint, s"StandardDeviationConstraint($standardDeviation)")
+  }
+
+  /**
+    * Runs variance analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def varianceConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val variance = Variance(column, where)
+
+    fromAnalyzer(variance, assertion, hint)
+  }
+
+  def fromAnalyzer(
+      variance: Variance,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[VarianceState, Double, Double](
+      variance, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"VarianceConstraint($variance)")
+  }
+
+  /**
+    * Runs skewness analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def skewnessConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val skewness = Skewness(column, where)
+
+    fromAnalyzer(skewness, assertion, hint)
+  }
+
+  def fromAnalyzer(
+      skewness: Skewness,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[SkewnessState, Double, Double](
+      skewness, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"SkewnessConstraint($skewness)")
+  }
+
+  /**
+    * Runs kurtosis analysis on the given column and executes the assertion
+    *
+    * @param column Column to run the assertion on
+    * @param assertion Function that receives a double input parameter and returns a boolean
+    * @param hint    A hint to provide additional context why a constraint could have failed
+    */
+  def kurtosisConstraint(
+      column: String,
+      assertion: Double => Boolean,
+      where: Option[String] = None,
+      hint: Option[String] = None)
+    : Constraint = {
+
+    val kurtosis = Kurtosis(column, where)
+
+    fromAnalyzer(kurtosis, assertion, hint)
+  }
+
+  private[deequ] def fromAnalyzer(
+      kurtosis: Kurtosis,
+      assertion: Double => Boolean,
+      hint: Option[String])
+    : Constraint = {
+    val constraint = AnalysisBasedConstraint[KurtosisState, Double, Double](
+      kurtosis, assertion, hint = hint)
+
+    new NamedConstraint(constraint, s"KurtosisConstraint($kurtosis)")
   }
 
   /**
