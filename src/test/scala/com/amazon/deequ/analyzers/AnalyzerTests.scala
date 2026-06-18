@@ -791,6 +791,24 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
     }
   }
 
+  "Exact quantile analyzer" should {
+    "compute correct value for a column whose name needs escaping" in
+      withSparkSession { session =>
+      import session.implicits._
+      // A leading space requires backtick escaping; the column reference must survive it.
+      val df = (1 to 10).toDF(" length")
+      ExactQuantile("` length`", 0.5).calculate(df).value shouldBe Success(5.5)
+    }
+
+    "compute correct value with a where clause that contains a string literal" in
+      withSparkSession { session =>
+      import session.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("a", 3), ("b", 4), ("a", 5)).toDF("item", "att1")
+      ExactQuantile("att1", 0.5, where = Some("item != 'b'")).calculate(df)
+        .value shouldBe Success(3.0)
+    }
+  }
+
   "Pearson correlation" should {
     "yield NaN for conditionally uninformative columns" in withSparkSession { sparkSession =>
       val df = getDfWithConditionallyUninformativeColumns(sparkSession)

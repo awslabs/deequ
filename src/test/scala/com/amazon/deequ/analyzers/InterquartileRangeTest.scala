@@ -103,6 +103,22 @@ class InterquartileRangeTest extends AnyWordSpec with Matchers
       metric.instance shouldBe "att1"
     }
 
+    "compute correct value for a column whose name needs escaping" in
+      withSparkSession { session =>
+      import session.implicits._
+      // A leading space requires backtick escaping; the column reference must survive it.
+      val df = (1 to 10).toDF(" length")
+      InterquartileRange("` length`").calculate(df).value shouldBe Success(4.5)
+    }
+
+    "compute correct value with a where clause that contains a string literal" in
+      withSparkSession { session =>
+      import session.implicits._
+      val df = Seq(("a", 1), ("b", 2), ("a", 3), ("b", 4), ("a", 5)).toDF("item", "att1")
+      InterquartileRange("att1", where = Some("item != 'b'")).calculate(df)
+        .value shouldBe Success(2.0)
+    }
+
     "throw on state merge (quantiles not algebraically mergeable)" in
       withSparkSession { session =>
       import session.implicits._

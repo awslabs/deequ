@@ -450,13 +450,14 @@ object ColumnProfiler {
         analyzer.column -> metric.value.get
       }
 
+    // Key by the escaped column name, like `columns` and the other statistics maps, so that
+    // columns whose names need escaping are not dropped and resolve in typeOf(...).
     val knownTypes = schema.fields
-      .filter { column => columns.contains(column.name) }
-      .filterNot { column => predefinedTypes.contains(column.name)}
-      .filter {
-        _.dataType != StringType
-      }
-      .map { field =>
+      .map { field => (escapeColumn(field.name), field) }
+      .filter { case (name, _) => columns.contains(name) }
+      .filterNot { case (name, _) => predefinedTypes.contains(name) }
+      .filter { case (_, field) => field.dataType != StringType }
+      .map { case (name, field) =>
         val knownType = field.dataType match {
           case ShortType | LongType | IntegerType => Integral
           case DecimalType() | FloatType | DoubleType => Fractional
@@ -467,7 +468,7 @@ object ColumnProfiler {
             Unknown
         }
 
-        field.name -> knownType
+        name -> knownType
       }
       .toMap
 

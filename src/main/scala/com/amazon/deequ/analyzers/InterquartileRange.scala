@@ -19,7 +19,7 @@ package com.amazon.deequ.analyzers
 import com.amazon.deequ.analyzers.Preconditions.{hasColumn, isNumeric}
 import com.amazon.deequ.analyzers.Analyzers._
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.{lit, percentile}
 import org.apache.spark.sql.types.{DoubleType, StructType}
 
 case class InterquartileRangeState(
@@ -61,8 +61,11 @@ case class InterquartileRange(
     conditionalSelection(column, where).cast(DoubleType)
 
   override def aggregationFunctions(): Seq[Column] = {
-    expr(s"percentile($selection, 0.25)") ::
-      expr(s"percentile($selection, 0.75)") :: Nil
+    // Build the percentile columns directly rather than interpolating `selection` into an
+    // expr(...) string: stringifying the column loses the backtick quoting and breaks
+    // column names that need escaping (e.g. one with a leading space).
+    percentile(selection, lit(0.25)) ::
+      percentile(selection, lit(0.75)) :: Nil
   }
 
   override def fromAggregationResult(
