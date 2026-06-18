@@ -21,7 +21,7 @@ import com.amazon.deequ.analyzers.Analyzers.{conditionalSelection, ifNoNullsIn}
 import com.amazon.deequ.metrics.FullColumn
 import org.apache.curator.shaded.com.google.common.annotations.VisibleForTesting
 import org.apache.spark.sql.{Column, Row}
-import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.{expr, lit, percentile}
 import org.apache.spark.sql.types.{DoubleType, StructType}
 
 case class ExactQuantileState(exactQuantile: Double, quantile: Double, override val fullColumn: Option[Column] = None)
@@ -45,7 +45,10 @@ case class ExactQuantile(column: String,
 extends StandardScanShareableAnalyzer[ExactQuantileState]("ExactQuantile", column)
 with FilterableAnalyzer {
   override def aggregationFunctions(): Seq[Column] = {
-    expr(s"percentile(${conditionalSelection(column, where).cast(DoubleType)}, $quantile)") :: Nil
+    // Build the percentile column directly rather than interpolating the selection into an
+    // expr(...) string: stringifying the column loses the backtick quoting and breaks
+    // column names that need escaping (e.g. one with a leading space).
+    percentile(conditionalSelection(column, where).cast(DoubleType), lit(quantile)) :: Nil
   }
 
   override def fromAggregationResult(result: Row, offset: Int): Option[ExactQuantileState] = {
