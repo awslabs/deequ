@@ -20,6 +20,7 @@ import com.amazon.deequ.analyzers._
 import com.amazon.deequ.io.DfsUtils
 import com.amazon.deequ.metrics.{DoubleMetric, Metric}
 import com.amazon.deequ.repository.{MetricsRepository, ResultKey}
+import com.amazon.deequ.utilities.ColumnUtil.escapeColumn
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
@@ -409,7 +410,7 @@ object AnalysisRunner {
         // All analyzers are dataset-level (e.g. Size), no column selection needed
         data
       } else {
-        data.select(neededColumns.map(col): _*)
+        data.select(neededColumns.map(c => col(escapeColumn(c))): _*)
       }
     }
   }
