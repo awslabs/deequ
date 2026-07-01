@@ -1,0 +1,25 @@
+# Shadow engine config for awslabs/deequ. Consumed by the reusable workflow
+# sudsali/shadow/.github/workflows/shadow-review.yml (see .github/workflows/issue-bot.yml).
+
+codebase:
+  src_dir: src/main/scala       # deequ's Scala sources (was CODEBASE_SRC_DIR)
+  file_ext: .scala              # was CODEBASE_FILE_EXT
+  test_dir: src/test/scala      # Scala test tree
+  language: scala               # fences source snippets on the legacy issue-respond path
+
+bot:
+  # LOAD-BEARING: this renders the `<!-- deequ-bot:clean -->` marker that
+  # auto-approve.yml greps for on clean PR reviews. Changing it silently breaks
+  # auto-approval. Matches the marker the vendored bot emitted.
+  name: deequ-bot
+  escalate_label: needs-human
+  max_replies: 2
+  max_runs_per_hour: 20
+
+# Per-stage models. Env/secrets (BEDROCK_MODEL_ID, BEDROCK_REPORTER_MODEL_ID,
+# BEDROCK_CRITIC_MODEL_ID) take precedence over these, so the caller workflow's
+# secret/var wiring wins; listed here as the documented defaults.
+models:
+  investigator: us.anthropic.claude-opus-4-7
+  critic: us.anthropic.claude-opus-4-7
+  reporter: us.anthropic.claude-haiku-4-5-20251001-v1:0

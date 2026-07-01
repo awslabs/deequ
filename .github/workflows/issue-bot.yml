@@ -1,9 +1,33 @@
 name: Deequ Bot
+# NOTE: the workflow name "Deequ Bot" is load-bearing — auto-approve.yml keys
+# on workflows: ["Java CI with Maven", "Deequ Bot"]. Do not rename without
+# updating auto-approve.yml.
+#
+# This repo consumes the shared Shadow engine (sudsali/shadow) instead of a
+# vendored copy of the bot. Deequ's language-tuned prompts live in Secrets
+# Manager under the `deequ-bot/*` namespace and are selected via
+# `prompt_sm_prefix` — the engine fetches them in place of its bundled
+# language-agnostic defaults, so behavior stays deequ-specific while the code
+# is shared. All four surfaces (PR review, issue triage, issue-respond,
+# follow-up) run from one engine.
+#
+# UPGRADING the engine: bump the SHA in **two** places below — the `uses:` ref
+# (which resolves the reusable *workflow file*) AND the `shadow_ref` input
+# (which the workflow uses to check out the engine *code*). They MUST match, or
+# the workflow definition runs against a different code revision than intended.
+# GitHub Actions forbids expressions in `uses:`, so they can't share one
+# variable — both are pinned to SHADOW_ENGINE_SHA below. That is the ONLY change
+# needed per upgrade: the GitHubActionsDeequBot IAM trust pins job_workflow_ref
+# to `sudsali/shadow/.github/workflows/shadow-review.yml@*` (version wildcard),
+# so no IAM/Admin change is required.
+#
+#   SHADOW_ENGINE_SHA = 3a057597420d7123df162bfe4686aaafb5f7eccd  (tag v1.2)
+#   ^ keep the two occurrences below identical to this value.
 
 on:
   issues:
     types: [opened, reopened]
-  pull_request_target: # Runs base branch code with secrets; safe because bot fetches diff via API, never executes PR code. NEVER add ref: to checkout.
+  pull_request_target: # Runs base branch code with secrets; safe because the bot fetches the diff via API, never executes PR code. NEVER add ref: to checkout.
     types: [opened, reopened, synchronize]
   issue_comment:
     types: [created]
@@ -17,128 +41,49 @@ on:
         type: boolean
         default: true
 
-# Serialize per issue/PR to prevent duplicate comments
+# Serialize per issue/PR to prevent duplicate comments. (The reusable workflow
+# also sets its own concurrency group; this caller-side group additionally
+# covers the workflow_dispatch path via inputs.issue_number.)
 concurrency:
   group: bot-${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
   cancel-in-progress: false
 
 jobs:
-  analyze:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  shadow:
+    # Preserve the vendored bot's trigger guard exactly: run on workflow_dispatch;
+    # otherwise skip bot-authored events and skip issue_comment on PRs (PR review
+    # comes through pull_request_target, not issue_comment on the PR's issue).
+    # The engine also skips bot authors internally (author_is_bot SKIP), but
+    # gating here avoids spinning up the reusable workflow at all.
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.actor != 'github-actions[bot]' &&
        (github.event.issue.pull_request == null || github.event_name == 'pull_request_target'))
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: pip install requests==2.33.1 boto3==1.42.94
-
-      - name: Run analysis
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
-          EVENT_TYPE: ${{ github.event_name }}
-          EVENT_ACTION: ${{ github.event.action }}
-          EVENT_BEFORE: ${{ github.event.before }}
-          EVENT_AFTER: ${{ github.event.pull_request.head.sha || github.event.after }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
-          KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
-          BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
-          BEDROCK_REPORTER_MODEL_ID: ${{ vars.BEDROCK_REPORTER_MODEL_ID }}
-          BEDROCK_CRITIC_MODEL_ID: ${{ vars.BEDROCK_CRITIC_MODEL_ID }}
-          GUARDRAIL_ID: ${{ secrets.GUARDRAIL_ID }}
-          GUARDRAIL_VERSION: ${{ secrets.GUARDRAIL_VERSION }}
-          SM_ISSUE_CLASSIFY_PROMPT: deequ-bot/issue-classify-prompt
-          SM_ISSUE_RESPOND_PROMPT: deequ-bot/issue-respond-prompt
-          SM_PR_FILE_REVIEW_PROMPT: deequ-bot/pr-file-review-prompt
-          SM_PR_FILE_REVIEW_REPORT_PROMPT: deequ-bot/pr-file-review-report-prompt
-          SM_PR_INVESTIGATOR_PROMPT: deequ-bot/pr-investigator-prompt
-          SM_PR_CRITIC_PROMPT: deequ-bot/pr-critic-prompt
-          SM_PR_REPORTER_PROMPT: deequ-bot/pr-reporter-prompt
-          SM_PR_INVESTIGATOR_COMMIT_PROMPT: deequ-bot/pr-investigator-commit-prompt
-          SM_PR_CRITIC_COMMIT_PROMPT: deequ-bot/pr-critic-commit-prompt
-          SM_FOLLOWUP_PROMPT: deequ-bot/followup-prompt
-          # Flip BOT_AGENT_PIPELINE to "1" to enable the 3-agent (Investigator+Critic+Reporter) pipeline.
-          # When unset/empty, the legacy two-phase flow runs unchanged.
-          # NOTE: Set as a REPOSITORY VARIABLE (Settings → Secrets and variables → Actions → Variables tab),
-          # NOT a secret. Misplacing it under "Secrets" leaves vars.BOT_AGENT_PIPELINE empty → legacy flow
-          # runs silently. To verify: `gh api repos/awslabs/deequ/actions/variables` should list it.
-          BOT_AGENT_PIPELINE: ${{ vars.BOT_AGENT_PIPELINE || '' }}
-          CODEBASE_SRC_DIR: src/main/scala
-          CODEBASE_FILE_EXT: .scala
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          ARTIFACT_PATH: ${{ runner.temp }}/bot_result.json
-        run: python -m issue_bot.main analyze
-        working-directory: src/scripts
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: bot-result
-          path: ${{ runner.temp }}/bot_result.json
-          retention-days: 30
-
-  act:
-    runs-on: ubuntu-latest
-    timeout-minutes: 1
-    needs: analyze
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: pip install requests==2.33.1 boto3==1.42.94
-
-      - name: Download artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: bot-result
-          path: ${{ runner.temp }}
-
-      - name: Execute actions
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
-          EVENT_TYPE: ${{ github.event_name }}
-          EVENT_ACTION: ${{ github.event.action }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          ARTIFACT_PATH: ${{ runner.temp }}/bot_result.json
-        run: python -m issue_bot.main act
-        working-directory: src/scripts
+    uses: sudsali/shadow/.github/workflows/shadow-review.yml@3a057597420d7123df162bfe4686aaafb5f7eccd
+    with:
+      # PR/issue number for the workflow_dispatch path (push/PR events resolve
+      # it inside the reusable workflow from the event payload).
+      pr_number: ${{ inputs.issue_number }}
+      dry_run: ${{ inputs.dry_run && 'true' || 'false' }}
+      shadow_ref: 3a057597420d7123df162bfe4686aaafb5f7eccd
+      aws_region: us-east-1
+      # Deequ's language-tuned prompts. The engine expands this to all eight
+      # SM secret names under deequ-bot/ (pr-investigator/critic/reporter +
+      # 2 commit nudges + issue-classify/issue-respond/followup). These already
+      # exist in Secrets Manager from the prior vendored deployment.
+      prompt_sm_prefix: deequ-bot
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      GUARDRAIL_ID: ${{ secrets.GUARDRAIL_ID }}
+      GUARDRAIL_VERSION: ${{ secrets.GUARDRAIL_VERSION }}
+      KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
+      KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
+      BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
+      # Reporter/critic model IDs were repo VARIABLES in the vendored setup; a
+      # var can feed a secret input, so reference them here. Both are optional:
+      # if unset (empty), the engine's config falls back to its defaults —
+      # reporter → Haiku, critic → the investigator model (Opus). Matches the
+      # vendored bot's behavior; no functional change if either var is unset.
+      BEDROCK_REPORTER_MODEL_ID: ${{ vars.BEDROCK_REPORTER_MODEL_ID }}
+      BEDROCK_CRITIC_MODEL_ID: ${{ vars.BEDROCK_CRITIC_MODEL_ID }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
