@@ -8,6 +8,7 @@ codebase:
 
 bot:
   name: shadow   # renders the <!-- shadow:clean --> marker auto-approve.yml greps for
+  attribution: "Reviewed by Shadow · github.com/sudsali/shadow"
   escalate_label: needs-human
   max_replies: 2
   max_runs_per_hour: 20
