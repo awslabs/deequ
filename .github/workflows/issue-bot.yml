@@ -17,9 +17,10 @@ name: Deequ Bot
 # the workflow definition runs against a different code revision than intended.
 # GitHub Actions forbids expressions in `uses:`, so they can't share one
 # variable — both are pinned to SHADOW_ENGINE_SHA below. That is the ONLY change
-# needed per upgrade: the GitHubActionsDeequBot IAM trust pins job_workflow_ref
-# to `sudsali/shadow/.github/workflows/shadow-review.yml@*` (version wildcard),
-# so no IAM/Admin change is required.
+# needed per upgrade: the GitHubActionsDeequBot IAM trust (once the optional
+# hardening is applied POST-MERGE) pins job_workflow_ref to
+# `sudsali/shadow/.github/workflows/shadow-review.yml@*` (version wildcard), so
+# no IAM/Admin change is required per upgrade.
 #
 #   SHADOW_ENGINE_SHA = 3a057597420d7123df162bfe4686aaafb5f7eccd  (tag v1.2)
 #   ^ keep the two occurrences below identical to this value.
