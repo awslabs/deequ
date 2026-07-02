@@ -42,6 +42,20 @@ on:
         type: boolean
         default: true
 
+# Reusable-workflow permission ceiling: a called workflow's nested jobs can
+# only receive permissions the CALLER grants. This block is the UNION the
+# reusable workflow's two jobs need — analyze (contents:read, id-token:write,
+# pull-requests:read) and act (contents:read, issues:write, pull-requests:write).
+# Without it the token defaults to none and the call fails at startup with
+# "is requesting '...', but is only allowed 'none'". GitHub still applies each
+# nested job's own narrower per-job permissions, so this ceiling doesn't widen
+# what analyze/act can actually do.
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+  issues: write
+
 # Serialize per issue/PR to prevent duplicate comments. (The reusable workflow
 # also sets its own concurrency group; this caller-side group additionally
 # covers the workflow_dispatch path via inputs.issue_number.)
