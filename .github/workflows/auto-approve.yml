@@ -2,7 +2,7 @@ name: Auto-Approve Clean PRs
 
 on:
   workflow_run:
-    workflows: ["Java CI with Maven", "Deequ Bot"]
+    workflows: ["Java CI with Maven", "Shadow"]
     types: [completed]
 
 permissions:
@@ -72,7 +72,7 @@ jobs:
               owner, repo, pull_number: prNumber
             });
 
-            const CLEAN_MARKER = '<!-- deequ-bot:clean -->';
+            const CLEAN_MARKER = '<!-- shadow:clean -->';
 
             const latestBot = reviews
               .filter(r => r.user.login === 'github-actions[bot]')

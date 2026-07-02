@@ -7,7 +7,7 @@ codebase:
   language: scala
 
 bot:
-  name: deequ-bot   # renders the <!-- deequ-bot:clean --> marker auto-approve.yml greps for
+  name: shadow   # renders the <!-- shadow:clean --> marker auto-approve.yml greps for
   escalate_label: needs-human
   max_replies: 2
   max_runs_per_hour: 20

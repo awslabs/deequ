@@ -1,4 +1,4 @@
-name: Deequ Bot   # load-bearing: auto-approve.yml keys on this exact name
+name: Shadow   # load-bearing: auto-approve.yml keys on this exact name
 # To upgrade the engine, bump the SHA in BOTH `uses:` and `shadow_ref` below
 # (GitHub forbids expressions in `uses:`, so they can't share a variable).
 
@@ -27,15 +27,15 @@ permissions:
   pull-requests: write
   issues: write
 
-# Also covers the workflow_dispatch path, which has no PR/issue number in context.
+# inputs.issue_number fallback: workflow_dispatch has no event PR/issue number.
 concurrency:
   group: bot-${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
   cancel-in-progress: false
 
 jobs:
   shadow:
-    # Skip bot-authored events and issue_comment on PRs (PR review runs via
-    # pull_request_target); always run on manual dispatch.
+    # Avoid self-triggered loops (bot's own comments) and double-reviewing a PR
+    # from both issue_comment and pull_request_target; dispatch is always manual.
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.actor != 'github-actions[bot]' &&
