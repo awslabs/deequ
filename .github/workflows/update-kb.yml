@@ -5,9 +5,6 @@ on:
     branches: [master]
     paths-ignore:
       - '.github/workflows/**'
-      # The vendored bot code (src/scripts/issue_bot/, src/scripts/tests/) was
-      # removed when this repo migrated to the shared Shadow engine, so those
-      # path-ignores are gone. generate_kb.py stays — this workflow still runs it.
   workflow_dispatch:
 
 jobs:

@@ -1,34 +1,11 @@
-name: Deequ Bot
-# NOTE: the workflow name "Deequ Bot" is load-bearing — auto-approve.yml keys
-# on workflows: ["Java CI with Maven", "Deequ Bot"]. Do not rename without
-# updating auto-approve.yml.
-#
-# This repo consumes the shared Shadow engine (sudsali/shadow) instead of a
-# vendored copy of the bot. Deequ's language-tuned prompts live in Secrets
-# Manager under the `deequ-bot/*` namespace and are selected via
-# `prompt_sm_prefix` — the engine fetches them in place of its bundled
-# language-agnostic defaults, so behavior stays deequ-specific while the code
-# is shared. All four surfaces (PR review, issue triage, issue-respond,
-# follow-up) run from one engine.
-#
-# UPGRADING the engine: bump the SHA in **two** places below — the `uses:` ref
-# (which resolves the reusable *workflow file*) AND the `shadow_ref` input
-# (which the workflow uses to check out the engine *code*). They MUST match, or
-# the workflow definition runs against a different code revision than intended.
-# GitHub Actions forbids expressions in `uses:`, so they can't share one
-# variable — both are pinned to SHADOW_ENGINE_SHA below. That is the ONLY change
-# needed per upgrade: the GitHubActionsDeequBot IAM trust (once the optional
-# hardening is applied POST-MERGE) pins job_workflow_ref to
-# `sudsali/shadow/.github/workflows/shadow-review.yml@*` (version wildcard), so
-# no IAM/Admin change is required per upgrade.
-#
-#   SHADOW_ENGINE_SHA = 3a057597420d7123df162bfe4686aaafb5f7eccd  (tag v1.2)
-#   ^ keep the two occurrences below identical to this value.
+name: Deequ Bot   # load-bearing: auto-approve.yml keys on this exact name
+# To upgrade the engine, bump the SHA in BOTH `uses:` and `shadow_ref` below
+# (GitHub forbids expressions in `uses:`, so they can't share a variable).
 
 on:
   issues:
     types: [opened, reopened]
-  pull_request_target: # Runs base branch code with secrets; safe because the bot fetches the diff via API, never executes PR code. NEVER add ref: to checkout.
+  pull_request_target:  # base-branch checkout only; never add ref: (see SECURITY A1)
     types: [opened, reopened, synchronize]
   issue_comment:
     types: [created]
@@ -42,50 +19,33 @@ on:
         type: boolean
         default: true
 
-# Reusable-workflow permission ceiling: a called workflow's nested jobs can
-# only receive permissions the CALLER grants. This block is the UNION the
-# reusable workflow's two jobs need — analyze (contents:read, id-token:write,
-# pull-requests:read) and act (contents:read, issues:write, pull-requests:write).
-# Without it the token defaults to none and the call fails at startup with
-# "is requesting '...', but is only allowed 'none'". GitHub still applies each
-# nested job's own narrower per-job permissions, so this ceiling doesn't widen
-# what analyze/act can actually do.
+# Union of the reusable workflow's nested-job permissions; a caller must grant
+# these or the call fails at startup (each nested job still narrows its own set).
 permissions:
   contents: read
   id-token: write
   pull-requests: write
   issues: write
 
-# Serialize per issue/PR to prevent duplicate comments. (The reusable workflow
-# also sets its own concurrency group; this caller-side group additionally
-# covers the workflow_dispatch path via inputs.issue_number.)
+# Also covers the workflow_dispatch path, which has no PR/issue number in context.
 concurrency:
   group: bot-${{ github.event.issue.number || github.event.pull_request.number || inputs.issue_number }}
   cancel-in-progress: false
 
 jobs:
   shadow:
-    # Preserve the vendored bot's trigger guard exactly: run on workflow_dispatch;
-    # otherwise skip bot-authored events and skip issue_comment on PRs (PR review
-    # comes through pull_request_target, not issue_comment on the PR's issue).
-    # The engine also skips bot authors internally (author_is_bot SKIP), but
-    # gating here avoids spinning up the reusable workflow at all.
+    # Skip bot-authored events and issue_comment on PRs (PR review runs via
+    # pull_request_target); always run on manual dispatch.
     if: >-
       (github.event_name == 'workflow_dispatch') ||
       (github.actor != 'github-actions[bot]' &&
        (github.event.issue.pull_request == null || github.event_name == 'pull_request_target'))
     uses: sudsali/shadow/.github/workflows/shadow-review.yml@3a057597420d7123df162bfe4686aaafb5f7eccd
     with:
-      # PR/issue number for the workflow_dispatch path (push/PR events resolve
-      # it inside the reusable workflow from the event payload).
       pr_number: ${{ inputs.issue_number }}
       dry_run: ${{ inputs.dry_run && 'true' || 'false' }}
       shadow_ref: 3a057597420d7123df162bfe4686aaafb5f7eccd
       aws_region: us-east-1
-      # Deequ's language-tuned prompts. The engine expands this to all eight
-      # SM secret names under deequ-bot/ (pr-investigator/critic/reporter +
-      # 2 commit nudges + issue-classify/issue-respond/followup). These already
-      # exist in Secrets Manager from the prior vendored deployment.
       prompt_sm_prefix: deequ-bot
     secrets:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
@@ -94,11 +54,7 @@ jobs:
       KB_S3_BUCKET: ${{ secrets.KB_S3_BUCKET }}
       KB_S3_KEY: ${{ secrets.KB_S3_KEY }}
       BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
-      # Reporter/critic model IDs were repo VARIABLES in the vendored setup; a
-      # var can feed a secret input, so reference them here. Both are optional:
-      # if unset (empty), the engine's config falls back to its defaults —
-      # reporter → Haiku, critic → the investigator model (Opus). Matches the
-      # vendored bot's behavior; no functional change if either var is unset.
+      # Repo variables (not secrets); empty falls back to engine defaults.
       BEDROCK_REPORTER_MODEL_ID: ${{ vars.BEDROCK_REPORTER_MODEL_ID }}
       BEDROCK_CRITIC_MODEL_ID: ${{ vars.BEDROCK_CRITIC_MODEL_ID }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
