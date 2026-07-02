@@ -40,11 +40,11 @@ jobs:
       (github.event_name == 'workflow_dispatch') ||
       (github.actor != 'github-actions[bot]' &&
        (github.event.issue.pull_request == null || github.event_name == 'pull_request_target'))
-    uses: sudsali/shadow/.github/workflows/shadow-review.yml@064d3b6d0e286f6a447e666337869a418b601e87
+    uses: sudsali/shadow/.github/workflows/shadow-review.yml@54ec94e0ca8c90d9b58ff95a2a06b175a115784e
     with:
       pr_number: ${{ inputs.issue_number }}
       dry_run: ${{ inputs.dry_run && 'true' || 'false' }}
-      shadow_ref: 064d3b6d0e286f6a447e666337869a418b601e87
+      shadow_ref: 54ec94e0ca8c90d9b58ff95a2a06b175a115784e
       aws_region: us-east-1
       prompt_sm_prefix: deequ-bot
     secrets:
