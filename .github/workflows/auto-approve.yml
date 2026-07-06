@@ -55,6 +55,21 @@ jobs:
               return;
             }
 
+            // Condition 0: never auto-approve a PR that changes the bot's own
+            // guardrails (workflows or engine config) — that lets a PR weaken
+            // the approval gate and be approved by the very gate it edits.
+            // Require a human for these.
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: prNumber, per_page: 100
+            });
+            const guarded = files.find(f =>
+              f.filename.startsWith('.github/') || f.filename === '.shadow.yml'
+            );
+            if (guarded) {
+              core.info(`PR touches guarded path ${guarded.filename} — requires human review, skipping`);
+              return;
+            }
+
             // Condition 1: CI must have passed for this SHA
             const {data: workflowRuns} = await github.rest.actions.listWorkflowRunsForRepo({
               owner, repo, head_sha: sha, status: 'completed'
