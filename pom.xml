@@ -61,6 +61,66 @@
             <name>Andrey Taptunov</name>
             <url>https://github.com/andrey-tpt</url>
         </developer>
+        <developer>
+            <id>avallabhani</id>
+            <name>Aditya Vallabhani</name>
+            <url>https://github.com/avallabhani</url>
+        </developer>
+        <developer>
+            <id>happy-coral</id>
+            <name>Andrius</name>
+            <url>https://github.com/happy-coral</url>
+        </developer>
+        <developer>
+            <id>awang923</id>
+            <name>Annie Wang</name>
+            <url>https://github.com/awang923</url>
+        </developer>
+        <developer>
+            <id>EdisonXie</id>
+            <name>EdisonXie</name>
+            <url>https://github.com/EdisonXie</url>
+        </developer>
+        <developer>
+            <id>eycho-am</id>
+            <name>Edward Cho</name>
+            <url>https://github.com/eycho-am</url>
+        </developer>
+        <developer>
+            <id>joshuazexter</id>
+            <name>Joshua Zexter</name>
+            <url>https://github.com/joshuazexter</url>
+        </developer>
+        <developer>
+            <id>kyraman</id>
+            <name>Kyra Mangasarian</name>
+            <url>https://github.com/kyraman</url>
+        </developer>
+        <developer>
+            <id>rdsharma26</id>
+            <name>Rahul Sharma</name>
+            <url>https://github.com/rdsharma26</url>
+        </developer>
+        <developer>
+            <id>SamPom100</id>
+            <name>Sam Pomerantz</name>
+            <url>https://github.com/SamPom100</url>
+        </developer>
+        <developer>
+            <id>shriyavanvari</id>
+            <name>Shriya Vanvari</name>
+            <url>https://github.com/shriyavanvari</url>
+        </developer>
+        <developer>
+            <id>sohama4</id>
+            <name>Soham Aurangabadkar</name>
+            <url>https://github.com/sohama4</url>
+        </developer>
+        <developer>
+            <id>sudsali</id>
+            <name>Sudhanshu Sali</name>
+            <url>https://github.com/sudsali</url>
+        </developer>
     </developers>
 
     <scm>
