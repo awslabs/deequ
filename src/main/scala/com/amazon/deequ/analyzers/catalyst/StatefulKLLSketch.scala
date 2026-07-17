@@ -22,68 +22,89 @@ import com.amazon.deequ.analyzers.QuantileNonSample
 import com.amazon.deequ.analyzers.catalyst.KLLSketchSerializer
 import com.google.common.primitives.Doubles
 
-import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.expressions.Aggregator
 
+private[sql] final class KLLAggregationBuffer() extends Serializable {
 
-private [sql] class StatefulKLLSketch(
+  private var qSketch: QuantileNonSample[Double] = _
+  private var minimum: Double = _
+  private var maximum: Double = _
+
+  def this(qSketch: QuantileNonSample[Double], minimum: Double, maximum: Double) = {
+    this()
+    this.qSketch = qSketch
+    this.minimum = minimum
+    this.maximum = maximum
+  }
+
+  private[sql] def sketch: QuantileNonSample[Double] = qSketch
+
+  def getSerializedSketch: Array[Byte] = KLLSketchSerializer.serializer.serialize(qSketch)
+
+  def setSerializedSketch(bytes: Array[Byte]): Unit = {
+    qSketch = KLLSketchSerializer.serializer.deserialize(bytes)
+  }
+
+  def getMinimum: Double = minimum
+
+  def setMinimum(value: Double): Unit = {
+    minimum = value
+  }
+
+  def getMaximum: Double = maximum
+
+  def setMaximum(value: Double): Unit = {
+    maximum = value
+  }
+}
+
+private[sql] class StatefulKLLSketch(
     sketchSize: Int,
     shrinkingFactor: Double)
-  extends UserDefinedAggregateFunction{
+  extends Aggregator[java.lang.Double, KLLAggregationBuffer, Array[Byte]] {
 
-  val OBJECT_POS = 0
-  val MIN_POS = 1
-  val MAX_POS = 2
-
-  override def inputSchema: StructType = StructType(StructField("value", DoubleType) :: Nil)
-
-  override def bufferSchema: StructType = StructType(StructField("data", BinaryType) ::
-    StructField("minimum", DoubleType) :: StructField("maximum", DoubleType) :: Nil)
-
-  override def dataType: DataType = BinaryType
-
-  override def deterministic: Boolean = true
-
-  override def initialize(buffer: MutableAggregationBuffer): Unit = {
-    val qsketch = new QuantileNonSample[Double](sketchSize, shrinkingFactor)
-    buffer(OBJECT_POS) = serialize(qsketch)
-    buffer(MIN_POS) = Int.MaxValue.toDouble
-    buffer(MAX_POS) = Int.MinValue.toDouble
+  override def zero: KLLAggregationBuffer = {
+    new KLLAggregationBuffer(
+      new QuantileNonSample[Double](sketchSize, shrinkingFactor),
+      Int.MaxValue.toDouble,
+      Int.MinValue.toDouble)
   }
 
-  override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-    if (input.isNullAt(OBJECT_POS)) {
-      return
+  override def reduce(
+      buffer: KLLAggregationBuffer,
+      input: java.lang.Double)
+    : KLLAggregationBuffer = {
+
+    if (input != null) {
+      val value = input.doubleValue()
+      buffer.sketch.update(value)
+      buffer.setMinimum(Math.min(buffer.getMinimum, value))
+      buffer.setMaximum(Math.max(buffer.getMaximum, value))
     }
-
-    val tmp = input.getDouble(OBJECT_POS)
-    val kll = deserialize(buffer.getAs[Array[Byte]](OBJECT_POS))
-    kll.update(tmp)
-    buffer(OBJECT_POS) = serialize(kll)
-    buffer(MIN_POS) = Math.min(buffer.getDouble(MIN_POS), tmp)
-    buffer(MAX_POS) = Math.max(buffer.getDouble(MAX_POS), tmp)
+    buffer
   }
 
-  override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
-    if (buffer2.isNullAt(OBJECT_POS)) {
-      return
-    }
+  override def merge(
+      buffer1: KLLAggregationBuffer,
+      buffer2: KLLAggregationBuffer)
+    : KLLAggregationBuffer = {
 
-    val kll_this = deserialize(buffer1.getAs[Array[Byte]](OBJECT_POS))
-    val kll_other = deserialize(buffer2.getAs[Array[Byte]](OBJECT_POS))
-    val kll_ret = kll_this.merge(kll_other)
-    buffer1(OBJECT_POS) = serialize(kll_ret)
-    buffer1(MIN_POS) = Math.min(buffer1.getDouble(MIN_POS), buffer2.getDouble(MIN_POS))
-    buffer1(MAX_POS) = Math.max(buffer1.getDouble(MAX_POS), buffer2.getDouble(MAX_POS))
+    buffer1.sketch.merge(buffer2.sketch)
+    buffer1.setMinimum(Math.min(buffer1.getMinimum, buffer2.getMinimum))
+    buffer1.setMaximum(Math.max(buffer1.getMaximum, buffer2.getMaximum))
+    buffer1
   }
 
-  override def evaluate(buffer: Row): Any = {
-    toBytes(buffer.getDouble(MIN_POS),
-      buffer.getDouble(MAX_POS),
-      buffer.getAs[Array[Byte]](OBJECT_POS))
+  override def finish(buffer: KLLAggregationBuffer): Array[Byte] = {
+    toBytes(buffer.getMinimum, buffer.getMaximum, serialize(buffer.sketch))
   }
 
-  def toBytes(min: Double, max: Double, obj: Array[Byte]): Array[Byte] = {
+  override def bufferEncoder: Encoder[KLLAggregationBuffer] =
+    Encoders.bean(classOf[KLLAggregationBuffer])
+
+  override def outputEncoder: Encoder[Array[Byte]] = Encoders.BINARY
+
+  private def toBytes(min: Double, max: Double, obj: Array[Byte]): Array[Byte] = {
     val buffer2 = ByteBuffer.wrap(new Array(Doubles.BYTES + Doubles.BYTES + obj.length))
     buffer2.putDouble(min)
     buffer2.putDouble(max)
@@ -91,12 +112,7 @@ private [sql] class StatefulKLLSketch(
     buffer2.array()
   }
 
-  def serialize(obj: QuantileNonSample[Double]): Array[Byte] = {
+  private def serialize(obj: QuantileNonSample[Double]): Array[Byte] = {
     KLLSketchSerializer.serializer.serialize(obj)
   }
-
-  def deserialize(bytes: Array[Byte]): QuantileNonSample[Double] = {
-    KLLSketchSerializer.serializer.deserialize(bytes)
-  }
 }
-

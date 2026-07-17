@@ -96,17 +96,16 @@ object DeequFunctions {
 
   /** Data type detection with state */
   def stateful_datatype(column: Column): Column = {
-    val statefulDataType = new StatefulDataType()
-    statefulDataType(column)
+    functions.udaf(new StatefulDataType(), Encoders.STRING)(column)
   }
 
   def stateful_kll(
       column: Column,
       sketchSize: Int,
       shrinkingFactor: Double): Column = {
-    val statefulKLL = new StatefulKLLSketch(sketchSize, shrinkingFactor)
-    statefulKLL(column)
+    functions.udaf(
+      new StatefulKLLSketch(sketchSize, shrinkingFactor),
+      Encoders.DOUBLE)(column)
   }
 }
-
 
