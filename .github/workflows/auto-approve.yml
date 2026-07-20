@@ -12,7 +12,9 @@ permissions:
 jobs:
   approve:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'pull_request_target'
+    # Opt-in: a bot approval can satisfy branch protection's required review,
+    # so auto-approval only runs where a maintainer sets SHADOW_AUTO_APPROVE=true.
+    if: vars.SHADOW_AUTO_APPROVE == 'true' && (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'pull_request_target')
     timeout-minutes: 2
 
     steps:
