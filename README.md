@@ -10,9 +10,22 @@ Python users may also be interested in PyDeequ, a Python interface for Deequ. Yo
 
 ## Requirements and Installation
 
-__Deequ__ depends on Java 8. Deequ version 2.x only runs with Spark 3.1, and vice versa. If you rely on a previous Spark version, please use a Deequ 1.x version (legacy version is maintained in legacy-spark-3.0 branch). We provide legacy releases compatible with Apache Spark versions 2.2.x to 3.0.x. The Spark 2.2.x and 2.3.x releases depend on Scala 2.11 and the Spark 2.4.x, 3.0.x, and 3.1.x releases depend on Scala 2.12. 
+__Deequ__ requires Java 8. Deequ releases are built for specific Apache Spark
+versions. Select a Deequ artifact whose version suffix matches the Spark version
+used by your application.
 
-Available via [maven central](http://mvnrepository.com/artifact/com.amazon.deequ/deequ). 
+| Apache Spark version | Compatible Deequ release | Artifact suffix |
+|----------------------|--------------------------|-----------------|
+| Spark 3.1.x | Deequ 2.x | `-spark-3.1` |
+| Spark 3.2.x | Deequ 2.x | `-spark-3.2` |
+| Spark 3.3.x | Deequ 2.x | `-spark-3.3` |
+| Spark 3.4.x | Deequ 2.x | `-spark-3.4` |
+| Spark 3.5.x | Deequ 2.x | `-spark-3.5` |
+
+For Spark 3.0.x and earlier, use a compatible Deequ 1.x release. Spark 3.0
+support is maintained in the `legacy-spark-3.0` branch. Releases for Spark
+2.2.x and 2.3.x use Scala 2.11, while later supported Spark releases use
+Scala 2.12.
 
 Choose the latest release that matches your Spark version from the [available versions](https://repo1.maven.org/maven2/com/amazon/deequ/deequ/). Add the release as a dependency to your project. For example, for Spark 3.1.x:
 
@@ -21,12 +34,12 @@ __Maven__
 <dependency>
   <groupId>com.amazon.deequ</groupId>
   <artifactId>deequ</artifactId>
-  <version>2.0.0-spark-3.1</version>
+  <version>2.0.21-spark-3.5</version>
 </dependency>
 ```
 __sbt__
 ```
-libraryDependencies += "com.amazon.deequ" % "deequ" % "2.0.0-spark-3.1"
+libraryDependencies += "com.amazon.deequ" % "deequ" % "2.0.21-spark-3.5"
 ```
 
 ## Example
