@@ -545,7 +545,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
 
     "success for DateType column" in withSparkSessionJava8APIEnabled { sparkSession =>
       val df = getDfWithLocalDateAndInstant(sparkSession)
-      assert(DateTimeDistribution("signupDate", DistributionInterval.MONTHLY).calculate(df).value.isSuccess)
+      assert(DateTimeDistribution("signupDate", DistributionInterval.WEEKLY).calculate(df).value.isSuccess)
     }
 
     "success for Timestamp column" in withSparkSessionJava8APIEnabled { sparkSession =>

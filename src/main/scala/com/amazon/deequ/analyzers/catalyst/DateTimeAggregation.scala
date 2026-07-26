@@ -28,9 +28,13 @@ private[sql] class DateTimeAggregation(
   override def zero: Map[Long, Long] = Map.empty[Long, Long]
 
   override def reduce(agg: Map[Long, Long], input: Instant): Map[Long, Long] = {
-    val dateTime = input.toEpochMilli
-    val batchTime = dateTime - (dateTime % frequency)
-    agg + (batchTime -> (agg.getOrElse(batchTime, 0L) + 1L))
+    if (input == null) {
+      agg
+    } else {
+      val dateTime = input.toEpochMilli
+      val batchTime = dateTime - (dateTime % frequency)
+      agg + (batchTime -> (agg.getOrElse(batchTime, 0L) + 1L))
+    }
   }
 
   override def merge(b1: Map[Long, Long], b2: Map[Long, Long]): Map[Long, Long] = {

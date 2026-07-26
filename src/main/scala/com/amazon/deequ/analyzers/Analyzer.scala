@@ -443,7 +443,7 @@ object Preconditions {
     }
   }
 
-  /** Specified column has string type */
+  /** Specified column has a date or timestamp type */
   def isDateType(column: String): StructType => Unit = { schema =>
     val columnDataType = structField(column, schema).dataType
     val hasDateType = columnDataType match {

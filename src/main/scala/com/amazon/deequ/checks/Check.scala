@@ -1516,7 +1516,7 @@ case class Check(
     column: String,
     assertion: Double => Boolean = Check.IsOne,
     hint: Option[String] = None)
-  : CheckWithLastConstraintFilterable = satisfies(s"$column < now()",
+  : CheckWithLastConstraintFilterable = satisfies(s"$column < current_timestamp()",
     s"$column has all past dates", assertion,
     hint = hint)
 
@@ -1534,7 +1534,7 @@ case class Check(
     column: String,
     assertion: Double => Boolean = Check.IsOne,
     hint: Option[String] = None)
-  : CheckWithLastConstraintFilterable = satisfies(s"$column > now()",
+  : CheckWithLastConstraintFilterable = satisfies(s"$column > current_timestamp()",
     s"$column has all future dates", assertion,
     hint = hint)
 

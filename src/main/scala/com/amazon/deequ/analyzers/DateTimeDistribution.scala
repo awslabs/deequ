@@ -28,7 +28,7 @@ import org.apache.spark.sql.{Column, Row}
 import scala.util.{Failure, Success}
 
 object DistributionInterval extends Enumeration {
-  val QUARTER_HOUR, HOURLY, DAILY, WEEKLY, MONTHLY = Value
+  val QUARTER_HOUR, HOURLY, DAILY, WEEKLY = Value
 }
 
 case class DateTimeDistributionState(distribution: Map[(Instant, Instant), Long])
@@ -90,7 +90,7 @@ case class DateTimeDistribution(
     ifNoNullsIn(result, offset) { _ =>
       DateTimeDistributionState(
         DateTimeDistributionState.computeStateFromResult(
-          Map.empty[Long, Long] ++ result.getMap(0),
+          Map.empty[Long, Long] ++ result.getMap(offset),
           interval
         )
       )
