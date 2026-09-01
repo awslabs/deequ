@@ -124,9 +124,14 @@ class QuantileNonSample[T](
    * @return the sorted Listmap (by key), which contains the rank of all current items in the sketch
    */
   def getRankMap(): ListMap[T, Long] = {
-    val sortedOutput = ListMap(output.toSeq.sortBy({
+    // Do not pre-aggregate into a ListMap here: the same item can occur in
+    // several compactors with different weights, and keying by item would
+    // discard all but the last of those weights, under-counting repeated
+    // data points. Fold over the sorted pairs instead so their weights
+    // accumulate into the running rank.
+    val sortedOutput = output.toSeq.sortBy({
       case (item, _) => item
-    }): _*)
+    })
     val states = scala.collection.mutable.Map[T, Long]()
     var runningRank = 0L
     sortedOutput.foreach { case (item, weight) =>
