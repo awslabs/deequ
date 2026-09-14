@@ -10,9 +10,9 @@ Python users may also be interested in PyDeequ, a Python interface for Deequ. Yo
 
 ## Requirements and Installation
 
-__Deequ__ requires Java 8. Deequ releases are built for specific Apache Spark
-versions. Select a Deequ artifact whose version suffix matches the Spark version
-used by your application.
+__Deequ__ 2.1.0 and later require Java 11; earlier 2.0.x releases require Java 8.
+Deequ releases are built for specific Apache Spark versions. Select a Deequ
+artifact whose version suffix matches the Spark version used by your application.
 
 | Apache Spark version | Compatible Deequ release | Artifact suffix |
 |----------------------|--------------------------|-----------------|

@@ -572,13 +572,103 @@ class EvaluateDataQualitySpec extends AnyWordSpec with Matchers with SparkContex
 
     // TODO: Enable DQDL tests for Variance, Range, InterquartileRange, ZerosCount, Skewness, Kurtosis
 
-    // DuplicateRowCount DQDL tests require dqdl >= 1.0.7 (Java 11).
-    // Tested on release/3.0.3-spark-3.5 branch. Ignored here due to Java 8 / dqdl version constraint.
-    "support DuplicateRowCount rule with explicit columns" ignore {}
-    "support DuplicateRowCount rule failure with explicit columns" ignore {}
-    "support DuplicateRowCount rule without columns (all columns)" ignore {}
-    "support DuplicateRowCount with less-than operator" ignore {}
-    "support DuplicateRowCount with between operator" ignore {}
+    "support DuplicateRowCount rule with explicit columns" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount "item" "att1" "att2" = 2]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DuplicateRowCount rule with a single column" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount "item" = 2]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+      row.getAs[Map[String, Double]]("EvaluatedMetrics") should
+        be(Map("Column.item.DuplicateRowCount" -> 2.0))
+    }
+
+    "support DuplicateRowCount rule failure with explicit columns" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount "item" "att1" "att2" = 0]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Failed")
+    }
+
+    "support DuplicateRowCount rule without columns (all columns)" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount = 2]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DuplicateRowCount with less-than operator" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount < 10]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
+
+    "support DuplicateRowCount with between operator" in withSparkSession { sparkSession =>
+      import sparkSession.implicits._
+      val df = Seq(
+        ("1", "a", "c"),
+        ("2", "a", "c"),
+        ("1", "a", "c"),
+        ("3", "b", "d")
+      ).toDF("item", "att1", "att2")
+      val ruleset = """Rules=[DuplicateRowCount between 0 and 10]"""
+
+      val results = EvaluateDataQuality.process(df, ruleset)
+
+      val row = results.collect()(0)
+      row.getAs[String]("Outcome") should be("Passed")
+    }
 
     "support Sum rule" in withSparkSession { sparkSession =>
       // given
