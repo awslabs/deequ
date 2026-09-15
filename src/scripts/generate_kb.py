@@ -136,7 +136,7 @@ def main():
             if any(k in stripped for k in [
                 "<groupId>com.amazon", "<artifactId>deequ", "<version>",
                 "<spark.version>", "<scala.version>", "<scala.compat",
-                "<java.version>", "<scalatest",
+                "<java.version>", "<maven.compiler.", "<scalatest",
             ]):
                 emit(line)
         emit("```")
@@ -243,7 +243,7 @@ def main():
 
     emit("## Compatibility")
     emit("")
-    emit("- Deequ 2.x requires Spark 3.1+, Scala 2.12, Java 8+")
+    emit("- Deequ 2.x requires Spark 3.1+, Scala 2.12, Java 11")
     emit("- Deequ 1.x supports Spark 2.2.x through 3.0.x")
     emit("- Spark 2.x builds use Scala 2.11")
     emit("- Available on Maven Central: `com.amazon.deequ:deequ`")

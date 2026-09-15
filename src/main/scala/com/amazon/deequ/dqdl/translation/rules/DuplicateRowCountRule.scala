@@ -36,8 +36,10 @@ case class DuplicateRowCountRule() extends DQDLRuleConverter {
     val check = Check(CheckLevel.Error, java.util.UUID.randomUUID.toString)
       .hasDuplicateRowCount(columns, longAssertion)
 
+    // Analyzer.entityFrom keys a single column as Column, so Multicolumn here would match no metric.
     val (entity, instance) = columns match {
       case Nil => ("Dataset", "*")
+      case Seq(singleCol) => ("Column", singleCol)
       case cols => ("Multicolumn", cols.mkString(","))
     }
 
