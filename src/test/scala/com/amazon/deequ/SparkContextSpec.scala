@@ -51,6 +51,20 @@ trait SparkContextSpec {
     }
   }
 
+  /**
+   * @param testFun thunk to run with SparkSession as an argument
+   */
+  def withSparkSessionJava8APIEnabled(testFun: SparkSession => Any): Unit = {
+    val session = setupSparkSession()
+    session.conf.set("spark.sql.datetime.java8API.enabled", "true")
+    try {
+      testFun(session)
+    } finally {
+      /* empty cache of RDD size, as the referred ids are only valid within a session */
+      tearDownSparkSession(session)
+    }
+  }
+
   def withSparkSessionIcebergCatalog(testFun: SparkSession => Any): Unit = {
     val session = setupSparkSession(Some(tmpWareHouseDir.toAbsolutePath.toString))
     session.conf.set("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")

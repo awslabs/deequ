@@ -16,9 +16,9 @@
 
 package org.apache.spark.sql
 
-
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateFunction, StatefulApproxQuantile, StatefulHyperloglogPlus}
 import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.functions.udaf
 
 /* Custom aggregation functions used internally by deequ */
 object DeequFunctions {
@@ -106,6 +106,18 @@ object DeequFunctions {
     functions.udaf(
       new StatefulKLLSketch(sketchSize, shrinkingFactor),
       Encoders.DOUBLE)(column)
+  }
+
+  /**
+   * return DateTime distribution aggregation function
+   *
+   * @param column   : column on which aggregation to be performed
+   * @param interval : interval of date time aggregation
+   * @return Column: aggregation function Column
+   * */
+  def dateTimeDistribution(column: Column, interval: Long): Column = {
+    val dateTimeDistribution = udaf(new DateTimeAggregation(interval))
+    dateTimeDistribution(column)
   }
 }
 
