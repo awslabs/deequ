@@ -13,8 +13,11 @@ bot:
   max_replies: 2
   max_runs_per_hour: 20
 
+review:
+  profile: maintainer
+
 models:
-  investigator: us.anthropic.claude-opus-4-7
-  critic: us.anthropic.claude-opus-4-7
+  investigator: us.anthropic.claude-sonnet-4-6
+  critic: us.anthropic.claude-opus-4-8
   reporter: us.anthropic.claude-haiku-4-5-20251001-v1:0
   issue: us.anthropic.claude-sonnet-4-6
