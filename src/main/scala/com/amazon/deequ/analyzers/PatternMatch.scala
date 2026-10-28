@@ -115,8 +115,8 @@ object Patterns {
 
   val SOCIAL_SECURITY_NUMBER_US: Regex = """((?!219-09-9999|078-05-1120)(?!666|000|9\d{2})\d{3}-(?!00)\d{2}-(?!0{4})\d{4})|((?!219 09 9999|078 05 1120)(?!666|000|9\d{2})\d{3} (?!00)\d{2} (?!0{4})\d{4})|((?!219099999|078051120)(?!666|000|9\d{2})\d{3}(?!00)\d{2}(?!0{4})\d{4})""".r
 
-  // Visa, MasterCard, AMEX, Diners Club
+  // Visa, MasterCard, AMEX, Diners Club, JCB
   // http://www.richardsramblings.com/regex/credit-card-numbers/
-  val CREDITCARD: Regex = """\b(?:3[47]\d{2}([\ \-]?)\d{6}\1\d|(?:(?:4\d|5[1-5]|65)\d{2}|6011)([\ \-]?)\d{4}\2\d{4}\2)\d{4}\b""".r
+  val CREDITCARD: Regex = """\b(?:(?:3[47]\d{2}([\ \-]?)\d{6}\1\d|(?:(?:4\d|5[1-5]|65)\d{2}|6011)([\ \-]?)\d{4}\2\d{4}\2)\d{4}|35(?:2[89]|[3-8]\d)([\ \-]?)\d{4}\3\d{4}\3\d{4})\b""".r
   // scalastyle:on
 }
