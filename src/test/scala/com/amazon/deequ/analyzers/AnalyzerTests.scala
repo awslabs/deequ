@@ -873,6 +873,11 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
       val maybeCreditCardNumbers = Seq(
         "378282246310005",// AMEX
 
+        "3566002020360505", // JCB
+        "3530111333300000", // JCB
+        "3528 0000 0000 0000", // JCB spaced
+        "3589-0000-0000-0000", // JCB dashed
+
         "6011111111111117", // Discover
         "6011 1111 1111 1117", // Discover spaced
         "6011-1111-1111-1117", // Discover dashed
@@ -893,7 +898,7 @@ class AnalyzerTests extends AnyWordSpec with Matchers with SparkContextSpec with
         maybeCreditCardNumbers.map(Row(_)): _*)
       val analyzer = PatternMatch(someColumnName, Patterns.CREDITCARD)
 
-      analyzer.calculate(df).value shouldBe Success(10.0/13.0)
+      analyzer.calculate(df).value shouldBe Success(14.0/17.0)
       assert(analyzer.calculate(df).fullColumn.isDefined)
     }
 
