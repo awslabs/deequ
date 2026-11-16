@@ -258,28 +258,32 @@ import com.amazon.deequ.dqdl.EvaluateDataQuality;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+public class JavaDQDLExample {
+  public static void main(String[] args) {
+    try (SparkSession spark = SparkSession.builder()
+        .appName("DQDL Java Example")
+        .master("local[*]")
+        .getOrCreate()) {
 
-SparkSession spark = SparkSession.builder()
-    .appName("DQDL Java Example")
-    .master("local[*]")
-    .getOrCreate();
+      // Create sample data
+      Dataset<Row> df = spark.sql(
+          "SELECT * FROM VALUES " +
+          "('1', 'a', 'c'), " +
+          "('2', 'a', 'c'), " +
+          "('3', 'a', 'c'), " +
+          "('4', 'b', 'd') " +
+          "AS t(item, att1, att2)"
+      );
 
-// Create sample data
-Dataset<Row> df = spark.sql(
-    "SELECT * FROM VALUES " +
-    "('1', 'a', 'c'), " +
-    "('2', 'a', 'c'), " +
-    "('3', 'a', 'c'), " +
-    "('4', 'b', 'd') " +
-    "AS t(item, att1, att2)"
-);
+      // Define rules using DQDL syntax
+      String ruleset = "Rules=[IsUnique \"item\", RowCount < 10, Completeness \"item\" > 0.8, Uniqueness \"item\" = 1.0]";
 
-// Define rules using DQDL syntax
-String ruleset = "Rules=[IsUnique \"item\", RowCount < 10, Completeness \"item\" > 0.8, Uniqueness \"item\" = 1.0]";
-
-// Evaluate data quality
-Dataset<Row> results = EvaluateDataQuality.process(df, ruleset);
-results.show();
+      // Evaluate data quality
+      Dataset<Row> results = EvaluateDataQuality.process(df, ruleset);
+      results.show();
+    }
+  }
+}
 ```
 
 ### Composite Rules Example
