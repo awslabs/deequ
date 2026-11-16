@@ -16,8 +16,6 @@
 
 package com.amazon.deequ.anomalydetection
 
-import scala.collection.Searching._
-
 case class DataPoint[M](time: Long, metricValue: Option[M])
 
 /**
@@ -76,8 +74,18 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
       searchInterval: (Long, Long) = (Long.MinValue, Long.MaxValue))
     : DetectionResult = {
 
-    def findIndexForBound(sortedTimestamps: Seq[Long], boundValue: Long): Int = {
-      sortedTimestamps.search(boundValue).insertionPoint
+    def findIndexForBound(sortedTimestamps: IndexedSeq[Long], boundValue: Long): Int = {
+      var lower = 0
+      var upper = sortedTimestamps.size
+      while (lower < upper) {
+        val middle = lower + (upper - lower) / 2
+        if (sortedTimestamps(middle) < boundValue) {
+          lower = middle + 1
+        } else {
+          upper = middle
+        }
+      }
+      lower
     }
 
     val (searchStart, searchEnd) = searchInterval
@@ -87,7 +95,7 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
 
     // Remove missing values and sort series by time
     val removedMissingValues = dataSeries.filter { _.metricValue.isDefined }
-    val sortedSeries = removedMissingValues.sortBy { _.time }
+    val sortedSeries = removedMissingValues.sortBy { _.time }.toVector
     val sortedTimestamps = sortedSeries.map { _.time }
 
     // Find indices of lower and upper bound
@@ -95,7 +103,7 @@ case class AnomalyDetector(strategy: AnomalyDetectionStrategy) {
     val upperBoundIndex = findIndexForBound(sortedTimestamps, searchEnd)
 
     val anomalies = strategy.detect(
-      sortedSeries.flatMap { _.metricValue }.toVector, (lowerBoundIndex, upperBoundIndex))
+      sortedSeries.flatMap { _.metricValue }, (lowerBoundIndex, upperBoundIndex))
 
     DetectionResult(anomalies.map { case (index, anomaly) => (sortedTimestamps(index), anomaly) })
   }

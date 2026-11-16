@@ -51,6 +51,15 @@ class AnomalyDetectorTest extends WordSpec with Matchers with MockFactory with P
       assert(anomalyResult == DetectionResult(Seq((2L, Anomaly(Option(3.0), 1.0)))))
     }
 
+    "include all points at the lower bound and exclude all points at the upper bound" in {
+      val detector = AnomalyDetector(SimpleThresholdStrategy(lowerBound = 0.0, upperBound = 1.0))
+      val points = Vector.fill(4)(DataPoint(1L, Some(2.0))) ++
+        Vector.fill(4)(DataPoint(2L, Some(2.0)))
+
+      val result = detector.detectAnomaliesInHistory(points, (1L, 2L))
+      assert(result.anomalies.map(_._1) == Seq.fill(4)(1L))
+    }
+
     "throw an error when intervals are not ordered" in {
       intercept[IllegalArgumentException] {
         aD.detectAnomaliesInHistory(data, (4, 2))
